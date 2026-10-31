@@ -148,7 +148,7 @@ module.exports = function staffModule(o) {
       const later = f => /^staff\/(once|pd\/history)\//.test(f.path);
       const readOr = async f => { try { await readOne(f); } catch (e) { if (!later(f)) throw e; log('Left for the next start', f.path, e.message); } };
       for (let i = 0; i < rest.length; i += 6) await Promise.all(rest.slice(i, i + 6).map(readOr));
-      seed(); pieceCache = null; G.invalidate(); S.ready = true;
+      seed(); IB.seed(); pieceCache = null; G.invalidate(); S.ready = true;
       try { await G.applySeed(saveAccounts, accountFor, setSetting); } catch (e) { log('Educator settings could not be applied', e.message); }
       // the two starting Presenting entries, made once
       try { PR.seed(); } catch (e) { log('Presenting entries could not be started', e.message); }
@@ -218,20 +218,9 @@ module.exports = function staffModule(o) {
   const fpReady = slug => !!(((get(FP_READY) || {}).pieces || {})[slug]);
   const familyPiecesForFamily = () => familyPieces().filter(g => !g.draft || fpReady(g.slug)).map(g => ({ slug: g.slug, title: g.title, body: g.body, audience: g.audience }));
 
-  /* ---------- the materials guides ---------- */
-  const GUIDE_READY = 'staff/guides/ready.json';
-  function guides() {
-    return [...S.files.keys()].filter(p => /^staff\/guides\/[a-z0-9-]+\.md$/.test(p)).sort().map(p => {
-      let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
-      if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
-      const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
-      return { slug: p.slice(13, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), group: meta.group || '', area: meta.area || '', draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
-    }).filter(Boolean);
-  }
-  const guideReady = slug => !!(((get(GUIDE_READY) || {}).guides || {})[slug]);
-  const guidesFor = me => { const dir = isDirector(me);
-    return guides().filter(g => dir || !g.draft || guideReady(g.slug)).map(g => { const o = Object.assign({}, g, { waiting: g.draft && !guideReady(g.slug) }); if (!dir) { delete o.source; delete o.draft; delete o.waiting; } return o; }); };
-
+  /* ---------- the materials guides ----------
+     The seven one-page guides once kept in staff/guides are folded into their Idea bank cards. Their files stay in the
+     records as they are, and TREE no longer reads them. */
   /* ---------- the PD library's pieces, one file each in pd/, so a new piece needs no code ---------- */
   let pieceCache = null;
   function pieces() {
@@ -277,7 +266,7 @@ module.exports = function staffModule(o) {
   // every page of the school's own writing kept in the records as Markdown: PD modules, How To guides, the licensing
   // pieces, the New Educator pieces and letter, the materials guides, the Family page pieces, the wording the director
   // edits in place and the libraries for plans, such as recipes and the song book
-  const editable = p => /^staff\/(pd\/(modules|howto|licensing|printables)|newed|guides|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
+  const editable = p => /^staff\/(pd\/(modules|howto|licensing|printables)|newed|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
   // the school's own wording the director edits in place, one page for each piece, such as the Family Questionnaire
   const WD = require('./wording.js');
   function wordingDoc(id) { const r = S.files.get('staff/wording/' + id + '.md'); return WD.parse(r ? r.text : ''); }
@@ -403,6 +392,8 @@ module.exports = function staffModule(o) {
       vals = Object.fromEntries(T.sp.fields.map(([k, , t], i) => { const g = given[i] && given[i].body != null ? String(given[i].body).replace(/\r/g, '') : null; if (g == null) return [k, was[k]];
         if (t === 'months') return [k, g.split(/[\n,]/).map(l => parseInt(l, 10)).filter(m => m >= 1 && m <= 12).map(String)];
         return [k, isLines(t) ? g.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 60).map(l => l.slice(0, 2000)) : g.trim().slice(0, 20000)]; }));
+      // a record can name what it holds to, such as the needs an Idea bank card feeds
+      if (T.sp.check) { const bad = T.sp.check(vals); if (bad) return { error: bad }; }
       const found = b.keep ? [] : W.check(recText(T.sp, was), recText(T.sp, vals)); if (found.length) return { error: 'Some new wording may not follow the writing rules.', findings: found, gentle: true };
     }
     if (JSON.stringify(vals) === JSON.stringify(was)) return { ok: true, same: true, page: recordOut(p, item) };
@@ -502,6 +493,7 @@ module.exports = function staffModule(o) {
     if (P === 'library/picture' && isNewHire(me)) return deny('A new educator reads the libraries.');
     if (P === 'volunteer' || P.startsWith('volunteer/')) { await VOL.handle(P, body, me, req, res, { json, err }); return; }
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
+    if (P === 'ideabank' || P.startsWith('ideabank/')) { await IB.handle(P, body, me, req, res, { json, err }, saveRecord); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }
     // PD paths and assignments, in paths.js, for every sign-in with records of its own. The kitchen never reaches them.
@@ -601,18 +593,8 @@ module.exports = function staffModule(o) {
       const exp = !!profileOf(dir ? who : me).experienced;
       json(req, res, 200, { experienced: exp, goTo: goToName() || '', list: newedOwn(newedFor(me, exp), dir ? who : me), onboarding: PA.onboardingOf(dir ? who : me).id }); return;
     }
-    // the one-page materials guides, one Markdown file each in staff/guides. A guide written as a draft shows only to the
-    // director, with its source note, until she marks it ready. Each one names the Materials library group and the
-    // Classroom area it is linked from.
-    if (P === 'guides' || P === 'guides/ready') {
-
-      if (P === 'guides/ready') {
-        if (!dir) return deny('The director marks a guide ready.'); const g = guides().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That guide is not here.');
-        const all = Object.assign({ guides: {} }, get(GUIDE_READY) || {}); all.guides = Object.assign({}, all.guides); if (body.on) all.guides[g.slug] = { on: today(), by: me }; else delete all.guides[g.slug];
-        put(GUIDE_READY, all);
-      }
-      json(req, res, 200, { list: guidesFor(me) }); return;
-    }
+    // the materials guides are folded into the Idea bank, so a page still asking for them hears there are none
+    if (P === 'guides' || P === 'guides/ready') { json(req, res, 200, { list: [], retired: true }); return; }
     if (P === 'walks' || P.startsWith('walks/')) {
       const w = walksDoc(); if (!w) { err(req, res, 404, 'Walk safety is not in the records yet.'); return; }
       if (!dir && !w.ready) return deny('Walk safety opens once the director marks it ready.');
@@ -1063,6 +1045,8 @@ module.exports = function staffModule(o) {
   // the library asks whether a PD module is shown to educators, so a link to a module waiting as a draft stays with the director
   // the Volunteer Jobs library, in volunteer.js, its words edited with the same Edit, history and restore as a record
   const VOL = require('./volunteer.js')({ get, put, S, log, isDirector, isOffice, saveRecord }); RECORD_EDIT.push(...VOL.SPECS);
+  // the Idea bank, its cards and behaviors kept as records in staff/library/ideabank and edited with the one editor
+  const IB = require('./ideabank.js')({ S, get, put, log, isDirector, isKitchen, nameKey }); RECORD_EDIT.push(IB.SPEC);
   const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
@@ -1177,7 +1161,10 @@ module.exports = function staffModule(o) {
     freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     s12ReadAlouds: ['staff/once/s12-read-alouds.json', 'Our own read-alouds and traditional tales in place of the Watch and Wonder books'],
-    s12Review: ['staff/once/s12-review.json', 'Fixes from the review of TREE after Session 12'] };
+    s12Review: ['staff/once/s12-review.json', 'Fixes from the review of TREE after Session 12'],
+    // the Idea bank. Help answers and the PD pages that named Documentation for the Garden, Artists, Museums, Recipes,
+    // Songs and stories and the materials guides now name Plans, Planning resources, and the Idea bank has its answers
+    ideabankWords: ['code:once/ideabank-words.json', 'The Idea bank, and the planning resources under Plans'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
@@ -1264,7 +1251,7 @@ module.exports = function staffModule(o) {
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
-  return { dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, // the museums and the plants on our site for the whole community, each part only once the director turns its switch on
+  return { ideabank: { forFamily: () => (S.ready ? IB.forFamily() : null), familyOn: () => (S.ready ? IB.familyOn() : false), canOpen: (b, r) => (S.ready ? IB.canOpen(b, r) : false), NEEDS: IB.NEEDS, SUPPORTS: IB.SUPPORTS, US: IB.US }, dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, // the museums and the plants on our site for the whole community, each part only once the director turns its switch on
     community: who => { if (!S.ready) return null; const sw = LIB.placeSwitches(); const fam = who === 'family';
       const places = (fam ? sw.family : sw.public) ? LIB.placesOut() : null; const plants = (fam ? sw.plantsFamily : sw.public) ? GD.community() : null;
       return places || plants ? { places, plants } : null; },

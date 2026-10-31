@@ -1648,7 +1648,9 @@ function renderMain(){
   if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()||isNewHire()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
   if(view==="kitchen"){renderKitchen();return}
   if(view==="walks"){renderWalks();return}
-  if(view==="guide"){renderGuide();return}
+  if(view==="ideabank"){renderIdeaBank();return}
+  // a materials guide's old address opens the Idea bank card it was folded into
+  if(view==="guide"){const id=IB_GUIDE.slug[guideSel];view="ideabank";LS.set("fps.view",view);if(id){ibSt.sel=id;ibSt.mode="card";ibSt.picked=true}renderNav();renderIdeaBank();return}
   if(view==="garden"){renderGarden();return}
   if(view==="recipes"){renderRecipes();return}
   if(view==="gatherings"){renderGatherings();return}
@@ -3147,6 +3149,10 @@ function shareGather(src){
   else if(k==="food"){const r=shareFoodRange(id),inR=n=>{const d=iso(new Date(n.at||0));return d>=r.from&&d<=r.to};ns=[...notices.values()].filter(n=>inR(n)&&(n.bin||G_OBJ.some(o=>o.re.test((n.noticed||"")+" "+(n.wonder||"")))))}
   else if(k==="recent"){const t=Date.now()-14*864e5;ns=[...notices.values()].filter(n=>(n.at||0)>=t&&(!id||n.classroom===id))}
   else if(k==="bin"){const t=Date.now()-42*864e5;ns=[...notices.values()].filter(n=>n.bin&&(n.at||0)>=t)}
+  // an Idea bank card offers this school year's photos, those whose words share the card's title last, so they show first
+  else if(k==="idea"){const c=ibCard(id),yr=yearFromTime(Date.now()),inq=shareInquiryIds();const ws=c?attWords(c.title):[];
+    const all=[...notices.values()].filter(n=>n&&n.photo&&(n.photo.id||n.photo.data)&&!n.deleted&&!inq.has(n.id)&&yearFromTime(n.at||Date.now())===yr).sort((a,b)=>(a.at||0)-(b.at||0));
+    const fit=n=>{const t=attWords((n.noticed||"")+" "+(n.wonder||""));return ws.some(w=>t.includes(w))};return [...all.filter(n=>!fit(n)),...all.filter(fit)].slice(-300)}
   const inq=shareInquiryIds();
   return ns.filter(n=>n&&n.photo&&(n.photo.id||n.photo.data)&&!n.deleted&&!inq.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0)).slice(-300);
 }
@@ -3161,6 +3167,8 @@ function shState(n){const f=shareFaces[n.id];if(f&&f.v)return f.v;return shareBu
 const shareShownIds=()=>shareSt?shareSt.ids.slice(-(shareSt.showN||24)):[];
 function shareChosen(){
   if(!shareSt)return [];const off=new Set(shareSt.off||[]),add=new Set(shareSt.add||[]);
+  // a post from an Idea bank card has one photo slot, the photo the director picks
+  if(shareSt.one){const n=shareSt.pick&&notices.get(shareSt.pick);return n&&(shState(n)==="clear"||add.has(n.id))?[n]:[]}
   return shareShownIds().map(id=>notices.get(id)).filter(Boolean).filter(n=>add.has(n.id)||(shState(n)==="clear"&&!off.has(n.id))).slice(0,SH_MAX);
 }
 const SHARE_FACE_PROMPT=k=>`You are checking ${k} photo${k>1?"s":""} from an early childhood program before the director considers them for the school's public Instagram account. The photos are numbered 1 to ${k} in the order given.
@@ -3229,6 +3237,8 @@ ${QS.map((q,i)=>(i+1)+". "+q[0]+" ("+q[1]+")").join("\n")}`;
   shareBusy.words=false;if(view==="share")renderShare()}
 async function shareDraft(btn){
   if(shareIsEdu())return shareDraftEdu();
+  // a post from an Idea bank card is drafted again from the card's own At home parts
+  {const [k0,id0]=shareSplit(shareSt.src);if(k0==="idea"){const c=ibCard(id0);if(!c){toast("That card is no longer in the Idea bank.");return}const P=ideaShareParts(c);shareSt.cards=P.cards;shareSt.cardsOn=true;shareSt.caption=P.caption;shareSt.tags=P.tags;shareSave();shStale();renderShare();return}}
   const ch=shareChosen();if(!ch.length&&!shareHasCards()){toast("Choose at least one photo first.");return}
   if(!sample){toast("TREE's reading help is not available right now.");return}
   const [k,id]=shareSplit(shareSt.src);let about="";
@@ -3565,7 +3575,7 @@ function renderShare(){
       <div class="cnt">Draft writes the pictures of words, the caption and the hashtags, and chooses the quote.</div></section>`}
   else h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Photos</h3><span class="cnt">${ch.length} chosen</span></div>
     ${shareBusy.faces?`<div class="cnt"><b>Checking photos for faces and names, ${shareBusy.left} to go.</b></div>`:""}
-    <div class="cnt">Tap a photo to take it out or put it back. They post in the order shown, up to ${SH_MAX}.</div>
+    <div class="cnt">${st.one?"Tap one photo from our documentation for the photo slot. Hands and work, never a child's face. The words of the card follow it.":`Tap a photo to take it out or put it back. They post in the order shown, up to ${SH_MAX}.`}</div>
     ${clear.length?`<div class="shgrid">${clear.map(tile).join("")}</div>`:shareBusy.faces?"":`<div class="cnt" style="margin-top:6px">No photo came through the check.</div>`}
     ${aside.length?`<details class="shaside" ${shAsideOpen||shBatch||aside.some(n=>ch.includes(n))?"open":""}><summary class="cnt">Set aside, ${aside.length}. A face or a written name may show, or the photo has not been checked.</summary><div class="cnt">A great photo can still be used. Soften every set-aside photo at once, then tap each one to check it.</div>
     <div class="actions"><button class="btn small" data-shsoftall="1" ${shBatch?"disabled":""}>${shBatch?`Softening ${shBatch.done} of ${shBatch.of}`:"Soften faces in all of these"}</button></div><div class="shgrid">${aside.map(tile).join("")}</div></details>`:""}
@@ -3573,7 +3583,7 @@ function renderShare(){
     ${older?`<div class="actions"><button class="btn small ghost" data-sholder="1">Show older photos</button><span class="cnt">${older} older, back to ${esc(shortDate((notices.get(st.ids[0])||{}).at||Date.now()))}</span></div>`:""}</section>`;
   h+=`<section class="card"><div class="lbl">Caption and lines</div>
     <div class="actions"><button class="btn small${has(st.caption)?" ghost":""}" data-shdraft="1" ${shareBusy.words||(!ch.length&&!shareHasCards()&&!shareIsEdu())?"disabled":""}>${shareBusy.words?"Drafting":has(st.caption)?"Draft again":"Draft the caption and words"}</button></div>
-    <div class="cnt">${shareIsEdu()?"Edit the caption here.":"Drafted only from the educators' words, with children's names and words taken out first."}</div>
+    <div class="cnt">${shareIsEdu()?"Edit the caption here.":st.one?"Drafted from the card's At home side. Draft again brings those words back.":"Drafted only from the educators' words, with children's names and words taken out first."}</div>
     <label class="fld-label">Caption<textarea id="shcap" rows="6">${esc(st.caption||"")}</textarea></label>
     <label class="fld-label">Hashtags<input id="shtags" value="${esc(st.tags||"")}" placeholder="#reggioinspired #naturebasedlearning"></label>
     <div class="actions"><button class="btn small ghost" data-shcopy="1" ${has(st.caption)?"":"disabled"}>Copy the caption</button></div>
@@ -3589,7 +3599,7 @@ function renderShare(){
     ${(st.wordsOn!==false||st.linesOn)&&ch.length?`<div class="cnt">About children as a group. No codes or levels.</div>${ch.map((n,i)=>`<div class="shpicwords"><img src="${esc(photoThumb(n))}" alt=""><div style="display:grid;gap:6px;min-width:0">
       ${st.wordsOn!==false?`<textarea data-shword="${esc(n.id)}" rows="2" placeholder="What children were noticing, trying or working out">${esc((st.words||{})[n.id]||"")}</textarea>`:""}
       ${st.linesOn?`<input data-shline="${esc(n.id)}" value="${esc((st.lines||{})[n.id]||"")}" placeholder="Such as Science, observing what living things need">`:""}</div></div>`).join("")}`:""}
-    ${(st.cards||[]).length?`<label class="radio"><input type="checkbox" data-shopt="cardsOn" ${st.cardsOn?"checked":""}><span>Pictures of words only, from the educators' own writing</span></label>
+    ${(st.cards||[]).length?`<label class="radio"><input type="checkbox" data-shopt="cardsOn" ${st.cardsOn?"checked":""}><span>${st.one?"Pictures of words, from the card's At home side":"Pictures of words only, from the educators' own writing"}</span></label>
     ${st.cardsOn?(st.cards||[]).map((c,i)=>`<div class="shcard"><label class="radio"><input type="checkbox" data-shcardon="${i}" ${c.on?"checked":""}><span><b>${esc(c.h)}</b></span></label><textarea data-shcard="${i}" rows="3">${esc(c.t)}</textarea></div>`).join(""):""}
     <div class="cnt">A post can be words only. Take out every photo and these pictures make the post.</div>`:""}
     <label class="fld-label">End with a quote<select id="shquote"><option value="">No closing quote</option>${SHQ().map(q=>`<option value="${esc(q[0])}" ${st.quote===q[0]?"selected":""}>${esc(q[0].replace(/[.]$/,""))}, ${esc(q[1])}</option>`).join("")}</select></label>
@@ -3621,6 +3631,8 @@ document.addEventListener("click",async e=>{
     if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareSt=null;LS.set("tree.share",null);renderShare();return}
   if(d.shstatus&&shareSt){shareSt.status=d.shstatus;if(d.shstatus==="posted")shareSt.postedAt=Date.now();else delete shareSt.postedAt;shareSave();renderShare();if(d.shstatus==="posted")toast("Kept as posted.");return}
   if(!shareSt)return;
+  if(d.shpick&&shareSt&&shareSt.one){const n=notices.get(d.shpick);if(!n)return;if(shareSt.pick===n.id){shareSt.pick="";shareSave();shStale();renderShare();return}
+    if(shState(n)!=="clear"&&!(shareSt.add||[]).includes(n.id)){shareSt.pick=n.id;shSoftOpen(n.id);return}shareSt.pick=n.id;shareSave();shStale();renderShare();return}
   if(d.shpick){const n=notices.get(d.shpick);if(!n)return;const on=shareChosen().includes(n),clear=shState(n)==="clear";
     shareSt.off=(shareSt.off||[]).filter(x=>x!==n.id);shareSt.add=(shareSt.add||[]).filter(x=>x!==n.id);
     if(on){if(clear)shareSt.off.push(n.id)}
@@ -4727,16 +4739,20 @@ function renderStaff(){const m=$("#main");if(!m)return;
   staffLoad=staffLoad||loadScript("tree-staff.js?v=86caca0c30","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
-  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["garden","Garden"],["gatherings","Gatherings"],["recipes","Recipes"],["songs","Songs and stories"],["artists","Artists"],["museums","Museums and cultural places"],["kitchen","Kitchen"]],
+  docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
   children:[["children","Children"],["conferences","Conferences"],["participation","Participation"],["volunteer","Volunteer Jobs"],["drdpreport","DRDP report"]]};
+/* Plans keeps the plan work in its tabs, and below them Planning resources, closed to start, holds the Idea bank, the
+   Garden, Artists, Museums and cultural places, Recipes, and Songs and stories with the book collection. Each page keeps
+   its own address, so an old link still opens it. */
+const PLAN_RES=[["ideabank","Idea bank"],["garden","Garden"],["artists","Artists"],["museums","Museums and cultural places"],["recipes","Recipes"],["songs","Songs and stories"]];
 const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",drdpreview:"today",wreport:"today",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
-  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"docs",gatherings:"docs",recipes:"docs",songs:"docs",artists:"docs",museums:"docs",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
+  moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"plans",gatherings:"docs",recipes:"plans",songs:"plans",artists:"plans",museums:"plans",ideabank:"plans",guide:"plans",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8d75a73ebc25";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="7b7c2dd60512";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4785,14 +4801,17 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  const subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():k==="museums"?(isDirector()||!!(libData&&libData.places)):(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back)return"";
-  const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view;
+  let subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():k==="museums"?(isDirector()||!!(libData&&libData.places)):(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back&&s!=="plans")return"";
+  const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view==="guide"?"ideabank":view;
+  // the planning resources sit under the plan tabs, closed until opened, and open while one of them is the page
+  let res="";if(s==="plans"){const kit=isKitchenUser();if(kit)subs=[];const rs=PLAN_RES.filter(([k])=>kit?KITCHEN_VIEWS.includes(k):k==="museums"?(isDirector()||!!(libData&&libData.places)):true);
+    if(rs.length)res=`<details class="planres"${rs.some(([k])=>k===curSub)?" open":""}><summary class="sub">Planning resources</summary><div class="subrow">${rs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div></details>`}
   // the Educators pages sit under four tabs, for the director and every educator, and the pages of the open one show
   // beneath, so a phone shows the page itself on the first screen
   if(s==="staff"&&subs&&subs.length>4){const g=ST_GROUPS.map(([n,ks])=>[n,ks.filter(k=>subs.some(x=>x[0]===k))]).filter(([,ks])=>ks.length),cur=g.find(([,ks])=>ks.includes(curSub))||g[0],lab=k=>(subs.find(x=>x[0]===k)||[])[1];
     if(cur&&cur[1].includes(curSub))stGroupLast[cur[0]]=curSub;
     return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}<div class="subrow stgroups" aria-label="Educators">${g.map(([n,ks])=>`<button class="sub grp" data-tview="${ks.includes(stGroupLast[n])?stGroupLast[n]:ks[0]}" ${n===cur[0]?'aria-current="true"':""}>${esc(n)}</button>`).join("")}</div>${cur[1].length>1?`<div class="subrow stpages">${cur[1].map(k=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${esc(lab(k))}</button>`).join("")}</div>`:""}</div>`}
-  return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}</div>`;
+  return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}${res}</div>`;
 }
 function placeSubnav(){
   const m=$("#main");if(!m)return;const want=subnavHtml();const have=$("#tsubnav");
@@ -4961,9 +4980,9 @@ function todayWaiting(){
   {const rm=myRoom(),seenG=new Set();for(const n of [...notices.values()].filter(n=>(n.threadSuggest||[]).length&&(dir||!rm||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0))){
     const k=n.group||n.id;if(seenG.has(k))continue;seenG.add(k);const ss=threadSuggestsOf(n);if(!ss.length)continue;
     out.push({dot:"sky",t:"Might belong in a thread",s:`${firstLine(n.noticed,50)}${/[.!?…]$/.test(firstLine(n.noticed,50))?"":"."} The thread ${ss[0].t.name}.`,act:`data-nwedit="${n.id}"`,b:"Look"});if(seenG.size>=6)break}}
-  // a team inquiry an educator opened from a thread, for the director to lead
+  // a team inquiry an educator opened from a thread or from What are you seeing?, for the director to lead
   if(dir)for(const x of inqAll().filter(x=>x.startedBy&&!x.directorSeen).slice(0,4))
-    out.push({dot:"sky",t:`${x.startedBy} opened a team inquiry, ${x.name||"Untitled"}`,s:`From the thread ${(threads.get(x.fromThread)||{}).name||"it came from"}. It is yours to lead.`,act:`data-iqopen="${x.id}"`,b:"Open"});
+    out.push({dot:"sky",t:`${x.startedBy} opened a team inquiry, ${x.name||"Untitled"}`,s:x.fromThread?`From the thread ${(threads.get(x.fromThread)||{}).name||"it came from"}. It is yours to lead.`:`From What are you seeing? in the Idea bank, after the class wrote what it tried. It is yours to lead.`,act:`data-iqopen="${x.id}"`,b:"Open"});
   // a team inquiry the team meant to look at again
   {const rm=myRoom(),day=iso(new Date());for(const x of inqAll().filter(x=>x.status==="open"&&x.lookAgain&&x.lookAgain<=day&&(dir||!rm||!x.room||x.room===rm)).slice(0,4))
     out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}
@@ -5470,7 +5489,7 @@ function renderToday(){
 }
 
 /* ---------- The Garden ----------
-   The garden and the yards, beside Farm to School and Kitchen under Documentation. The director plans and changes
+   The garden and the yards, under Plans, Planning resources. The director plans and changes
    everything. Educators see their class's beds and the shared spaces and mark tasks done with one tap, and the kitchen
    records harvests. The spaces are the Spaces list in Settings. Everything waits for the director to mark it ready.
    Each section folds closed with a one-line summary, and the page never scrolls sideways. */
@@ -5560,10 +5579,10 @@ function gardenTodayHtml(){if(isKitchenUser())return "";if(gdn===null)loadGarden
   return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">In the garden today</h3><button class="linkbtn" data-tview="garden">Garden</button></div><div class="cnt">${left?left+" to do":"All done"}${!gdn.ready?". A draft, only you see it":""}</div>
     ${list.length?`<div class="gtasks">${list.slice(0,8).map(t=>gdnTaskRow(t,iso(new Date()))).join("")}</div>`:""}</section>`}
 function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){loadGarden();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Garden</div></section>`;return}
-  if(!gdnOk()){m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2></div><section class="card"><div class="empty">The Garden opens once the director marks it ready.</div></section>`;return}
+  if(!gdnOk()){m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2></div><section class="card"><div class="empty">The Garden opens once the director marks it ready.</div></section>`;return}
   const g=gdn,dir=isDirector()&&!VIEW_AS,kit=isKitchenUser(),day=iso(new Date()),mm=day.slice(5,7),room=myRoom();
   const plants=g.plants||[],beds=g.beds||[],foods=plants.filter(p=>(p.eat==="food"||p.eat==="partly")&&!p.planned);
-  let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
+  let h=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
   // the director's job cards that fit this month, for the director and the office to post as slots or work day stations
@@ -5884,6 +5903,303 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset)retu
     await gdnCall("animal",{id:t.dataset.ganames,animal:{names:t.value.split(",").map(x=>x.trim()).filter(Boolean).map(n=>had.find(h=>h.name===n)||{name:n,breed:""})}},"Saved.");return}
   if(t.dataset.gplanted&&t.value.trim()){await gdnCall("bed",{id:t.dataset.gplanted,bed:{planted:{what:t.value.trim(),date:iso(new Date())}}},"Kept in the bed's history.");return}});
 
+/* ---------- The Idea bank ----------
+   Plans, then Planning resources, then Idea bank. Invitations and provocations for every material, space, interest and
+   season, and ideas ready for a hard day, read from the private records through the signed-in server (ideabank.js).
+   How We Offer Ideas and What are you seeing? open first. Cards are browsed by group, searched and filtered by what
+   they feed, what they support and their setting. A card shows its educator side or its At home side with one control,
+   prints one card to a page through the one print kit, attaches to a plan, and offers possibilities to a team inquiry.
+   The director edits, adds, removes and highlights cards, decides educators' suggestions and shares a card's home side.
+   This file is set into src/app.html where it is marked, by tools/build.py. */
+let ib=null,ibBusy=null;
+const ibSt=Object.assign({group:"Paint",q:"",needs:[],sups:[],levels:[],sel:"",side:"edu",mode:"card",bq:"",bsel:"",fromPlan:"",newOpen:false,addOpen:false,sugOpen:""},LS.get("tree.ib",{})||{},{fromPlan:"",mode:"card",newOpen:false,addOpen:false,sugOpen:""});
+const ibPick=new Set();
+const ibKeep=()=>LS.set("tree.ib",{group:ibSt.group,side:ibSt.side,sel:ibSt.sel});
+const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Hard days",["Ready for today"]]];
+const IB_KIND={medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready for today"};
+const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["ready","Ready for today"]];
+// the seven materials guides now open these cards, from their Materials library group, their Classroom area or a plan
+// that attached a guide before
+const IB_GUIDE={slug:{atelier:"studio-and-class-ateliers",clay:"clay",dramatic:"home-and-dramatic-play-area",noticing:"photography","piazza-tools":"piazza-and-culinary-atelier",workshop:"water",writing:"writing-center"},
+  group:{"atelier":"studio-and-class-ateliers","sculpture":"clay","loose parts":"home-and-dramatic-play-area","recording":"photography","culinary":"piazza-and-culinary-atelier","natural":"water","mark-making":"writing-center"},
+  area:{"art":"studio-and-class-ateliers","dramatic play":"home-and-dramatic-play-area","science and discovery":"photography","piazza":"piazza-and-culinary-atelier","sensory table":"water","writing center":"writing-center"}};
+const IB_STANCE=[["Arrive and stay","Choose a spot and stay in it. Coming and going pulls children's attention with us. Sit at their level, within arm's reach. If you need to raise your voice to be heard, you are too far away."],
+  ["Calm travels","Children borrow our regulation. Slow your breath, your hands and your words. A child who is struggling needs a steady adult first. We co-regulate first and offer something new second."],
+  ["Describe what you see","Narrate the work. \"You pressed hard and the line got darker.\" Describing tells children we are paying attention and invites them to say more. Words like \"beautiful\" or \"good job\" tend to end the conversation."],
+  ["Know your own feelings","Notice how you feel about mud, heights, spills, noise, bugs and broken towers. Children read it on our faces. Name the feeling to yourself and choose your response. When a material is hard for you, ask a colleague to share the space."],
+  ["Hands off the product","Model how to care for a brush, wedge clay or thread a needle, then step back. We never draw, fix or finish a child's work. The ideas belong to the children."],
+  ["Plan so you can say yes","Set up the space so mess, noise, risk and collapse are welcome. Towers fall, paint mixes to brown and clay cracks. These are part of the work, and our relaxed body tells children so."],
+  ["Wonder alongside","Use I notice, I wonder and It reminds me of. Leave room for silence. Discovering alongside children often matters more than knowing the answer."],
+  ["Children close the cycle","Setting up and closing belong to the children. They carry materials out, wash their own brushes, wipe the table, sweep, and return every tool to its home for the next friend. We set up so this is easy. A wash bucket or low sink, a damp sponge at each table, a drying rack and a labeled home for each tool. Closing happens on the floor with the children, as part of the work. Nothing waits for an educator to put away later."],
+  ["Expected and still guided","Much of what children do fits their age and stage (developmentally appropriate). Twos bite and grab, threes say no, fours test who is in and who is out. We understand the reason, and we still guide, so everyone stays safe and included (socially acceptable). Understanding and guiding go together."],
+  ["Connected to","Art of Presence and Language (PD) · The Image of the Child lens"]];
+const IB_DEV_NOTE="A behavior can be expected for a child's age and stage (developmentally appropriate) and still need our guidance, so everyone stays safe and included (socially acceptable). We understand the reason and we still guide.";
+const IB_STANCE_LEAD="Every card in the Idea bank begins with us. Children read our faces, our bodies and our voices before they touch a material. How we are present decides whether an invitation opens up or closes.";
+(()=>{const st=document.createElement("style");st.textContent=`.ibwrap{display:grid;grid-template-columns:210px minmax(0,330px) minmax(0,1fr);gap:14px;align-items:start}
+.ibnav{display:grid;gap:12px}.ibnav .ibh{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#666)}
+.ibg{display:flex;justify-content:space-between;width:100%;text-align:left;border:0;background:transparent;padding:7px 9px;border-radius:8px;cursor:pointer;font:inherit;color:inherit}
+.ibg[aria-current="true"]{background:var(--moss-soft,#e3ece2);font-weight:700}.ibrow{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;margin:0 0 6px}
+.ibrow[aria-current="true"]{border-color:var(--moss,#2f5d50)}.ibrow input{margin-top:4px}.ibrow button{flex:1;text-align:left;background:none;border:0;cursor:pointer;font:inherit;color:inherit;padding:0}
+.ibcardv h3{font-size:17px;margin:14px 0 4px}.ibcardv ul,.ibcardv ol{margin:4px 0;padding-left:20px}.ibset{border-left:4px solid var(--moss,#2f5d50);padding:6px 10px;margin:8px 0;background:var(--moss-soft,#f1f6ef);border-radius:6px}
+.ibtip{font-size:14px;margin-top:4px}.ibtop{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.iblines span{display:block}
+.planres{margin-top:4px}.planres>summary{cursor:pointer}.planres .subrow{margin-top:4px}
+@media (max-width:900px){.ibwrap{grid-template-columns:minmax(0,1fr)}.ibnav{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}`;document.head.appendChild(st)})();
+async function ibLoad(force){if(!window.FP_API)return ib;if(ib&&!force)return ib;if(ibBusy)return ibBusy;
+  ibBusy=(async()=>{try{ib=await window.FP_API("/api/staff/ideabank",{});ibIndex=null}catch(e){if(!ib)ib=false}finally{ibBusy=null}
+    if(["ideabank","inquiries","plans"].includes(view)&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain();if(view==="search"&&typeof gsResults==="function")gsResults();if(libSheetOn)libSheetPaint();return ib})();
+  return ibBusy}
+const ibCards=()=>(ib&&ib.cards)||[];
+let ibIndex=null;
+function ibIdx(){if(!ibIndex){ibIndex=new Map();for(const c of ibCards())ibIndex.set(c.id,(c.title+" "+c.group+" "+(c.summary||"")+" "+(c.sections||[]).map(s=>s.h+" "+(s.text||"")+" "+(s.items||[]).join(" ")).join(" ")).toLowerCase())}return ibIndex}
+const ibCard=id=>ibCards().find(c=>c.id===id)||null;
+const ibByTitle=t=>{const l=String(t||"").toLowerCase().trim();return ibCards().find(c=>c.title.toLowerCase()===l)||null};
+const ibHigh=id=>!!ib&&(ib.highlights||[]).includes(id);
+const ibDir=()=>isDirector()&&!VIEW_AS;
+function ibLines(s){return s.style==="text"?[s.text||""]:(s.items||[])}
+// the parts of a card the editor holds, the same list the server keeps, so a suggestion names the part it changes
+function ibFields(c){const out=[["title","Title"],["summary","Summary"]];const sf=(pre,s,i,l)=>s.style==="text"?[`${pre}.${i}.text`,l+s.h]:[`${pre}.${i}.items`,l+s.h+", one on each line","lines"];
+  (c.sections||[]).forEach((s,i)=>out.push(sf("sections",s,i,"")));
+  out.push(["setting.level","Setting"],["setting.why","Setting, why"],["feeds","What it feeds, one on each line","lines"],["supports","What it supports, one on each line","lines"],["seeks","For a child who seeks more"],["avoids","For a child who finds it too much"],["connected","Connected to, one on each line","lines"]);
+  if(c.home){out.push(["home.title","At home, the title"]);(c.home.sections||[]).forEach((s,i)=>out.push(sf("home.sections",s,i,"At home, ")))}return out}
+const ibAt=(o,k)=>k.split(".").reduce((t,x)=>t&&typeof t==="object"?t[x]:undefined,o);
+// cards ranked by the needs and systems they share, with the line that says why and the seeks or avoids line
+function ibMatch(needs,sys,mode,n){const S=sys||{};const names=Object.keys(S);
+  return ibCards().map(x=>{const hits=(x.feeds||[]).filter(f=>needs.includes(f)),shits=(x.supports||[]).filter(f=>names.includes(f));
+    return {x,hits,shits,score:hits.length*2+shits.length*2+(hits.length&&shits.length?1:0)}}).filter(r=>r.score>0).sort((a,b)=>b.score-a.score||a.x.title.localeCompare(b.x.title)).slice(0,n||12).map(r=>{
+    const parts=[];if(r.hits.length)parts.push("Can feed "+r.hits.map(h=>h.toLowerCase()).join(" and ")+".");if(r.shits.length)parts.push("Supports "+r.shits.map(h=>h.toLowerCase()).join(" and ")+".");
+    const modes=new Set(r.shits.map(h=>S[h]||mode||"seek"));const tips=[];if(r.shits.length&&(modes.has("seek")||modes.has("both"))&&has(r.x.seeks))tips.push(r.x.seeks);if(r.shits.length&&(modes.has("avoid")||modes.has("both"))&&has(r.x.avoids))tips.push(r.x.avoids);
+    return {card:r.x,why:parts.join(" "),tips}})}
+const ibRowHtml=(r,extra)=>`<div class="prow" style="align-items:flex-start"><div style="min-width:0;display:grid;gap:2px"><div><b>${esc(r.card.title)}</b> <span class="cnt">${esc(IB_KIND[r.card.type]||"")}</span></div><div class="cnt">${esc(r.why)}</div>${r.tips.map(t=>`<div class="ibtip">${esc(t)}</div>`).join("")}</div><div class="actions" style="margin:0;flex-wrap:nowrap"><button class="btn small ghost" data-ibopen="${esc(r.card.id)}">Open card</button>${extra?extra(r):""}</div></div>`;
+
+/* ---------- the list ---------- */
+function ibShown(){const st=ibSt,q=st.q.trim().toLowerCase(),I=ibIdx();
+  return ibCards().filter(c=>{if(q){if(!q.split(/\s+/).every(w=>I.get(c.id).includes(w)))return false}
+    else if(!st.needs.length&&!st.sups.length&&!st.levels.length&&c.group!==st.group)return false;
+    if(st.levels.length&&(!c.setting||!st.levels.includes(c.setting.level)))return false;
+    if(st.needs.length&&!st.needs.some(n=>(c.feeds||[]).includes(n)))return false;
+    if(st.sups.length&&!st.sups.some(n=>(c.supports||[]).includes(n)))return false;return true})}
+// the cards that fit a plan, from its own words, its space and its focus
+function ibForPlan(p){if(!p)return [];const words=new Set(attWords([...Object.values(p.fields||{}),p.where,...(p.groups||[]),...(p.languages||[])].join(" ")));const where=String(p.where||"").toLowerCase();
+  return ibCards().map(c=>{let sc=0;const tw=attWords(c.title+" "+c.group);for(const w of new Set(tw))if(words.has(w))sc+=3;for(const w of new Set(attWords(ibIdx().get(c.id))))if(words.has(w))sc+=.25;
+    if(where&&(where.includes(c.title.toLowerCase())||c.title.toLowerCase().includes(where)))sc+=8;if(p.focus==="area"&&IB_GUIDE.area[where]===c.id)sc+=8;return {c,sc}}).filter(r=>r.sc>=3).sort((a,b)=>b.sc-a.sc).slice(0,10).map(r=>r.c)}
+const chipRow=(all,on,key)=>`<div class="chips" style="margin-top:6px">${all.map(n=>`<button class="chip ${on.includes(n)?"on":""}" type="button" aria-pressed="${on.includes(n)}" data-ibchip="${key}" data-val="${esc(n)}">${esc(n)}</button>`).join("")}</div>`;
+function ibListHtml(){const st=ibSt,shown=ibShown();const plan=st.fromPlan&&plans.get(st.fromPlan);const fits=plan?ibForPlan(plan):[];
+  const row=c=>`<div class="ibrow" aria-current="${st.mode==="card"&&c.id===st.sel}"><input type="checkbox" data-ibpick="${esc(c.id)}" ${ibPick.has(c.id)?"checked":""} aria-label="Select ${esc(c.title)} for printing"><button type="button" data-ibsel="${esc(c.id)}"><b>${esc(c.title)}</b><span class="cnt" style="display:block">${esc(c.group)}${c.setting&&c.setting.level?" · "+esc(c.setting.level):""}</span></button>${ibHigh(c.id)?`<span class="pill" style="pointer-events:none">At school now</span>`:""}</div>`;
+  return `<section class="card">${plan?`<div class="ibset"><b>Ideas for ${esc(planTitle(plan))}</b><div class="cnt">From the plan's own words, its space and its focus.</div>${fits.map(row).join("")||`<div class="cnt">No card matches the plan's words yet. Browse the groups or search.</div>`}<div class="actions"><button class="linkbtn" data-ibplanback="1">Back to the plan</button><button class="linkbtn" data-ibplanoff="1">Browse without the plan</button></div></div>`:""}
+    <label class="lbl" for="ib-q">Search</label><input type="search" id="ib-q" value="${esc(st.q)}" placeholder="clay, rain, opening things" data-noproof="1">
+    <details style="margin-top:8px"><summary class="linkbtn">Filter by what it feeds${st.needs.length?" ("+st.needs.length+")":""}</summary>${chipRow(ib.needs||[],st.needs,"needs")}</details>
+    <details><summary class="linkbtn">Filter by what it supports${st.sups.length?" ("+st.sups.length+")":""}</summary>${chipRow(ib.supports||[],st.sups,"sups")}</details>
+    <details><summary class="linkbtn">Filter by setting${st.levels.length?" ("+st.levels.length+")":""}</summary>${chipRow(ib.levels||[],st.levels,"levels")}</details>
+    ${st.needs.length||st.sups.length||st.levels.length?`<div class="actions"><button class="linkbtn" data-ibclearf="1">Clear the filters</button></div>`:""}
+    <div class="actions" style="justify-content:space-between"><span class="cnt">${shown.length} ${shown.length===1?"card":"cards"}</span><button class="btn small ghost" data-ibselall="1">Select all shown</button></div>
+    ${ibPick.size?`<div class="ibset"><b>${ibPick.size} selected for printing</b><div class="actions">${printBtns("ibcards",esc(st.side+"|"+[...ibPick].join(",")),"Print selected",true)}<button class="linkbtn" data-ibclearsel="1">Clear</button></div><div class="cnt">${st.side==="home"?"The At home side prints":"The educator side prints"}, one card to a page.</div></div>`:""}
+    <div style="margin-top:8px">${shown.map(row).join("")||`<div class="empty">No card fits. Try other words or clear the filters.</div>`}</div></section>`}
+
+/* ---------- a card ---------- */
+function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="linkbtn" data-ibopen="${esc(hit.id)}">${esc(k)}</button>`;
+  const go=/ on the Artists page\b/.test(k)?"artists":/^Garden page$/.test(k)?"garden":/^Recipe library$/.test(k)?"recipes":/^(Song book|Book collection)$/.test(k)?"songs":/ lens$/.test(k)?"lens":/cultural place|Museums and cultural places/.test(k)?"museums":"";
+  return go?`<button class="linkbtn" data-tview="${go}">${esc(k)}</button>`:esc(k)}
+function ibSectionHtml(s){return `<h3>${esc(s.h)}</h3>${s.style==="text"?`<p>${esc(s.text||"")}</p>`:s.style==="numbered"?`<ol>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`:s.style==="lines"?`<div class="iblines">${(s.items||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:`<ul>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`}`}
+function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=ibSt.fromPlan&&plans.get(ibSt.fromPlan);
+  const used=plan&&(plan.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id);const fl=ibFields(c);
+  return `<section class="card ibcardv"><span class="eyebrow">${esc(IB_KIND[c.type]||"")} · ${esc(c.group)}</span><h2 style="margin:4px 0 6px">${esc(home?c.home.title:c.title)}</h2>
+    <p>${esc(home?"For families to try at home.":c.summary||"")}</p>
+    ${!home&&c.setting&&c.setting.level?`<div class="ibset"><b>${esc(c.setting.level)}</b>${has(c.setting.why)?` <span>${esc(c.setting.why)}</span>`:""}</div>`:""}
+    ${c.home?`<div class="seg" role="group" aria-label="Card version"><button data-ibside="edu" aria-pressed="${!home}">For educators</button><button data-ibside="home" aria-pressed="${home}">At home</button></div>`:""}
+    <div class="actions">${printBtns("ibcards",esc((home?"home":"edu")+"|"+c.id),"Print this card",true)}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
+      ${dir&&c.home?`<button class="btn small ghost" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families":"Highlight for families"}</button><button class="btn small ghost" data-ibshare="${esc(c.id)}">Share</button>`:""}
+      ${dir?pageEditBtn("staff/library/ideabank/cards.json","Edit",c.id):""}</div>
+    ${(home?c.home.sections:c.sections||[]).map(ibSectionHtml).join("")}
+    ${home?"":`<h3>Feeds</h3><div class="chips">${(c.feeds||[]).map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
+      ${(c.supports||[]).length?`<h3>Supports</h3><div class="chips">${c.supports.map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>${has(c.seeks)?`<p class="ibtip">${esc(c.seeks)}</p>`:""}${has(c.avoids)?`<p class="ibtip">${esc(c.avoids)}</p>`:""}`:""}
+      <h3>Connected to</h3><ul>${(c.connected||[]).map(k=>`<li>${ibConnHtml(k)}</li>`).join("")}</ul>`}
+    ${dir?`<div class="actions" style="margin-top:12px"><button class="linkbtn" data-ibremove="${esc(c.id)}">Remove this card</button></div>`
+      :!VIEW_AS?`<details style="margin-top:12px" ${ibSt.sugOpen===c.id?"open":""}><summary class="linkbtn">Suggest a change</summary><div class="kfields">
+        <label>The part to change<select id="ib-sgf" data-ibsgf="${esc(c.id)}">${fl.map(([k,l])=>`<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select></label>
+        <label>The new wording<textarea id="ib-sgt" rows="5">${esc((v=>Array.isArray(v)?v.join("\n"):v||"")(ibAt(c,fl[0][0])))}</textarea></label>
+        <label>Why, in a few words<input type="text" id="ib-sgn"></label></div><div class="actions"><button class="btn small" data-ibsgsend="${esc(c.id)}">Send to the director</button></div><div class="cnt">The director approves it or sets it aside.</div></details>`:""}</section>`}
+function ibStanceHtml(){return `<section class="card ibcardv"><span class="eyebrow">Before any card</span><h2 style="margin:4px 0 8px">How We Offer Ideas</h2><p>${esc(IB_STANCE_LEAD)}</p>${IB_STANCE.map(([h,t])=>`<h3>${esc(h)}</h3><p>${esc(t)}</p>`).join("")}</section>`}
+function ibSeeingHtml(){const B=(ib.behaviors||[]),q=ibSt.bq.trim().toLowerCase();const list=B.filter(b=>!q||(b.label+" "+(b.keywords||[]).join(" ")).toLowerCase().includes(q));const b=B.find(x=>x.id===ibSt.bsel);
+  const rows=b?ibMatch(b.needs||[],Object.fromEntries((b.supports||[]).map(s=>[s,b.mode==="avoid"?"avoid":b.mode==="both"?"both":"seek"])),b.mode,12):[];
+  return `<section class="card ibcardv"><span class="eyebrow">Search by what is happening</span><h2 style="margin:4px 0 8px">What are you seeing?</h2>
+    <p>Behavior is how a child meets a need. These are possibilities to wonder about, never labels. Try the first steps and write down what happened. If it keeps happening after what we tried, open a team inquiry. One hard moment is never an inquiry.</p><p class="ibset">${esc(IB_DEV_NOTE)}</p>
+    <label class="lbl" for="ib-bq">Describe it in a word or two</label><input type="search" id="ib-bq" value="${esc(ibSt.bq)}" placeholder="throwing, biting, covering ears, climbing on tables" data-noproof="1">
+    <div class="chips" style="margin-top:8px">${list.map(x=>`<button class="chip ${x.id===ibSt.bsel?"on":""}" type="button" data-ibbeh="${esc(x.id)}">${esc(x.label)}</button>`).join("")||`<span class="cnt">Nothing matches those words. Try another word.</span>`}</div>
+    ${b?`<h3>${esc(b.label)}</h3><p>${esc(b.what_we_might_see||"")}</p><h3>What the child might be seeking</h3><p>${esc(b.might_be_seeking||"")}</p>
+      ${has(b.development)?`<h3>Where it can fit in development (developmental stage)</h3><p>${esc(b.development)}</p>${(b.sources||[]).length?`<div class="cnt">From ${(b.sources||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(", ")}</div>`:""}`:""}
+      <h3>First steps</h3><ul>${(b.first_steps||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul><h3>Keeping everyone safe</h3><p>${esc(b.keep_safe||"")}</p>
+      <div class="chips">${[...(b.needs||[]),...(b.supports||[])].map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
+      ${ibFromUsHtml(b.from_us||[])}${ibTriedHtml(b)}
+      <h3>Ideas that may help</h3>${rows.map(r=>ibRowHtml(r)).join("")||`<div class="cnt">No card shares these needs yet.</div>`}`:""}</section>`}
+// what the child might need from us, each with what it can look like
+function ibFromUsHtml(names){const L=(ib.fromUs||[]).filter(u=>names.includes(u.name));if(!L.length)return "";
+  return `<h3>What the child might need from us</h3>${L.map(u=>`<p><b>${esc(u.name)}.</b> ${esc(u.look)}</p>`).join("")}`}
+// the first steps the class tried for this behavior, on which days, and the way to a team inquiry once there are two days
+const ibTriedOf=(b,room)=>(ib.tried||[]).filter(t=>t.behavior===b.id&&(room==null||(t.room||"")===room)).sort((x,y)=>(y.at||0)-(x.at||0));
+function ibTriedHtml(b){const dir=isDirector(),room=myRoom()||"";
+  const mine=ibTriedOf(b,dir?null:room),ready=ibTriedOf(b,room).some(t=>has(t.happened));
+  const rows=mine.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,shortDate(t.at)].filter(has).join(", "))}${!VIEW_AS&&(dir||String(t.by||"").toLowerCase()===String(whoAmI()||"").toLowerCase())?` <button class="linkbtn" data-ibuntry="${esc(t.id)}">Remove</button>`:""}</div></div>`).join("");
+  const form=VIEW_AS?"":`<details ${ibSt.tryOpen===b.id?"open":""}><summary class="linkbtn" data-ibtryopen="${esc(b.id)}">We tried this</summary><div class="kfields">
+    <label>What we tried<select id="ib-trs">${(b.first_steps||[]).map(f=>`<option>${esc(f)}</option>`).join("")}<option value="">Something else, written below</option></select></label>
+    <label>Something else<input type="text" id="ib-tro"></label>
+    <label>What happened<textarea id="ib-trh" rows="3"></textarea></label></div>
+    <div class="hint">Leave children's names out. Write what you saw.</div><div class="actions"><button class="btn small" data-ibtry="${esc(b.id)}">Save the try</button></div></details>`;
+  const inq=VIEW_AS?"":dir?`<button class="btn small" data-ibinq="${esc(b.id)}">Start a team inquiry with this</button>`
+    :ready?`<label class="cnt"><input type="checkbox" id="ib-keeps"> It keeps happening after what we tried</label><button class="btn small" data-ibinq="${esc(b.id)}">Open a team inquiry with this</button>`
+    :`<span class="cnt">A team inquiry opens once your class has tried the first steps and written what happened.</span>`;
+  return `<h3>What we tried</h3><div class="hint">Try the first steps, then write down what happened. The director sees every try.</div>${rows||`<div class="cnt">Nothing written yet.</div>`}${form}<div class="actions">${inq}</div>`}
+function ibSugHtml(){if(!ib)return "";const dir=ibDir(),L=ib.suggestions||[],done=ib.decided||[];if(!L.length&&!done.length)return "";
+  const body=x=>x.kind==="new"?`<b>A new idea, ${esc(x.title)}</b><div class="cnt">${esc((IB_KIND[x.type]||"")+", "+x.group)}</div><div style="white-space:pre-line">${esc(x.text)}</div>`
+    :x.kind==="change"?`<b>A change to ${esc(x.cardTitle||"")}, ${esc(x.label||"")}</b><div style="white-space:pre-line">${esc(x.text)}</div>`
+    :`<b>A team inquiry about ${esc(x.title||"")}</b><div class="cnt">${esc([...(x.needs||[]),...(x.supports||[])].join(", "))}</div>`;
+  return `<section class="card"><div class="lbl">${dir?"Suggestions waiting":"Your suggestions"}</div>
+    ${L.map(x=>`<div class="pdir">${body(x)}${has(x.note)?`<div class="cnt">${esc(x.note)}</div>`:""}<div class="cnt">${esc(x.by)}, ${esc(shortDate(x.at))}</div>
+      <div class="actions">${dir?`<button class="btn small" data-ibdecide="${esc(x.id)}|1">Approve</button><button class="btn small ghost" data-ibdecide="${esc(x.id)}|0">Set aside</button>${x.card?`<button class="linkbtn" data-ibopen="${esc(x.card)}">Open the card</button>`:""}`:`<span class="cnt">Waiting for the director</span>`}</div></div>`).join("")}
+    ${done.map(x=>`<div class="cnt">${esc(x.kind==="change"?x.cardTitle+", "+x.label:x.title)}. ${x.status==="approved"?"Approved":"Set aside"} ${esc(shortDate(x.decidedAt))}.</div>`).join("")}</section>`}
+function ibToolsHtml(){const dir=ibDir();if(VIEW_AS)return "";const T=ib.types||{};const kinds=IB_KINDS.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join("");const groups=k=>(T[k]||[]).map(g=>`<option>${esc(g)}</option>`).join("");
+  const form=(id,btn)=>`<div class="kfields"><label>What kind<select id="${id}-type" data-ibtype="${id}">${kinds}</select></label><label>Its group<select id="${id}-group">${groups("medium")}</select></label><label>Its title<input type="text" id="${id}-title"></label>
+    ${id==="ib-new"?`<label>A few lines. The first is what the card offers, and each line after it is one way to offer it.<textarea id="ib-new-text" rows="5"></textarea></label>`:""}</div><div class="actions"><button class="btn small" data-${id==="ib-add"?"ibaddgo":"ibnewgo"}="1">${btn}</button></div>`;
+  return dir?`<details ${ibSt.addOpen?"open":""}><summary class="linkbtn">Add a card</summary>${form("ib-add","Add it and write it in Edit")}<div class="cnt">A new card starts from the blank template of its kind.</div></details>
+    ${(ib.removed||[]).length?`<details><summary class="linkbtn">Removed cards, ${ib.removed.length}</summary>${ib.removed.map(r=>`<div class="prow"><span>${esc(r.title)} <span class="cnt">${esc(r.by||"")}, ${esc(shortDate(r.at))}</span></span><button class="btn small ghost" data-ibrestore="${esc(r.id)}">Put it back</button></div>`).join("")}</details>`:""}`
+    :`<details ${ibSt.newOpen?"open":""}><summary class="linkbtn">Suggest a new idea</summary>${form("ib-new","Send to the director")}<div class="cnt">It waits for the director, who approves it or sets it aside.</div></details>`}
+function renderIdeaBank(){const m=$("#main");if(!m)return;
+  const head=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Idea bank</h2><div class="sub">Invitations and provocations for every material, space, interest and season, and ideas ready for a hard day.</div></div>`;
+  if(!ib){m.innerHTML=head+`<section class="card"><div class="empty">${ib===false?"The Idea bank could not be opened. Check the connection and try again.":`<span class="spin"></span> Opening the Idea bank`}</div></section>`;if(ib===null)ibLoad();else if(ib===false){ib=null}return}
+  const st=ibSt;let c=st.mode==="card"&&(ibCard(st.sel)||ibShown()[0]||ibCards()[0]);if(c)st.sel=c.id;
+  const counts={};for(const x of ibCards())counts[x.group]=(counts[x.group]||0)+1;
+  const filt=!!(st.q||st.needs.length||st.sups.length||st.levels.length);
+  const nav=`<nav class="ibnav" aria-label="Idea bank groups">${IB_NAV.map(([h,gs])=>`<div><div class="ibh">${esc(h)}</div>${gs.filter(g=>counts[g]).map(g=>`<button class="ibg" type="button" data-ibgroup="${esc(g)}" aria-current="${!filt&&st.group===g}"><span>${esc(g)}</span><span class="cnt">${counts[g]}</span></button>`).join("")}</div>`).join("")}</nav>`;
+  const top=`<div class="ibtop"><button class="btn small${st.mode==="stance"?"":" ghost"}" data-ibmode="stance">How We Offer Ideas</button><button class="btn small${st.mode==="seeing"?"":" ghost"}" data-ibmode="seeing">What are you seeing?</button></div>`
+  const famSwitch=ib&&ib.director&&!VIEW_AS?`<section class="card"><div class="lbl">Ideas to try at home</div><div class="hint">${ib.familyOn?"Families see the At home side of every card on the Family page, with your highlights first.":"Families do not see these ideas yet. Turn them on when you are ready."}</div><div class="actions"><button class="btn small${ib.familyOn?" ghost":""}" data-ibfamily="${ib.familyOn?0:1}">${ib.familyOn?"Turn off for families":"Turn on for families"}</button></div></section>`:"";
+  const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c?ibCardHtml(c):"";
+  const phone=window.innerWidth<=900;
+  m.innerHTML=head+top+famSwitch+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+(phone&&(st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div>${right}`
+    :`<div class="ibwrap"><div>${nav}</div><div>${ibListHtml()}</div><div id="ibright">${right}</div></div>`)}
+// a picked card on a phone shows on its own, with Back to the cards
+function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
+  if(view!=="ideabank")goView("ideabank");else{renderMain();const r=$("#ibright");if(r&&window.innerWidth>900)r.scrollIntoView({block:"start"});else jumpTop()}}
+window.TREE_IDEA_OPEN=ibOpen;
+document.addEventListener("input",e=>{const t=e.target;if(view!=="ideabank"||!t)return;
+  if(t.id==="ib-q"||t.id==="ib-bq"){if(t.id==="ib-q"){ibSt.q=t.value;ibSt.mode=ibSt.mode==="card"?"card":ibSt.mode}else ibSt.bq=t.value;const at=t.selectionStart,id=t.id;clearTimeout(ibInputT);ibInputT=setTimeout(()=>{renderMain();const q=$("#"+id);if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}},150)}});
+let ibInputT=null;
+document.addEventListener("change",e=>{const t=e.target;if(!t||!t.dataset)return;
+  if(t.dataset.ibpick){if(t.checked)ibPick.add(t.dataset.ibpick);else ibPick.delete(t.dataset.ibpick);renderMain();return}
+  if(t.dataset.ibtype){const g=$("#"+t.dataset.ibtype+"-group");if(g&&ib)g.innerHTML=((ib.types||{})[t.value]||[]).map(x=>`<option>${esc(x)}</option>`).join("");return}
+  if(t.dataset.ibsgf){const c=ibCard(t.dataset.ibsgf),ta=$("#ib-sgt");if(c&&ta){const v=ibAt(c,t.value);ta.value=Array.isArray(v)?v.join("\n"):v||""}return}});
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind],[data-ibfamily],[data-ibtry],[data-ibuntry],[data-ibtryopen]");if(!t)return;const d=t.dataset;
+  if(d.ibopen){e.preventDefault();if(libSheetOn){libSheetOn=null;libSheetPaint()}if(!ib)await ibLoad();ibOpen(d.ibopen);return}
+  if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
+  if(view!=="ideabank"&&!d.ibshare)return;
+  if(d.ibgroup){ibSt.group=d.ibgroup;ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.mode="card";ibSt.picked=false;ibSt.sel=(ibShown()[0]||{}).id||"";ibKeep();renderMain();return}
+  if(d.ibsel){ibOpen(d.ibsel);return}
+  if(d.ibmode){if(d.ibmode==="list"){ibSt.picked=false;ibSt.mode="card"}else{ibSt.mode=ibSt.mode===d.ibmode?"card":d.ibmode;ibSt.picked=ibSt.mode!=="card"}renderMain();jumpTop();return}
+  if(d.ibchip){const k=d.ibchip,a=ibSt[k],i=a.indexOf(d.val);if(i>=0)a.splice(i,1);else a.push(d.val);ibSt.mode="card";renderMain();return}
+  if(d.ibclearf){ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];renderMain();return}
+  if(d.ibselall){for(const c of ibShown())ibPick.add(c.id);renderMain();return}
+  if(d.ibclearsel){ibPick.clear();renderMain();return}
+  if(d.ibside){ibSt.side=d.ibside;ibKeep();renderMain();return}
+  if(d.ibplanback){const id=ibSt.fromPlan;ibSt.fromPlan="";if(id&&plans.get(id)){currentId=id;goView("plans",{keepPlan:true})}return}
+  if(d.ibplanoff){ibSt.fromPlan="";renderMain();return}
+  if(d.ibbeh){ibSt.bsel=ibSt.bsel===d.ibbeh?"":d.ibbeh;renderMain();return}
+  if(d.ibshare){const c=ibCard(d.ibshare);if(c&&isDirector()&&!VIEW_AS)ideaShare(c);return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.ibuse){const p=plans.get(ibSt.fromPlan),c=ibCard(d.ibuse);if(!p||!c)return;if(!(p.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id)){p.attached=[...(p.attached||[]),{kind:"idea",id:c.id,title:c.title}];persist(p)}
+    toastAct(c.title+" is attached to the plan.","Back to the plan",()=>{ibSt.fromPlan="";currentId=p.id;goView("plans",{keepPlan:true})});renderMain();return}
+  if(d.ibinq){const b=(ib.behaviors||[]).find(x=>x.id===d.ibinq);if(!b)return;const mode=b.mode==="avoid"?"avoid":"seek",dir=isDirector(),room=myRoom()||"";
+    const tried=ibTriedOf(b,dir?null:room).slice().reverse().map(t=>({step:t.step,happened:t.happened||"",by:t.by,at:t.at,room:t.room||""}));
+    const base={name:b.label,ibNeeds:(b.needs||[]).slice(),ibSys:Object.fromEntries((b.supports||[]).map(s=>[s,mode])),ibMode:mode,ibUs:(b.from_us||[]).slice(),ibFrom:b.id,tried};
+    if(dir){startInquiry(base);return}
+    if(!ibTriedOf(b,room).some(t=>has(t.happened))){toast("Write what you tried and what happened first.");return}
+    if(!$("#ib-keeps")||!$("#ib-keeps").checked){toast("A team inquiry is for something that keeps happening after what we tried. Check the box if it does.");return}
+    startInquiry(Object.assign(base,{room,startedBy:whoAmI(),display:false}));return}
+  if(d.ibtryopen){ibSt.tryOpen=ibSt.tryOpen===d.ibtryopen?"":d.ibtryopen;return}
+  if(d.ibtry){const sel=$("#ib-trs").value,other=($("#ib-tro").value||"").trim(),happened=($("#ib-trh").value||"").trim(),step=other||sel;
+    if(!step){toast("Choose or write what you tried.");return}if(!happened){toast("Write what happened when you tried it.");return}
+    try{ib=await window.FP_API("/api/staff/ideabank/tried",{behavior:d.ibtry,room:myRoom()||"",step,happened});ibIndex=null;ibSt.tryOpen="";toast("Saved. The team can see what was tried.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
+  if(d.ibuntry){if(!confirm("Remove this try?"))return;try{ib=await window.FP_API("/api/staff/ideabank/untried",{id:d.ibuntry});ibIndex=null;renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
+  const call=async(path,body,ok)=>{try{ib=await window.FP_API("/api/staff/ideabank/"+path,body);ibIndex=null;if(ok)toast(ok);renderMain();return ib}catch(er){toast(er&&er.message||"That did not save.");return null}};
+  if(d.ibfamily!=null){await call("family",{on:d.ibfamily==="1"},d.ibfamily==="1"?"Families see Ideas to try at home now.":"Ideas to try at home is hidden from families.");return}
+  if(d.ibhigh){const [id,on]=d.ibhigh.split("|");await call("highlight",{id,on:on==="1"},on==="1"?"Highlighted. Families see it first.":"Taken off the highlights.");return}
+  if(d.ibremove){if(!confirm("Remove this card? It waits under Removed cards, where you can put it back."))return;const id=d.ibremove;if(await call("remove",{id},"Removed. It waits under Removed cards.")){ibSt.sel="";renderMain()}return}
+  if(d.ibrestore){await call("restore",{id:d.ibrestore},"Put back.");return}
+  if(d.ibaddgo){const type=$("#ib-add-type").value,group=$("#ib-add-group").value,title=($("#ib-add-title").value||"").trim();if(!title){toast("Give the card a title.");return}
+    const r=await call("add",{type,group,title});if(r&&r.id){ibSt.addOpen=false;ibSt.group=group;ibOpen(r.id);window.TREE_EDIT_PAGE({path:"staff/library/ideabank/cards.json",item:r.id},async()=>{await ibLoad(true)})}return}
+  if(d.ibnewgo){const type=$("#ib-new-type").value,group=$("#ib-new-group").value,title=($("#ib-new-title").value||"").trim(),text=($("#ib-new-text").value||"").trim();if(!title||!text){toast("Give the idea a title and a few lines about it.");return}
+    if(await call("suggest",{kind:"new",type,group,title,text},"Sent. Your idea waits for the director."))ibSt.newOpen=false;return}
+  if(d.ibsgsend){const field=$("#ib-sgf").value,text=($("#ib-sgt").value||"").trim(),note=($("#ib-sgn").value||"").trim();if(!text){toast("Write the new wording first.");return}
+    await call("suggest",{kind:"change",card:d.ibsgsend,field,text,note},"Sent. Your suggestion waits for the director.");return}
+  if(d.ibdecide){const [id,ok]=d.ibdecide.split("|");const x=(ib.suggestions||[]).find(y=>y.id===id);const r=await call("decide",{id,approve:ok==="1"},ok==="1"?"Approved.":"Set aside.");
+    if(r&&ok==="1"&&x&&x.kind==="inquiry"){const mode=x.mode==="avoid"?"avoid":"seek";startInquiry({name:x.title||"",room:x.room||"",ibNeeds:x.needs||[],ibSys:Object.fromEntries((x.supports||[]).map(s=>[s,mode])),ibMode:mode,ibFrom:x.behavior||""})}
+    else if(r&&r.card)ibOpen(r.card);return}});
+
+/* ---------- printing ---------- */
+// one card to a letter page, centred when it fits, with only what matters most, the educator side or the At home side
+const IB_PRINT_EDU=["Invitations","A starting point","What it might look like","Through the year","What you need","Set it up"];
+function ibDoc(c,side){const home=side==="home"&&!!c.home;const S=home?c.home.sections:c.sections||[];const by=h=>S.find(s=>s.h===h);
+  const pick=home?["Ways to try it","Your child's role","Wonder together","What your child is learning"].map(by).filter(Boolean)
+    :[S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it works on hard days"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
+  const sub=home?"To try at home":[IB_KIND[c.type],c.setting&&c.setting.level].filter(has).join(", ");const title=home?c.home.title:c.title;
+  const make=n=>pick.map(s=>s.style==="text"?dText(s.h,s.text):dList(s.h,(s.items||[]).slice(0,n)));
+  for(const n of [6,4,3]){const card=asCard({display:true,type:"report",acc:"story",title,meta:[],blocks:make(n)},{sub});if(card&&card.centered){card.over=c.group;if(volFit(card))return card}}
+  return {display:true,type:"report",acc:"story",title,meta:[sub],blocks:make(6)}}
+async function ibPrintDocs(spec){if(!ib)await ibLoad();const i=String(spec||"").indexOf("|"),side=spec.slice(0,i),ids=spec.slice(i+1).split(",").filter(Boolean);
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});try{await loadPrintFonts()}catch(e){}
+  return ids.map(ibCard).filter(Boolean).map(c=>ibDoc(c,side))}
+const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const one=ids.length===1&&ibCard(ids[0]);return one?(spec.startsWith("home|")&&one.home?one.home.title:one.title+" Idea bank card"):"Idea bank cards"};
+
+/* ---------- a team inquiry ----------
+   What the class tried before the inquiry opened, when it came from What are you seeing?, then three hypothesis
+   pickers. What the child might need from us is the third, each choice with what it can look like. The first two are what the child might be trying to get and which senses or body systems might be asking for
+   more or for less, saved with the inquiry. Possibilities to try lists matching cards with why each connects, and
+   We'll try this adds the card's title and link to What we will try. Nothing is added unless the team chooses. */
+function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div class="lbl">Possibilities to try</div><div class="cnt"><span class="spin"></span> Opening the Idea bank</div></section>`}
+  const dir=isDirector()&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
+  const sysLabel=n=>sys[n]?n+(sys[n]==="avoid"?", finding it too much":", seeking more"):n;
+  const rows=ibMatch(needs,sys,mode,14);const tried=new Set((x.tries||[]).map(t=>t.idea).filter(Boolean));
+  const us=x.ibUs||[],before=(x.tried||[]).filter(t=>t&&has(t.step));
+  const triedHtml=before.length?`<section class="card"><div class="lbl">What we tried before this inquiry</div><div class="hint">The first steps the class tried and wrote down under What are you seeing?</div>
+    ${before.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,t.at?shortDate(t.at):""].filter(has).join(", "))}</div></div>`).join("")}</section>`:"";
+  const devHtml=`<section class="card"><div class="lbl">Could this fit this child's age and stage (developmental stage)?</div><div class="hint">Think about development first. ${esc(IB_DEV_NOTE)}</div>
+    ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}</section>`;
+  return `${triedHtml}${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
+    <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
+    <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
+    ${dir?`<div class="seg" role="group" aria-label="More or less"><button data-ibiqmode="seek" aria-pressed="${mode==="seek"}">Seeking more</button><button data-ibiqmode="avoid" aria-pressed="${mode==="avoid"}">Finding it too much</button></div>`:""}
+    <div class="chips">${(ib.supports||[]).map(n=>`<button class="chip ${sys[n]?"on":""}" type="button" aria-pressed="${!!sys[n]}" data-ibiqsys="${esc(n)}" ${dir?"":"disabled"}>${esc(sysLabel(n))}</button>`).join("")}</div>
+    <div class="lbl" style="margin-top:12px">What might this child need from us?</div><div class="hint">Behavior often asks something of the adults. Choose what the team wonders about.</div>
+    <div class="chips">${(ib.fromUs||[]).map(u=>`<button class="chip ${us.includes(u.name)?"on":""}" type="button" aria-pressed="${us.includes(u.name)}" data-ibiqus="${esc(u.name)}" ${dir?"":"disabled"}>${esc(u.name)}</button>`).join("")}</div>
+    ${(ib.fromUs||[]).filter(u=>us.includes(u.name)).map(u=>`<p class="ibtip"><b>${esc(u.name)}.</b> ${esc(u.look)}</p>`).join("")}
+    ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
+    <section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
+    ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}
+document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!isDirector())return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.ibiqtry){const c=ibCard(d.ibiqtry);if(!c||(x.tries||[]).some(o=>o.idea===c.id))return;const r=ibMatch(x.ibNeeds||[],x.ibSys||{},x.ibMode,40).find(y=>y.card.id===c.id);
+    x.tries=[...(x.tries||[]),{id:uid(),text:c.title+", from the Idea bank."+(r&&r.why?" "+r.why:""),idea:c.id,by:whoAmI(),at:Date.now(),curriculum:false,result:""}];saveInquiry(x);renderMain();toast("Added to What we will try.");return}
+  if(!isDirector())return;
+  if(d.ibiqneed){const a=(x.ibNeeds||[]).slice(),i=a.indexOf(d.ibiqneed);if(i>=0)a.splice(i,1);else a.push(d.ibiqneed);x.ibNeeds=a}
+  if(d.ibiqmode)x.ibMode=d.ibiqmode;
+  if(d.ibiqus){const a=(x.ibUs||[]).slice(),i=a.indexOf(d.ibiqus);if(i>=0)a.splice(i,1);else a.push(d.ibiqus);x.ibUs=a}
+  if(d.ibiqsys){const s=Object.assign({},x.ibSys||{}),mode=x.ibMode==="avoid"?"avoid":"seek";if(s[d.ibiqsys]===mode)delete s[d.ibiqsys];else s[d.ibiqsys]=mode;x.ibSys=s}
+  saveInquirySoon(x);renderMain()});
+
+/* ---------- Share, director only ----------
+   A card's home side as an Instagram carousel draft through Share. A photo slot the director fills from our
+   documentation, checked for faces as every post is, then What children are learning, Try it at home, Wonder together
+   and a line inviting families to the family page, with a caption drafted from the same parts. Nothing posts until
+   she does. */
+function ideaShareParts(c){const hs={};for(const s of (c.home&&c.home.sections)||[])hs[s.h]=s;const learn=hs["What your child is learning"]?String(hs["What your child is learning"].text||""):"";
+  const tries=hs["Ways to try it"]?(hs["Ways to try it"].items||[]).slice(0,3):[],wonder=hs["Wonder together"]?(hs["Wonder together"].items||[]).slice(0,2):[];
+  const close="Find more ideas to try at home on our family page.";
+  return {learn,tries,wonder,close,cards:[{h:"What children are learning",t:shSentences(learn,48),on:true},{h:"Try it at home",t:tries.join(" "),on:true},{h:"Wonder together",t:wonder.join(" "),on:true},{h:"Learning together",t:close,on:true}].filter(x=>has(x.t)),
+    caption:[c.title,learn,"Try it at home.\n"+tries.map(t=>"• "+t).join("\n"),wonder.join(" "),close].filter(has).join("\n\n"),tags:"#reggioinspired #naturebasedlearning #learningthroughplay #playislearning #earlychildhoodeducation #santarosa #sonomacounty"}}
+function ideaShare(c){if(!c.home){toast("Only a card with an At home side can be shared.");return}const P=ideaShareParts(c),src="idea:"+c.id;const ns=shareGather(src);
+  if(shareMade)shareMade.urls.forEach(u=>URL.revokeObjectURL(u));shareMade=null;shareBusy.tried=false;shView=false;shStarting=false;
+  shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,one:true,pick:"",ids:ns.map(n=>n.id),off:[],add:[],titleOn:true,title:c.title,linesOn:false,menuOn:false,farmsOn:false,lines:{},quote:"",quotePhoto:"none",wordsOn:false,words:{},cardsOn:true,cards:P.cards,caption:P.caption,tags:P.tags,at:Date.now()};
+  shareSave();goView("share");shareCheckFaces()}
+window.TREE_IDEA_SHARE=id=>{const c=ibCard(id);if(c)ideaShare(c)};
+
 /* ---------- Walk safety ----------
    Fulton's walks, such as creek walks and walks to the garden or the farm. On a day a walk is on the calendar or in a plan,
    Today offers Before we walk, a checklist educators open and print. The children's walk agreements print as one card with
@@ -5897,7 +6213,7 @@ async function loadWalks(force){if(walkBusy||!window.FP_API)return;if(!force&&wa
 /* ---------- one-page materials guides ----------
    Read from the records, staff/guides, through the signed-in server. Each is linked from its group in the Materials
    library and from its Classroom area on plans. A draft shows only to the director until she marks it ready. */
-let guideList=null,guideBusy=false,guideSel="",guidePrev="today";
+let guideList=[],guideSel="";
 /* The libraries for plans, read from the server: recipes, the song book, read-alouds and the bank of provocations and
    curiosity prompts, each a page in the private records the director edits in place with its history. */
 let libData=null,libBusy=false;
@@ -6010,10 +6326,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-qsadd],[da
   p.qsTaken=[...(p.qsTaken||[]),{text:x.text,from:x.from,why:x.why||"",id:x.id||"",artist:x.artist||"",at:Date.now(),by:myName()}];
   const c=x.artist&&artCard(x.artist);if(c&&!(p.attached||[]).some(a=>a.kind==="artist"&&a.id===c.id))p.attached=[...(p.attached||[]),{kind:"artist",id:c.id,title:c.name}];
   persist(p);renderMain();toast(c?"Added, with the card for "+c.name+" attached.":"Added. Change it or delete it as you like.")});
-async function loadGuides(force){if(!window.FP_API||guideBusy||(guideList&&!force))return;guideBusy=true;
-  try{guideList=(await window.FP_API("/api/staff/guides",{})).list||[]}catch(e){guideList=[]}finally{guideBusy=false}if(view==="guide")renderMain();if(view==="search"&&typeof gsResults==="function")gsResults()}
-const guideBy=(k,v)=>{if(guideList===null)loadGuides();return (guideList||[]).find(g=>v&&String(g[k]||"").toLowerCase()===String(v).toLowerCase())||null};
-const guideLink=(g,label)=>g?`<button class="linkbtn" type="button" data-guide="${esc(g.slug)}">${esc(label||g.title)}</button>${g.waiting?` <span class="cnt">Draft</span>`:""}`:"";
+/* The seven materials guides are folded into their Idea bank cards. Guide beside a Materials library group and Open the
+   guide on a plan's Classroom area open the matching card, and a plan that attached a guide before opens that card. */
+async function loadGuides(){if(!ib)await ibLoad();return []}
+const guideBy=(k,v)=>{const key=String(v||"").toLowerCase().trim();if(!key)return null;if(!ib){ibLoad();return null}
+  const id=(IB_GUIDE[k]||{})[key]||(k==="area"?(ibByTitle(v)||{}).id:"");const c=id&&ibCard(id);return c?{slug:c.id,title:c.title}:null};
+const guideLink=(g,label)=>g?`<button class="linkbtn" type="button" data-ibopen="${esc(g.slug)}">${esc(label||g.title)}</button>`:"";
 function guideMd(t){const L=String(t||"").split("\n");let h="",ul=false;const inl=x=>esc(x).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\[([^\]]+)\]\((https:\/\/[^)\s"]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
   for(const l of L){const m=l.match(/^\s*[-*]\s+(.*)$/);if(m){if(!ul){h+="<ul>";ul=true}h+=`<li>${inl(m[1])}</li>`;continue}if(ul){h+="</ul>";ul=false}
     const hd=l.match(/^#{2,3}\s+(.*)$/);if(hd){h+=`<h3 style="font-size:16px;margin:12px 0 4px">${inl(hd[1])}</h3>`;continue}if(l.trim())h+=`<p>${inl(l)}</p>`}
@@ -6022,19 +6340,6 @@ function guideDoc(g){const parts=String(g.body||"").split(/^##\s+/m);const lead=
   for(const p of parts){const i=p.indexOf("\n");const head=(i<0?p:p.slice(0,i)).trim(),rest=i<0?"":p.slice(i+1);const items=rest.split("\n").map(l=>l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map(m=>m[1].replace(/\*\*/g,""));
     blocks.push(items.length?dList(head,items):dText(head,rest.trim().replace(/\*\*/g,"")))}
   return {display:true,type:"report",acc:"story",title:g.title,meta:[],blocks}}
-function renderGuide(){const m=$("#main");if(guideList===null){loadGuides();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the guide</div></section>`;return}
-  const g=(guideList||[]).find(x=>x.slug===guideSel);if(!g){m.innerHTML=`<section class="card"><div class="empty">This guide is not here.</div><div class="actions"><button class="chip-btn back" data-guideback="1">‹ Back</button></div></section>`;return}
-  m.innerHTML=`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-guideback="1">‹ Back</button></div>
-    ${isDirector()&&g.waiting!==undefined?`<section class="card"><div class="lbl">${g.waiting?"Draft":"Ready"}</div><div class="hint">${g.waiting?"Only you see this guide and its links. Educators see them once you mark it ready.":"Educators see this guide from the Materials library and from plans."}</div><div class="actions"><button class="btn small${g.waiting?"":" ghost"}" data-guideready="${esc(g.slug)}|${g.waiting?1:0}">${g.waiting?"Mark it ready":"Hide it again"}</button></div></section>`:""}
-    <section class="card"><div class="secthead"><h2 style="font-size:20px">${esc(g.title)}</h2><span class="actions" style="margin:0">${printBtns("guide",esc(g.slug),"PDF")}</span></div>
-      <div class="cnt">${[g.group?"Materials library, "+g.group:"",g.area?"Classroom area, "+g.area:""].filter(Boolean).map(esc).join(". ")}</div>
-      <div class="guidebody">${guideMd(g.body)}</div>${pageEditBtn("staff/guides/"+g.slug+".md","Edit this guide")}
-      ${isDirector()&&g.source?`<div class="cnt" style="margin-top:10px">Source, seen only by you. ${esc(g.source)}</div>`:""}</section>`}
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-guide],[data-guideback],[data-guideready]");if(!t)return;
-  if(t.dataset.guide){e.preventDefault();e.stopPropagation();if(view!=="guide")guidePrev=view;guideSel=t.dataset.guide;goView("guide");return}
-  if(t.dataset.guideback){goView(guidePrev||"today");return}
-  if(t.dataset.guideready){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const [slug,on]=t.dataset.guideready.split("|");
-    try{guideList=(await window.FP_API("/api/staff/guides/ready",{slug,on:on==="1"})).list||[];toast(on==="1"?"Marked ready. Educators see it now.":"Hidden again. Only you see it.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}},true);
 /* ---------- The recipe library ----------
    Food recipes and sensory recipes, kept apart, each a page in the private records with its source, its dairy free and
    gluten free versions and the nut free rule we keep. The director and the kitchen add and edit recipes. An educator's
@@ -6180,7 +6485,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gths
 });
 function renderRecipes(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the recipes</div></section>`;return}
   const all=(libData.recipes||[]),list=all.filter(x=>recKindOf(x)===recKind).sort((a,b)=>a.title.localeCompare(b.title)),drafts=all.filter(x=>x.draft);
-  m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Recipes</h2><div class="sub">Food recipes and sensory recipes, kept apart. Each prints as a recipe and as demonstration sheets for the piazza.</div></div>
+  m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Recipes</h2><div class="sub">Food recipes and sensory recipes, kept apart. Each prints as a recipe and as demonstration sheets for the piazza.</div></div>
     <div class="tseg" role="group" aria-label="Kind" style="margin-bottom:10px"><button data-reckind="food" aria-pressed="${recKind==="food"}">Food recipes</button><button data-reckind="sensory" aria-pressed="${recKind==="sensory"}">Sensory recipes</button></div>
     ${drafts.length&&(isDirector()||isKitchenUser())?`<section class="card"><div class="lbl">Drafts waiting</div><div class="cnt">${drafts.length} recipe${drafts.length===1?"":"s"} from educators or families, waiting for you below.</div></section>`:""}
     <section class="card">${list.map(recipeCard).join("")||`<div class="empty">No ${recKind} recipes yet.</div>`}</section>
@@ -6387,7 +6692,7 @@ function songRow(x){const c=songCopy(x),w=songWords(x),dir=isDirector()&&!VIEW_A
       ${dir?`${c||!w?"":pageEditBtn(x.path,"Edit the words")}${!c&&!w?`<button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button>`:""}<button class="linkbtn" data-songcopy="${esc(x.path)}|${c?0:1}">${c?"Take off the © mark":"Mark it ©, which removes its words"}</button>`:""}</div></details>`}
 function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the song book</div></section>`;return}
   const dir=isDirector()&&!VIEW_AS,songs=(libData.songs||[]).slice().sort((a,b)=>a.title.replace(/^The /,"").localeCompare(b.title.replace(/^The /,""))),books=(libData.readalouds||[]);
-  m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Songs, stories and books</h2><div class="sub">Our song book, our read-alouds for meeting time and our book collection.</div></div>
+  m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Songs, stories and books</h2><div class="sub">Our song book, our read-alouds for meeting time and our book collection.</div></div>
     <div class="tseg" role="group" aria-label="Songs or stories" style="margin-bottom:10px"><button data-songtab="songs" aria-pressed="${songTab==="songs"}">Song book</button><button data-songtab="books" aria-pressed="${songTab==="books"}">Read-alouds</button><button data-songtab="collection" aria-pressed="${songTab==="collection"}">Books</button></div>
     ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows its title, songwriter and a recording. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
       ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="kfields"><label>Title<input type="text" id="sg-t"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional"></label><label>A recording<input type="url" id="sg-l" placeholder="https://"></label></div>
@@ -6491,7 +6796,7 @@ function artRow(c){const dir=isDirector()&&!VIEW_AS;
 function artShown(){const q=artQ.trim().toLowerCase();return artCards().filter(c=>(artSet==="All"||c.set.includes(artSet))&&(!q||[c.name,c.pairs,c.wonder,c.known.join(" ")].join(" ").toLowerCase().includes(q)))}
 function renderArtists(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Artists page</div></section>`;return}
   const a=libData.artists,dir=isDirector()&&!VIEW_AS,list=artShown();
-  m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Artists</h2><div class="sub">Artworks to set beside real materials, each with its wondering. Children look together and make their own work beside it.</div></div>
+  m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Artists</h2><div class="sub">Artworks to set beside real materials, each with its wondering. Children look together and make their own work beside it.</div></div>
     <section class="card"><div class="lbl">Leading a looking conversation</div>${a&&a.lead?guideMd(a.lead):`<div class="cnt">The Artists page is not in the records yet.</div>`}
       ${dir||(libData.modules||{})["looking-together"]||(a&&dir)?`<div class="actions" style="flex-wrap:wrap">${dir||(libData.modules||{})["looking-together"]?`<button class="linkbtn" data-artmod="1">The PD module Looking Together</button>`:""}${dir&&a?pageEditBtn(a.path,"Edit the Artists page, with its history"):""}</div>`:""}</section>
     <section class="card"><div class="tseg" role="group" aria-label="Which artists" style="margin-bottom:8px">${["All",...ART_SETS].map(s=>`<button data-artset="${esc(s)}" aria-pressed="${artSet===s}">${esc(s)}</button>`).join("")}</div>
@@ -6540,7 +6845,7 @@ function mqShown(){const q=mqQ.trim().toLowerCase();return mqPlaces().filter(x=>
 function mqRow(x){return `<div class="strow" style="display:grid;gap:3px"><div><label class="radio" style="display:inline-flex;margin-right:6px"><input type="checkbox" data-mqpick="${esc(x.id)}" ${mqPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.name)} to print"></label><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="cnt">${esc(x.town)}</span></div>
   <div>${esc(x.about)}</div><div class="cnt">${esc(mqTagText(x))}</div><div class="actions" style="margin:2px 0 0">${printBtns("mqplace",esc(x.id),"Print this place")}</div></div>`}
 function renderMuseums(){const m=$("#main");if(!m)return;
-  const head=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Museums and cultural places</h2><div class="sub">Places to visit with children and families, each with what it holds.</div></div>`;
+  const head=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Museums and cultural places</h2><div class="sub">Places to visit with children and families, each with what it holds.</div></div>`;
   if(!libData){loadLibrary();m.innerHTML=head+`<section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;return}
   const p=libData.places,dir=isDirector()&&!VIEW_AS;
   if(!p){m.innerHTML=head+`<section class="card"><div class="cnt">${dir?"The list comes into the records once, the next time TREE starts. It shows here after that.":"This page is not open yet."}</div></section>`;return}
@@ -6585,7 +6890,7 @@ document.addEventListener("click",async e=>{if(view!=="museums")return;const t=e
    produce bin and the garden season, with no outside call, so they are instant. Nothing is attached unless an educator
    chooses it, and whatever is attached prints with the plan. A plan with nothing attached prints as it always has. */
 let attachOpen="",attachQ="";
-const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",book:"Book",exploration:"Food exploration",prompt:"Provocation",artist:"Artist",guide:"Materials guide"};
+const ATT_KIND={recipe:"Recipe",song:"Song",readaloud:"Read-aloud",book:"Book",exploration:"Food exploration",prompt:"Provocation",artist:"Artist",idea:"Idea bank card",guide:"Idea bank card"};
 const attWords=t=>String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!/^(with|that|this|they|their|from|have|what|when|will|into|about|children|child|week|some|more|each|make|over|little|five|four|three)$/.test(w)).map(w=>w.replace(/(ies)$/,"y").replace(/([^s])s$/,"$1"));
 function attachPool(){if(!libData){loadLibrary();return []}const out=[];
   for(const x of (libData.recipes||[]).filter(x=>!x.draft))out.push({kind:"recipe",id:x.id,title:x.title,text:[x.title,x.lead,recPart(x,"Ingredients"),(x.meta||{}).produce,(x.meta||{}).season].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
@@ -6595,7 +6900,8 @@ function attachPool(){if(!libData){loadLibrary();return []}const out=[];
   for(const x of (libData.explorations||[]).filter(x=>!x.draft))out.push({kind:"exploration",id:x.id,title:x.title,text:[x.title,x.lead,(x.meta||{}).produce].join(" "),season:/^(fall|winter|spring|summer)$/i.test((x.meta||{}).season||"")?x.meta.season.toLowerCase():""});
   const pv=libData.provocations;if(pv)for(const p2 of (pv.parts||[]).filter(p2=>!/^Where /i.test(p2.key)))libLines(p2.text).forEach((l,i)=>out.push({kind:"prompt",id:p2.key+"|"+i,title:l,text:p2.key+" "+l,season:/garden/i.test(p2.key)?p2.key.split(" ")[0].toLowerCase():""}));
   for(const c of artCards())out.push({kind:"artist",id:c.id,title:c.name,text:[c.name,c.known.join(" "),c.pairs,c.wonder].join(" ")});
-  if(guideList===null)loadGuides();for(const g of (guideList||[]).filter(g=>!g.waiting))out.push({kind:"guide",id:g.slug,title:g.title,text:[g.title,g.group,g.area].join(" ")});
+  // every Idea bank card, by its title, group and summary
+  if(!ib)ibLoad();for(const c of ibCards())out.push({kind:"idea",id:c.id,title:c.title,text:[c.title,c.group,c.summary].join(" ")});
   return out}
 // the best matches for a plan, from its words, its space or focus, this week's bin and the garden season
 function attachSuggest(p){const words=new Set(attWords([...Object.values(p.fields||{}),p.where,...(p.groups||[])].join(" ")));const bin=binCurrent();const prod=new Set(attWords(((bin&&bin.items)||[]).map(it=>it.name).join(" ")));
@@ -6603,14 +6909,15 @@ function attachSuggest(p){const words=new Set(attWords([...Object.values(p.field
   return attachPool().filter(x=>!had.has(x.kind+"|"+x.id)).map(x=>{const ws=attWords(x.text);let sc=0;for(const w of ws){if(words.has(w))sc+=attWords(x.title).includes(w)?3:1;if(prod.has(w)&&(x.kind==="recipe"||/piazza|kitchen/i.test(String(p.where||""))))sc+=2}
     if(x.season&&season&&x.season===season&&garden)sc+=2;return Object.assign({},x,{sc})}).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,4)}
 function attachHtml(p){if(!p||p.id==="example"||!PLAN_TYPES.includes(p.type))return "";const att=p.attached||[];const open=attachOpen===p.id;
-  if(!att.length&&!open)return `<div class="actions" style="margin:10px 0 0"><button class="btn small ghost" data-attopen="${esc(p.id)}">Attach from our libraries</button></div>`;
-  if(att.length&&!open)return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div><button class="linkbtn" data-attopen="${esc(p.id)}">Attach or take off</button></div><div class="libchips">${libChips(att)}</div></section>`;
+  const find=`<button class="btn small ghost" data-ibfind="${esc(p.id)}">Find an idea</button>`;
+  if(!att.length&&!open)return `<div class="actions" style="margin:10px 0 0"><button class="btn small ghost" data-attopen="${esc(p.id)}">Attach from our libraries</button>${find}</div>`;
+  if(att.length&&!open)return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div><span class="actions" style="margin:0"><button class="linkbtn" data-attopen="${esc(p.id)}">Attach or take off</button>${find}</span></div><div class="libchips">${libChips(att)}</div></section>`;
   const pool=open?attachPool():[];const q=attachQ.trim().toLowerCase();const found=open&&q?pool.filter(x=>x.text.toLowerCase().includes(q)&&!att.some(a=>a.kind===x.kind&&a.id===x.id)).slice(0,12):[];
   const sug=open?attachSuggest(p):[];
   return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div>${open?`<button class="linkbtn" data-attopen="">Done</button>`:`<button class="linkbtn" data-attopen="${esc(p.id)}">Attach</button>`}</div>
     ${att.map((a,i)=>`<div class="prow"><button class="libchip" data-libopen="${esc(a.kind+"|"+a.id)}"><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> <b>${esc(a.title)}</b></button><button class="linkbtn" data-attrm="${i}" aria-label="Take off ${esc(a.title)}">Take off</button></div>`).join("")||`<div class="cnt">Nothing attached.</div>`}
     ${open?`${sug.length?`<div class="lbl" style="margin-top:8px">Might fit this plan</div>${sug.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-attadd="${esc(x.kind+"|"+x.id)}">Attach</button></div>`).join("")}`:""}
-      <input type="search" id="att-q" placeholder="Search recipes, songs, read-alouds, provocations and guides" value="${esc(attachQ)}" style="margin-top:8px" data-noproof="1">
+      <input type="search" id="att-q" placeholder="Search recipes, songs, read-alouds, provocations and the Idea bank" value="${esc(attachQ)}" style="margin-top:8px" data-noproof="1">
       ${found.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-attadd="${esc(x.kind+"|"+x.id)}">Attach</button></div>`).join("")}`:""}</section>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-attopen],[data-attadd],[data-attrm]");if(!t)return;const p=currentId&&plans.get(currentId);if(!p)return;const d=t.dataset;
   if(d.attopen!=null){attachOpen=d.attopen;attachQ="";renderMain();if(attachOpen)setTimeout(()=>$("#attachsec")?.scrollIntoView({block:"nearest"}),50);return}
@@ -6621,7 +6928,7 @@ document.addEventListener("input",e=>{if(e.target.id!=="att-q")return;attachQ=e.
 // a food exploration as a page to print, its wonderings and steps in our words
 function explDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["Food exploration"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>{const ls=libLines(p.text);return ls.length?dList(p.key,ls):dText(p.key,String(p.text).replace(/[#*]/g,""))}),dText("","We only taste what an adult has named edible. We are nut free.")]}}
 // what is attached, as pages printed after the plan. A © song prints only its title and songwriter.
-async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null)await loadGuides();const docs=[],recipes=[];
+async function attachDocs(p){if(!libData)await loadLibrary();if((p.attached||[]).some(a=>a.kind==="idea"||a.kind==="guide")&&!ib)await ibLoad();const docs=[],recipes=[];
   for(const a of p.attached||[]){
     if(a.kind==="recipe"){const x=libRecipe(a.id);if(x){docs.push(recipeDocFor(x));recipes.push(x)}}
     else if(a.kind==="song"){const x=(libData.songs||[]).find(y=>y.id===a.id);if(x)docs.push(songDoc(x))}
@@ -6630,7 +6937,8 @@ async function attachDocs(p){if(!libData)await loadLibrary();if(guideList===null
     else if(a.kind==="book"){const x=(libData.books||[]).find(y=>y.id===a.id);if(x)docs.push(bookCardDoc(x))}
     else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
     else if(a.kind==="artist"){const c=artCard(a.id);if(c)docs.push(artistDoc(c))}
-    else if(a.kind==="guide"){const g=(guideList||[]).find(y=>y.slug===a.id);if(g)docs.push({display:true,type:"report",acc:"story",title:g.title,meta:["Materials guide"],blocks:[dText("",String(g.body||"").replace(/[#*]/g,""))]})}}
+    // an Idea bank card prints its educator side, and a guide attached before prints the card it was folded into
+    else if(a.kind==="idea"||a.kind==="guide"){const c=ibCard(a.kind==="guide"?IB_GUIDE.slug[a.id]:a.id);if(c)docs.push(ibDoc(c,"edu"))}}
   return {docs,recipes}}
 /* ---------- One tap to what is attached ----------
    Whatever is attached to a plan or an observation opens in one tap, in a sheet over the page, and its demonstration
@@ -6640,11 +6948,11 @@ const libChips=list=>(list||[]).map(a=>`<button class="libchip" data-libopen="${
 let libSheetOn=null;
 function libItemOf(kind,id){if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;if(!libData)return null;
   if(kind==="recipe")return libRecipe(id);if(kind==="song")return (libData.songs||[]).find(x=>x.id===id)||null;if(kind==="readaloud")return (libData.readalouds||[]).find(x=>x.id===id)||null;if(kind==="book")return (libData.books||[]).find(x=>x.id===id)||null;if(kind==="exploration")return (libData.explorations||[]).find(x=>x.id===id)||null;
-  if(kind==="guide")return (guideList||[]).find(g=>g.slug===id)||null;
+  if(kind==="idea"||kind==="guide")return ibCard(kind==="guide"?IB_GUIDE.slug[id]:id);
   if(kind==="artist")return artCard(id);
   if(kind==="prompt"){const i=id.lastIndexOf("|"),key=id.slice(0,i),n=+id.slice(i+1);const pv=libData.provocations;const part=pv&&(pv.parts||[]).find(p=>p.key===key);const line=part?libLines(part.text)[n]:"";return line?{title:line,set:key}:null}
   if(kind==="garden")return typeof gdnEntry==="function"?gdnEntry(id):null;return null}
-function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div class="empty">${!libData||guideList===null?`<span class="spin"></span> Opening it`:"It is no longer in our libraries."}</div>`;
+function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div class="empty">${!libData||((kind==="idea"||kind==="guide")&&!ib)?`<span class="spin"></span> Opening it`:"It is no longer in our libraries."}</div>`;
   const parts=(list,skip)=>(list||[]).filter(p=>!skip.test(p.key)&&String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("");
   if(kind==="recipe"){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("recdemo",esc(x.id),"Demonstration sheets",true)}${printBtns("recipe",esc(x.id),"Recipe")}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</div>${x.lead?`<p>${esc(x.lead)}</p>`:""}
@@ -6660,7 +6968,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
   if(kind==="book"){const m=x.meta||{};return `<div class="actions" style="flex-wrap:wrap">${printBtns("bookcard",esc(x.id),"Card",true)}${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">Find the book</a>`:""}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([m.author,m.year].filter(Boolean).join(", "))}</div>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^vetting notes$/i)}`}
   if(kind==="exploration"){const rc=(x.meta||{}).recipe&&libRecipe(x.meta.recipe);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}${x.path?pageEditBtn(x.path,"Edit this exploration"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
-  if(kind==="guide")return `<div class="actions">${printBtns("guide",esc(x.slug),"PDF",true)}</div><h2>${esc(x.title)}</h2><div class="guidebody">${guideMd(x.body)}</div>`;
+  if(kind==="idea"||kind==="guide")return `<div class="actions" style="flex-wrap:wrap">${printBtns("ibcards",esc("edu|"+x.id),"Card",true)}<button class="btn small ghost" data-ibopen="${esc(x.id)}">Open in the Idea bank</button></div><h2>${esc(x.title)}</h2><div class="cnt">${esc((IB_KIND[x.type]||"")+", "+x.group)}</div><p>${esc(x.summary||"")}</p>${x.setting&&x.setting.level?`<div class="ibset"><b>${esc(x.setting.level)}</b> ${esc(x.setting.why||"")}</div>`:""}${(x.sections||[]).slice(0,3).map(ibSectionHtml).join("")}`;
   if(kind==="artist")return `<div class="actions" style="flex-wrap:wrap">${printBtns("artistcard",esc(x.id),"Card",true)}${x.links.map(([t2,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t2)}</a>`).join("")}</div><h2>${esc(x.name)}</h2>
     ${x.picture?`<img src="${esc(x.picture)}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:artShownHtml(x)}
     ${x.pairs?`<div class="lbl">Connected to</div><p>${esc(x.pairs)}</p>`:""}${x.wonder?`<div class="lbl">Our wondering</div><p>${esc(x.wonder)}</p>`:""}<div class="lbl">Our routine</div><p>${esc(ART_ROUTINE)}</p>
@@ -6671,7 +6979,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
 function libSheetPaint(){let el=document.getElementById("libsheet");if(!libSheetOn){if(el)el.remove();return}
   if(!el){el=document.createElement("div");el.id="libsheet";el.className="libsheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el)}
   const [kind,id]=libSheetOn;el.innerHTML=`<div class="lsp"><div class="secthead"><span class="eyebrow">${esc(ATT_KIND[kind]||(kind==="garden"?"Garden":""))}</span><button class="btn small ghost" data-libclose="1">Close</button></div>${libSheetBody(kind,id)}</div>`}
-window.TREE_LIBOPEN=async(kind,id)=>{libSheetOn=[kind,id];libSheetPaint();if(!libData&&kind!=="garden"){await loadLibrary();libSheetPaint()}if(kind==="guide"&&guideList===null){await loadGuides();libSheetPaint()}};
+window.TREE_LIBOPEN=async(kind,id)=>{libSheetOn=[kind,id];libSheetPaint();if(!libData&&kind!=="garden"){await loadLibrary();libSheetPaint()}if((kind==="idea"||kind==="guide")&&!ib){await ibLoad();libSheetPaint()}};
 document.addEventListener("click",e=>{const t=e.target.closest("[data-libopen],[data-libclose]");
   if(!t){const sh=e.target.closest&&e.target.closest("#libsheet");if(sh&&e.target===sh){libSheetOn=null;libSheetPaint()}return}
   e.preventDefault();e.stopPropagation();if(t.dataset.libclose){libSheetOn=null;libSheetPaint();return}
@@ -6685,7 +6993,7 @@ function noticeAttachHtml(n){const att=n.attached||[];const open=nAttachOpen===n
   return `<div class="nattach"><div class="cnt">Attached</div><div class="libchips">${libChips(att)}</div>
     ${open?`<div class="hint" style="margin-top:6px">${q?"Found":"Might fit"}</div>${found.map(x=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[x.kind])}</span> ${esc(x.title)}</div><button class="btn small ghost" data-nattadd="${esc(n.id+"|"+x.kind+"|"+x.id)}">Attach</button></div>`).join("")}
       ${att.map((a,i)=>`<div class="prow"><div><span class="cnt">${esc(ATT_KIND[a.kind]||"")}</span> ${esc(a.title)}</div><button class="linkbtn" data-nattrm="${esc(n.id+"|"+i)}">Take off</button></div>`).join("")}
-      <input type="search" id="natt-q" data-nid="${esc(n.id)}" placeholder="Search recipes, songs, read-alouds, provocations and guides" value="${esc(nAttachQ)}" style="margin-top:8px" data-noproof="1"><div class="actions"><button class="linkbtn" data-nattopen="">Done</button></div>`:""}</div>`}
+      <input type="search" id="natt-q" data-nid="${esc(n.id)}" placeholder="Search recipes, songs, read-alouds, provocations and the Idea bank" value="${esc(nAttachQ)}" style="margin-top:8px" data-noproof="1"><div class="actions"><button class="linkbtn" data-nattopen="">Done</button></div>`:""}</div>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-nattopen],[data-nattadd],[data-nattrm]");if(!t)return;e.preventDefault();e.stopPropagation();const d=t.dataset;
   if(d.nattopen!=null){nAttachOpen=d.nattopen;nAttachQ="";if(nAttachOpen&&!libData)loadLibrary();renderMain();return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -9711,9 +10019,10 @@ function renderInquiry(x){
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
       <div class="actions"><button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
+  h+=ibInquiryHtml(x);
   h+=`<section class="card"><div class="lbl">What we will try</div>
     <div class="hint">Guided by relationship-based, positive discipline. Connection first, such as time with an educator the child trusts. Changes the adults make, to a transition, the space, the warning, a role a child is given or who goes with them. Guiding with the children, through a meeting time conversation where they help decide an expectation and hear why it matters, or support for peers solving a problem together. Never a time-out or a punishment. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div>
-    ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"try:"+o.id)}
+    ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${o.idea?`<div class="actions" style="margin:0"><button class="linkbtn" data-ibopen="${esc(o.idea)}">Open the card in the Idea bank</button></div>`:""}${iqAssistHtml(x,"try:"+o.id)}
       <label class="cnt"><input type="checkbox" data-iqtcur="${esc(o.id)}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
       <textarea data-iqt="${o.id}|result" rows="1" placeholder="What happened when we tried it">${esc(o.result||"")}</textarea>
       <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqtrm="${esc(o.id)}">Remove</button></div></div>`).join("")}
@@ -9752,7 +10061,7 @@ function renderInquiry(x){
   if(!isDirector())lockInquiryPage();
 }
 // an educator reads an inquiry, adds observations and threads, writes what happened when something was tried, and plans from it
-const IQ_OPEN=["iqback","iqplan","iqplango","iqplanno","iqopen","mopen","tsee","popen","print","word","kid","lensgo","open"];
+const IQ_OPEN=["iqback","iqplan","iqplango","iqplanno","iqopen","mopen","tsee","popen","print","word","kid","lensgo","open","ibopen","ibiqtry","ibiqneed","ibiqsys"];
 function lockInquiryPage(){const m=$("#main");if(!m)return;
   m.querySelectorAll("textarea,input:not([type=search])").forEach(el=>{if(el.dataset.iqt&&/\|result$/.test(el.dataset.iqt))return;if(el.type==="checkbox"){el.disabled=true;return}el.readOnly=true;el.setAttribute("aria-readonly","true")});
   m.querySelectorAll("select").forEach(el=>{if(!el.dataset.iqaddobs&&!el.dataset.iqaddth)el.disabled=true});
@@ -10113,6 +10422,15 @@ function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid
 /* every plant, animal, wild neighbor and sign in the Garden, and every recipe, song, read-aloud, provocation, artist and
    materials guide in our libraries, found by typing its name. Each opens in one tap in the sheet over the page. */
 const gsPd={asked:false,readings:[],modules:[]};
+function gsPdLoad(){if(isKitchenUser()||!window.FP_API)return Promise.resolve();if(!gsPd.asked)gsPd.asked=Promise.allSettled([window.FP_API("/api/staff/g/readings",{}).then(r=>{gsPd.readings=(r&&r.list)||[]}),
+  window.FP_API("/api/staff/g/modules",{}).then(r=>{gsPd.modules=Object.values((r&&r.modules)||{})})]);return gsPd.asked}
+/* Search waits for the libraries the first time, the recipes, songs, read-alouds, artists, provocations, the plants and
+   the Idea bank, so the first results already hold them. A short line says so while they load. */
+let gsLibState=0;
+function gsLibsReady(){if(gsLibState===2)return true;if(gsLibState===1)return false;gsLibState=1;
+  const garden=async()=>{if(typeof loadGarden!=="function")return;await loadGarden();for(let i=0;i<100&&(typeof gdnBusy!=="undefined"&&gdnBusy);i++)await new Promise(r=>setTimeout(r,100))};
+  Promise.allSettled([loadLibrary(),garden(),isKitchenUser()?null:ibLoad(),gsPdLoad()]).then(()=>{gsLibState=2;if(view==="search")gsResults()});return false}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibseeing]");if(!t)return;e.preventDefault();if(!ib)await ibLoad();ibSt.mode="seeing";ibSt.bsel=t.dataset.ibseeing;ibSt.picked=true;goView("ideabank")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gsurl]");if(!t)return;window.open(t.dataset.gsurl,"_blank","noopener")});
 function gsLibHits(terms){const out=[];
   if(typeof gdn!=="undefined"){if(gdn===null)loadGarden();else if(gdnOk()){
@@ -10120,13 +10438,17 @@ function gsLibHits(terms){const out=[];
       const name=gdnName(x),text=gsText(x);if(!evMatch(name+"\n"+text,terms))continue;
       out.push({kind:"garden",at:0,text:evMatch(name,terms)?name+(x.latin?", "+x.latin:""):text,title:lbl+", "+name,open:`data-libopen="${esc("garden|"+x.id)}"`})}}}
   // the Readings library and the PD modules, read once a visit, for anyone the director has opened them to
-  if(!isKitchenUser()&&window.FP_API&&!gsPd.asked){gsPd.asked=true;window.FP_API("/api/staff/g/readings",{}).then(r=>{gsPd.readings=(r&&r.list)||[];if(view==="search")gsResults()}).catch(()=>{});
-    window.FP_API("/api/staff/g/modules",{}).then(r=>{gsPd.modules=Object.values((r&&r.modules)||{});if(view==="search")gsResults()}).catch(()=>{})}
+  gsPdLoad();
   for(const r of gsPd.readings){if(!evMatch([r.title,r.source,r.cite,r.supports,r.why].filter(Boolean).join("\n"),terms))continue;out.push({kind:"library",at:0,text:[r.title,r.source].filter(Boolean).join(", "),title:"Reading",open:r.url&&/^https:\/\//.test(r.url)?`data-gsurl="${esc(r.url)}"`:`data-tview="stpd"`})}
   for(const m of gsPd.modules){if(!m||!m.title||!evMatch([m.title,...(m.lead||[])].join("\n"),terms))continue;out.push({kind:"library",at:0,text:m.title,title:"PD module",open:`data-tview="stpd"`})}
   // our Sonoma County farms, opening Where the farms are on the Weekly bin
   for(const f of ((libData&&libData.farms)||[])){if(!evMatch([f.name,f.town,f.products].join("\n"),terms))continue;out.push({kind:"library",at:0,text:[f.name,f.town,f.products].filter(Boolean).join(", "),title:"Farm",open:`data-tview="bin"`})}
-  for(const a of attachPool()){if(!evMatch(a.title+"\n"+a.text,terms))continue;
+  // every Idea bank card, by its title, summary and section text, and every behavior under What are you seeing?
+  for(const b of ((ib&&ib.behaviors)||[])){if(!evMatch([b.label,...(b.keywords||[]),b.what_we_might_see].join("\n"),terms))continue;out.unshift({kind:"library",at:0,text:b.label+". "+(b.what_we_might_see||""),title:"What are you seeing?",open:`data-ibseeing="${esc(b.id)}"`})}
+  // a card whose title holds the words comes before one that only mentions them
+  const ibHits=ibCards().filter(c=>evMatch(ibIdx().get(c.id)||"",terms)).sort((x,y)=>evMatch(y.title,terms)-evMatch(x.title,terms));
+  for(const c of ibHits)out.push({kind:"library",at:0,text:evMatch(c.title,terms)?c.title+", "+(c.summary||""):(c.summary||c.title),title:"Idea bank, "+c.group,open:`data-ibopen="${esc(c.id)}"`});
+  for(const a of attachPool()){if(a.kind==="idea")continue;if(!evMatch(a.title+"\n"+a.text,terms))continue;
     out.push({kind:"library",at:0,text:a.title,title:(ATT_KIND[a.kind]||"")+(a.kind==="prompt"?", "+a.id.slice(0,a.id.lastIndexOf("|")):""),open:`data-libopen="${esc(a.kind+"|"+a.id)}"`})}
   return out}
 /* ---------- Help inside TREE ----------
@@ -10153,7 +10475,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-help
 function renderSearchAll(){
   if(helpOnly()){$("#main").innerHTML=`<div class="head"><h2>Help</h2><div class="sub">How to do things in TREE, in a few short steps.</div></div><section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="Ask how, ex. record a harvest" aria-label="Search Help" autocomplete="off"></section><div id="gres"></div>`;gsResults();return}
   const kids=kidsAt().sort((a,b)=>(a.first||"").localeCompare(b.first||""));
-  $("#main").innerHTML=`<div class="head"><h2>Search</h2><div class="sub">Every observation, photo, plan, thread, project, slide, wall and story, every plant and animal in the Garden, and every recipe, song, read-aloud and artist in our libraries.</div></div>
+  $("#main").innerHTML=`<div class="head"><h2>Search</h2><div class="sub">Every observation, photo, plan, thread, project, slide, wall and story, every plant and animal in the Garden, every recipe, song, read-aloud and artist in our libraries, and every Idea bank card.</div></div>
     <section class="card gsform"><input type="search" id="gq" value="${esc(gs.q)}" placeholder="A word, a child's name or an educator, ex. water or Maya" aria-label="Search TREE" autocomplete="off">
       <div class="gsrow"><label>Child<select id="gkid"><option value="">Any child</option>${kids.map(c=>`<option value="${esc(c.id)}" ${gs.kid===c.id?"selected":""}>${esc([c.first,c.last].filter(Boolean).join(" "))}</option>`).join("")}</select></label>
       <label>Small group<select id="ggroup"><option value="">Any group</option>${GROUPS.map(g=>`<option ${gs.group===g.name?"selected":""}>${esc(g.name)}</option>`).join("")}</select></label>
@@ -10161,7 +10483,8 @@ function renderSearchAll(){
       <div class="chips" role="group" aria-label="What to look in">${GS_KINDS.filter(([k])=>k!=="wall"||isDirector()).map(([k,l])=>`<button class="chip ${gs.kind===k?"on":""}" data-gkind="${k}" type="button">${l}</button>`).join("")}</div></section>
     <div id="gres"></div>`;
   gsResults();if(window.innerWidth>760)$("#gq")?.focus({preventScroll:true})}
-function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q);if(helpOnly()){const t0=evTerms(gs.q),lh=t0.length?gsLibHits(t0).slice(0,12):[];box.innerHTML=hh+(lh.length?`<section class="gsgroup"><div class="secthead"><h3 style="font-size:17px">In the Garden and our libraries</h3><span class="cnt">${lh.length}</span></div><div class="tlist">${lh.map(r=>`<button class="gshit" ${r.open}><span class="cnt">${esc(r.title)}</span><span class="gssnip">${evSnip(r.text,t0)}</span></button>`).join("")}</div></section>`:"");return}const all=gsRun();
+function gsResults(){const box=$("#gres");if(!box)return;const hh=helpHtml(gs.q);
+  if(evTerms(gs.q).length&&!gsLibsReady()){box.innerHTML=hh+`<div class="cnt" style="margin:8px 2px"><span class="spin"></span> Loading our libraries</div>`;return}if(helpOnly()){const t0=evTerms(gs.q),lh=t0.length?gsLibHits(t0).slice(0,12):[];box.innerHTML=hh+(lh.length?`<section class="gsgroup"><div class="secthead"><h3 style="font-size:17px">In the Garden and our libraries</h3><span class="cnt">${lh.length}</span></div><div class="tlist">${lh.map(r=>`<button class="gshit" ${r.open}><span class="cnt">${esc(r.title)}</span><span class="gssnip">${evSnip(r.text,t0)}</span></button>`).join("")}</div></section>`:"");return}const all=gsRun();
   if(!all){box.innerHTML=hh+`<div class="empty">Type a word or choose a child or group to search.</div>`;return}
   const terms=evTerms(gs.q);const rs=gs.kind==="all"?all:all.filter(r=>r.kind===gs.kind);
   if(!rs.length){box.innerHTML=hh+`<div class="empty">Nothing found${gs.q?" for "+esc(gs.q):""}${gs.kind!=="all"?" in "+esc(GS_KINDS.find(k=>k[0]===gs.kind)[1].toLowerCase()):""}.</div>`;return}
@@ -12387,7 +12710,7 @@ async function printsClick(t){
   if(kind==="gagree"){if(!gdnOk())return true;await out([gdnAgreeDoc(t.dataset.id)],t.dataset.id==="families"?"Garden agreements for families":"Our garden agreements");return true}
   if(kind==="helpcard"){if(!helpData)await loadHelp(true);const x=((helpData||{}).list||[]).find(h=>h.id===t.dataset.id);if(x)await out([helpDoc(x)],"Help, "+x.q.replace(/[?]/g,""));return true}
   if(kind==="helpquick"){if(!helpData)await loadHelp(true);const L=((helpData||{}).list||[]).filter(h=>h.quick);if(L.length)await out(L.map(helpDoc),"TREE quick cards");return true}
-  if(kind==="guide"){if(!guideList)await loadGuides(true);const g=(guideList||[]).find(x=>x.slug===t.dataset.id);if(g)await out([guideDoc(g)],g.title);return true}
+  if(kind==="ibcards"){const docs=await ibPrintDocs(t.dataset.id);if(docs.length)await out(docs,ibPrintName(t.dataset.id));return true}
   if(kind==="gthintake"){await out([gthIntakeDoc()],"Garden visit intake form");return true}
   if(kind==="walkcheck"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCheckDoc()],`Before we walk ${iso(new Date())}`);return true}
   if(kind==="walkcard"){if(!walkInfo)await loadWalks(true);if(walkOpen())await out([walkCardDoc()],"Our walk agreements");return true}
@@ -14864,7 +15187,7 @@ function releasesHtml(){if(!isDirector()||VIEW_AS)return"";const c=gthConf(),pag
     <div style="margin-top:10px">${gthPgHtml()}</div><div class="cnt">The Play Garden application stays off until the licensing office answers on capacity.</div></section>${communityRelHtml()}`}
 /* The museums and the plants on our site, for the whole community. Each part waits for its own switch here. The plants
    also wait for the Garden to be marked ready, and the public page holds nothing else of TREE. */
-const COMM_SW=[["show","Museums and cultural places for every educator, under Documentation"],["family","Museums and cultural places on the Family page"],["plantsFamily","The plants on our site on the Family page, with the plant cards, full plant pages, field guides and our animals"],["public","The public page, with the museums and the plants, for anyone with the link"]];
+const COMM_SW=[["show","Museums and cultural places for every educator, under Plans, Planning resources"],["family","Museums and cultural places on the Family page"],["plantsFamily","The plants on our site on the Family page, with the plant cards, full plant pages, field guides and our animals"],["public","The public page, with the museums and the plants, for anyone with the link"]];
 function communityRelHtml(){if(!libData){loadLibrary();return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="cnt">Reading</div></section>`}
   const P=libData.places,sw=(P&&P.switches)||{};const link=new URL("places.html",location.href).href;
   return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="hint">The museums and cultural places near us and the plants on our site. Each part stays with you until you turn it on. The plants show once the Garden is marked ready.</div>
@@ -14892,7 +15215,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 // the Settings card left open, which another page or a link may set before Settings has loaded
 let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
-function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","d7a55ffe7a").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","5fbe03cb7f").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

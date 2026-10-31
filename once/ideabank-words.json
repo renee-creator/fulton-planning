@@ -1,0 +1,312 @@
+{
+ "note": "The Idea bank. Help answers and PD pages that named Documentation for the pages now under Plans, Planning resources, and the Idea bank's own Help answers.",
+ "changes": [
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation and tap Garden.",
+   "to": "Open Plans, then Planning resources, and tap Garden."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation, then Garden, then The year plan.",
+   "to": "Open Plans, then Planning resources, then Garden, then The year plan."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation, then Recipes.",
+   "to": "Open Plans, then Planning resources, then Recipes."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation, then Recipes, and Pictures still needed.",
+   "to": "Open Plans, then Planning resources, then Recipes, and Pictures still needed."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation, then Songs and stories.",
+   "to": "Open Plans, then Planning resources, then Songs and stories."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation, then Songs and stories, and the read-aloud.",
+   "to": "Open Plans, then Planning resources, then Songs and stories, and the read-aloud."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Open Documentation, then Songs, stories and books.",
+   "to": "Open Plans, then Planning resources, then Songs, stories and books."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "Required notices, a materials guide or a New Educator part.",
+   "to": "Required notices or a New Educator part."
+  },
+  {
+   "path": "staff/help.json",
+   "from": "search recipes, songs, read-alouds, provocations and guides.",
+   "to": "search recipes, songs, read-alouds, provocations and Idea bank cards."
+  },
+  {
+   "path": "staff/help.json",
+   "set": "list[id=h14].q",
+   "expect": "How do I use a materials guide?",
+   "value": "How do I open the Idea bank card for a group of materials?"
+  },
+  {
+   "path": "staff/help.json",
+   "set": "list[id=h14].a",
+   "expect": [
+    "In a plan, open Help me start under the materials section.",
+    "Open Materials library and tap Guide beside a group.",
+    "When the plan's Classroom area matches a guide, tap Open the guide.",
+    "Print the guide as PDF or Word from the guide page."
+   ],
+   "value": [
+    "In a plan, open Help me start under the materials section.",
+    "Open Materials library and tap Guide beside a group. Its Idea bank card opens.",
+    "When the plan's Classroom area has a card, tap Open the guide.",
+    "Print the card as PDF or Word from the card."
+   ]
+  },
+  {
+   "path": "staff/help.json",
+   "set": "list[id=h14].words",
+   "expect": "materials guide library atelier loose parts",
+   "value": "materials guide idea bank card library atelier loose parts"
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib1",
+    "q": "How do I find an idea in the Idea bank?",
+    "a": [
+     "Open Plans, then Planning resources, then Idea bank.",
+     "Choose a group, such as Paint or Outdoor spaces, or type in the search box.",
+     "Open Filter by what it feeds, Filter by what it supports or Filter by setting to narrow the cards.",
+     "Tap a card to read it. For educators and At home switch with one control."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "educator",
+     "director",
+     "newhire"
+    ],
+    "words": "idea bank invitation provocation material space interest season card find",
+    "quick": true
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib2",
+    "q": "How do I print Idea bank cards?",
+    "a": [
+     "Open a card and tap Print this card, or tick the cards you want in the list.",
+     "Tap Select all shown to tick every card in view, then Print selected.",
+     "Choose For educators or At home first. Each card prints on its own page, as PDF or Word."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "educator",
+     "director",
+     "newhire"
+    ],
+    "words": "idea bank print card selected educators home",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib3",
+    "q": "How do I use What are you seeing?",
+    "a": [
+     "Open the Idea bank and tap What are you seeing?",
+     "Type what you see in a word or two, such as throwing or covering ears, and choose the closest one.",
+     "Read what the child might be seeking, the first steps and keeping everyone safe, then the ideas that may help.",
+     "Tap Start a team inquiry with this. The director starts the inquiry with those needs and supports, or hears your suggestion."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "educator",
+     "director"
+    ],
+    "words": "behavior seeing throwing biting climbing child needs inquiry idea bank",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib4",
+    "q": "How do I use an Idea bank card in a plan?",
+    "a": [
+     "On a curriculum plan, tap Find an idea.",
+     "The Idea bank opens with the cards that match the plan's own words, space and focus.",
+     "Tap Use in plan. The card is attached and prints after the plan.",
+     "Attach from our libraries finds Idea bank cards too."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "educator",
+     "director"
+    ],
+    "words": "idea bank plan find use attach card",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib5",
+    "q": "How do I suggest an idea or a change to a card?",
+    "a": [
+     "Open the Idea bank and the card, then tap Suggest a change. Choose the part and write the new wording.",
+     "For a new idea, tap Suggest a new idea at the top of the Idea bank.",
+     "Your suggestion waits for the director, who approves it or sets it aside."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "educator",
+     "newhire"
+    ],
+    "words": "idea bank suggest change new idea card",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib6",
+    "q": "How do I edit, add or remove an Idea bank card?",
+    "a": [
+     "Open the card and tap Edit. Change any part, write a short note and tap Save.",
+     "Under Earlier versions, tap Restore this version to bring back earlier wording.",
+     "Tap Add a card, choose its kind, group and title, and write it in Edit.",
+     "Tap Remove this card to take it away. Removed cards wait under Removed cards with Put it back."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "director"
+    ],
+    "words": "idea bank edit add remove card restore version",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib7",
+    "q": "How do I approve Idea bank suggestions?",
+    "a": [
+     "Open the Idea bank. Suggestions waiting shows at the top.",
+     "Tap Approve to make the change or add the new card, or tap Set aside.",
+     "Approving a suggestion to start a team inquiry opens the new inquiry."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "director"
+    ],
+    "words": "idea bank suggestion approve set aside",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib8",
+    "q": "How do I highlight ideas for families?",
+    "a": [
+     "Open a card with an At home side.",
+     "Tap Highlight for families.",
+     "Families see it first on the Family page, under Happening at school now.",
+     "Tap Highlighted for families to take it off."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "director"
+    ],
+    "words": "idea bank highlight families family page home",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib9",
+    "q": "How do I share an Idea bank card on Instagram?",
+    "a": [
+     "Open a card with an At home side and tap Share.",
+     "Choose a photo from our documentation. Photos where a face may show are set aside.",
+     "Read the pictures and the caption, then tap Make the pictures.",
+     "Nothing posts until you post it yourself and mark it Posted."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "director"
+    ],
+    "words": "idea bank share instagram post carousel home",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/help.json",
+   "add": "list",
+   "value": {
+    "id": "hib10",
+    "q": "How do I find possibilities to try in a team inquiry?",
+    "a": [
+     "Open the inquiry. The director chooses what the child might be trying to get, and which senses might be asking for more or for less.",
+     "Possibilities to try shows matching Idea bank cards, with why each connects.",
+     "Tap We'll try this to add a card to What we will try. Nothing is added unless the team chooses."
+    ],
+    "go": "ideabank",
+    "label": "Idea bank",
+    "roles": [
+     "educator",
+     "director"
+    ],
+    "words": "inquiry possibilities try idea bank needs senses",
+    "quick": false
+   }
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "- **Plans** holds This week, the Weekly bin, All plans, Threads, Projects, Inquiries and the Lens.",
+   "to": "- **Plans** holds This week, the Weekly bin, All plans, Threads, Projects, Inquiries and the Lens, with Planning resources below them, the Idea bank, Garden, Artists, Museums, Recipes and Songs and stories."
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "- **Documentation** holds Slides and Stories, along with the Garden, Recipes, Songs and stories, Artists and Museums.",
+   "to": "- **Documentation** holds Slides and Stories."
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "Choose one artist from our Artists page, under Documentation, and look",
+   "to": "Choose one artist from our Artists page, under Plans, then Planning resources, and look"
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "- **Museums and cultural places** holds the places we can visit or learn from.",
+   "to": "- **Museums and cultural places** holds the places we can visit or learn from.\n- **The Idea bank** holds invitations and provocations for every material, space, interest and season, and ideas ready for a hard day.\n\nThese sit under Plans, in Planning resources."
+  }
+ ]
+}

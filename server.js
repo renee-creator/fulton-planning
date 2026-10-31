@@ -427,7 +427,7 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily() });
+const familyPage = require('./family.js')({ community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -533,6 +533,9 @@ ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
 // the director's list of museums and cultural places, added once from once/museums.json
 ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
+// the Idea bank's Help answers, and the Help answers and PD pages that named Documentation for the pages now under Plans,
+// Planning resources, from once/ideabank-words.json
+ONCE.push(['ideabankWords', () => staff.once.edits('ideabankWords', recsEdit)]);
 // October 30, 2026. One Kaymbu email the director sent on October 25 held moments from North and West. An educator
 // naming who shared it put her own name on every photo in it, other small groups' too. Each takes its small group's lead.
 ONCE.push(['kaymbuLeads1030', () => {
@@ -1928,6 +1931,9 @@ async function handle(req, res) {
     else if (path === '/family/agree') r = familyPage.agreement(f, String(body.childId || ''), body.agreement, !!body.submit);
     else if (path === '/family/check') r = familyPage.check(f, String(body.childId || ''), String(body.key || ''), body.on !== false);
     else if (path === '/family/aboutme') r = familyPage.aboutMe(f, String(body.childId || ''), body.pages, !!body.done);
+    // Ideas to try at home, the home side of each Idea bank card and the director's highlights, never the educator side
+    else if (path === '/family/ideas') { try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The ideas are still loading. Try again in a moment.'); return; }
+      const ib = staff.ideabank.forFamily(); if (!ib) { err(req, res, 503, 'The ideas are still loading. Try again in a moment.'); return; } json(req, res, 200, ib); return; }
     else if (path === '/family/file') { r = familyPage.file(f, String(body.id || '')); if (!r.error) { json(req, res, 200, r); return; } }
     else if (path === '/family/handbook' || path === '/family/handbook/img') {
       try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The Family Handbook is still loading. Try again in a moment.'); return; }
@@ -2132,14 +2138,29 @@ async function handle(req, res) {
         const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
         const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'fromThread', 'threads', 'projects', 'obs', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
         return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && Array.isArray(d.threads) && d.threads.includes(d.fromThread) && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
+      // an educator may also open one from What are you seeing? in the Idea bank, once the class has written the first steps it tried for
+      // that behavior and what happened. It carries the behavior's needs and senses, what was tried, and nothing written yet.
+      const fromBehaviorOk = d => { if (!d || typeof d !== 'object' || typeof d.ibFrom !== 'string') return false;
+        let ok = false; try { ok = staff.ideabank.canOpen(d.ibFrom, d.room || ''); } catch (e) { ok = false; } if (!ok) return false;
+        const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
+        const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'ibFrom', 'ibNeeds', 'ibSys', 'ibMode', 'ibUs', 'tried', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
+        const N = staff.ideabank.NEEDS || [], Y = staff.ideabank.SUPPORTS || [], U = staff.ideabank.US || [];
+        const list = (v, L) => v == null || (Array.isArray(v) && v.every(x => L.includes(x)));
+        const sysOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Object.entries(v).every(([k, m]) => Y.includes(k) && (m === 'seek' || m === 'avoid')));
+        const triedOk = v => v == null || (Array.isArray(v) && v.length <= 60 && v.every(t => t && typeof t === 'object' && String(t.step || '').length <= 400 && String(t.happened || '').length <= 1200));
+        return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && list(d.ibNeeds, N) && list(d.ibUs, U) && sysOk(d.ibSys) && triedOk(d.tried)
+          && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
       if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromThreadOk(body.data)) { log('Team inquiry opened from a thread by', me.name, id); }
-      else if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'Only the director starts a team inquiry.'); return; }
+      else if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromBehaviorOk(body.data)) { log('Team inquiry opened from the Idea bank by', me.name, id, body.data.ibFrom); }
+      else if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'A team inquiry opens once the class has tried the first steps and written what happened. Write each try under What are you seeing? in the Idea bank.'); return; }
       else {
       const OPEN = ['obs', 'threads', 'projects', 'tries', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
       const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
       const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
       const keeps = k => (cur.doc[k] || []).every(v => (next[k] || []).includes(v));
-      const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return a.length === b.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum); };
+      // an educator may also add an Idea bank card the team chose to try, with We'll try this, and change nothing else
+      const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return b.length >= a.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum)
+        && b.slice(a.length).every(t => t && typeof t.idea === 'string' && /^[a-z0-9-]{1,80}$/.test(t.idea) && !t.curriculum && typeof t.text === 'string' && t.text.length <= 800 && !String(t.result || '').trim()); };
       const bad = changed.filter(k => !OPEN.includes(k) || ((k === 'obs' || k === 'threads' || k === 'projects') && !keeps(k)) || (k === 'tries' && !triesOk()));
       if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director changes a team inquiry. You can add observations and threads to it, and write what happened when the team tried something.'); return; }
       }

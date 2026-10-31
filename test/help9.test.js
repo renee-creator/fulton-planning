@@ -18,9 +18,11 @@ test('Help inside TREE', async t => {
   assert.deepStrictEqual((await H(ann)).list, []); assert.ok((await H(dee)).waiting);
   assert.strictEqual((await fx.as(ann, '/api/staff/help/ready', { on: true })).status, 403);
   await H(dee, 'ready', { on: true });
-  assert.deepStrictEqual((await H(ann)).list.map(x => x.id), ['h01'], 'never a director-only answer');
+  // the Idea bank's own answers join the list once, hib1 to hib10, each for the roles that can do it
+  assert.deepStrictEqual((await H(ann)).list.map(x => x.id).filter(id => !/^hib/.test(id)), ['h01'], 'never a director-only answer');
+  assert.ok(!(await H(ann)).list.some(x => ['hib6', 'hib7', 'hib8', 'hib9'].includes(x.id)), 'the director\'s Idea bank answers stay hers');
   assert.deepStrictEqual((await H(kit)).list.map(x => x.id), ['h03']);
-  assert.strictEqual((await H(dee)).list.length, 3);
+  assert.strictEqual((await H(dee)).list.filter(x => !/^hib/.test(x.id)).length, 3);
   assert.strictEqual((await H(ann)).source, undefined);
   const b = await (await browser()).launch(); t.after(() => b.close());
   const s = await signedIn(fx, b, 'Ann', '1357');

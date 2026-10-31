@@ -1,5 +1,5 @@
 /* ---------- The Garden ----------
-   The garden and the yards, beside Farm to School and Kitchen under Documentation. The director plans and changes
+   The garden and the yards, under Plans, Planning resources. The director plans and changes
    everything. Educators see their class's beds and the shared spaces and mark tasks done with one tap, and the kitchen
    records harvests. The spaces are the Spaces list in Settings. Everything waits for the director to mark it ready.
    Each section folds closed with a one-line summary, and the page never scrolls sideways. */
@@ -89,10 +89,10 @@ function gardenTodayHtml(){if(isKitchenUser())return "";if(gdn===null)loadGarden
   return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">In the garden today</h3><button class="linkbtn" data-tview="garden">Garden</button></div><div class="cnt">${left?left+" to do":"All done"}${!gdn.ready?". A draft, only you see it":""}</div>
     ${list.length?`<div class="gtasks">${list.slice(0,8).map(t=>gdnTaskRow(t,iso(new Date()))).join("")}</div>`:""}</section>`}
 function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){loadGarden();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Garden</div></section>`;return}
-  if(!gdnOk()){m.innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2></div><section class="card"><div class="empty">The Garden opens once the director marks it ready.</div></section>`;return}
+  if(!gdnOk()){m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2></div><section class="card"><div class="empty">The Garden opens once the director marks it ready.</div></section>`;return}
   const g=gdn,dir=isDirector()&&!VIEW_AS,kit=isKitchenUser(),day=iso(new Date()),mm=day.slice(5,7),room=myRoom();
   const plants=g.plants||[],beds=g.beds||[],foods=plants.filter(p=>(p.eat==="food"||p.eat==="partly")&&!p.planned);
-  let h=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
+  let h=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
   // the director's job cards that fit this month, for the director and the office to post as slots or work day stations
