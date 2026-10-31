@@ -1081,6 +1081,7 @@ async function boot(){
       if(view==="share"&&!document.activeElement?.closest?.("#main")&&!shSoft)renderShare()},()=>{});
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{noticesSeen=true;const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain();else{try{evSync()}catch(e){}}},()=>{});
+    db.collection("drafts").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;m.set(d.id,v)}});drafts=m;if((view==="moments"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     draftBoot();
   }else setConn("Saving on this device");
@@ -4145,7 +4146,7 @@ window.addEventListener("tree-saves",()=>draftNote());setInterval(draftNote,1500
 // the observation being written, its photos and the photos waiting after it
 let obsDraftT=null;
 function obsDraftSoon(){clearTimeout(obsDraftT);obsDraftT=setTimeout(obsDraftNow,500)}
-function obsDraftNow(){clearTimeout(obsDraftT);obsDraftT=null;if(!draftWho()||!draftReady)return Promise.resolve();const f=noticeForm;
+function obsDraftNow(){clearTimeout(obsDraftT);obsDraftT=null;if(noticeForm)serverDraftSoon();if(!draftWho()||!draftReady)return Promise.resolve();const f=noticeForm;
   const words=f&&(String(f.noticed||"").trim()||String(f.wonder||"").trim()||formPhotos(f).some(x=>x.photo)||(f.pick||[]).length);
   if(!words)return draftMem.has(draftWho()+"|form")?draftDel("form"):Promise.resolve();
   const lead=f.pick?f.pick[0]:f,q=[...(f.pick?f.pick.slice(1):[]),...nQueue];
@@ -4156,6 +4157,49 @@ function obsDraftNow(){clearTimeout(obsDraftT);obsDraftT=null;if(!draftWho()||!d
 document.addEventListener("input",e=>{if(noticeForm&&e.target.closest&&e.target.closest("#nf-card"))obsDraftSoon()});
 document.addEventListener("change",e=>{if(noticeForm&&e.target.closest&&e.target.closest("#nf-card"))obsDraftSoon()});
 document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#nf-card,.fab,[data-nwedit]"))setTimeout(obsDraftSoon,0)});
+/* ---------- Drafts kept in the records ----------
+   A new observation is kept in the records as a draft from its first photo or word, so it is never lost with a phone, a
+   browser, a sign-out or a page left. Only the educator who started it and the director see it, under Drafts on
+   Observations and on Today. It leaves the drafts only when it is kept as an observation, or thrown away on purpose. Every
+   photo waiting after it in the same choosing belongs to the same draft, so they come back together. */
+let drafts=new Map(),sdT=null;
+const draftIsMine=d=>!!d&&!!me()&&String(d.by||"").toLowerCase()===String(whoAmI()||"").toLowerCase();
+function sdClean(x){const c=jclone(Object.assign({},x,{pick:undefined,siblings:undefined,restored:undefined}));if(c&&c.photo){delete c.photo.status;delete c.photo.error;delete c.photo.data}return c}
+function serverDraftSoon(){clearTimeout(sdT);sdT=setTimeout(serverDraftNow,1200)}
+function serverDraftNow(){clearTimeout(sdT);sdT=null;
+  if(VIEW_AS||!db||!window.FP_HOSTED||!me())return;const f=noticeForm;if(!f)return;
+  const lead=f.pick?f.pick[0]:f;if(!lead||notices.has(lead.id)||notices.has(f.id))return;  // a kept observation being changed is not a draft
+  const rest=[...(f.pick?f.pick.slice(1):[]),...nQueue],all=[f,lead,...(lead.siblings||[]),...rest];
+  const words=String(f.noticed||"").trim()||String(f.wonder||"").trim()||all.some(x=>x&&x.photo&&(x.photo.id||x.photo.pending));
+  if(!words)return;
+  const id=f.draftId||lead.draftId||("d"+String(lead.id).replace(/[^a-z0-9]/gi,""));
+  for(const x of [f,lead,...rest])if(x)x.draftId=id;
+  const was=drafts.get(id);
+  const form=sdClean(f.pick?Object.assign({},lead,{noticed:f.noticed,wonder:f.wonder}):lead);if(lead.siblings)form.siblings=lead.siblings.map(sdClean);
+  const doc={id,by:whoAmI(),startedAt:(was&&was.startedAt)||Date.now(),updatedAt:Date.now(),form,queue:rest.map(sdClean)};
+  drafts.set(id,doc);Promise.resolve(db.doc("drafts/"+id).set(doc)).catch(()=>{})}
+// the draft leaves the records once its observation is kept, or the educator throws it away
+function serverDraftEnd(id){if(!id)return;clearTimeout(sdT);sdT=null;drafts.delete(id);if(db&&!VIEW_AS)Promise.resolve(db.doc("drafts/"+id).delete()).catch(()=>{})}
+function openDraft(id){const d=drafts.get(id);if(!d||!d.form)return;
+  if(!draftIsMine(d)){toast("Only "+(d.by||"the educator who started it")+" can finish this draft.");return}
+  if(noticeForm&&noticeForm.draftId!==id)serverDraftNow();
+  const mark=x=>{x=jclone(x);x.draftId=id;if(x.photo&&x.photo.id)x.photo.status="done";if(x.siblings)x.siblings=x.siblings.map(mark);return x};
+  noticeForm=Object.assign(mark(d.form),{restored:true});nQueue=(d.queue||[]).map(mark);
+  view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop()}
+function draftCardHtml(d,dir){const f=d.form||{},n=1+(f.siblings||[]).length+(d.queue||[]).length,mine=draftIsMine(d);
+  const words=String(f.noticed||"").trim();const img=f.photo&&f.photo.id?photoThumb(f):"";
+  return `<div class="origin" style="display:flex;gap:12px;align-items:center">${img?`<img src="${esc(img)}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none">`:""}
+    <div style="flex:1;min-width:0"><div>${words?esc(words.length>120?words.slice(0,120)+"…":words):`<span class="muted">No words written yet</span>`}</div>
+    <div class="cnt">${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
+    <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
+function draftsList(){const open=view==="moments"&&noticeForm&&noticeForm.draftId;return [...drafts.values()].filter(d=>d&&d.form&&d.id!==open).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))}
+function draftsHtml(){if(VIEW_AS)return"";const dir=isDirector(),all=draftsList(),mine=all.filter(draftIsMine),others=dir?all.filter(d=>!draftIsMine(d)):[];
+  let h="";
+  if(mine.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Your drafts</h3><span class="cnt">${mine.length} still to finish</span></div>
+    <div class="hint muted" style="margin:0 0 8px">Saved as you wrote. Only you${dir?"":" and the director"} can see a draft until you keep it.</div><div style="display:grid;gap:10px">${mine.map(d=>draftCardHtml(d,dir)).join("")}</div></section>`;
+  if(others.length)h+=`<section class="card"><details data-fold="drafts" ${foldOpen.has("drafts")?"open":""}><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px">Drafts educators are still writing</h3><span class="cnt">${others.length}</span></summary>
+    <div style="display:grid;gap:10px;margin-top:8px">${others.map(d=>draftCardHtml(d,dir)).join("")}</div></details></section>`;
+  return h}
 // the observation that was being written comes back as it was left, photos and all
 function obsDraftBack(r){if(!r||!r.form||noticeForm)return false;
   const all=[r.form,...(r.form.siblings||[]),...(r.queue||[])];
@@ -4223,7 +4267,7 @@ async function draftBoot(){if(draftReady||!draftWho())return;
       else toastAct("The observation you were writing is kept on this phone.","Open it",()=>{view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop()})}}
   draftReady=true;draftNote();if(view==="moments"&&!noticeForm&&!document.activeElement?.closest?.("#main"))renderMain();draftSend()}
 window.addEventListener("online",()=>{setTimeout(draftSend,800);if(pendingSaves.size){clearTimeout(saveTimer);saveTimer=setTimeout(flushSaves,800)}});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)draftSend();else{if(noticeForm)obsDraftNow();for(const id of Object.keys(pdTimers))planDraftNow(id)}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)draftSend();else{if(noticeForm){obsDraftNow();serverDraftNow()}for(const id of Object.keys(pdTimers))planDraftNow(id)}});
 setInterval(draftSend,30000);
 // signing out with words not yet sent says so first. Signing out anyway keeps them on this phone for the next sign-in.
 window.TREE_SIGN_OUT_ASK=async()=>{if(noticeForm)await obsDraftNow();for(const id of [...pendingSaves])await planDraftNow(id);
@@ -4463,6 +4507,9 @@ function todayWaiting(){
     out.push({dot:"mari",t:"Your Individual plan for this week",s:"Monday is the day for Individual plans, so the team can write the Classroom plan from them.",act:`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`,b:"Start it"});
   for(const p of all.filter(p=>p.weekOf===wk&&p.status==="draft"&&m&&(p.educator||"").toLowerCase()===m.toLowerCase()).slice(0,3))
     out.push({dot:"mari",t:`Finish your ${FORMS[p.type].short} plan`,s:planTitle(p),act:`data-open="${p.id}"`,b:"Open"});
+  // observations started and not kept yet wait as drafts
+  {const k=typeof draftsList==="function"?draftsList().filter(draftIsMine).length:0;
+   if(k&&!VIEW_AS)out.push({dot:"mari",t:k===1?"An observation to finish":`Observations to finish, ${k}`,s:"Saved as drafts while you wrote. Open Observations to finish and keep them.",act:`data-tview="moments"`,b:"Open"})}
   const due=dueList();for(const p of due.list.slice(0,3))
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write",q:"rem|"+p.id});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
@@ -4582,6 +4629,10 @@ function redrawToday(){if(view!=="today")return;const y=window.scrollY;renderMai
    done under their row, each closing as it is done, with the next one beneath it. */
 let tqOpen="",tqKids=null,tqRoom="",tqGroup=null;
 // the photos that came in one email. Older ones have no mark of their email, so their subject and day stand for it.
+// the educator who leads an observation's small group, which always says whose it is
+const groupLeadOf=n=>{if(!n||!n.smallGroup)return"";const g=GROUPS.find(g=>g.name===n.smallGroup&&(!g.room||!n.classroom||g.room===n.classroom));return g&&g.educator?String(g.educator):""};
+// an educator names only the photos of her own class, and never one whose small group already names its educator
+const kmailMine=x=>(isDirector()||!myRoom()||momentIn(x,myRoom()))&&!groupLeadOf(x);
 const kBatchOf=n=>n.kaymbu.mail?"m|"+n.kaymbu.mail+"|"+(n.kaymbu.subject||""):[(n.kaymbu.subject||"").trim().toLowerCase(),new Date(n.kaymbu.keptAt||0).toDateString()].join("|");
 // the children to offer first on a Kaymbu photo, from the children already tagged or suggested on its post: the ones most often
 // observed with them in the last two months, and their small group's members. Never from the faces in the photo.
@@ -4612,7 +4663,7 @@ function tqHtml(w){
         return `<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}${sugg.length&&!tqGroup?`<div class="chips" style="margin-bottom:6px">${sugg.map(c=>`<button class="chip sug ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")}</div>`:""}${kids1.length?groupFirstHtml(kids1,tqGroup,room,chipFor(x)):`<div class="chips"><span class="cnt">Choose the class to see its children.</span></div>`}
         ${others1.length?`<details class="tqother" style="margin-top:6px"><summary class="cnt">Show all classes, ${others1.length} more children</summary><div class="chips" style="margin-top:6px">${others1.map(chipFor(x)).join("")}</div></details>`:""}</div>`}).join("")}
       <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button>${full}</div>`}
-  if(kind==="kmail"){const n=notices.get(id);if(!n)return "";const kb=kBatchOf(n);const ns=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb).sort((a,b)=>(a.at||0)-(b.at||0));
+  if(kind==="kmail"){const n=notices.get(id);if(!n)return "";const kb=kBatchOf(n);const ns=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&kmailMine(x)).sort((a,b)=>(a.at||0)-(b.at||0));
     const by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];const rm=momentRooms(n)[0]||"";const mine=roster.filter(r=>r.room&&r.room===rm).map(r=>r.name),rest=rosterNames().filter(x=>!mine.includes(x));
     return `<div class="cnt">${by.length?`<b>Shared by ${esc(by.join(" and "))}.</b>${ns.some(x=>!String(x.by||"").trim())?" Some have no name yet.":""} Tap a name to change it`:"<b>Who shared these?</b> Tap a name to put it"} on all ${ns.length} photo${ns.length===1?"":"s"}.</div>
       <div class="chips">${[...mine,...rest].map(x=>`<button class="chip ${by.length===1&&by[0]===x?"on":""}" data-tqsave="kmail|${esc(id)}|${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div>
@@ -4636,13 +4687,14 @@ document.addEventListener("click",e=>{
   else if(kind==="photo"){const n=notices.get(id);const txt=($("#tqtext")?.value||"").trim();if(!n||!txt)return;const base=jclone(n);n.noticed=txt;n.editedBy=whoAmI();n.editedAt=Date.now();saveNotice(n,base);toast("Saved.")}
   else if(kind==="kay"){const n=notices.get(id);if(!n||!tqKids)return;const room=tqRoom||momentRooms(n)[0]||"";
     for(const x of noteGroup(n)){const base=jclone(x);x.children=[...(tqKids[x.id]||[])];if(room&&!x.classroom)x.classroom=room;if(tqGroup!=null&&tqGroup!==(x.smallGroup||"")){if(tqGroup)x.smallGroup=tqGroup;else delete x.smallGroup}
+      {const lead=groupLeadOf(x);if(lead&&(!String(x.by||"").trim()||(x.kaymbu&&x.kaymbu.sentBy))){x.by=lead;if(x.kaymbu&&x.kaymbu.sentBy){x.kaymbu=Object.assign({},x.kaymbu);delete x.kaymbu.sentBy}}}
       if(x.kaymbu&&x.kaymbu.check){x.kaymbu=Object.assign({},x.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete x.kaymbu.unsure;delete x.kaymbu.suggest;delete x.kaymbu.maybe}
       x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
     toast("Saved.")}
   else if(kind==="kmail"){const n=notices.get(id);if(!n||!v)return;const kb=kBatchOf(n);
     if(v==="__done"){const seen=LS.get("tree.kmailSeen",[]);if(!seen.includes(kb))LS.set("tree.kmailSeen",[...seen,kb].slice(-200))}
-    else{let c=0;for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v)){const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base);c++}
-      const seen=LS.get("tree.kmailSeen",[]);if(!seen.includes(kb))LS.set("tree.kmailSeen",[...seen,kb].slice(-200));toast(`Shared by ${v}, on every photo from that email.`)}}
+    else{let c=0;for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v&&kmailMine(x))){const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base);c++}
+      const seen=LS.get("tree.kmailSeen",[]);if(!seen.includes(kb))LS.set("tree.kmailSeen",[...seen,kb].slice(-200));toast(c?`Shared by ${v}, on ${c===1?"the photo":"the "+c+" photos"} from your class in that email.`:`Nothing changed. Each photo already names its educator.`)}}
   else if(kind==="fidea"){LS.set("tree.fidea-"+mondayOf(new Date())+"-"+id,"1")}
   else if(kind==="famfit"){LS.set("tree.famfitOff",[...LS.get("tree.famfitOff",[]),id+"|"+v].slice(-100))}
   else if(kind==="three"){const c=children.get(id);if(!c)return;kidDrdpPatch(c,{drdp:{view:v}});toast(`${c.first} is read against the ${v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten"} View.`)}
@@ -7403,6 +7455,7 @@ async function readMomentPhoto(n,opt){
 }
 // the open form follows the reading without losing anything typed meanwhile
 function refreshPhotoDraft(n){
+  if(noticeForm)serverDraftSoon();
   const f=noticeForm;if(!f||!$("#nf-card"))return;
   if(f.pick){if(f.pick.includes(n)){const el=document.getElementById("nfs-"+n.id);if(el)el.outerHTML=sibStatusHtml(n)}return}
   if(f===n&&$("#nf-noticed")){const ta=$("#nf-noticed");if(!ta.value.trim()&&n.noticed){ta.value=n.noticed;autoGrow(ta)}
@@ -7631,14 +7684,16 @@ function spread(list,n){if(n<=0)return[];if(list.length<=n)return list.slice();i
 function momentsScan(){return scans.get("moments-"+nRoom)}
 function momentsReadHtml(){
   const s=momentsScan();if(!s)return"";
-  return `<section class="card" id="mreadcard"><div class="secthead"><h3 style="font-size:17px">What these observations keep returning to</h3>
-    <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span></div>
+  // educators see it folded closed, opening it when they want the reading
+  const fold=!isDirector();
+  return `<section class="card" id="mreadcard">${fold?`<details data-fold="mread" ${foldOpen.has("mread")?"open":""}><summary class="secthead" style="cursor:pointer">`:`<div class="secthead">`}<h3 style="font-size:17px">What these observations keep returning to</h3>
+    <span class="cnt">Read by ${esc(s.by||"an educator")} · ${shortDate(s.createdAt)}</span>${fold?`</summary>`:`</div>`}
     ${has(s.summary)?`<div style="font-size:15.5px">${esc(s.summary)}</div>`:""}
     ${(s.patterns||[]).some(patternIsNew)?`<div style="display:grid;gap:10px;margin-top:10px">${s.patterns.map((p,i)=>!patternIsNew(p)?"":`<div class="origin"><div><b>${esc(p.name)}</b></div><div class="muted" style="margin-top:2px">${esc(sentCut(p.why))}</div>
       ${patternMatchHtml(p,i)}${patternObsHtml(p,i)}
       ${(p.ids||[]).some(id=>notices.has(id))?`<div class="actions" style="margin-top:6px"><button class="btn small ghost" data-patplan="${i}">Start a plan from this</button>${p.threadId&&threads.get(p.threadId)?`<button class="linkbtn" data-tsee="${p.threadId}">See the thread</button>`:patternMatch(p)?"":isDirector()?`<button class="linkbtn" data-patthread="${i}">Follow as a thread</button>`:""}</div>`:""}</div>`).join("")}</div>`:""}
     ${(s.questions||[]).length?`<div class="lbl" style="margin-top:12px">Questions for the team</div><ul style="margin:4px 0 0 18px;display:grid;gap:4px">${s.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ul>`:""}
-    <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div></section>`;
+    <div class="hint muted" style="margin-top:8px">A reading, not a decision. The team decides what to follow.</div>${fold?`</details>`:""}</section>`;
 }
 // a pattern's observations, newest last, in the educators' own words with their dates, for a plan's observation
 function patternMoments(p){return (p.ids||[]).map(id=>notices.get(id)).filter(Boolean).sort((a,b)=>(a.at||0)-(b.at||0))}
@@ -7736,7 +7791,7 @@ function renderMoments(){
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="actions">${printTwo("moments","")}${isDirector()&&!VIEW_AS?(()=>{const n=pfLeft();return n?`<button class="btn small ghost" data-tview="proofobs">Proofread observations, ${n} left</button>`:""})():""}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
     ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">For what is emerging now. TREE reads only the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
-  ${momentsReadHtml()}`;
+  ${draftsHtml()}${momentsReadHtml()}`;
   if(!all.length)h+=`<div class="empty">${notices.size?"No observations kept in this view. Widen the class or the range.":"No observations kept yet. Press Keep an observation and write one in a minute."}</div>`;
   // thirty at a time, so the page opens quickly, and Show more carries on in the same view
   for(const g of gs){
@@ -7817,6 +7872,8 @@ function noticeListHtml(list,title){
   return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
 }
 function noticesClick(t){
+  if(t.dataset.draftopen){openDraft(t.dataset.draftopen);return true}
+  if(t.dataset.draftdel){const d=drafts.get(t.dataset.draftdel);if(!d||!isDirector()||VIEW_AS)return true;if(!confirm(`Remove ${d.by||"this educator"}'s draft? What they wrote will not be kept.`))return true;serverDraftEnd(d.id);renderMain();toast("Draft removed.");return true}
   if(t.dataset.newfor){const c=children.get(t.dataset.newfor);if(c){noticeForm=Object.assign(newNotice(),{children:[c.id],classroom:c.classroom||myRoom()||""});view="moments";LS.set("fps.view",view);renderNav();renderMain();jumpTop()}return}
   if(t.id==="newnotice"||t.id==="newnotice2"){const unfinished=noticeForm&&(noticeForm.restored||!notices.has(noticeForm.id)&&(noticeForm.photo||(noticeForm.noticed||"").trim()||(noticeForm.wonder||"").trim()));// kept from the bin page, the observation is linked to that week's bin
     if(!unfinished){const fromBin=view==="bin"&&typeof binCurrent==="function"&&binCurrent();noticeForm=fromBin?Object.assign(newNotice(),{bin:fromBin.id,classroom:binRoomNow()}):newNotice()}view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
@@ -7830,9 +7887,13 @@ function noticesClick(t){
     let i=at();if(i<0){nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";LS.set("fps.mrange",mRange);i=at()}
     if(i>=0&&i>=mShow)mShow=Math.ceil((i+1)/30)*30;renderMain();setTimeout(()=>{if(!go())toast("That observation could not be found on this page.")},60);return true}
   if(t.dataset.nfpick&&noticeForm&&noticeForm.pick){pickMomentPhotos(t.dataset.nfpick);return true}
-  if(t.id==="nf-cancel"){const was=noticeForm;noticeForm=null;
+  if(t.id==="nf-cancel"){const was=noticeForm;
+    const isNew=was&&!notices.has(was.id),typed=isNew&&(String($("#nf-noticed")?.value??was.noticed??"").trim()||String($("#nf-wonder")?.value??was.wonder??"").trim()),hasPh=isNew&&formPhotos(was).some(x=>x.photo);
+    if((typed||hasPh)&&!confirm(was.photo&&nQueue.length?"Skip this photo? It and anything written about it will not be kept.":"Throw away this observation? Its photos and anything written will not be kept."))return true;
+    const did=was&&was.draftId;noticeForm=null;
     for(const x of [...((was&&was.pick)||[]),...((was&&was.siblings)||[])])if(!notices.has(x.id)){nBlobs.delete(x.id);nPreview.delete(x.id)}
-    if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
+    if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();serverDraftSoon();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
+    if(did&&!nQueue.length)serverDraftEnd(did);
     if(view==="moments")renderMain();else renderAll();return true}
   if(t.dataset.nfkid&&noticeForm){const tgt=t.dataset.nfph!=null?formPhotos(noticeForm)[+t.dataset.nfph]:noticeForm;if(!tgt)return true;const a=tgt.children||(tgt.children=[]);const i=a.indexOf(t.dataset.nfkid);i>=0?a.splice(i,1):a.push(t.dataset.nfkid);t.classList.toggle("on");return true}
   if(t.dataset.nfkidsnamed&&noticeForm){noticeForm.noticed=$("#nf-noticed")?.value||noticeForm.noticed;const a=noticeForm.children||(noticeForm.children=[]);for(const c of kidsAt().filter(c=>c.classroom===noticeForm.classroom))if(new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(noticeForm.noticed||"")&&!a.includes(c.id))a.push(c.id);const el=$("#nf-kids");if(el)el.innerHTML=nfKidsHtml(noticeForm);return true}
@@ -7850,6 +7911,7 @@ function noticesClick(t){
     if(editing){n.by=n.by||was.by||whoAmI();n.editedBy=whoAmI();n.editedAt=Date.now()}else n.by=whoAmI();
     n.at=when;n.week=mondayOf(new Date(when));
     if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.thumb?{thumb:n.photo.thumb}:{}),...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
+    const did=n.draftId;delete n.draftId;
     delete n.day;delete n.fromClaude;
     // saving a moment from Kaymbu is the educator's check of its classroom and children
     if(n.kaymbu&&n.kaymbu.check){n.kaymbu=Object.assign({},n.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete n.kaymbu.unsure;delete n.kaymbu.suggest;delete n.kaymbu.maybe}
@@ -7861,13 +7923,14 @@ function noticesClick(t){
       if(had){s.by=s.by||had.by||n.by;s.at=had.at&&iso(new Date(had.at))===iso(new Date(n.at))?had.at:n.at+i+1;s.editedBy=whoAmI();s.editedAt=Date.now()}else{s.by=n.by;s.at=n.at+i+1}
       s.week=n.week;
       if(s.photo)s.photo={id:s.photo.id||"",w:s.photo.w,h:s.photo.h,...(s.photo.thumb?{thumb:s.photo.thumb}:{}),...(s.photo.data?{data:s.photo.data}:{}),...(s.photo.pending?{pending:true}:{})};
-      delete s.day;delete s.fromClaude;delete s.pick;delete s.siblings;
+      delete s.day;delete s.fromClaude;delete s.pick;delete s.siblings;delete s.draftId;
       if(s.kaymbu&&s.kaymbu.check){s.kaymbu=Object.assign({},s.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete s.kaymbu.unsure;delete s.kaymbu.suggest;delete s.kaymbu.maybe}
       saveNotice(s,had?noticeBase.get(s.id):undefined);noticeBase.delete(s.id)});
     saveNotice(n,editing?noticeBase.get(n.id):undefined);noticeBase.delete(n.id);noticeForm=null;
     const onPhone=waitingToSend(n.id);
     if(editing){showKept(n);toast(onPhone?DRAFT_NOTE:"Changes saved.");return true}
-    if(nQueue.length){noticeForm=nQueue.shift();renderAll();jumpTop();toast(onPhone?DRAFT_NOTE:"Kept. The next photo is open.");return true}
+    if(nQueue.length){noticeForm=nQueue.shift();serverDraftSoon();renderAll();jumpTop();toast(onPhone?DRAFT_NOTE:"Kept. The next photo is open.");return true}
+    serverDraftEnd(did);
     // the moment the educator just wrote should be the first thing they see, not an empty page
     const moved=showKept(n);toast(onPhone?DRAFT_NOTE:moved?`Kept, dated ${shortDate(n.at)}. Observations now shows ${moved}, so you can see it.`:"Kept. It waits in the record until something comes round to it.");return true}
   if(t.dataset.patplan!=null){const sc=momentsScan();const p=sc&&sc.patterns&&sc.patterns[+t.dataset.patplan];if(p)planFromPattern(p);return true}

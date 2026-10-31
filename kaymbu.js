@@ -226,6 +226,13 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const group = gname ? (Array.isArray(set.groups) ? set.groups : []).find(g => g && g.name === gname && (!g.room || !room || g.room === room)) || { name: gname, room } : null;
     return { room, group };
   }
+  // the educator who leads a small group, from Program settings
+  function groupLead(name, room) {
+    if (!name) return '';
+    const set = (store.recs.settings.get('main') || {}).doc || {};
+    const g = (Array.isArray(set.groups) ? set.groups : []).find(x => x && x.name === name && (!x.room || !room || x.room === room));
+    return g && g.educator ? String(g.educator) : '';
+  }
   function findChildren(text, room, title) {
     // a child's record has no id inside it, so the id is the name of its record
     const kids = [...store.recs.children].filter(([, r]) => !r.deleted && r.doc && r.doc.first && (r.doc.status || 'active') !== 'withdrawn').map(([id, r]) => Object.assign({}, r.doc, { id }));
@@ -335,7 +342,10 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const fromKids = kidsPlace([...kids.ids, ...kids.maybe]);
         const room = m.room || (fromKids.room && (!sub.room || sub.rooms.length > 1 || sub.room === fromKids.room) ? fromKids.room : '') || sub.room;
         const kidGroup = !m.smallGroup && !sub.smallGroup && fromKids.group && (!fromKids.group.room || fromKids.group.room === room) ? fromKids.group : null;
-        const mBy = m.by || by || (kidGroup && kidGroup.educator ? String(kidGroup.educator) : '');
+        // the educator is the one named in the subject, then the lead of the moment's small group, and only then whoever
+        // sent the email, since a small group always says who it belongs to
+        const sg = m.smallGroup || sub.smallGroup || (kidGroup ? String(kidGroup.name) : '');
+        const mBy = m.by || sub.educator || groupLead(sg, room) || by || '';
         const group = (many.get(sameNote(m)) || 0) > 1 && (kids.ids.length + kids.maybe.length) > 0;
         const needs = group || !kids.ids.length || kids.unsure.length > 0 || kids.maybe.length > 0;
         // children to offer on the form, rather than tag. A group photo offers everyone named. A single photo offers the names to check.
@@ -344,7 +354,6 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
         const binId = sub.bin ? binFor(day) : '';
         const pg = photo ? postGroup(noticed, room, day) : '';
-        const sg = m.smallGroup || sub.smallGroup || (kidGroup ? String(kidGroup.name) : '');
         const doc = { id, noticed, wonder: '', classroom: room, ...(sg ? { smallGroup: sg } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by: mBy, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,
           ...(photo ? { photo } : {}),
           kaymbu: { v: 3, ...(sentBy && mBy === by ? { sentBy: 1 } : {}), ...(offer.length ? { suggest: offer } : {}), ...(!group && offer.length ? { maybe: true } : {}), key: k, src: p ? p.url : '', dated: onDay ? 'subject' : photoDay(p, sent) ? 'photo' : 'sent', subject: String(body.subject || '').slice(0, 200), mail: String(sent), keptAt: Date.now(), check: needs, ...(kids.unsure.length ? { unsure: kids.unsure } : {}), ...(m.newsletter ? { newsletter: m.newsletter, ...(m.note ? { words: true } : {}) } : {}) },
@@ -382,6 +391,12 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.smallGroup && !d0.editedBy) {
         const rs = readSubject(d0.kaymbu.subject);
         if (rs.smallGroup) { d0.smallGroup = rs.smallGroup; if (!d0.classroom && rs.room) d0.classroom = rs.room; if (!d0.by && rs.educator) d0.by = rs.educator; noteChange('notices', id); scheduleSave('notices', id); n++; }
+      }
+      // a moment in a small group that has no educator, or only the director's name because she sent it, takes the
+      // group's lead educator, unless someone has changed it by hand
+      if (!r.deleted && d0 && d0.kaymbu && d0.smallGroup && !d0.editedBy && (!d0.by || d0.kaymbu.sentBy)) {
+        const lead = groupLead(d0.smallGroup, d0.classroom);
+        if (lead && lead !== d0.by) { d0.by = lead; d0.kaymbu = Object.assign({}, d0.kaymbu); delete d0.kaymbu.sentBy; noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
       // a moment kept before the subject's educator was read takes that educator, once, unless an educator has changed it by hand
       if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && !d0.editedBy && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {

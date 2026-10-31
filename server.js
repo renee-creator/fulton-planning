@@ -31,7 +31,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports'];
 // records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
 // reading report is the director's, and each class team reads its own class's through /api/reports/mine.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports'];
@@ -414,7 +414,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -533,6 +533,40 @@ ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
 // the director's list of museums and cultural places, added once from once/museums.json
 ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
+// October 30, 2026. One Kaymbu email the director sent on October 25 held moments from North and West. An educator
+// naming who shared it put her own name on every photo in it, other small groups' too. Each takes its small group's lead.
+ONCE.push(['kaymbuLeads1030', () => {
+  const set = (store.recs.settings.get('main') || {}).doc || {}; const groups = Array.isArray(set.groups) ? set.groups : [];
+  let n = 0;
+  for (const [id, r] of store.recs.notices) {
+    const d = r.doc; if (r.deleted || !d || !d.kaymbu || d.kaymbu.mail !== '1792948692000' || !d.smallGroup) continue;
+    const g = groups.find(x => x && x.name === d.smallGroup && (!x.room || !d.classroom || x.room === d.classroom));
+    if (!g || !g.educator || d.by === g.educator) continue;
+    d.by = String(g.educator); d.kaymbu = Object.assign({}, d.kaymbu); delete d.kaymbu.sentBy;
+    noteChange('notices', id); scheduleSave('notices', id); n++;
+  }
+  log('Kaymbu moments given their small group lead,', n);
+}]);
+// Ellie's photos from October 30 were kept, but the observations she was writing never left her phone. Each photo waits
+// for her as a draft, under Your drafts on Observations, so she can write it again.
+ONCE.push(['ellieDrafts1030', () => {
+  const photos = [['2d96b7f4bcdb', '2026-10-30T20:18:44Z'], ['c513080ce25c', '2026-10-30T20:19:43Z'], ['94152b66475e', '2026-10-30T20:19:47Z'],
+    ['ed7a0819d986', '2026-10-30T20:19:59Z'], ['0a5e1827340f', '2026-10-30T20:20:03Z'], ['cc4b9ac32ba2', '2026-10-30T20:20:14Z'],
+    ['3d64bcd7edfa', '2026-10-30T20:20:18Z'], ['fa19bc9e4858', '2026-10-30T20:20:30Z'], ['0967abf63f0e', '2026-10-30T20:20:38Z'],
+    ['b0437a49a215', '2026-10-30T22:52:31Z'], ['b5745746d66b', '2026-10-30T22:52:33Z']];
+  const a = { name: 'Ellie' };
+  const used = new Set(); for (const [, r] of store.recs.notices) { const d = r.doc; if (r.deleted || !d || !d.photo) continue; if (d.photo.id) used.add(String(d.photo.id).slice(0, 12)); }
+  let n = 0;
+  photos.forEach(([h, when], i) => {
+    if (used.has(h)) return;
+    const at = Date.parse(when), id = 'dellie1030' + String(i + 1).padStart(2, '0'), nid = 'nellie1030' + String(i + 1).padStart(2, '0');
+    if (store.recs.drafts.has(id)) return;
+    const doc = { id, by: a.name, startedAt: at, updatedAt: at, queue: [],
+      form: { id: nid, noticed: '', wonder: '', classroom: '', by: a.name, at, week: '2026-10-26', projectId: '', threadId: '', photo: { id: h + '-moment-photo.jpg' } } };
+    store.recs.drafts.set(id, { doc, path: `drafts/${id}.json`, local: true }); noteChange('drafts', id); scheduleSave('drafts', id); n++;
+  });
+  log('Drafts made from Ellie\'s photos,', n);
+}]);
 // steps that change records already there from a list of changes kept in the private records. A record in the main
 // records changes through the save queue.
 function recsEdit(path, fn) {
@@ -1498,8 +1532,11 @@ function readBody(req, limit) {
 let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
-function snapshot(director, kitchen, office) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director); }
+// an observation still being written is a draft. It is kept in the records as the educator types, so it survives a
+// change of phone, signing out or closing TREE, and only the educator who started it and the director see it.
+const draftSeen = (kind, doc, name, director) => kind !== 'drafts' || director || (!!doc && nameKey(doc.by) === nameKey(name));
+function snapshot(director, kitchen, office, name) {
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id)) && draftSeen(k, r.doc, name, director)) out[k][id] = forViewer(k, r.doc, director); }
   return out;
 }
 // the server's status, in full for the director in Settings, and without any counts on the page anyone can open
@@ -1991,10 +2028,10 @@ async function handle(req, res) {
   if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
-  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name)) }); return; }
+  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { out[c.kind] = out[c.kind] || {}; const r = store.recs[c.kind].get(c.id); out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -2137,6 +2174,13 @@ async function handle(req, res) {
         const st = directorPlanStatus(next); const asked = next.status || 'draft';
         if (st !== asked) { log('Director plan status kept as', st, id, 'asked', asked); if (op === 'update') { body.patch = body.patch || {}; body.patch.status = st; } else if (body.data) body.data.status = st; }
       }
+    }
+    // a draft is the educator's own. Only she changes it, and the director may take one away. Its name is always hers.
+    if (kind === 'drafts') {
+      const owner = cur && !cur.deleted && cur.doc ? String(cur.doc.by || '') : '';
+      if (owner && nameKey(owner) !== nameKey(me.name) && !(op === 'delete' && isDirector(me.name))) { log('Draft change refused for', me.name, id); err(req, res, 403, 'A draft belongs to the educator who started it.'); return; }
+      if (body.data && typeof body.data === 'object') body.data = Object.assign({}, body.data, { by: owner || me.name });
+      if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); delete body.patch.by; }
     }
     const recent = (op === 'set' || op === 'update') && cur && !cur.deleted ? recentOf(fpath, cur) : null;
     const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
@@ -2590,6 +2634,7 @@ server.listen(PORT, () => {
   log('TREE server on port', PORT, 'records in', RECORDS_REPO);
   log(TEACHERS.length + ' educator passcodes set');
   log('Sign-ins set on Render for ' + (TEACHERS.map(t => t.name).join(', ') || 'no one'));
+  log('Sign-in key ' + (SESSION_SECRET.length >= 24 ? 'fixed by SESSION_SECRET' : 'NOT fixed, it changes with the GitHub key or passcodes'));
   log('GitHub key ' + (githubToken() ? 'saved' : 'MISSING') + ', Anthropic key ' + (anthropicKey() ? 'saved' : 'MISSING'));
   loadAll(); calendar.loadAll().then(() => { if (store.ready) runOnce(); }, () => {});
 });
