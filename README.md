@@ -752,3 +752,4 @@ Every change to TREE updates the matching Help answer as part of the same change
 - **Proofreading** gives up after 10 seconds and the words stay as typed. The kitchen sign-in skips it.
 - **A new team inquiry** starts off the staff room display until the director turns it on.
 - **Family copy of a transition summary.** The director sees the family's copy before it is shared. Every other child's name, known to TREE or not, becomes "friends" or "a friend", while staff, small groups and classes stay.
+- **Facilitator scripts** in a Presenting entry are seen only by its presenters and the director. Other educators read the plan without them.
