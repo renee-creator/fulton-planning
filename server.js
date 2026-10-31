@@ -533,6 +533,9 @@ ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
 // the director's list of museums and cultural places, added once from once/museums.json
 ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
+// the Idea bank's Help answers, and the Help answers and PD pages that named Documentation for the pages now under Plans,
+// Planning resources, from once/ideabank-words.json
+ONCE.push(['ideabankWords', () => staff.once.edits('ideabankWords', recsEdit)]);
 // October 30, 2026. One Kaymbu email the director sent on October 25 held moments from North and West. An educator
 // naming who shared it put her own name on every photo in it, other small groups' too. Each takes its small group's lead.
 ONCE.push(['kaymbuLeads1030', () => {
@@ -1928,6 +1931,9 @@ async function handle(req, res) {
     else if (path === '/family/agree') r = familyPage.agreement(f, String(body.childId || ''), body.agreement, !!body.submit);
     else if (path === '/family/check') r = familyPage.check(f, String(body.childId || ''), String(body.key || ''), body.on !== false);
     else if (path === '/family/aboutme') r = familyPage.aboutMe(f, String(body.childId || ''), body.pages, !!body.done);
+    // Ideas to try at home, the home side of each Idea bank card and the director's highlights, never the educator side
+    else if (path === '/family/ideas') { try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The ideas are still loading. Try again in a moment.'); return; }
+      const ib = staff.ideabank.forFamily(); if (!ib) { err(req, res, 503, 'The ideas are still loading. Try again in a moment.'); return; } json(req, res, 200, ib); return; }
     else if (path === '/family/file') { r = familyPage.file(f, String(body.id || '')); if (!r.error) { json(req, res, 200, r); return; } }
     else if (path === '/family/handbook' || path === '/family/handbook/img') {
       try { await staff.handbook.ready(); } catch (e) { err(req, res, 503, 'The Family Handbook is still loading. Try again in a moment.'); return; }
