@@ -146,11 +146,53 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       if(/^###\s+/.test(l))out+="<h3>"+inl(l.replace(/^###\s+/,""))+"</h3>";else if(l.trim())out+="<p>"+inl(l)+"</p>"}if(list)out+="</ul>";return out};
   function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
     return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
-  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(D.community&&(D.community.places||D.community.plants))t.push(["places","Places and plants"]);return t};
+  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(D.community&&(D.community.places||D.community.plants))t.push(["places","Places and plants"]);t.push(["ideas","Ideas to try at home"]);return t};
   // the museums and the plants on our site, drawn by community.js, the same as the public page
   const cmState=window.TREE_COMMUNITY?window.TREE_COMMUNITY.state():null;let cmBound=false;
   function placesHtml(){const C=window.TREE_COMMUNITY;if(!C||!D.community)return "";if(!document.getElementById("cm-css")){const st=document.createElement("style");st.id="cm-css";st.textContent=C.CSS;document.head.appendChild(st)}
     if(!cmBound){cmBound=true;C.bind($("#main"),cmState,()=>{if(tab==="places")render()})}return C.html(D.community,cmState,SERVER)}
+  /* Ideas to try at home. The home side of every Idea bank card, by group and by search, with the director's highlights
+     first under Happening at school now. Only the home side reaches this page. Each prints as one page, PDF or Word. */
+  const ID_GROUPS=["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things","Movement and risky play","Indoor spaces","Shared spaces","Outdoor spaces","Children's interests","Across the year on our site"];
+  let IDEAS=null,ideaSel="",ideaQ="",ideaBusy=false;
+  async function ideasLoad(){if(IDEAS||ideaBusy)return;ideaBusy=true;try{IDEAS=await api("/family/ideas")}catch(e){IDEAS={cards:[],highlights:[],error:e.message}}ideaBusy=false;if(tab==="ideas")render()}
+  const ideaCard=id=>((IDEAS&&IDEAS.cards)||[]).find(c=>c.id===id);
+  function ideaSecHtml(x){return `<h3>${esc(x.h)}</h3>${x.style==="text"?`<p>${esc(x.text)}</p>`:x.style==="lines"?(x.items||[]).map(t=>`<p style="margin:2px 0">${esc(t)}</p>`).join(""):`<${x.style==="numbered"?"ol":"ul"}>${(x.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</${x.style==="numbered"?"ol":"ul"}>`}`}
+  function ideasHtml(){if(!IDEAS){ideasLoad();return `<section class="card"><p class="muted">Opening the ideas.</p></section>`}
+    const all=IDEAS.cards||[],q=ideaQ.trim().toLowerCase(),c=ideaCard(ideaSel);
+    const hay=x=>(x.title+" "+x.group+" "+x.sections.map(s=>s.h+" "+(s.text||"")+" "+(s.items||[]).join(" ")).join(" ")).toLowerCase();
+    const shown=q?all.filter(x=>q.split(/\s+/).every(w=>hay(x).includes(w))):all;const hi=(IDEAS.highlights||[]).map(ideaCard).filter(Boolean);
+    const btn=x=>`<button class="link" data-idea="${esc(x.id)}" style="display:block;margin:4px 0;text-align:left">${esc(x.title)}</button>`;
+    if(c)return `<section class="card"><button class="link" data-idea="">Back to all the ideas</button><h2 style="margin-top:8px">${esc(c.title)}</h2>${c.sections.map(ideaSecHtml).join("")}
+      <p><button class="btn sm" data-ideaprint="pdf">Print this page</button> <button class="link" data-ideaprint="word">Word</button></p></section>`;
+    return `<section class="card"><h2>Ideas to try at home</h2><p>Simple ways to keep exploring with your child, using things you already have. Browse anything you like. The ideas under Happening at school now are what we are exploring at school right now.</p>
+      ${hi.length?`<h3>Happening at school now</h3>${hi.map(btn).join("")}`:""}
+      <label class="small" for="ideaq">Search ideas</label><input type="search" id="ideaq" value="${esc(ideaQ)}" placeholder="playdough, rain, bugs">
+      ${q?`<p class="small muted">${shown.length} ${shown.length===1?"idea":"ideas"}</p>${shown.map(btn).join("")}`
+        :ID_GROUPS.filter(g=>all.some(x=>x.group===g)).map(g=>`<details><summary><b>${esc(g)}</b> <span class="small muted">${all.filter(x=>x.group===g).length}</span></summary>${all.filter(x=>x.group===g).map(btn).join("")}</details>`).join("")}
+      ${IDEAS.error?`<p class="small muted">${esc(IDEAS.error)}</p>`:""}</section>`}
+  // one page, the school's name, the title and each part, set as large as the page allows, then a preview before saving
+  async function ideaPdf(c){const K=window.TREE_KIT;await K.loadScript(K.LIB.jspdf,"jspdf");await K.fonts();const W=612,H=792,M=50,TW=W-2*M;
+    const lay=fs=>{const d=K.pdf({format:"letter"});const ops=[];let y=0;const line=(t,size,bold,gap)=>{d.setFont(bold?"pfB":"pfR","normal");d.setFontSize(size);for(const l of d.splitTextToSize(String(t),TW)){ops.push([l,size,bold,y]);y+=size*1.3}y+=gap||0};
+      line("Fulton Community School",fs*.75,false,6);line(c.title,fs*1.8,true,fs*.6);
+      for(const x of c.sections){line(x.h.toUpperCase(),fs*.72,true,2);if(x.style==="text")line(x.text,fs,false,fs*.6);else{(x.items||[]).forEach((t,i)=>line((x.style==="numbered"?(i+1)+". ":x.style==="lines"?"":"• ")+t,fs,false,2));y+=fs*.5}}
+      return {d,ops,h:y}};
+    let L=null;for(let fs=14;fs>=8;fs-=.5){L=lay(fs);if(L.h<=H-2*M)break}
+    const top=Math.max(M,(H-L.h)/2);for(const [t,size,bold,y] of L.ops){L.d.setFont(bold?"pfB":"pfR","normal");L.d.setFontSize(size);L.d.text(t,M,top+y+size,{baseline:"alphabetic"})}
+    return L.d.output("blob")}
+  async function ideaWord(c){const K=window.TREE_KIT;const X=await K.word();await K.fonts();const P=(t,o)=>new X.Paragraph(Object.assign({children:[new X.TextRun(Object.assign({text:String(t),font:"Andika",size:24},o||{}))]},o&&o.para||{}));
+    const kids=[P("Fulton Community School",{size:18}),P(c.title,{bold:true,size:44})];
+    for(const x of c.sections){kids.push(P(x.h,{bold:true,size:20}));if(x.style==="text")kids.push(P(x.text));else(x.items||[]).forEach((t,i)=>kids.push(P((x.style==="numbered"?(i+1)+". ":x.style==="lines"?"":"• ")+t)))}
+    const doc=K.wordFile(X,{creator:"Fulton Community School",title:c.title,fonts:K.wordFonts(),size:"letter",sections:[{children:kids}]});return K.wordBlob(X,doc)}
+  function ideaSave(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+  function ideaPreview(blob,name){const u=URL.createObjectURL(blob);const o=document.createElement("div");o.className="ideapv";o.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:grid;grid-template-rows:auto 1fr;padding:12px;gap:8px";
+    o.innerHTML=`<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn sm" data-pv="save">Download PDF</button><button class="btn sm" data-pv="close" style="background:var(--paper);color:var(--moss)">Close</button></div><iframe title="${esc(name)}" src="${u}" style="width:100%;height:100%;border:0;background:#fff;border-radius:8px"></iframe>`;
+    o.addEventListener("click",e=>{const b=e.target.closest("[data-pv]");if(!b)return;if(b.dataset.pv==="save")ideaSave(blob,name);URL.revokeObjectURL(u);o.remove()});document.body.appendChild(o)}
+  document.addEventListener("input",e=>{if(e.target.id!=="ideaq")return;ideaQ=e.target.value;const at=e.target.selectionStart;render();const q=$("#ideaq");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
+  document.addEventListener("click",async e=>{const b=e.target.closest("[data-idea],[data-ideaprint]");if(!b)return;e.preventDefault();
+    if(b.dataset.idea!=null){ideaSel=b.dataset.idea;render();window.scrollTo(0,0);return}
+    const c=ideaCard(ideaSel);if(!c)return;const name=c.title.replace(/[^A-Za-z0-9 ,'-]/g,"").trim()||"Idea";
+    try{if(b.dataset.ideaprint==="word")ideaSave(await ideaWord(c),name+".docx");else ideaPreview(await ideaPdf(c),name+".pdf")}catch(er){alert("The page could not be made. Check the connection and try again.")}});
   function slotList(k){if(!k.slots.length)return `<p class="small muted" style="margin:4px 0 0">No times are open right now. The school will let you know when they are.</p>`;
     const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
     return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
@@ -387,7 +429,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
     h+=`<nav class="tabs" aria-label="Family page">${T.map(([k,l])=>`<button data-tab="${k}" ${tab===k?'aria-current="page"':""}>${esc(l)}</button>`).join("")}</nav>`;
     h+=hbNewHtml();
-    h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():tab==="places"&&D.community?placesHtml():foodHtml();
+    h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():tab==="places"&&D.community?placesHtml():tab==="ideas"?ideasHtml():foodHtml();
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
     const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};

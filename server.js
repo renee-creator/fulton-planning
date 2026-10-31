@@ -2145,7 +2145,9 @@ async function handle(req, res) {
       const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
       const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
       const keeps = k => (cur.doc[k] || []).every(v => (next[k] || []).includes(v));
-      const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return a.length === b.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum); };
+      // an educator may also add an Idea bank card the team chose to try, with We'll try this, and change nothing else
+      const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return b.length >= a.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum)
+        && b.slice(a.length).every(t => t && typeof t.idea === 'string' && /^[a-z0-9-]{1,80}$/.test(t.idea) && !t.curriculum && typeof t.text === 'string' && t.text.length <= 800 && !String(t.result || '').trim()); };
       const bad = changed.filter(k => !OPEN.includes(k) || ((k === 'obs' || k === 'threads' || k === 'projects') && !keeps(k)) || (k === 'tries' && !triesOk()));
       if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director changes a team inquiry. You can add observations and threads to it, and write what happened when the team tried something.'); return; }
       }
