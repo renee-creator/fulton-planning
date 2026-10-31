@@ -547,6 +547,11 @@ ONCE.push(['kaymbuLeads1030', () => {
   }
   log('Kaymbu moments given their small group lead,', n);
 }]);
+// the director's choice on October 30, 2026. Using a butter knife, from the same email and with no small group, is Lauren F's.
+ONCE.push(['butterKnife1030', () => {
+  const r = store.recs.notices.get('nmvlg7cln1ad6a3'); if (!r || r.deleted || !r.doc) return;
+  if (r.doc.by !== 'Lauren F') { r.doc.by = 'Lauren F'; noteChange('notices', 'nmvlg7cln1ad6a3'); scheduleSave('notices', 'nmvlg7cln1ad6a3'); log('Using a butter knife moved to Lauren F'); }
+}]);
 // Ellie's photos from October 30 were kept, but the observations she was writing never left her phone. Each photo waits
 // for her as a draft, under Your drafts on Observations, so she can write it again.
 ONCE.push(['ellieDrafts1030', () => {
