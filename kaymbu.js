@@ -233,6 +233,12 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     const g = (Array.isArray(set.groups) ? set.groups : []).find(x => x && x.name === name && (!x.room || !room || x.room === room));
     return g && g.educator ? String(g.educator) : '';
   }
+  // an observation in more than one small group carries the lead of each, as "Ana and Bo"
+  function groupLeads(d) {
+    const gs = [...new Set([d.smallGroup, ...(Array.isArray(d.smallGroups) ? d.smallGroups : [])].filter(Boolean))];
+    const ls = [...new Set(gs.map(g => groupLead(g, gs.length > 1 ? '' : d.classroom)).filter(Boolean))];
+    return ls.length > 2 ? ls.slice(0, -1).join(', ') + ' and ' + ls[ls.length - 1] : ls.join(' and ');
+  }
   function findChildren(text, room, title) {
     // a child's record has no id inside it, so the id is the name of its record
     const kids = [...store.recs.children].filter(([, r]) => !r.deleted && r.doc && r.doc.first && (r.doc.status || 'active') !== 'withdrawn').map(([id, r]) => Object.assign({}, r.doc, { id }));
@@ -395,11 +401,11 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       // a moment in a small group always carries the group's lead, whatever the subject says or who sent it. Only a name
       // chosen by hand in Kept by stays, and other changes, such as tagging children, never stop it.
       if (!r.deleted && d0 && d0.kaymbu && d0.smallGroup && !d0.kaymbu.byHand) {
-        const lead = groupLead(d0.smallGroup, d0.classroom);
+        const lead = groupLeads(d0);
         if (lead && lead !== d0.by) { d0.by = lead; d0.kaymbu = Object.assign({}, d0.kaymbu); delete d0.kaymbu.sentBy; noteChange('notices', id); scheduleSave('notices', id); n++; }
       }
       // a moment kept before the subject's educator was read takes that educator, once, unless an educator has changed it by hand
-      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && !d0.editedBy && !(d0.smallGroup && groupLead(d0.smallGroup, d0.classroom)) && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
+      if (!r.deleted && d0 && d0.kaymbu && d0.kaymbu.subject && !d0.kaymbu.byFixed && !d0.editedBy && !(d0.smallGroup && groupLeads(d0)) && (!d0.updatedByName || isClassName(d0.updatedByName) || d0.updatedByName === d0.by)) {
         const ed = readSubject(d0.kaymbu.subject).educator;
         if (ed && ed !== d0.by) { d0.by = ed; d0.kaymbu = Object.assign({}, d0.kaymbu, { byFixed: 1 }); noteChange('notices', id); scheduleSave('notices', id); n++; }
       }

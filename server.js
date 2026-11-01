@@ -1633,7 +1633,7 @@ async function displayFeed() {
   const fk = makeFileKey();
   const photoOf = n => (n && n.photo && typeof n.photo.id === 'string' && ID_RE.test(n.photo.id)) ? { src: photoSrc(n.photo.id), w: Number(n.photo.w) || 0, h: Number(n.photo.h) || 0 } : null;
   const kids = new Map(live('children').filter(c => c.status !== 'withdrawn').map(c => [c.id, c]));
-  const roomsOf = n => { const r = []; if (n.classroom) r.push(n.classroom); for (const id of n.children || []) { const c = kids.get(id); if (c && c.classroom && !r.includes(c.classroom)) r.push(c.classroom); } return r; };
+  const roomsOf = n => { const r = []; for (const x of [n.classroom, ...(Array.isArray(n.classrooms) ? n.classrooms : [])]) if (x && !r.includes(x)) r.push(x); for (const id of n.children || []) { const c = kids.get(id); if (c && c.classroom && !r.includes(c.classroom)) r.push(c.classroom); } return r; };
   const notices = live('notices');
   const inquiries = live('inquiries');
   const held = new Set(); for (const x of inquiries) for (const id of x.obs || []) held.add(id);

@@ -2028,7 +2028,7 @@ const kidDrdpItems=c=>Object.entries((c.drdp&&c.drdp.items)||{}).map(([id,x])=>O
 function drdpSource(kind,rec){
   if(kind==="slides"){const src=slideSources(rec);
     const text=[has(rec.title)?"Slide title. "+rec.title:"",has(rec.text)?"What the team understood. "+rec.text:"",...(rec.quotes||[]).map(q=>(q.name?q.name+" said, ":"A child said, ")+q.words),
-      ...src.map(n=>`Observation kept by ${obsBy(n)||"an educator"} on ${shortDate(n.at)}${n.classroom?", "+n.classroom:""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
+      ...src.map(n=>`Observation kept by ${obsBy(n)||"an educator"} on ${shortDate(n.at)}${obsRoomText(n)?", "+obsRoomText(n):""}. ${n.noticed}${has(n.wonder)?" The educator wondered. "+n.wonder:""}`)].filter(Boolean).join("\n");
     return {text,photos:slidePhotos(rec).map(id=>notices.get(id)).filter(Boolean),kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:rec.title||"A slide"}}
   return {text:`Observation kept by ${rec.by||"an educator"} on ${shortDate(rec.at)}${rec.classroom?", "+rec.classroom:""}. ${rec.noticed||""}${has(rec.wonder)?" The educator wondered. "+rec.wonder:""}`,
     photos:rec.photo?[rec]:[],kids:(rec.children||[]).map(id=>children.get(id)).filter(Boolean),title:momentHeading(rec)||firstLine(rec.noticed,60)};
@@ -2816,7 +2816,7 @@ function shareGather(src){
   else if(k==="lens"){const L=LENSES.find(l=>l.id===id);const re=L&&lensRegex(L);const langs=new Set(((L&&L.languages)||[]).map(x=>x.toLowerCase()));const yr=yearFromTime(Date.now());
     if(L)ns=[...notices.values()].filter(n=>yearFromTime(n.at||Date.now())===yr&&((n.languages||[]).some(x=>langs.has(String(x).toLowerCase()))||(re&&(re.lastIndex=0,re.test(String(n.noticed||"")+" "+String(n.wonder||""))))))}
   else if(k==="food"){const r=shareFoodRange(id),inR=n=>{const d=iso(new Date(n.at||0));return d>=r.from&&d<=r.to};ns=[...notices.values()].filter(n=>inR(n)&&(n.bin||G_OBJ.some(o=>o.re.test((n.noticed||"")+" "+(n.wonder||"")))))}
-  else if(k==="recent"){const t=Date.now()-14*864e5;ns=[...notices.values()].filter(n=>(n.at||0)>=t&&(!id||n.classroom===id))}
+  else if(k==="recent"){const t=Date.now()-14*864e5;ns=[...notices.values()].filter(n=>(n.at||0)>=t&&(!id||momentIn(n,id)))}
   else if(k==="bin"){const t=Date.now()-42*864e5;ns=[...notices.values()].filter(n=>n.bin&&(n.at||0)>=t)}
   // an Idea bank card offers this school year's photos, those whose words share the card's title last, so they show first
   else if(k==="idea"){const c=ibCard(id),yr=yearFromTime(Date.now()),inq=shareInquiryIds();const ws=c?attWords(c.title):[];
@@ -3469,7 +3469,7 @@ function renderStories(){
 let stPickShow=60;
 function storyCandidates(st){
   const pr=st.projectId&&projects.get(st.projectId);const have=new Set(st.sources||[]);storyCandidates.total=0;
-  const pool=(pr?projNotices(pr):[...notices.values()].filter(n=>!st.classroom||n.classroom===st.classroom)).filter(n=>n.photo&&!have.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0));
+  const pool=(pr?projNotices(pr):[...notices.values()].filter(n=>!st.classroom||momentIn(n,st.classroom))).filter(n=>n.photo&&!have.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0));
   storyCandidates.total=pool.length;return pool.slice(0,stPickShow);
 }
 const stThumb=(id,extra)=>{const n=notices.get(id);return n&&n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" ${extra||""}>`:""};
@@ -3589,7 +3589,7 @@ async function storyUpload(st,files){
 function storyPrompt(st){
   const src=storySources(st);const ph=(st.sources||[]).filter(id=>{const n=notices.get(id);return n&&n.photo});
   const kidsOf=id=>stKidNames(id);
-  const notes=src.map((n,i)=>{const pi=ph.indexOf(n.id);return `Observation ${i+1}${pi>=0?`, photo P${pi+1}`:""}, ${n.classroom?n.classroom+" class, ":""}${longDate(iso(new Date(n.at||Date.now())))}${kidsOf(n.id).length?`. Children in this photo ${kidsOf(n.id).join(", ")}`:""}.
+  const notes=src.map((n,i)=>{const pi=ph.indexOf(n.id);return `Observation ${i+1}${pi>=0?`, photo P${pi+1}`:""}, ${obsRoomText(n)?obsRoomText(n)+", ":""}${longDate(iso(new Date(n.at||Date.now())))}${kidsOf(n.id).length?`. Children in this photo ${kidsOf(n.id).join(", ")}`:""}.
 What the educators noticed. ${String(n.noticed||"").trim()||"(nothing written)"}
 What they wondered. ${String(n.wonder||"").trim()||"(nothing written)"}`}).join("\n\n");
   const fr=stFrame(st);
@@ -4719,7 +4719,9 @@ function redrawToday(){if(view!=="today")return;const y=window.scrollY;renderMai
 let tqOpen="",tqKids=null,tqRoom="",tqGroup=null;
 // the photos that came in one email. Older ones have no mark of their email, so their subject and day stand for it.
 // the educator who leads an observation's small group, which always says whose it is
-const groupLeadOf=n=>{if(!n||!n.smallGroup)return"";const g=GROUPS.find(g=>g.name===n.smallGroup&&(!g.room||!n.classroom||g.room===n.classroom));return g&&g.educator?String(g.educator):""};
+// the lead of each small group the observation is in, as "Ana and Bo"
+const groupLeadOf=n=>{const gs=obsGroups(n);if(!gs.length)return"";const one=gs.length===1;
+  const ls=[...new Set(gs.map(name=>{const g=GROUPS.find(g=>g.name===name&&(!one||!g.room||!n.classroom||g.room===n.classroom));return g&&g.educator?String(g.educator):""}).filter(Boolean))];return obsAnd(ls)};
 // an educator names only the photos of her own class, and never one whose small group already names its educator
 const kmailMine=x=>(isDirector()||!myRoom()||momentIn(x,myRoom()))&&!groupLeadOf(x);
 const kBatchOf=n=>n.kaymbu.mail?"m|"+n.kaymbu.mail+"|"+(n.kaymbu.subject||""):[(n.kaymbu.subject||"").trim().toLowerCase(),new Date(n.kaymbu.keptAt||0).toDateString()].join("|");
@@ -4729,7 +4731,7 @@ function kaySuggest(n,room){const grp=noteGroup(n);const base=new Set(grp.flatMa
   const since=Date.now()-60*864e5,co={};
   if(base.size){for(const m of notices.values()){if((m.at||0)<since||!(m.children||[]).some(id=>base.has(id)))continue;for(const id of m.children||[])if(!base.has(id))co[id]=(co[id]||0)+1}
     const gs=new Set([...base].map(id=>(children.get(id)||{}).group).filter(Boolean));for(const c of kidsAt())if(!base.has(c.id)&&gs.has(c.group))co[c.id]=(co[c.id]||0)+2}
-  else if(n.smallGroup){for(const c of kidsAt())if(c.group===n.smallGroup)co[c.id]=1}
+  else if(n.smallGroup){const gs=obsGroups(n);for(const c of kidsAt())if(gs.includes(c.group))co[c.id]=1}
   return Object.entries(co).sort((a,b)=>b[1]-a[1]).map(([id])=>children.get(id)).filter(c=>c&&(!room||c.classroom===room)).slice(0,8)}
 function tqHtml(w){
   const [kind,id]=String(w.q).split("|");const full=`<button class="linkbtn" ${w.act}>Open the full page</button>`;
@@ -5134,7 +5136,7 @@ function renderToday(){
   const name=me()||(window.FP_NAME?window.FP_NAME():"");const room=myRoom();const mg=myGroups();
   const waiting=todayWaiting();
   // one Kaymbu post comes in once for each child in it, so the same words on the same day show once, with every child named
-  const recent=(()=>{const g=new Map();for(const n of [...notices.values()].filter(n=>!room||n.classroom===room).sort((a,b)=>(b.at||0)-(a.at||0))){
+  const recent=(()=>{const g=new Map();for(const n of [...notices.values()].filter(n=>!room||momentIn(n,room)).sort((a,b)=>(b.at||0)-(a.at||0))){
       const k=String(n.noticed||"").replace(/\s+/g," ").trim().slice(0,120).toLowerCase()+"|"+iso(new Date(n.at||0));const e=g.get(k);
       if(e){e.children=[...new Set([...(e.children||[]),...(n.children||[])])];continue}if(g.size<3)g.set(k,Object.assign({},n))}return [...g.values()]})();
   const cal=todayCal.items;
@@ -7291,7 +7293,7 @@ function combRefs(ids,to){const out=[],has=id=>ids.has(id),swap=id=>has(id)?to:i
 function combPlan(keep,gone){const K=noteGroup(keep),G=noteGroup(gone),lead=K[0],gl=G[0];
   const moved=G.filter(x=>x.photo),dropped=G.filter(x=>!x.photo);
   const refs=combRefs(new Set(G.map(x=>x.id)),null);
-  const sg=[...new Set([...K,...G].map(x=>x.smallGroup).filter(Boolean))];
+  const sg=[...new Set([...K,...G].flatMap(obsGroups))];
   const kids=[...new Set(G.flatMap(x=>x.children||[]))].map(id=>(children.get(id)||{}).first).filter(Boolean);
   return {K,G,lead,gl,moved,dropped,refs,sg,kids}}
 function combPaint(){const p=combPanel,sh=p.previousElementSibling;if(!comb){p.hidden=true;sh.hidden=true;p.innerHTML="";return}p.hidden=false;sh.hidden=false;
@@ -7368,7 +7370,13 @@ const noticePlans=()=>[...notices.values()].map(noticeAsPlan);
 // anything the app can quote, whether it was a plan or a moment
 function rec(id){return plans.get(id)||noticeAsPlan(notices.get(id))}
 // Fulton's classes mix, so a moment belongs to its own class and to the class of every child tagged in it
-function momentRooms(n){const r=[];if(n&&n.classroom)r.push(n.classroom);for(const id of (n&&n.children)||[]){const c=children.get(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r.sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
+/* An observation can belong to more than one class and more than one small group. The first chosen stays in classroom
+   and smallGroup, and every chosen one is in classrooms and smallGroups, so observations kept before read as they did. */
+const obsAnd=a=>a.length>2?a.slice(0,-1).join(", ")+" and "+a[a.length-1]:a.join(" and ");
+function obsRoomsChosen(n){return [...new Set([n&&n.classroom,...((n&&Array.isArray(n.classrooms)&&n.classrooms)||[])].filter(Boolean))].sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
+function obsGroups(n){return [...new Set([n&&n.smallGroup,...((n&&Array.isArray(n.smallGroups)&&n.smallGroups)||[])].filter(Boolean))]}
+function obsRoomText(n){const r=obsRoomsChosen(n);return r.length?obsAnd(r)+" class":""}
+function momentRooms(n){const r=[];for(const x of obsRoomsChosen(n))r.push(x);for(const id of (n&&n.children)||[]){const c=children.get(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r.sort((a,b)=>CLASSROOMS.indexOf(a)-CLASSROOMS.indexOf(b))}
 // "none" is every observation that belongs to no class at all, with no class chosen and no tagged child in a class.
 // One with children tagged shows under their classes.
 const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!momentRooms(n).length:momentRooms(n).includes(room));
@@ -7624,7 +7632,7 @@ function noticeFormCard(){
         <details class="nfwhat"><summary class="cnt">What is an observation?</summary><div class="cnt" style="margin-top:4px">An observation is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. A question it raises, or a note for the team">${esc(n.wonder)}</textarea></label>
-    <div class="actions" style="margin-top:2px"><label class="cnt">Class <select id="nf-room" style="width:auto"><option value="">No class</option>${CLASSROOMS.map(r=>`<option ${n.classroom===r?"selected":""}>${esc(r)}</option>`).join("")}</select></label></div>
+    <div class="actions" style="margin-top:2px;flex-wrap:wrap" role="group" aria-label="Class"><span class="cnt">Class</span>${CLASSROOMS.map(r=>`<label class="radio" style="display:inline-flex"><input type="checkbox" data-nfroomck="${esc(r)}" ${obsRoomsChosen(n).includes(r)?"checked":""}><span>${esc(r)}</span></label>`).join("")}</div>
     <div class="fld-label" id="nf-kids">${kidsAreaHtml(n)}</div>
     ${ph||many?`<div class="actions" style="margin-top:0">${addBtn}<span class="cnt">Another photo of the same moment joins this observation.</span></div>`:""}
     ${(()=>{const day0=iso(new Date(editing&&n.at?n.at:Date.now())),set=(n.languages||[]).length+(n.projectId?1:0)+(n.threadId?1:0)+(n.bin?1:0)+(n.smallGroup?1:0)+(n.planId?1:0)+(n.day&&n.day!==day0?1:0);
@@ -7685,9 +7693,10 @@ function obsPlanChoices(n){const day=n.day||iso(new Date(n.at||Date.now())),wk=m
 function obsPlanLabel(p){const f=p.fields||{},wk=fmtDate(p.weekOf).replace(/, \d{4}$/,"");if(p.type==="classroom")return `${p.classroom?p.classroom+" class, ":""}Classroom plan, week of ${wk}`;
   const foc=(p.groups||[]).length?p.groups.join(" and ")+" group":p.group?p.group+" group":"";const about=firstLine(String(f.area||f.intent||f.observation||"").replace(/\s+/g," ").trim(),32);
   return [p.educator||"",foc,"week of "+wk].filter(Boolean).join(", ")+(about?" · "+about:"")}
-function obsGroupPlanHtml(n){const gs=GROUPS.filter(g=>!n.classroom||g.room===n.classroom||momentRooms(n).includes(g.room));const ps=obsPlanChoices(n);
+function obsGroupPlanHtml(n){const rs=momentRooms(n),cur=obsGroups(n),gs=GROUPS.filter(g=>!rs.length||!g.room||rs.includes(g.room));const ps=obsPlanChoices(n);
   if(n.planId&&!ps.some(p=>p.id===n.planId)){const p0=plans.get(n.planId);if(p0)ps.unshift(p0)}
-  return `<label class="cnt nfrow"><span>Small group</span><select id="nf-sgroup"><option value="">None</option>${gs.map(g=>`<option value="${esc(g.name)}" ${n.smallGroup===g.name?"selected":""}>${esc(g.name)}${g.educator?", "+esc(g.educator):""}</option>`).join("")}${n.smallGroup&&!gs.some(g=>g.name===n.smallGroup)?`<option selected>${esc(n.smallGroup)}</option>`:""}</select></label>
+  const gl=[...gs.map(g=>[g.name,g.educator]),...cur.filter(x=>!gs.some(g=>g.name===x)).map(x=>[x,""])];
+  return `<div class="cnt nfrow" id="nf-sgroups" role="group" aria-label="Small group"><span>Small group</span><span style="display:flex;flex-wrap:wrap;gap:4px 10px">${gl.map(([name,ed])=>`<label class="radio" style="display:inline-flex"><input type="checkbox" data-nfsgck="${esc(name)}" ${cur.includes(name)?"checked":""}><span>${esc(name)}${ed?", "+esc(ed):""}</span></label>`).join("")||`<span class="cnt">None for these classes</span>`}</span></div>
     ${ps.length?`<label class="cnt nfrow"><span>Plan</span><select id="nf-plan" style="min-width:0;text-overflow:ellipsis"><option value="">None</option>${ps.map(p=>`<option value="${esc(p.id)}" ${n.planId===p.id?"selected":""}>${esc(obsPlanLabel(p))}</option>`).join("")}</select></label>`:""}`}
 function noticeCards(list){const groups=shareGroups(list);
   return groups.map(g=>{if(g.length===1)return noticeCard(g[0]);const [first,...more]=g;
@@ -7709,7 +7718,7 @@ function foldSections(html,key){
 function moreMenu(inner){inner=String(inner||"").trim();return inner?`<details class="moremenu"><summary>More</summary><div class="actions">${inner}</div></details>`:""}
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${n.smallGroup?" \u00b7 "+esc(n.smallGroup)+" group":""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${obsGroups(n).length?" \u00b7 "+esc(obsAnd(obsGroups(n)))+(obsGroups(n).length>1?" groups":" group"):""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
@@ -7814,7 +7823,7 @@ function patternMatchHtml(p,i){const th=patternMatch(p);if(!th)return "";const m
 function patternObsHtml(p,i){const ns=patternMoments(p);if(!ns.length)return "";const th=patternMatch(p);
   const posts=ns.filter((n,k)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===k&&!(th&&tookOut(n,th)));if(!posts.length)return "";
   const inIt=n=>th&&threadsOfNotice(n).some(t=>t.id===th.id);
-  const row=n=>{const who=[n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", ");
+  const row=n=>{const who=[n.by,obsRoomText(n),shortDate(n.at)].filter(Boolean).join(", ");
     return `<div style="display:grid;grid-template-columns:${n.photo?"64px ":""}1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line);min-width:0">
       ${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`:""}
       <div style="display:grid;gap:4px;min-width:0"><span class="cnt">${esc(who)}</span><span style="font-size:14.5px;overflow-wrap:anywhere">${esc(firstLine(noticeText(n),260))}</span>
@@ -7959,7 +7968,7 @@ function momentsDocs(long,cap){
     if(!items.length)continue;left-=items.length;
     if(g.label)blocks.push(dSub(g.label));
     else if(gs.length===1&&!blocks.some(b=>b.t==="sub"))blocks.push(dSub("Observations kept"));
-    for(const n of items){const credit=[pBy(n.by),n.classroom&&n.classroom+" class"].filter(Boolean).join(", ");
+    for(const n of items){const credit=[pBy(n.by),obsRoomText(n)].filter(Boolean).join(", ");
       // a sheet of children's words prints with its photo in the full set, and as a few of its lines in the summary
       if(n.photo&&long){blocks.push(dPhoto(n,230,false));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),momentBody(n)+(has(n.wonder)?"\n"+wonderLine(n.wonder):"")));continue}
       // a sheet of children's words gives its first child's line in the summary, with the child and the sheet named in the credit
@@ -8085,12 +8094,15 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="moments")retu
   if(t.id==="mgroup"){mGroup=t.value;LS.set("fps.mgroup",mGroup);renderMain();return}
   if(t.id==="mrange"){mRange=t.value;LS.set("fps.mrange",mRange);renderMain();return}});
 document.addEventListener("change",e=>{const t=e.target;if(!noticeForm)return;
-  if(t.id==="nf-room"){noticeForm.classroom=t.value;for(const s of noticeForm.siblings||[])s.classroom=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
+  if(t.dataset&&t.dataset.nfroomck){const on=new Set(obsRoomsChosen(noticeForm));if(t.checked)on.add(t.dataset.nfroomck);else on.delete(t.dataset.nfroomck);const a=CLASSROOMS.filter(r=>on.has(r));
+    for(const x of [noticeForm,...(noticeForm.siblings||[])]){x.classroom=a[0]||"";x.classrooms=a}const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm);
+    const sg=$("#nf-sgroups");if(sg){const w=document.createElement("div");w.innerHTML=obsGroupPlanHtml(noticeForm);const nw=w.querySelector("#nf-sgroups");if(nw)sg.replaceWith(nw)}}
+  else if(t.dataset&&t.dataset.nfsgck){const on=obsGroups(noticeForm).filter(x=>x!==t.dataset.nfsgck);if(t.checked)on.push(t.dataset.nfsgck);
+    for(const x of [noticeForm,...(noticeForm.siblings||[])]){if(on.length){x.smallGroup=on[0];x.smallGroups=on}else{delete x.smallGroup;delete x.smallGroups}}const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
   else if(t.id==="nf-by")changeKeptBy(t.value);
   else if(t.id==="nf-proj")noticeForm.projectId=t.value;
   else if(t.id==="nf-thread")noticeForm.threadId=t.value;
-  else if(t.id==="nf-sgroup"){noticeForm.smallGroup=t.value;for(const sb of noticeForm.siblings||[])sb.smallGroup=t.value;const el=$("#nf-kids");if(el)el.innerHTML=kidsAreaHtml(noticeForm)}
-  else if(t.id==="nf-plan"){noticeForm.planId=t.value;for(const sb of noticeForm.siblings||[])sb.planId=t.value;const pl=plans.get(t.value);if(pl&&!noticeForm.smallGroup){const g=(pl.groups||[])[0]||pl.group;if(g){noticeForm.smallGroup=g;for(const sb of noticeForm.siblings||[])sb.smallGroup=g;const el=$("#nf-sgroup");if(el)el.value=g;const ks=$("#nf-kids");if(ks)ks.innerHTML=kidsAreaHtml(noticeForm)}}}
+  else if(t.id==="nf-plan"){noticeForm.planId=t.value;for(const sb of noticeForm.siblings||[])sb.planId=t.value;const pl=plans.get(t.value);if(pl&&!noticeForm.smallGroup){const g=(pl.groups||[])[0]||pl.group;if(g){for(const x of [noticeForm,...(noticeForm.siblings||[])]){x.smallGroup=g;x.smallGroups=[g]}const el=$(`[data-nfsgck="${CSS.escape(g)}"]`);if(el)el.checked=true;const ks=$("#nf-kids");if(ks)ks.innerHTML=kidsAreaHtml(noticeForm)}}}
   else if(t.id==="nf-day")noticeForm.day=t.value;});
 document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photo"&&t.id!=="nf-photo2")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addMomentPhotos(fs)});
 document.addEventListener("change",e=>{const t=e.target;if(t.id!=="nf-photoadd")return;const fs=[...(t.files||[])];t.value="";if(fs.length)addPhotosToForm(fs)});
@@ -10274,7 +10286,7 @@ function evResults(p){const box=$("#evres");if(!box)return;const q=evQuery.trim(
   if(!rs.length){box.innerHTML=`<div class="cnt">Nothing kept mentions ${esc(q)} yet.</div>`;return}
   box.innerHTML=`<div class="cnt">${rs.length===30?"The 30 most recent":rs.length} found</div>`+rs.map(r=>{
     if(r.kind==="obs"){const n=r.n,on=evRefHas(p,"obs",n.id)||(p.noticeAdded||[]).includes(n.id);
-      return `<div class="evhit"><div class="cnt">Observation, ${esc([n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", "))}</div>
+      return `<div class="evhit"><div class="cnt">Observation, ${esc([n.by,obsRoomText(n),shortDate(n.at)].filter(Boolean).join(", "))}</div>
         ${n.photo?`<div class="evrow"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"><div>${evSnip(r.text,terms)}</div></div>`:`<div>${evSnip(r.text,terms)}</div>`}
         <div class="actions">${on?`<span class="cnt">Attached</span>`:locked?"":`<button class="btn small ghost" data-evatt="obs|${esc(n.id)}">Attach to this plan</button>`}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></div></div>`}
     if(r.kind==="plan"){const pl=r.pl,on=evRefHas(p,"plan",pl.id);
@@ -10302,7 +10314,7 @@ function gsRun(){const terms=evTerms(gs.q);const kid=gs.kid&&children.get(gs.kid
   const out=[];const seen=new Set();
   for(const n of [...notices.values()].sort((a,b)=>(b.at||0)-(a.at||0))){const k=n.group||n.id;if(seen.has(k))continue;const grpN=noteGroup(n);const ids=[...new Set(grpN.flatMap(x=>x.children||[]))];
     const text=[n.noticed,n.wonder].filter(Boolean).join("\n"),full=[text,names(ids),n.by].join("\n");
-    if(!inTime(n.at)||!okKid(ids,text)||!okGrp(ids,grpN.map(x=>x.smallGroup).filter(Boolean))||(terms.length&&!evMatch(full,terms)))continue;seen.add(k);
+    if(!inTime(n.at)||!okKid(ids,text)||!okGrp(ids,grpN.flatMap(obsGroups))||(terms.length&&!evMatch(full,terms)))continue;seen.add(k);
     out.push({kind:grpN.some(x=>x.photo)?"photo":"obs",n,ph:grpN.find(x=>x.photo),at:n.at||0,text:text||names(ids),title:[n.by,momentRoomsText(n)].filter(Boolean).join(", "),open:`data-mjump="${esc(n.id)}"`})}
   for(const pl of plans.values()){if(pl.id==="example"||!PLAN_TYPES.includes(pl.type)||isEmptyPlan(pl))continue;const at=parseIso(pl.weekOf).getTime();const text=FORMS[pl.type].fields.map(f=>pl.fields?.[f.k]).filter(Boolean).join("\n");
     if(!inTime(at)||!okKid([],text)||!okGrp([],[pl.group,...(pl.groups||[])])||(terms.length&&!evMatch([text,pl.educator,pl.classroom].join("\n"),terms)))continue;
@@ -10768,7 +10780,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-evatt],[da
 // the evidence attached to a plan, printed after it, with photos where there are photos
 function planEvidenceDoc(p){const refs=p.evidenceRefs||[];if(!refs.length)return null;const blocks=[];
   const os=refs.filter(r=>r.kind==="obs").map(r=>notices.get(r.id)).filter(Boolean).sort((a,b)=>(a.at||0)-(b.at||0));
-  if(os.length){blocks.push(dSub("Observations"));for(const n of os){const credit=[pBy(n.by),n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", ");
+  if(os.length){blocks.push(dSub("Observations"));for(const n of os){const credit=[pBy(n.by),obsRoomText(n),shortDate(n.at)].filter(Boolean).join(", ");
     const body=(n.photo?momentBody(n):String(n.noticed||""))+(has(n.wonder)?"\n"+wonderLine(n.wonder):"");
     if(n.photo){blocks.push(dPhoto(n,170,false));blocks.push(dText(credit,body))}else blocks.push(dQuote(body,credit))}}
   const ps=refs.filter(r=>r.kind==="plan"&&plans.has(r.id)).map(r=>({r,pl:plans.get(r.id)})).sort((a,b)=>String(a.pl.weekOf).localeCompare(String(b.pl.weekOf)));
@@ -11864,7 +11876,7 @@ function projectDoc(x,long){
   if(weeks.length){blocks.push(dSub("How it unfolded"));
     for(const w of weeks){const os=obs.filter(n=>wkOf(n)===w),rs=after.filter(pl=>pl.weekOf===w);if(!os.length&&!rs.length)continue;
       blocks.push({t:"small",label:"Week of "+fmtDate(w),lines:[]});
-      for(const n of os.filter(n=>posts.includes(n))){const credit=[pBy(n.by),n.classroom&&n.classroom+" class"].filter(Boolean).join(", ");
+      for(const n of os.filter(n=>posts.includes(n))){const credit=[pBy(n.by),obsRoomText(n)].filter(Boolean).join(", ");
         const body=(n.photo?momentBody(n):String(n.noticed||""))+(has(n.wonder)?"\n"+wonderLine(n.wonder):"");
         if(n.photo){os.filter(o=>o.photo&&(o.group||o.id)===(n.group||n.id)).slice(0,3).forEach(o=>blocks.push(dPhoto(o,230,false)));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),body))}
         else blocks.push(dQuote(body,[credit,shortDate(n.at)].filter(Boolean).join(", ")))}
@@ -13831,7 +13843,7 @@ function howFullThread(t,ev,open){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
   return `<details class="card fold howthread" data-fold="how:${esc(t.id)}" ${open||foldOpen.has("how:"+t.id)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${esc(t.name)}</span><span class="cnt">${[t.classroom&&t.classroom+" class",cnt(ps.length,"plan"),cnt(posts.length,"observation")].filter(Boolean).join(" · ")}</span></summary><div class="foldbody" style="display:grid;gap:6px">
     ${t.question?`<div class="muted">${esc(t.question)}</div>`:""}
     ${sec("hp:"+t.id,"Plans, week by week",ps.length,ps.map(p=>item(p.id,`${esc(FORMS[p.type].short)} plan, ${esc(p.educator||p.classroom||"")}`,"Week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""),planAfter(p)?"Final remarks. "+firstLine(planAfter(p),180):firstLine((p.fields||{}).observation||(p.fields||{}).area||"",180),"",`data-open="${esc(p.id)}"`,mark(p.id))).join(""))}
-    ${sec("ho:"+t.id,"Observations",posts.length,posts.map(n=>item(n.id,esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),180),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`,mark(n.id))).join(""))}
+    ${sec("ho:"+t.id,"Observations",posts.length,posts.map(n=>item(n.id,esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,obsRoomText(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),180),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`,mark(n.id))).join(""))}
     ${sec("hs:"+t.id,"Slides made from them",sl.length,sl.map(x=>item(x.id,esc(String(x.title||"").trim()||"Untitled slide"),shortDate(x.at||x.updatedAt||Date.now()),"","","data-slide=\""+esc(x.id)+"\"",null)).join(""))}
     ${sec("hst:"+t.id,"Stories made from them",st.length,st.map(x=>item(x.id,esc(stTitle(x)),stReviewed(x)?"Reviewed":"Draft","","","data-story=\""+esc(x.id)+"\"",null)).join(""))}
     ${sec("hi:"+t.id,"Team inquiries",iq.length,iq.map(q=>item(q.id,esc(q.name||"Untitled"),inqScope(q),firstLine(q.see||"",160),"","data-iqopen=\""+esc(q.id)+"\"",null)).join(""))}
@@ -13857,7 +13869,7 @@ function howLoose(){const cnt=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
   const it=(t,m,b,img,o)=>`<div class="howitem">${img?`<img src="${esc(img)}" alt="" loading="lazy">`:""}<div style="min-width:0;display:grid;gap:2px"><b style="font-weight:600">${t}</b><span class="cnt">${esc(m)}</span>${b?`<span class="evclamp" style="font-size:13.5px">${esc(b)}</span>`:""}<span><button class="linkbtn" ${o}>Open it</button></span></div></div>`;
   return `<details class="card fold" data-fold="howloose" ${foldOpen.has("howloose")?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Not connected yet</span><span class="cnt">${cnt(ps.length,"plan")}, ${cnt(posts.length,"observation")}</span></summary><div class="foldbody" style="display:grid;gap:6px">
     ${ps.length?`<details class="howsec"><summary><span>Plans</span><span class="cnt">${ps.length}</span></summary><div class="howlist">${ps.map(p=>it(`${esc(FORMS[p.type].short)} plan, ${esc(p.educator||p.classroom||"")}`,"Week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""),firstLine((p.fields||{}).area||(p.fields||{}).observation||"",160),"",`data-open="${esc(p.id)}"`)).join("")}</div></details>`:""}
-    ${posts.length?`<details class="howsec"><summary><span>Observations</span><span class="cnt">${posts.length}</span></summary><div class="howlist">${posts.slice(0,60).map(n=>it(esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),160),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`)).join("")}${posts.length>60?`<div class="cnt">The 60 most recent.</div>`:""}</div></details>`:""}</div></details>`}
+    ${posts.length?`<details class="howsec"><summary><span>Observations</span><span class="cnt">${posts.length}</span></summary><div class="howlist">${posts.slice(0,60).map(n=>it(esc(momentHeading(n)||firstLine(n.noticed,50)||"An observation"),[n.by,obsRoomText(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentHeading(n)?momentBody(n):noticeText(n),160),n.photo?photoThumb(n):"",`data-obsgo="${esc(n.id)}"`)).join("")}${posts.length>60?`<div class="cnt">The 60 most recent.</div>`:""}</div></details>`:""}</div></details>`}
 function howHtml(){const {ev,HOW}=howFiltered();const [k,id]=String(aFocus||"").split(":");const f=id&&(k==="t"?threads.get(id):projects.get(id));
   const units=howUnits();
   let h=`<section class="card" style="gap:8px"><select id="afocus" style="width:auto;max-width:100%" aria-label="A project or thread"><option value="">Choose a project or thread</option>${units.map(u=>`<option value="${u.k}:${esc(u.id)}" ${aFocus===u.k+":"+u.id?"selected":""}>${esc(u.sub.split(",")[0]+" "+u.name)}</option>`).join("")}</select></section>`;
@@ -13887,7 +13899,7 @@ function howDoc(){const {ev,HOW}=howFiltered();const blocks=[];
       for(const b of bits){const t=b.t;blocks.push(dSub(t.name));if(t.question)blocks.push(dText("",t.question));
         const ps=threadPlans(t).sort((a,b)=>String(a.weekOf).localeCompare(String(b.weekOf)));if(ps.length)blocks.push(dList("Plans, week by week",ps.map(p=>`${FORMS[p.type].short} plan, ${p.educator||p.classroom||""}, week of ${fmtDate(p.weekOf)}`)));
         const ns=threadNotices(t).sort((a,b)=>(a.at||0)-(b.at||0)).filter((n,i,a)=>a.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
-        for(const n of ns){const credit=[pBy(n.by),n.classroom&&n.classroom+" class",shortDate(n.at)].filter(Boolean).join(", ");if(n.photo){blocks.push(dPhoto(n,150,false));blocks.push(dText(credit,firstLine(momentHeading(n)?momentBody(n):noticeText(n),300)))}else blocks.push(dQuote(firstLine(noticeText(n),300),credit))}}
+        for(const n of ns){const credit=[pBy(n.by),obsRoomText(n),shortDate(n.at)].filter(Boolean).join(", ");if(n.photo){blocks.push(dPhoto(n,150,false));blocks.push(dText(credit,firstLine(momentHeading(n)?momentBody(n):noticeText(n),300)))}else blocks.push(dQuote(firstLine(noticeText(n),300),credit))}}
       blocks.push(dSub("How each connection was made"))}}const strip=s=>String(s).replace(/<[^>]*>/g,"").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'");
   for(const w of [...new Set(ev.map(e=>mondayOf(new Date(e.at))))]){blocks.push(dSub("Week of "+fmtDate(w)));
     for(const e of ev.filter(e=>mondayOf(new Date(e.at))===w))blocks.push(dItem(strip(e.what),[e.why&&((e.how==="suggest"||e.how==="pattern"||e.how==="find"?"Reason given, ":"")+e.why),e.words&&"“"+firstLine(e.words,200)+"”"].filter(Boolean).join(" "),[e.who?pBy(e.who):"TREE on its own",HOW[e.how]||"",shortDate(e.at)].filter(Boolean).join(", "),[]))}

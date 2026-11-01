@@ -17,7 +17,7 @@ library: provocations
 
 With each one, and with every artwork, we use the same routine. I notice. I wonder. It reminds me of. What do you see that makes you say that?
 
-## Curiosity cards
+## Wonderings
 
 - We wonder what the children notice when they follow the veins of a leaf with a fingertip.
 

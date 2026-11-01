@@ -16,7 +16,7 @@ library: provocations
 
 With each one we use the same routine. I notice. I wonder. It reminds me of. What do you see that makes you say that?
 
-## Curiosity cards
+## Wonderings
 
 - We wonder what the children notice when they follow the veins of a leaf with a fingertip.
 
@@ -87,7 +87,7 @@ test('on a Classroom plan, adding a question costs no new reading, keeps the oth
   let asks = 0;
   const ai = http.createServer((q, r) => { const c = []; q.on('data', d => c.push(d)); q.on('end', () => { asks++;
     const text = JSON.stringify({ thin: false, items: [
-      { from: 'prompt', id: 'Curiosity cards|0', why: 'The children traced the leaf.' },
+      { from: 'prompt', id: 'Wonderings|0', why: 'The children traced the leaf.' },
       { from: 'observation', text: 'We wonder what the children are testing each time they let the wheelbarrow roll back.', why: 'They pushed the wheelbarrow up the hill again and again.' }] });
     r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); }); });
   await new Promise(ok => ai.listen(0, '127.0.0.1', ok));
