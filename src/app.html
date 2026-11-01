@@ -1313,6 +1313,8 @@ function renderMain(){
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(view))view="kitchen";
   if(isNewHire()&&!STAFF_VIEWS.includes(view)&&view!=="settings"&&view!=="search"){view="stnew";LS.set("fps.view",view)}
   if(STAFF_VIEWS.includes(view)){if(!staffSubOk(view)){view=staffNavOn()||isNewHire()?staffHome():"today";LS.set("fps.view",view);if(!STAFF_VIEWS.includes(view)&&!isNewHire()){renderMain();return}}if(STAFF_VIEWS.includes(view)){renderStaff();return}}
+  // a planning resource opened before the director turned them on for educators goes to Plans
+  if((view==="guide"||PLAN_RES.some(([k])=>k===view))&&!planResOk()){view="plans";LS.set("fps.view",view);if(typeof renderNav==="function")renderNav()}
   if(view==="kitchen"){renderKitchen();return}
   if(view==="walks"){renderWalks();return}
   if(view==="ideabank"){renderIdeaBank();return}
@@ -4411,6 +4413,8 @@ const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New E
 /* Plans keeps the plan work in its tabs, and below them Planning resources, closed to start, holds the Idea bank, the
    Garden, Artists, Museums and cultural places, Recipes, and Songs and stories with the book collection. Each page keeps
    its own address, so an old link still opens it. */
+// educators see the planning resources once the director turns them on. The director and the kitchen always do.
+const planResOk=()=>isDirector()||isKitchenUser()||!!(PROGRAM_DOC&&PROGRAM_DOC.planResOn);
 const PLAN_RES=[["ideabank","Idea bank"],["garden","Garden"],["artists","Artists"],["museums","Museums and cultural places"],["recipes","Recipes"],["songs","Songs and stories"]];
 const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",drdpreview:"today",wreport:"today",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"plans",gatherings:"docs",recipes:"plans",songs:"plans",artists:"plans",museums:"plans",ideabank:"plans",guide:"plans",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
@@ -4437,6 +4441,8 @@ function goView(v,opts){
   else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen","walls"].includes(v))v="today";
   // the Gatherings page waits for the director to release it, or a gathering in it
   else if(v==="gatherings"&&!gthPageOpen())v="today";
+  // the planning resources wait for the director to turn them on for educators
+  else if((v==="guide"||PLAN_RES.some(([k])=>k===v))&&!planResOk())v="plans";
   if(v==="children"&&view!=="children"&&view!=="child")kVisit=false;
   view=v;LS.set("fps.view",view);const s=secOf(v);if(SUBS[s]&&SUBS[s].some(x=>x[0]===v)){lastSub[s]=v;LS.set("tree.sub",lastSub)}
   if(!(opts&&opts.keepPlan))currentId=null;
@@ -4471,8 +4477,9 @@ function subnavHtml(){
   let subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():k==="museums"?(isDirector()||!!(libData&&libData.places)):(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back&&s!=="plans")return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view==="guide"?"ideabank":view;
   // the planning resources sit under the plan tabs, closed until opened, and open while one of them is the page
-  let res="";if(s==="plans"){const kit=isKitchenUser();if(kit)subs=[];const rs=PLAN_RES.filter(([k])=>kit?KITCHEN_VIEWS.includes(k):k==="museums"?(isDirector()||!!(libData&&libData.places)):true);
-    if(rs.length)res=`<details class="planres"${rs.some(([k])=>k===curSub)?" open":""}><summary class="sub">Planning resources</summary><div class="subrow">${rs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div></details>`}
+  let res="";if(s==="plans"){const kit=isKitchenUser();if(kit)subs=[];const rs=PLAN_RES.filter(([k])=>kit?KITCHEN_VIEWS.includes(k):!planResOk()?false:k==="museums"?(isDirector()||!!(libData&&libData.places)):true);
+    const on=!!(PROGRAM_DOC&&PROGRAM_DOC.planResOn),sw=isDirector()&&!kit&&!VIEW_AS?`<div class="cnt" style="margin-top:6px">${on?"Educators see these.":"Only you see these. Educators see them once you turn them on."} <button class="linkbtn" data-planreson="${on?0:1}">${on?"Turn off for educators":"Turn on for educators"}</button></div>`:"";
+    if(rs.length)res=`<details class="planres"${rs.some(([k])=>k===curSub)?" open":""}><summary class="sub">Planning resources</summary><div class="subrow">${rs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>${sw}</details>`}
   // the Educators pages sit under four tabs, for the director and every educator, and the pages of the open one show
   // beneath, so a phone shows the page itself on the first screen
   if(s==="staff"&&subs&&subs.length>4){const g=ST_GROUPS.map(([n,ks])=>[n,ks.filter(k=>subs.some(x=>x[0]===k))]).filter(([,ks])=>ks.length),cur=g.find(([,ks])=>ks.includes(curSub))||g[0],lab=k=>(subs.find(x=>x[0]===k)||[])[1];
@@ -5571,7 +5578,12 @@ function readRow(x){const dir=isDirector()&&!VIEW_AS,t=readText(x);
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-readready]");if(!t)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   try{libData=await window.FP_API("/api/staff/library/ready",{path:t.dataset.readready,on:true});toast("Ready. Educators see it now.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}});
 function readGuideDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud, reading guide"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...readGuideParts(x).map(p=>libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text))]}}
-function readTextDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:readPages(readText(x)).map(p=>dText(p.h,p.text))}}
+// a story prints on one page, its title above and its words centred beneath, with the page headings left out. A story too
+// long to read on one page keeps the plain pages.
+function readTextDoc(x){const text=readPages(readText(x)).map(p=>p.text).filter(has).join("\n\n");
+  const card=asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:[dText("",text)]},{sub:"A read-aloud"});
+  try{if(card&&card.centered&&window.jspdf){const doc=planDoc({unit:"pt",format:"letter"});const F=cFlow(doc,cReady(card),accOf(card.acc)||ACC.story);if(!F.over&&F.pages.length===1&&!(F.pages[0].s<.72))return card}}catch(e){}
+  return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",text)]}}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords]");if(!t||view!=="songs")return;const d=t.dataset;
   if(d.songtab){songTab=d.songtab;renderMain();return}
   if(d.songadd!=null){songAdd=d.songadd==="1";renderMain();return}
@@ -5735,7 +5747,8 @@ function attachSuggest(p){const words=new Set(attWords([...Object.values(p.field
   return attachPool().filter(x=>!had.has(x.kind+"|"+x.id)).map(x=>{const ws=attWords(x.text);let sc=0;for(const w of ws){if(words.has(w))sc+=attWords(x.title).includes(w)?3:1;if(prod.has(w)&&(x.kind==="recipe"||/piazza|kitchen/i.test(String(p.where||""))))sc+=2}
     if(x.season&&season&&x.season===season&&garden)sc+=2;return Object.assign({},x,{sc})}).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,4)}
 function attachHtml(p){if(!p||p.id==="example"||!PLAN_TYPES.includes(p.type))return "";const att=p.attached||[];const open=attachOpen===p.id;
-  const find=`<button class="btn small ghost" data-ibfind="${esc(p.id)}">Find an idea</button>`;
+  const find=planResOk()?`<button class="btn small ghost" data-ibfind="${esc(p.id)}">Find an idea</button>`:"";
+  if(!att.length&&!open&&!planResOk())return "";
   if(!att.length&&!open)return `<div class="actions" style="margin:10px 0 0"><button class="btn small ghost" data-attopen="${esc(p.id)}">Attach from our libraries</button>${find}</div>`;
   if(att.length&&!open)return `<section class="card" id="attachsec"><div class="secthead"><div class="lbl" style="margin:0">Attached</div><span class="actions" style="margin:0"><button class="linkbtn" data-attopen="${esc(p.id)}">Attach or take off</button>${find}</span></div><div class="libchips">${libChips(att)}</div></section>`;
   const pool=open?attachPool():[];const q=attachQ.trim().toLowerCase();const found=open&&q?pool.filter(x=>x.text.toLowerCase().includes(q)&&!att.some(a=>a.kind===x.kind&&a.id===x.id)).slice(0,12):[];
@@ -7715,7 +7728,7 @@ function noticeCard(n){
     ${momentDrdpHtml(n)}${noticeAttachHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
     <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
-      ${moreMenu(`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
+      ${moreMenu(`${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -10318,7 +10331,7 @@ function gsLibsReady(){if(gsLibState===2)return true;if(gsLibState===1)return fa
   Promise.allSettled([loadLibrary(),garden(),isKitchenUser()?null:ibLoad(),gsPdLoad()]).then(()=>{gsLibState=2;if(view==="search")gsResults()});return false}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibseeing]");if(!t)return;e.preventDefault();if(!ib)await ibLoad();ibSt.mode="seeing";ibSt.bsel=t.dataset.ibseeing;ibSt.picked=true;goView("ideabank")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gsurl]");if(!t)return;window.open(t.dataset.gsurl,"_blank","noopener")});
-function gsLibHits(terms){const out=[];
+function gsLibHits(terms){const out=[];if(!planResOk())return out;
   if(typeof gdn!=="undefined"){if(gdn===null)loadGarden();else if(gdnOk()){
     for(const [list,lbl] of [[gdn.plants,"Plant"],[gdn.animals,"Animal"],[gdn.wild,"Who lives near us"],[gdn.signs,"Sign"]])for(const x of (list||[])){if(!x||!x.id||(lbl==="Plant"&&x.planned&&!isDirector()))continue;
       const name=gdnName(x),text=gsText(x);if(!evMatch(name+"\n"+text,terms))continue;
@@ -12584,7 +12597,7 @@ async function printsClick(t){
   if(kind==="mqarea"){if(!libData)await loadLibrary();const xs=mqShown().filter(y=>y.area===t.dataset.id);if(xs.length)await out(mqListDocs(xs),t.dataset.id);return true}
   if(kind==="artistcard"){if(!libData)await loadLibrary();const c=artCard(t.dataset.id);if(!c)return true;await out([artistDoc(c)],c.name+" card");return true}
   if(kind==="bookcard"){if(!libData)await loadLibrary();const x=(libData.books||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([bookCardDoc(x)],x.title+" card");return true}
-  if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
+  if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;if(kind==="readtext"){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});try{await loadPrintFonts()}catch(er){}}await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
   if(kind==="exploration"){if(!libData)await loadLibrary();const x=(libData.explorations||[]).find(r=>r.id===t.dataset.id);if(x)await out([explDoc(x)],x.title.replace(/[?]/g,""));return true}
   if(kind==="songwords"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x,true)],x.title);return true}
   if(kind==="song"){if(!libData)await loadLibrary();const x=(libData.songs||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([songDoc(x)],x.title);return true}
@@ -15079,6 +15092,8 @@ function communityRelHtml(){if(!libData){loadLibrary();return `<section class="c
   return `<section class="card"><div class="lbl">Places and plants for the whole community</div><div class="hint">The museums and cultural places near us and the plants on our site. Each part stays with you until you turn it on. The plants show once the Garden is marked ready.</div>
     ${P?COMM_SW.map(([k,l])=>`<label class="radio"><input type="checkbox" data-commsw="${k}" ${sw[k]?"checked":""}><span>${esc(l)}</span></label>`).join(""):`<div class="cnt">The museum list is not in the records yet.</div>`}
     ${sw.public?`<div class="cnt" style="margin-top:6px">The public page, to copy for our website.</div><textarea rows="1" readonly aria-label="The public page link" style="font-size:13px">${esc(link)}</textarea>`:`<div class="cnt" style="margin-top:6px">While the public page is off, its link says it is not open yet.</div>`}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-planreson]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const on=t.dataset.planreson==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{planResOn:on,planResAt:Date.now()});saveProgram();renderNav();renderMain();toast(on?"Educators see the planning resources now.":"The planning resources are hidden from educators.")});
 document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||!t.dataset.commsw)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   try{libData=await window.FP_API("/api/staff/library/places/switch",{key:t.dataset.commsw,on:t.checked});toast(t.checked?"Turned on.":"Turned off.")}catch(er){toast(er&&er.message||"That did not save.");loadLibrary(true)}renderMain()});
 document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||(!t.dataset.relpage&&!t.dataset.relone))return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}

@@ -536,6 +536,8 @@ ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
 // the Idea bank's Help answers, and the Help answers and PD pages that named Documentation for the pages now under Plans,
 // Planning resources, from once/ideabank-words.json
 ONCE.push(['ideabankWords', () => staff.once.edits('ideabankWords', recsEdit)]);
+// the provocations and curiosity prompts with no kit or company names, from once/no-kit-names.json
+ONCE.push(['noKitNames', () => staff.once.edits('noKitNames', recsEdit)]);
 // October 30, 2026. One Kaymbu email the director sent on October 25 held moments from North and West. An educator
 // naming who shared it put her own name on every photo in it, other small groups' too. Each takes its small group's lead.
 ONCE.push(['kaymbuLeads1030', () => {

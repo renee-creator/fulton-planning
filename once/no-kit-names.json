@@ -1,0 +1,30 @@
+{
+ "note": "Watch and Wonder taken out of the provocations and curiosity prompts.",
+ "changes": [
+  {
+   "path": "staff/library/prompts/provocations.md",
+   "from": "note: These came from the Watch and Wonder Curiosity Prompt cards and the Exploration, Sky Watcher and Story Weaver kit prompts, adapted into open questions as educators' wonderings, plus a seasonal garden set drawn from the sources credited below, and an educator can always ignore them.",
+   "to": "note: Open questions offered as educators' wonderings, plus a seasonal garden set drawn from the sources credited below. An educator can always ignore them."
+  },
+  {
+   "path": "staff/library/prompts/provocations.md",
+   "from": "\n## Curiosity cards\n",
+   "to": "\n## Wonderings\n"
+  },
+  {
+   "path": "staff/library/prompts/provocations.md",
+   "from": "\n## Exploration\n",
+   "to": "\n## Exploring\n"
+  },
+  {
+   "path": "staff/library/prompts/provocations.md",
+   "from": "\n## Sky Watcher\n",
+   "to": "\n## Sky, sun and stars\n"
+  },
+  {
+   "path": "staff/library/prompts/provocations.md",
+   "from": "\n## Story Weaver\n",
+   "to": "\n## Stories\n"
+  }
+ ]
+}

@@ -68,7 +68,7 @@ test('the Idea bank in TREE', async t => {
     await s.p.evaluate(() => { ibSt.side = 'edu'; renderMain(); }); await s.p.click('#ibright li button[data-ibopen="color-mixing"]'); await wait(300);
     assert.strictEqual(await s.p.evaluate(() => ibSt.sel), 'color-mixing');
     // Select all shown, and one card to a page
-    await s.p.click('[data-ibselall]'); await wait(200);
+    await s.p.click('[data-ibmode="list"]'); await wait(200); await s.p.click('[data-ibselall]'); await wait(200);
     const n = await s.p.evaluate(() => ibPick.size); assert.ok(n >= 3);
     const docs = await s.p.evaluate(async () => (await ibPrintDocs('home|' + [...ibPick].join(','))).map(d => [d.title, !!d.centered]));
     assert.strictEqual(docs.length, n); assert.ok(docs.every(d => / at Home$/.test(d[0])));
@@ -187,5 +187,30 @@ test('the Idea bank in TREE', async t => {
     const txt = await p.innerText('#main'); assert.match(txt, /Wonder together/); assert.doesNotMatch(txt, /Feeds|Open to all|Your presence/);
     assert.doesNotMatch(await p.innerText('body'), /[—–]|\bteacher|\bClaude\b/);
     assert.deepStrictEqual(errors, []);
+  });
+
+  await t.test('the planning resources wait for the director to turn them on for educators, and a card reads in short parts', async () => {
+    const a = await signedIn(fx, br, 'Ann', '1357', 1280);
+    await a.p.evaluate(() => { PROGRAM_DOC = Object.assign({}, PROGRAM_DOC, { planResOn: false }); goView('ideabank'); });
+    assert.strictEqual(await a.p.evaluate(() => view), 'plans', 'an educator is sent to Plans');
+    assert.strictEqual(await a.p.$('[data-tview="ideabank"]'), null, 'and sees no Planning resources');
+    assert.strictEqual(await a.p.$('[data-ibfind]'), null);
+    await a.p.evaluate(() => { PROGRAM_DOC = Object.assign({}, PROGRAM_DOC, { planResOn: true }); goView('ideabank'); });
+    assert.strictEqual(await a.p.evaluate(() => view), 'ideabank');
+    await a.close();
+    const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1280);
+    await s.p.evaluate(async () => { await ibLoad(); ibOpen('watercolor'); }); await s.p.waitForSelector('.ibsec', { timeout: 10000 });
+    assert.ok(await s.p.$('[data-planreson="0"]'), 'the director has the switch');
+    assert.strictEqual(await s.p.$('.ibwrap'), null, 'an open card has the page to itself');
+    const longest = await s.p.$$eval('.ibcardv p', ps => Math.max(...ps.map(p => p.innerText.split(/[.!?]\s/).length)));
+    assert.ok(longest <= 3, 'paragraphs stay short');
+    // a Connected to entry opens the item it names, not only its page
+    const links = await s.p.evaluate(() => { artCards = () => [{ id: 'monet', name: 'Claude Monet' }];
+      attachPool = () => [{ kind: 'book', id: 'b1', title: 'Leaf Man' }, { kind: 'recipe', id: 'r1', title: 'Butternut squash soup' }, { kind: 'song', id: 's1', title: 'Rain, rain' }];
+      return [ibConnHtml('Claude Monet on the Artists page, for the same place in different light'), ibConnHtml('Book collection, for Leaf Man and Red Leaf, Yellow Leaf by Lois Ehlert'),
+        ibConnHtml('Recipe library, for soups on cold wet days'), ibConnHtml('Song book, for rain and weather songs'), ibConnHtml((LENSES[0] || {}).name + ' lens')]; });
+    assert.match(links[0], /data-libopen="artist\|monet"/); assert.match(links[1], /data-libopen="book\|b1"/);
+    assert.match(links[2], /data-libopen="recipe\|r1"/); assert.match(links[3], /data-libopen="song\|s1"/); assert.match(links[4], /data-lensgo=/);
+    assert.deepStrictEqual(s.errors, []); await s.close();
   });
 });
