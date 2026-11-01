@@ -651,11 +651,13 @@ const outsideWords=t=>String(t||"").replace(/\[([^\]]+)\]\(tree:[^)]+\)/g,"$1").
   .replace(/\s+(in|into|on|through) TREE\b/g,"").replace(/\bTREE's\s+/g,"our ").replace(/\bin the Idea bank\b/g,"among our ideas").replace(/\bThe Idea bank cards\b/g,"Our ideas");
 function deckModule(m,depth,outside){const base=depth&&m.depth?Object.assign({},m,{lead:m.depth.lead,sections:m.depth.sections}):m;
   if(!outside)return base;return Object.assign({},base,{sections:base.sections.filter(x=>!OUT_SKIP.test(x.heading)).map(x=>Object.assign({},x,{body:outsideWords(x.body)}))})}
-async function moduleDeck(m,o){o=o||{};const mm=deckModule(m,o.depth,o.outside);let sl=moduleSlides(mm);const pics={};
+// the deck maker in deck-app.js reads modules the same way, and makes the PowerPoint and the Present view (November 1, 2026)
+Gr.deckKit={loadMods,deckModule,outsideWords,areaName,loadPptx};
+async function moduleDeck(m,o){o=o||{};if(o.format!=="pdf"&&window.TreeDeck)return window.TreeDeck.pptx(m,o);const mm=deckModule(m,o.depth,o.outside);let sl=moduleSlides(mm);const pics={};
   for(const s of sl){if(!s._pic)continue;try{pics[s._pic]=await X.picData(s._pic)}catch(er){s._drop=true}}sl=sl.filter(s=>!s._drop);
   if(o.format==="pdf"){for(const s of sl)if(s._pic){const pd=pics[s._pic];photoCache.set("pdimg:"+s._pic,{url:pd.url,bytes:pd.buf,w:pd.w,h:pd.h});delete s._pic}
     if(o.outside)for(const s of sl)s.footer="Fulton Community School & Farm";await out("pdf",sl,m.title+(o.depth?", in depth":"")+(o.outside?", handout":" slides"));return}
-  const P=await loadPptx();const pres=new P();pres.layout="LAYOUT_WIDE";pres.title=m.title;pres.company="Fulton Community School & Farm";
+  const P=await loadPptx();const pres=new P();pres.layout="LAYOUT_WIDE";pres.title=String(m.title).replace(/&/g,"&amp;").replace(/</g,"&lt;");pres.company="Fulton Community School &amp; Farm";
   const INK="1E2620",GREEN="2E5E45",SOFT="55605A",credit=o.outside?"Fulton Community School & Farm":"Fulton Community School";
   sl.forEach((s,i)=>{const sd=pres.addSlide();sd.background={color:"FFFFFF"};
     sd.addText(credit,{x:0.5,y:7.0,w:12.3,h:0.3,fontFace:"Georgia",fontSize:10,color:SOFT,align:"center"});

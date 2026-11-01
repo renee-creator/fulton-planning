@@ -237,6 +237,12 @@ module.exports = function presentingModule(c) {
       // in person, virtual or both, and who it is for, our own staff, other schools and groups, or both
       if ('mode' in b) e.mode = ['inperson', 'virtual', 'both'].includes(b.mode) ? b.mode : '';
       if ('audienceType' in b) e.audienceType = ['internal', 'external', 'both'].includes(b.audienceType) ? b.audienceType : '';
+      // the photos the deck uses, in order. The first is the title slide's. A photo is a picture kept in the records or an
+      // observation photo, each with a short caption (November 1, 2026)
+      if ('deck' in b) { const d = b.deck && typeof b.deck === 'object' ? b.deck : {};
+        const KEY = /^(pic:staff\/[A-Za-z0-9/_.-]+\.(png|jpe?g|webp|gif)|obs:[A-Za-z0-9_.-]{1,80})$/i, seen = new Set();
+        e.deck = { photos: (Array.isArray(d.photos) ? d.photos : []).filter(p => p && KEY.test(String(p.key || '')) && !seen.has(p.key) && seen.add(p.key)).slice(0, 40)
+          .map(p => ({ key: String(p.key), thumb: /^[A-Za-z0-9_.-]{1,80}$/.test(String(p.thumb || '')) ? String(p.thumb) : '', cap: txt(p.cap, 200).replace(/\n/g, ' ').trim(), w: Math.max(0, Math.round(+p.w || 0)), h: Math.max(0, Math.round(+p.h || 0)) })) }; }
       if ('followupOn' in b) e.followup = Object.assign({ reads: [], prompts: [], checks: [] }, e.followup, { on: !!b.followupOn });
       if ('followupReads' in b) e.followup = Object.assign({ reads: [], prompts: [], checks: [] }, e.followup, { reads: (Array.isArray(b.followupReads) ? b.followupReads : []).map(String).filter(id => (e.readings || []).some(r => r.id === id)).slice(0, 12) });
       // the presenters, the names on prints and what TREE looks for are the director's

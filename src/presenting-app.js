@@ -56,6 +56,8 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
     (dir?card("Start an entry",`<div class="kfields"><label style="grid-column:span 2">Title<input type="text" id="prn-title" placeholder="The talk or session's title"></label></div><div class="actions"><button class="btn small" data-prnew="1">Start the entry</button><button class="btn small ghost" data-prnew="template">Start from our PD template</button></div>`):""))}
 
 async function entryPage(my){const e=E(),dir=D(),ed=edit();
+  // the module's own pictures, which the deck can use
+  if(ed&&e.module&&window.TreeDeck&&!(st.dkSrc&&st.dkSrc.slug===e.module))st.dkSrc={slug:e.module,list:await TreeDeck.moduleSources(e.module)};
   if(ed&&foldOpen.has("pres:evidence")&&st.evFor!==e.id){try{st.ev=await pa("evidence",{id:e.id});st.evFor=e.id}catch(er){st.ev=null}}
   const back=`<div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-prsel="">‹ Presenting</button>${e.status==="presented"?chip("ok","Presented "+fd(e.presentedOn)):chip("soonish","Being planned")}</div>`;
   // an entry made from a PD module carries that module's original materials, for the director and the presenters
@@ -65,14 +67,52 @@ async function entryPage(my){const e=E(),dir=D(),ed=edit();
     (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+deckCard(e)+origFold+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
   X.draw(my,h)}
 
-/* An entry made from a PD module always has its PowerPoint, made fresh from the module each time, from the overview or
-   the in-depth version. An entry for outside audiences gets the outside-audience adjustments and a handout as a PDF. */
-function deckCard(e){if(!e.module||!(edit()||D()))return"";const outside=e.audienceType==="external"||e.audienceType==="both";
+/* An entry made from a PD module always has its slide deck, made fresh from the module each time, from the overview or
+   the in-depth version. Present shows it full screen in TREE, and the PowerPoint carries the same slides. The entry's plan
+   sets the parts, its question opens and closes the deck, and the photos chosen here fill the slides. An entry for outside
+   audiences gets the outside-audience adjustments and a handout as a PDF (November 1, 2026). */
+const deckPhotos=e=>((e.deck||{}).photos||[]);
+function deckCard(e){if(!e.module||!(edit()||D()))return"";const outside=e.audienceType==="external"||e.audienceType==="both";const ed=edit();
   const b=(depth,format,label)=>`<button class="btn small${format==="pptx"?"":" ghost"}" data-prdeck="${H(e.module)}|${depth?1:0}|${format}|${outside?1:0}">${H(label)}</button>`;
-  return card("Slide deck",`<div class="hint">${outside?"Made for outside audiences, with Fulton Community School & Farm on every slide, TREE's steps written as general practice and internal notes left out. Children's names and photos stay for context, so take them out before sharing the file.":"Made from the module as our own staff will see it."} Each deck is made fresh from the module, so it always carries the latest wording.</div>
-    <div class="actions">${b(false,"pptx","PowerPoint, overview")}${b(true,"pptx","PowerPoint, in depth")}${outside?b(false,"pdf","Handout, PDF"):""}</div><div class="cnt">If the module has no in-depth version, the in-depth deck uses the overview.</div>`)}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-prdeck]");if(!t||!window.TreeModuleDeck)return;e.preventDefault();const [slug,dp,format,outside]=t.dataset.prdeck.split("|");
-  window.TreeModuleDeck(slug,{depth:dp==="1",format,outside:outside==="1"})});
+  const pv=(depth,label)=>`<button class="btn small" data-prpresent="${depth?1:0}">${H(label)}</button>`;
+  const L=deckPhotos(e);
+  const row=(p,i)=>`<div class="prmom" style="align-items:center"><img data-dkthumb="${H(p.key)}" data-dkt="${H(p.thumb||"")}" alt="" style="width:96px;height:64px;object-fit:cover;border-radius:6px;background:var(--line)">
+    <div style="min-width:0;flex:1"><div class="cnt">${i===0?"Title slide":"Photo "+(i+1)}</div>${ed?`<input type="text" data-dkcap="${i}" value="${H(p.cap||"")}" placeholder="A short caption, shown on a full photo slide" style="width:100%">`:`<div>${H(p.cap||"")}</div>`}
+    ${ed?`<div class="actions" style="margin:4px 0 0">${i>0?`<button class="linkbtn" data-dkmove="${i}|-1">Move up</button>`:""}${i<L.length-1?`<button class="linkbtn" data-dkmove="${i}|1">Move down</button>`:""}<button class="linkbtn" data-dkrm="${i}">Take it out</button></div>`:""}</div></div>`;
+  const have=new Set(L.map(p=>p.key));
+  const opt=p=>`<div class="prmom" style="align-items:center"><img data-dkthumb="${H(p.key)}" data-dkt="${H(p.thumb||"")}" alt="" style="width:96px;height:64px;object-fit:cover;border-radius:6px;background:var(--line)"><div style="min-width:0;flex:1"><div class="cnt">${H(clip(p.cap||"",160))}</div><button class="btn small ghost" data-dkadd="${H(JSON.stringify(p))}">Add</button></div></div>`;
+  const fromMod=(st.dkSrc&&st.dkSrc.slug===e.module?st.dkSrc.list:[]).filter(p=>!have.has(p.key));
+  const fromCh=(e.chosen||[]).filter(x=>x.photo&&x.photo.id&&!have.has("obs:"+x.photo.id)).map(x=>({key:"obs:"+x.photo.id,thumb:x.photo.thumb||"",cap:[x.date?fd(x.date):"",x.room?x.room+" class":""].filter(Boolean).join(", "),w:x.photo.w||0,h:x.photo.h||0}));
+  const q=String(st.dkQ||"").trim().toLowerCase();
+  const fromObs=(typeof notices!=="undefined"?[...notices.values()]:[]).filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&!have.has("obs:"+n.photo.id)&&(!q||[n.noticed,n.wonder,n.classroom].join(" ").toLowerCase().includes(q))).sort((a,x)=>(x.at||0)-(a.at||0)).slice(0,st.dkMore||12)
+    .map(n=>({key:"obs:"+n.photo.id,thumb:n.photo.thumb||"",cap:[n.at?fd(new Date(n.at).toISOString().slice(0,10)):"",n.classroom?n.classroom+" class":""].filter(Boolean).join(", "),w:n.photo.w||0,h:n.photo.h||0}));
+  const photos=`<div class="lbl" style="margin-top:14px">Photos for the deck</div><div class="hint">The first photo fills the title slide. The others go beside key ideas and fill full photo slides during the experience, in this order. With none chosen, the deck uses the module's own pictures. Children's names and faces stay, so take them out before sharing a file outside our school.</div>
+    <div style="display:grid;gap:6px;margin-top:6px">${L.map(row).join("")||empty("No photos chosen yet.")}</div>
+    ${ed?`<details style="margin-top:10px" ${st.dkOpen?"open":""} data-dkopen="1"><summary class="cnt" style="cursor:pointer">Choose photos</summary><div style="display:grid;gap:6px;margin-top:6px">
+      ${fromMod.length?`<div class="cnt"><b>From this module</b></div>${fromMod.map(opt).join("")}`:""}
+      ${fromCh.length?`<div class="cnt"><b>From Chosen moments</b></div>${fromCh.map(opt).join("")}`:""}
+      <div class="cnt"><b>From our documentation</b></div>
+      <div class="actions" style="margin:0"><input type="search" id="dk-q" value="${H(st.dkQ||"")}" placeholder="Words in the observation, or a class" style="flex:1 1 180px"><button class="btn small ghost" data-dkfind="1">Find</button></div>
+      ${fromObs.map(opt).join("")||empty(q?"No observation photo found. Try other words.":"No observation photos are here yet.")}
+      ${fromObs.length>=(st.dkMore||12)?`<div><button class="linkbtn" data-dkmore="1">Show more</button></div>`:""}</div></details>`:""}`;
+  setTimeout(fillThumbs,0);
+  return card("Slide deck",`<div class="hint">${outside?"Made for outside audiences, with Fulton Community School & Farm on every slide, TREE's steps written as general practice and internal notes left out.":"Made from the module as our own staff will see it."} Each deck is made fresh from the module and this entry's plan, so it always carries the latest wording. Present fills the screen, with slides that fade and points that appear one at a time. The presenter view, from the bar at the bottom, opens the speaker notes and script in a second window.</div>
+    <div class="actions">${pv(false,"Present, overview")}${pv(true,"Present, in depth")}</div>
+    <div class="actions">${b(false,"pptx","PowerPoint, overview")}${b(true,"pptx","PowerPoint, in depth")}${outside?b(false,"pdf","Handout, PDF"):""}</div><div class="cnt">If the module has no in-depth version, the in-depth deck uses the overview. ${e.question?"":"Add a guiding question under About this entry and it opens and closes the deck."}</div>${photos}`)}
+async function fillThumbs(){for(const im of document.querySelectorAll("img[data-dkthumb]:not([src])")){const key=im.dataset.dkthumb;im.setAttribute("src","data:image/gif;base64,R0lGODlhAQABAAAAACw=");
+  try{const u=await TreeDeck.thumb({key,thumb:im.dataset.dkt});if(u)im.src=u}catch(er){}}}
+async function saveDeck(photos){try{set(await pa("save",{id:E().id,fields:{deck:{photos}}}));X.redraw()}catch(er){fail(er)}}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-prdeck],[data-prpresent],[data-dkadd],[data-dkrm],[data-dkmove],[data-dkfind],[data-dkmore]");if(!t)return;const d=t.dataset;
+  if(d.prdeck){if(!window.TreeModuleDeck)return;e.preventDefault();const [slug,dp,format,outside]=d.prdeck.split("|");window.TreeModuleDeck(slug,{depth:dp==="1",format,outside:outside==="1",entry:E()});return}
+  if(d.prpresent){e.preventDefault();if(window.TreeDeck)TreeDeck.present({slug:E().module,depth:d.prpresent==="1",entry:E()});return}
+  e.preventDefault();const L=deckPhotos(E()).slice();st.dkOpen=!!document.querySelector("[data-dkopen][open]");
+  if(d.dkadd){let p;try{p=JSON.parse(d.dkadd)}catch(er){return}if(L.length>=40){toast("A deck holds up to 40 photos. Take one out first.");return}saveDeck([...L,p]);return}
+  if(d.dkrm){L.splice(+d.dkrm,1);saveDeck(L);return}
+  if(d.dkmove){const [i,dir]=d.dkmove.split("|").map(Number);const j=i+dir;if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];saveDeck(L);return}
+  if(d.dkfind){st.dkQ=val("#dk-q");st.dkMore=12;X.redraw();return}
+  if(d.dkmore){st.dkMore=(st.dkMore||12)+12;X.redraw();return}});
+document.addEventListener("change",e=>{const t=e.target.closest("[data-dkcap]");if(!t)return;const L=deckPhotos(E()).slice();const i=+t.dataset.dkcap;if(!L[i])return;L[i]=Object.assign({},L[i],{cap:t.value.trim()});saveDeck(L)});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.id==="dk-q"){e.preventDefault();st.dkQ=e.target.value;st.dkMore=12;st.dkOpen=true;X.redraw()}});
 /* the entry's own details, which every reader sees. The day reads with its times, such as Saturday, May 22, 2027,
    9:00 am to 12:00 pm, and a day still to be settled says so. */
 // how an entry is offered, and who it is for
