@@ -64,7 +64,7 @@ test('restored drafts, three ways in and layers', async t => {
     assert.strictEqual((mod.layers || {}).pdday, date);
   });
 
-  await t.test('original materials open for the director and presenters only', async () => {
+  await t.test('original materials open for the director only', async () => {
     const l = await fx.as(dee, '/api/staff/pd/originals', { slug: 'documentation' }); assert.strictEqual(l.status, 200); assert.strictEqual(l.body.list[0].title, 'A guide');
     assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).status, 403);
     // a photo link made with the file key never opens an original PD file
@@ -78,14 +78,14 @@ test('restored drafts, three ways in and layers', async t => {
     assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).status, 403);
     const m = (await fx.as(dee, '/api/staff/pres/new', { title: 'Documentation', template: true, module: 'documentation' })).body;
     assert.ok(m && m.id); await fx.as(dee, '/api/staff/pres/save', { id: m.id, fields: { presenters: ['Ann'] } });
-    assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).status, 200);
+    // a presenter of an entry made from the module is still refused, since the files are the director's alone
+    assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).status, 403);
     // only the director takes a file off the list, and Put back returns it
     const id = 'pdorig-documentation-guide.pdf';
     assert.strictEqual((await fx.as(ann, '/api/staff/pd/original/remove', { slug: 'documentation', id })).status, 403);
     const rm = await fx.as(dee, '/api/staff/pd/original/remove', { slug: 'documentation', id }); assert.strictEqual(rm.status, 200);
     assert.strictEqual(rm.body.list.length, 0); assert.strictEqual(rm.body.removed[0].id, id);
-    assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).body.list.length, 0);
-    assert.strictEqual((await fx.as(ann, '/api/staff/pd/originals', { slug: 'documentation' })).body.removed, undefined);
+    assert.strictEqual((await fx.as(dee, '/api/staff/pd/originals', { slug: 'documentation' })).body.list.length, 0);
     const bk = await fx.as(dee, '/api/staff/pd/original/restore', { slug: 'documentation', id }); assert.strictEqual(bk.body.list[0].id, id);
   });
 
