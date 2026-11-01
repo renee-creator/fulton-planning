@@ -167,7 +167,9 @@ function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^
   .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(m,t,u)=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`)
   // a link to another module, tree:pd/26-seeing-ourselves, or to an Idea bank card, tree:ib/writing-center, opens it in one tap
   .replace(/\[([^\]]+)\]\(tree:pd\/(?:\d+-)?([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-stmod="m:${u}">${t}</button>`)
-  .replace(/\[([^\]]+)\]\(tree:ib\/([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-ibopen="${u}">${t}</button>`)}
+  .replace(/\[([^\]]+)\]\(tree:ib\/([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-ibopen="${u}">${t}</button>`)
+  // a section of the Policies and Procedures, such as tree:hb/daily-schedule, opens that section
+  .replace(/\[([^\]]+)\]\(tree:hb\/([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-hbopen="${u}">${t}</button>`)}
 function md(text){const L=String(text||"").replace(/\r/g,"").split("\n");let h="",i=0;
   while(i<L.length){const l=L[i];
     if(!l.trim()){i++;continue}
