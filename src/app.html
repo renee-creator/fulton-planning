@@ -5511,27 +5511,26 @@ function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";con
   blocks.push(dText(recKindOf(x)==="food"?"Our food rule":"Sensory",recKindOf(x)==="food"?(fr?fr+" ":"")+"We are nut free.":SENSORY_NOTE));
   return {display:true,type:"report",acc:"story",title:x.title,meta:[(x.meta||{}).source?"From "+x.meta.source:""].filter(Boolean),blocks}}
 /* ---------- The song book and the read-alouds, for meeting time ----------
-   A song marked © shows its title, its songwriter and a link to a recording, with the © sign beside the title, and its
-   words never appear in TREE. A traditional song shows its words and prints them. The words come from our own song
-   books. The director adds songs and changes a song's mark: marking it © removes any words, and taking the mark off
-   leaves a place for them. The read-alouds sit beside the songs, our own stories and traditional tales, each with its reading guide. */
+   A song marked © shows the © sign beside its title, its songwriter, a link to a recording and, once the director adds
+   them from our own song books, its words, which show and print. A traditional song shows its words and prints them.
+   The director adds songs, their words and their mark (November 1, 2026). The read-alouds sit beside the songs, our own stories and traditional tales, each with its reading guide. */
 let songTab="songs",songOpen="",songAdd=false,bookAdd=false;
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
-const songWords=x=>songCopy(x)?"":recPart(x,"Words");
+const songWords=x=>recPart(x,"Words");
 const songParts=x=>(x.parts||[]).filter(p=>!/^words$/i.test(p.key)&&String(p.text||"").trim());
 function songRow(x){const c=songCopy(x),w=songWords(x),dir=isDirector()&&!VIEW_AS;
   return `<details class="strow" data-songrow="${esc(x.id)}" ${songOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${c?"© ":""}${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).songwriter||"")}</span></summary>
-    ${w?`<div style="white-space:pre-line;margin:6px 0">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.${/source to confirm/i.test((x.meta||{}).check||"")?" Its source is still to confirm, so only its title is kept until it is confirmed traditional.":""}</div>`:`<div class="cnt">Our song books do not hold its words yet.</div>`}
+    ${w?`<div style="white-space:pre-line;margin:6px 0">${esc(w)}</div>`:c?`<div class="cnt">${dir?"Add its words from our own song books, and they show and print with the © mark beside the title.":"The director has not added its words yet."}</div>`:`<div class="cnt">Our song books do not hold its words yet.</div>`}
     ${songParts(x).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
-    <div class="actions" style="flex-wrap:wrap">${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}${printBtns("song",esc(x.id),c?"Title card":"Words")}
-      ${dir?`${c||!w?"":pageEditBtn(x.path,"Edit the words")}${!c&&!w?`<button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button>`:""}<button class="linkbtn" data-songcopy="${esc(x.path)}|${c?0:1}">${c?"Take off the © mark":"Mark it ©, which removes its words"}</button>`:""}</div></details>`}
+    <div class="actions" style="flex-wrap:wrap">${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}${printBtns("song",esc(x.id),w?"Words":"Title card")}
+      ${dir?`${w?pageEditBtn(x.path,"Edit the words"):`<button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button>`}<button class="linkbtn" data-songcopy="${esc(x.path)}|${c?0:1}">${c?"Take off the © mark":"Mark it ©"}</button>`:""}</div></details>`}
 function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the song book</div></section>`;return}
   const dir=isDirector()&&!VIEW_AS,songs=(libData.songs||[]).slice().sort((a,b)=>a.title.replace(/^The /,"").localeCompare(b.title.replace(/^The /,""))),books=(libData.readalouds||[]);
   m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Songs, stories and books</h2><div class="sub">Our song book, our read-alouds for meeting time and our book collection.</div></div>
     <div class="tseg" role="group" aria-label="Songs or stories" style="margin-bottom:10px"><button data-songtab="songs" aria-pressed="${songTab==="songs"}">Song book</button><button data-songtab="books" aria-pressed="${songTab==="books"}">Read-alouds</button><button data-songtab="collection" aria-pressed="${songTab==="collection"}">Books</button></div>
-    ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows its title, songwriter and a recording. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
+    ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows the © mark beside its title, its songwriter and a recording, and its words once the director adds them from our own song books. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
       ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="kfields"><label>Title<input type="text" id="sg-t"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional"></label><label>A recording<input type="url" id="sg-l" placeholder="https://"></label></div>
-        <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, keep only its title, songwriter and recording</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
+        <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, the © mark shows beside its title</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
     :songTab==="collection"?bookCollectionHtml():`<section class="card"><div class="hint">Read-alouds for meeting time, our own stories of our garden, animals and seasons and traditional tales retold for our school, each with a reading guide.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
 /* ---------- The book collection ----------
    Our vetted books, each with why we chose it, the kind of reading it suits, a reading guide with I notice and I wonder,
@@ -5592,8 +5591,8 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-song
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   try{if(d.songsave){const title=($("#sg-t")?.value||"").trim();if(!title){toast("Give the song a title.");return}
       libData=await window.FP_API("/api/staff/library/add",{kind:"song",title,songwriter:($("#sg-w")?.value||"").trim(),link:($("#sg-l")?.value||"").trim(),copyright:!!$("#sg-c")?.checked});songAdd=false;toast("Added to the song book.");renderMain();return}
-    if(d.songcopy){const [path,on]=d.songcopy.split("|");libData=await window.FP_API("/api/staff/library/copyright",{path,on:on==="1"});toast(on==="1"?"Marked ©. Its words are removed.":"The © mark is off. Its words can be added.");renderMain();return}
-    if(d.songwords){libData=await window.FP_API("/api/staff/library/copyright",{path:d.songwords,on:false});window.TREE_EDIT_PAGE({path:d.songwords},()=>loadLibrary(true))}}catch(er){toast(er&&er.message||"That did not save.")}});
+    if(d.songcopy){const [path,on]=d.songcopy.split("|");libData=await window.FP_API("/api/staff/library/copyright",{path,on:on==="1"});toast(on==="1"?"Marked ©. Its words stay, with the mark beside its title.":"The © mark is off.");renderMain();return}
+    if(d.songwords){libData=await window.FP_API("/api/staff/library/copyright",{path:d.songwords,place:true});window.TREE_EDIT_PAGE({path:d.songwords},()=>loadLibrary(true))}}catch(er){toast(er&&er.message||"That did not save.")}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.songrow!=null&&d.open)songOpen=d.dataset.songrow;if(d&&d.dataset&&d.dataset.readrow!=null&&d.open)songOpen="r:"+d.dataset.readrow},true);
 // a song as a sheet: a traditional song with its words, a © song with only its title and songwriter
 function songDoc(x,wordsOnly){const w=songWords(x);const more=wordsOnly?[]:songParts(x).map(p=>libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text));
@@ -5601,8 +5600,8 @@ function songDoc(x,wordsOnly){const w=songWords(x);const more=wordsOnly?[]:songP
 /* ---------- The Artists page ----------
    One card for each artist, kept in the records at staff/library/prompts/artists.md, which the director edits with the one
    editor and its history. Each card names the work, what it sits beside on our site, the wondering, our routine and a note
-   for the educator. The note shows on the screen only and never prints. A work in the public domain has a Picture and
-   prints large with little text. A work still under copyright has a Link and is never copied. Cards print one, some or all,
+   for the educator. The note shows on the screen only and never prints. A work with an image, the director's own photo, a
+   public domain Picture or an image shown from a museum's site, prints large with little text. Cards print one, some or all,
    and a card attaches to a plan the same way the other libraries do. */
 const ART_ROUTINE="I notice. I wonder. It reminds me of. What do you see that makes you say that?";
 const ART_SETS=["Garden and materials","Seeing ourselves"];
@@ -5613,26 +5612,37 @@ function artCards(){const a=libData&&libData.artists;if(!a)return [];
   return (a.parts||[]).map(p=>{const t=p.text||"";const pic=artField(t,"Picture");
     return {id:artSlug(p.key),name:p.key,who:p.key.split(",")[0].trim(),set:artField(t,"Set").split(/,\s*/).filter(Boolean),known:artField(t,"Known as").split(/,\s*/).filter(Boolean),
       kind:(artField(t,"Print or link")||"Link").toLowerCase(),picture:/^https:\/\/[^\s"<>]+$/.test(pic)?pic:"",links:[...artField(t,"Link").matchAll(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g)].map(m=>[m[1],m[2]]),
-      pairs:artField(t,"Pairs with"),wonder:artField(t,"Wondering"),note:artField(t,"For the educator"),shown:pic?null:artShownOf(artField(t,"Shown from"))}})}
+      pairs:artField(t,"Pairs with"),wonder:artField(t,"Wondering"),note:artField(t,"For the educator"),shown:pic?null:artShownOf(artField(t,"Shown from")),photo:(libData.artPhotos||{})[artSlug(p.key)]||null}})}
+/* the image a card shows and prints. The director's own photo comes first, then a public domain Picture, then the image
+   shown from a museum or the artist's own site, which TREE reads through our server when a card prints (November 1, 2026) */
+const artImgSrc=c=>c.photo&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(c.photo.id):c.picture||(c.shown?c.shown.src:"");
+const artImgKey=c=>c.photo?"artph-"+c.photo.id:c.picture?"art-"+c.id:c.shown?"artshown-"+c.id:"";
+// before a card prints, an image shown from another site is read through our server, since that site does not hand it to the page
+async function artPrep(cards){const want=cards.filter(c=>!c.photo&&!c.picture&&c.shown&&!photoCache.has(artImgKey(c)));let missed=[];
+  await Promise.all(want.map(async c=>{try{const r=await fetch(window.FP_SERVER+"/api/staff/library/artshown",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({card:c.id})});
+    if(!r.ok)throw new Error("no");const bmp=await decodeImage(await r.blob());const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height));const cv=document.createElement("canvas");cv.width=Math.round(bmp.width*sc);cv.height=Math.round(bmp.height*sc);
+    const g=cv.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);g.drawImage(bmp,0,0,cv.width,cv.height);const jb=await new Promise(res=>cv.toBlob(res,"image/jpeg",.88));
+    photoCache.set(artImgKey(c),{url:cv.toDataURL("image/jpeg",.88),bytes:await jb.arrayBuffer(),w:cv.width,h:cv.height})}catch(e){missed.push(c.who)}}));
+  if(missed.length)toast((missed.length===1?missed[0]+"'s image":"The images for "+missed.join(", "))+" could not be read from "+(missed.length===1?"its site":"their sites")+", so "+(missed.length===1?"that card prints":"those cards print")+" with "+(missed.length===1?"its link":"their links")+". Add a photo to the card to print it.")}
 /* A work still under copyright may name, on its Shown from line, the museum or the artist's own site and the address of the
-   image that site shows. TREE shows it on the screen straight from that site. It is never fetched by TREE, never kept and
-   never printed, and the printouts read only the Picture line. When the site does not allow it, the image hides itself and the
-   card keeps its link to the exact work. */
+   image that site shows. TREE shows it on the screen straight from that site, and a printed card reads it through our server
+   and prints it with the site it is shown from. When the site does not allow it, the image hides itself, the card keeps its
+   link to the exact work, and the director can add her own photo to the card (November 1, 2026). */
 function artShownOf(v){const m=String(v||"").match(/^\[([^\]]+)\]\((https:\/\/[^)\s"<>]+)\)/);return m?{from:m[1],src:m[2]}:null}
-const artShownHtml=c=>c.shown?`<figure class="art-shown" style="margin:0;display:grid;gap:4px;justify-items:start"><img src="${esc(c.shown.src)}" alt="${esc(c.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').hidden=true" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:6px;border:1px solid var(--line)"><figcaption class="cnt">Shown from ${esc(c.shown.from)}. On the screen only, never printed.</figcaption></figure>`:"";
+const artShownHtml=c=>c.shown?`<figure class="art-shown" style="margin:0;display:grid;gap:4px;justify-items:start"><img src="${esc(c.shown.src)}" alt="${esc(c.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').hidden=true" style="max-width:100%;max-height:320px;object-fit:contain;border-radius:6px;border:1px solid var(--line)"><figcaption class="cnt">Shown from ${esc(c.shown.from)}.</figcaption></figure>`:"";
 const artCard=id=>artCards().find(c=>c.id===id)||null;
 // the card whose words name the artist in a line from our prompts, so a wondering taken from the Artists list brings its card
 function artForLine(line){const l=String(line||"").toLowerCase();return artCards().find(c=>c.known.some(k=>k&&l.includes(k.toLowerCase())))||null}
 function artRow(c){const dir=isDirector()&&!VIEW_AS;
-  return `<details class="strow" data-artrow="${esc(c.id)}" ${artOpen===c.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-artpick="${esc(c.id)}" ${artPick.has(c.id)?"checked":""} aria-label="Choose ${esc(c.name)} to print"></label><b>${esc(c.name)}</b> <span class="cnt">${esc(c.picture?"Prints large":c.kind==="book"?(c.shown?"From a book, shown on screen":"From a book"):c.kind==="print"?"Public domain, picture to add":c.shown?"Shown on screen":"Linked")}</span></summary>
+  return `<details class="strow" data-artrow="${esc(c.id)}" ${artOpen===c.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-artpick="${esc(c.id)}" ${artPick.has(c.id)?"checked":""} aria-label="Choose ${esc(c.name)} to print"></label><b>${esc(c.name)}</b> <span class="cnt">${esc(c.photo?"Our photo, prints large":c.picture?"Prints large":c.shown?"Prints large, shown from "+c.shown.from:c.kind==="book"?"From a book":c.kind==="print"?"Public domain, picture to add":"Linked")}</span></summary>
     <div style="display:grid;gap:6px;margin:8px 0">
-      ${c.picture?`<img src="${esc(c.picture)}" alt="${esc(c.name)}" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;justify-self:start;border-radius:6px;border:1px solid var(--line)">`:artShownHtml(c)}
+      ${c.photo||c.picture?`<img src="${esc(artImgSrc(c))}" alt="${esc(c.name)}" loading="lazy" style="max-width:100%;max-height:320px;object-fit:contain;justify-self:start;border-radius:6px;border:1px solid var(--line)">`:artShownHtml(c)}
       ${c.pairs?`<div><span class="muted">Connected to.</span> ${esc(c.pairs)}</div>`:""}
       ${c.wonder?`<div><span class="muted">Our wondering.</span> ${esc(c.wonder)}</div>`:""}
       <div><span class="muted">Our routine.</span> ${esc(ART_ROUTINE)}</div>
       ${c.note?`<div class="hint"><b>For the educator.</b> ${esc(c.note)} <span class="cnt">This note stays on the screen and never prints.</span></div>`:""}
     </div>
-    <div class="actions" style="flex-wrap:wrap">${c.links.map(([t,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}${printBtns("artistcard",esc(c.id),"Card")}${dir&&libData.artists?pageEditBtn(libData.artists.path,"Edit"):""}</div></details>`}
+    <div class="actions" style="flex-wrap:wrap">${c.links.map(([t,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}${printBtns("artistcard",esc(c.id),"Card")}${dir&&libData.artists?pageEditBtn(libData.artists.path,"Edit"):""}${dir?`<button class="linkbtn" data-artphoto="${esc(c.id)}">${c.photo?"Replace the photo":"Add a photo"}</button>${c.photo?`<button class="linkbtn" data-artphotorm="${esc(c.id)}">Take out the photo</button>`:""}`:""}</div></details>`}
 function artShown(){const q=artQ.trim().toLowerCase();return artCards().filter(c=>(artSet==="All"||c.set.includes(artSet))&&(!q||[c.name,c.pairs,c.wonder,c.known.join(" ")].join(" ").toLowerCase().includes(q)))}
 function renderArtists(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Artists page</div></section>`;return}
   const a=libData.artists,dir=isDirector()&&!VIEW_AS,list=artShown();
@@ -5649,11 +5659,20 @@ function artistDoc(c){let work=c.name.slice(c.who.length).replace(/^\s*,\s*/,"")
   const place=l=>{let h="";try{h=new URL(l[1]).hostname.replace(/^www\./,"")}catch(e){}return h&&!l[0].toLowerCase().includes(h)?l[0]+", "+h:l[0]};
   const d={display:true,type:"report",acc:"story",title:c.who,meta:[],blocks:[]};
   // a public domain work prints large, with our routine in two short lines beneath it
-  if(c.picture)return asCard(d,{sub:work,photos:[{key:"art-"+c.id,src:c.picture}],blocks:[{t:"list",label:"Our routine",items:[ask.slice(0,-1).join("  "),ask[ask.length-1]],strong:true}]});
+  // a work with its image prints large, with our routine in two short lines beneath it. An image shown from another site
+  // prints once it was read through our server, with the site it is shown from
+  const key=artImgKey(c);const big=c.photo||c.picture||(c.shown&&photoCache.has(key));
+  if(big)return asCard(d,{sub:work,photos:[{key,src:c.photo||c.picture?artImgSrc(c):""}],blocks:[{t:"list",label:"Our routine",items:[ask.slice(0,-1).join("  "),ask[ask.length-1]],strong:true},...(!c.photo&&!c.picture&&c.shown?[dText("Shown from",c.shown.from)]:[])]});
   const blocks=[];if(c.pairs)blocks.push(dText("Connected to",c.pairs));if(c.wonder)blocks.push(dText("Our wondering",c.wonder));
   blocks.push({t:"list",label:"Our routine",items:ask,strong:true});
   if(c.links.length)blocks.push(dText(c.kind==="book"?"Find it in the book":"See the work",c.links.map(place).join("\n")));
   return asCard(d,{sub:work,blocks})}
+// the director adds her own photo to a card, such as a page of a book or a postcard, or takes it out again
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-artphoto],[data-artphotorm]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  try{if(t.dataset.artphotorm){libData=await window.FP_API("/api/staff/library/artphoto",{card:t.dataset.artphotorm,remove:true});toast("The photo is out. The card is as it was before.");renderMain();return}
+    const f=await new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()});if(!f)return;
+    progress("Keeping the photo");const blob=await shrinkImage(f);const bmp=await decodeImage(blob);const id=await window.FP_KEEP_ORIGINAL(blob,"artist-photo.jpg");
+    libData=await window.FP_API("/api/staff/library/artphoto",{card:t.dataset.artphoto,photo:id,w:bmp.width,h:bmp.height});toast("The photo is on the card, on the screen and in print.");renderMain()}catch(er){toast(er&&er.message||"The photo could not be kept.")}});
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="art-q"){artQ=e.target.value;const c=e.target.selectionStart;renderMain();const i=$("#art-q");if(i){i.focus();try{i.setSelectionRange(c,c)}catch(er){}}}});
 document.addEventListener("change",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.artpick){if(t.checked)artPick.add(t.dataset.artpick);else artPick.delete(t.dataset.artpick);renderMain()}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.artrow!=null&&d.open)artOpen=d.dataset.artrow},true);
@@ -5661,7 +5680,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-arts
   if(d.artset){artSet=d.artset;renderMain();return}
   if(d.artmod){if(typeof goView==="function"){goView("stpd");setTimeout(()=>{const b=document.querySelector('[data-stmod="m:looking-together"]');if(b)b.click()},800)}return}
   if(d.artprint){const L=d.artprint==="all"?artShown():artCards().filter(c=>artPick.has(c.id));if(!L.length){toast("Choose an artist first.");return}
-    const docs=L.map(artistDoc),n=safeFile(L.length===1?L[0].name+" card":"Artist cards");await loadPhotos(docs);if(d.word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")}});
+    await artPrep(L);const docs=L.map(artistDoc),n=safeFile(L.length===1?L[0].name+" card":"Artist cards");await loadPhotos(docs);if(d.word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")}});
 /* ---------- Museums and cultural places ----------
    The director's list of museums and cultural places near us, one page in the records, staff/library/places/museums.md,
    with a part for each area. Each place is one line, its name linked to its own site, its town, a few words and its tags,
@@ -5768,7 +5787,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-attopen],[
 document.addEventListener("input",e=>{if(e.target.id!=="att-q")return;attachQ=e.target.value;const at=e.target.selectionStart;renderMain();const q=$("#att-q");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
 // a food exploration as a page to print, its wonderings and steps in our words
 function explDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["Food exploration"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>{const ls=libLines(p.text);return ls.length?dList(p.key,ls):dText(p.key,String(p.text).replace(/[#*]/g,""))}),dText("","We only taste what an adult has named edible. We are nut free.")]}}
-// what is attached, as pages printed after the plan. A © song prints only its title and songwriter.
+// what is attached, as pages printed after the plan. A © song prints its words once the director has added them.
 async function attachDocs(p){if(!libData)await loadLibrary();if((p.attached||[]).some(a=>a.kind==="idea"||a.kind==="guide")&&!ib)await ibLoad();const docs=[],recipes=[];
   for(const a of p.attached||[]){
     if(a.kind==="recipe"){const x=libRecipe(a.id);if(x){docs.push(recipeDocFor(x));recipes.push(x)}}
@@ -5777,7 +5796,7 @@ async function attachDocs(p){if(!libData)await loadLibrary();if((p.attached||[])
     else if(a.kind==="exploration"){const x=(libData.explorations||[]).find(y=>y.id===a.id);if(x)docs.push(explDoc(x))}
     else if(a.kind==="book"){const x=(libData.books||[]).find(y=>y.id===a.id);if(x)docs.push(bookCardDoc(x))}
     else if(a.kind==="prompt")docs.push({display:true,type:"report",acc:"story",title:"A provocation",meta:[],blocks:[dText("",a.title)]});
-    else if(a.kind==="artist"){const c=artCard(a.id);if(c)docs.push(artistDoc(c))}
+    else if(a.kind==="artist"){const c=artCard(a.id);if(c){await artPrep([c]);docs.push(artistDoc(c))}}
     // an Idea bank card prints its educator side, and a guide attached before prints the card it was folded into
     else if(a.kind==="idea"||a.kind==="guide"){const c=ibCard(a.kind==="guide"?IB_GUIDE.slug[a.id]:a.id);if(c)docs.push(ibDoc(c,"edu"))}}
   return {docs,recipes}}
@@ -5811,7 +5830,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}${x.path?pageEditBtn(x.path,"Edit this exploration"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="idea"||kind==="guide")return `<div class="actions" style="flex-wrap:wrap">${printBtns("ibcards",esc("edu|"+x.id),"Card",true)}<button class="btn small ghost" data-ibopen="${esc(x.id)}">Open in the Idea bank</button></div><h2>${esc(x.title)}</h2><div class="cnt">${esc((IB_KIND[x.type]||"")+", "+x.group)}</div><p>${esc(x.summary||"")}</p>${x.setting&&x.setting.level?`<div class="ibset"><b>${esc(x.setting.level)}</b> ${esc(x.setting.why||"")}</div>`:""}${(x.sections||[]).slice(0,3).map(ibSectionHtml).join("")}`;
   if(kind==="artist")return `<div class="actions" style="flex-wrap:wrap">${printBtns("artistcard",esc(x.id),"Card",true)}${x.links.map(([t2,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t2)}</a>`).join("")}</div><h2>${esc(x.name)}</h2>
-    ${x.picture?`<img src="${esc(x.picture)}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:artShownHtml(x)}
+    ${x.photo||x.picture?`<img src="${esc(artImgSrc(x))}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:artShownHtml(x)}
     ${x.pairs?`<div class="lbl">Connected to</div><p>${esc(x.pairs)}</p>`:""}${x.wonder?`<div class="lbl">Our wondering</div><p>${esc(x.wonder)}</p>`:""}<div class="lbl">Our routine</div><p>${esc(ART_ROUTINE)}</p>
     ${x.note?`<div class="hint"><b>For the educator.</b> ${esc(x.note)} This note never prints.</div>`:""}`;
   if(kind==="prompt")return `<div class="lbl">${esc(x.set)}</div><p style="font-size:18px">${esc(x.title)}</p><div class="hint">A wondering to carry into the day, ready to set aside whenever the children lead somewhere else.</div>`;
@@ -12607,7 +12626,7 @@ async function printsClick(t){
   if(kind==="volintro"){if(!volData)await volLoad();if(volData&&volData.intro)await volPrint([],word,true,volData.intro.title||"Before You Start");return true}
   if(kind==="mqplace"){if(!libData)await loadLibrary();const x=mqPlaces().find(y=>y.id===t.dataset.id);if(x)await out([mqPlaceDoc(x)],x.name);return true}
   if(kind==="mqarea"){if(!libData)await loadLibrary();const xs=mqShown().filter(y=>y.area===t.dataset.id);if(xs.length)await out(mqListDocs(xs),t.dataset.id);return true}
-  if(kind==="artistcard"){if(!libData)await loadLibrary();const c=artCard(t.dataset.id);if(!c)return true;await out([artistDoc(c)],c.name+" card");return true}
+  if(kind==="artistcard"){if(!libData)await loadLibrary();const c=artCard(t.dataset.id);if(!c)return true;await artPrep([c]);await out([artistDoc(c)],c.name+" card");return true}
   if(kind==="bookcard"){if(!libData)await loadLibrary();const x=(libData.books||[]).find(r=>r.id===t.dataset.id);if(!x)return true;await out([bookCardDoc(x)],x.title+" card");return true}
   if(kind==="readguide"||kind==="readtext"){if(!libData)await loadLibrary();const x=(libData.readalouds||[]).find(r=>r.id===t.dataset.id);if(!x)return true;if(kind==="readtext"){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});try{await loadPrintFonts()}catch(er){}}await out([kind==="readtext"?readTextDoc(x):readGuideDoc(x)],x.title+(kind==="readtext"?"":" reading guide"));return true}
   if(kind==="exploration"){if(!libData)await loadLibrary();const x=(libData.explorations||[]).find(r=>r.id===t.dataset.id);if(x)await out([explDoc(x)],x.title.replace(/[?]/g,""));return true}

@@ -1,8 +1,8 @@
 'use strict';
 // Session 13, the artwork on the Artists page. A public domain work has a Picture line and prints large. A work still
 // under copyright may have a Shown from line, the museum's or the artist's own image, which shows on the screen straight
-// from that site with no referrer, hides itself if the site will not show it, and never reaches a print, a Word copy or a
-// plan's print. Made-up names and made-up addresses only.
+// from that site with no referrer and hides itself if the site will not show it. A print reads it only through our server
+// (November 1, 2026), and the page never fetches it for a print. Made-up names and made-up addresses only.
 const test = require('node:test');
 const assert = require('node:assert');
 const { start, browser, signedIn } = require('./fixture.js');
@@ -78,17 +78,17 @@ test('a Shown from image shows on the screen with no referrer, and hides itself 
   const ok = shown.find(x => x.src === 'https://shown.example.org/work.jpg'), no = shown.find(x => x.src === 'https://blocked.example.org/work.jpg');
   assert.ok(ok && no, JSON.stringify(shown));
   assert.strictEqual(ok.ref, 'no-referrer'); assert.strictEqual(ok.hidden, false);
-  assert.match(ok.cap, /Shown from a museum's site\. On the screen only, never printed\./);
+  assert.match(ok.cap, /Shown from a museum's site\./); assert.doesNotMatch(ok.cap, /never printed/);
   assert.strictEqual(no.hidden, true, 'an image the site will not show hides itself');
   // the link to the exact work stays on the card whose image hid itself
   assert.strictEqual(await s.p.locator('[data-artrow="a-weaver-quilts"] a[href="https://blocked.example.org/quilts"]').count(), 1);
   assert.ok(hits.filter(h => h.u === 'https://shown.example.org/work.jpg').every(h => h.ref === ''), 'no referrer goes to the museum');
-  assert.match(await s.p.textContent('[data-artrow="a-sculptor-wire-forms"] summary'), /Shown on screen/);
+  assert.match(await s.p.textContent('[data-artrow="a-sculptor-wire-forms"] summary'), /Prints large, shown from a museum's site/);
   assert.deepStrictEqual(s.errors.filter(e => !/403|Failed to load resource/.test(e)), []);
   await s.close();
 });
 
-test('no print, Word copy or plan print ever holds or fetches a Shown from image, and a Picture still prints', async t => {
+test('a print reads a Shown from image only through our server, never from the page, and a Picture still prints', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
   const fx = await start({ more: put => {

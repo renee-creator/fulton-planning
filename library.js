@@ -6,8 +6,8 @@
    with what the work sits beside on our site, its wondering and a note for the educator. Each page opens with a note of its own, such as kind: sensory or
    copyright: yes, and its parts are its sections, such as Ingredients and Steps, or a song's Words.
 
-   A song marked copyright shows its title, its songwriter and a link to a recording, and its words are never kept or
-   sent. Recipes come from the director and the kitchen, and drafts from educators and families wait for the director. */
+   A song marked copyright shows the mark beside its title, its songwriter, a link to a recording and the words the
+   director adds from our own song books. Recipes come from the director and the kitchen, and drafts from educators and families wait for the director. */
 module.exports = function library(o) {
   const { S, get, put, putText, log, isDirector, isKitchen } = o; const pdShown = typeof o.pdShown === 'function' ? o.pdShown : () => false;
   /* The picture library for the demonstration sheets, realistic pictures named by ingredient or tool, one consistent
@@ -15,6 +15,13 @@ module.exports = function library(o) {
      photo from the piazza, kept once the face check on the device finds no face, stands for an item with no picture, or
      in place of one when the director chooses, and every sheet using it updates. staff/library/pictures.json keeps them. */
   const PICS = 'staff/library/pictures.json';
+  /* the director's own photo for an artist card, such as a page of a book or a postcard, kept as a photo and shown and
+     printed in place of any other picture of the work. staff/library/artist-photos.json keeps them by card (November 1, 2026) */
+  const ART_PHOTOS = 'staff/library/artist-photos.json';
+  const artSlug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'artist';
+  // the address an artist card's Shown from line names, read from the Artists page itself, so no other address is read
+  const artShownSrc = id => { const ar = item('staff/library/prompts/artists.md'); const pt = ar && (ar.parts || []).find(x => artSlug(x.key) === id); if (!pt) return '';
+    const m = String(pt.text || '').match(/^\*\*Shown from\.\*\*[ \t]*\[[^\]]+\]\((https:\/\/[^)\s"<>]+)\)/mi); return m ? m[1] : ''; };
   // the museums and cultural places near us, one page with a part for each area, and the director's switch that shows it
   // to educators
   const PLACES = 'staff/library/places/museums.md', PLACES_SET = 'staff/library/places/settings.json';
@@ -33,16 +40,13 @@ module.exports = function library(o) {
   const META = text => { const m = String(text || '').match(/^\s*<!--([\s\S]*?)-->/); const out = {}; if (m) for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.*?)\s*$/i); if (kv) out[kv[1].toLowerCase()] = kv[2]; } return out; };
   const slug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'item';
   const isCopyright = meta => /^(yes|true|©)$/i.test(String(meta.copyright || ''));
-  // a song marked copyright keeps no words, whatever was written
-  function guard(path, text) {
-    if (!/^staff\/library\/songs\//.test(path) || !isCopyright(META(text))) return text;
-    return String(text).replace(/^##\s+Words\s*\n[\s\S]*?(?=^##\s|(?![\s\S]))/m, '').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
-  }
+  // a song marked copyright keeps the words the director adds from our own song books, with the mark beside its title
+  // (November 1, 2026). Nothing is taken out on saving any more.
+  function guard(path, text) { return text; }
   function item(path) {
     const r = S.files.get(path); if (!r || typeof r.text !== 'string') return null;
     const meta = META(r.text), doc = WD.parse(r.text); const m = path.match(/^staff\/library\/([a-z0-9-]+)\/([a-z0-9-]+)\.md$/);
     const x = { id: m[2], path, kind: DIRS[m[1]] || m[1], title: doc.title || m[2], lead: doc.lead || '', meta, parts: doc.parts, draft: /^draft$/i.test(meta.status || '') };
-    if (x.kind === 'song' && isCopyright(meta)) x.parts = [];
     return x;
   }
   const paths = dir => [...S.files.keys()].filter(p => p.startsWith('staff/library/' + dir + '/') && /\.md$/.test(p)).sort();
@@ -60,7 +64,7 @@ module.exports = function library(o) {
     // the food explorations, guided tastings shown on the Weekly bin beside the produce each explores, and our list of local farms
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
-    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, places: pl && plSees ? Object.assign({ title: pl.title, lead: pl.lead, parts: pl.parts, path: pl.path, shown: plShown }, isDirector(me) ? { switches: placeSwitches() } : {}) : null, pictures: pictures(), modules: { 'looking-together': pdShown('looking-together') } };
+    return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, places: pl && plSees ? Object.assign({ title: pl.title, lead: pl.lead, parts: pl.parts, path: pl.path, shown: plShown }, isDirector(me) ? { switches: placeSwitches() } : {}) : null, pictures: pictures(), artPhotos: (get(ART_PHOTOS) || {}).list || {}, modules: { 'looking-together': pdShown('looking-together') } };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
@@ -84,7 +88,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     const sec = (h, v) => { const t = String(v || '').replace(/\r/g, '').trim().slice(0, 8000); return t ? `## ${h}\n\n${t}\n\n` : `## ${h}\n\n`; };
     let body = '';
     if (kind === 'recipe') body = sec('Ingredients', b.ingredients) + sec('Tools', b.tools) + sec('Steps', b.steps) + (b.dairyFree ? sec('Dairy free', b.dairyFree) : '') + (b.glutenFree ? sec('Gluten free', b.glutenFree) : '') + (b.notes ? sec('Notes', b.notes) : '');
-    if (kind === 'song' && !b.copyright) body = sec('Words', b.words);
+    if (kind === 'song') body = sec('Words', b.words);
     if (kind === 'readaloud') body = sec('About', b.about);
     if (kind === 'book') {
       const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);
@@ -126,14 +130,28 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       if (!/^[a-z0-9]{12}-recipe-picture\.(jpe?g|png)$/i.test(id) || body.noFace !== true) { err(req, res, 400, 'A photo is kept only once the face check finds no face.'); return; }
       if (pictures()[k] && !isDirector(me)) { err(req, res, 403, 'This item has a picture. The director chooses to replace it.'); return; }
       const all = Object.assign({ list: {} }, get(PICS) || {}); all.list = Object.assign({}, all.list, { [k]: { id, by: me, at: Date.now() } }); put(PICS, all); log('Recipe picture kept for', k, 'by', me); json(req, res, 200, list(me)); return; }
+    if (P === 'library/artphoto') { if (!isDirector(me)) { err(req, res, 403, 'The director chooses the photos on the artist cards.'); return; }
+      const id = String(body.card || ''); if (!/^[a-z0-9-]{1,60}$/.test(id)) { err(req, res, 400, 'That card is not here.'); return; }
+      const all = Object.assign({ list: {} }, get(ART_PHOTOS) || {}); all.list = Object.assign({}, all.list);
+      if (body.remove) delete all.list[id];
+      else { const ph = String(body.photo || ''); if (!/^[a-z0-9]{12}-artist-photo\.(jpe?g|png)$/i.test(ph)) { err(req, res, 400, 'Choose a photo for the card.'); return; }
+        all.list[id] = { id: ph, w: Math.max(0, Math.round(+body.w || 0)), h: Math.max(0, Math.round(+body.h || 0)), at: Date.now() }; }
+      put(ART_PHOTOS, all); json(req, res, 200, list(me)); return; }
+    // the image a card shows from a museum or an artist's site, read here for a printed card, since the site does not hand it to the page
+    if (P === 'library/artshown') { const src = artShownSrc(String(body.card || '')); if (!src) { err(req, res, 404, 'That card shows no image from another site.'); return; }
+      try { const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 15000); const r = await fetch(src, { signal: ac.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (TREE, Fulton Community School)', Accept: 'image/*' } }); clearTimeout(tm);
+        const type = String(r.headers.get('content-type') || ''); if (!r.ok || !/^image\/(jpeg|png|webp|gif)/i.test(type)) throw new Error('not an image');
+        const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 15e6) throw new Error('too large');
+        send(req, res, 200, { 'Content-Type': type.split(';')[0], 'Cache-Control': 'private, max-age=86400' }, buf); }
+      catch (e) { err(req, res, 502, 'The site did not hand over its image.'); } return; }
     if (P === 'library/add') { const r = add(me, body || {}); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); return; }
     const x = item(String(body.path || '')); if (!x) { err(req, res, 404, 'That is not in the library.'); return; }
     // the director marks a draft recipe ready, or takes it out
     if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); if (body.on && x.meta.by) setMeta(x.path, 'by', null); json(req, res, 200, list(me)); return; }
     // marking a song copyright removes its words, and taking the mark off lets words be added
-    if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
-      // a song without the mark has a place for its words, ready for the director to add them
-      if (!body.on) { const r = S.files.get(x.path); if (r && !/^##\s+Words\s*$/m.test(r.text)) putText(x.path, r.text.trimEnd() + '\n\n## Words\n\n'); }
+    if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } if (!body.place) setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
+      // a song has a place for its words, ready for the director to add them, with the mark or without it
+      if (!body.on || body.place) { const r = S.files.get(x.path); if (r && !/^##\s+Words\s*$/m.test(r.text)) putText(x.path, r.text.trimEnd() + '\n\n## Words\n\n'); }
       json(req, res, 200, list(me)); return; }
     // a photo from our own observations on a step of the demonstration set, chosen by the director or the kitchen once
     // the face check on the device found no faces
