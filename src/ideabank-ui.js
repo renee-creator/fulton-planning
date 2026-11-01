@@ -10,9 +10,9 @@ let ib=null,ibBusy=null;
 const ibSt=Object.assign({group:"Paint",q:"",needs:[],sups:[],levels:[],sel:"",side:"edu",mode:"card",bq:"",bsel:"",fromPlan:"",newOpen:false,addOpen:false,sugOpen:""},LS.get("tree.ib",{})||{},{fromPlan:"",mode:"card",newOpen:false,addOpen:false,sugOpen:""});
 const ibPick=new Set();
 const ibKeep=()=>LS.set("tree.ib",{group:ibSt.group,side:ibSt.side,sel:ibSt.sel});
-const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Hard days",["Ready for today"]]];
-const IB_KIND={medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready for today"};
-const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["ready","Ready for today"]];
+const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Everyday learning",["Letters and sounds","Numbers and shapes","Time","Community of care"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Hard days",["Ready for today"]]];
+const IB_KIND={everyday:"Everyday learning",medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready for today"};
+const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["everyday","Everyday learning"],["ready","Ready for today"]];
 // the seven materials guides now open these cards, from their Materials library group, their Classroom area or a plan
 // that attached a guide before
 const IB_GUIDE={slug:{atelier:"studio-and-class-ateliers",clay:"clay",dramatic:"home-and-dramatic-play-area",noticing:"photography","piazza-tools":"piazza-and-culinary-atelier",workshop:"water",writing:"writing-center"},

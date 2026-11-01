@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4ea6d4cc34e2";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="e4efca4380eb";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5924,9 +5924,9 @@ let ib=null,ibBusy=null;
 const ibSt=Object.assign({group:"Paint",q:"",needs:[],sups:[],levels:[],sel:"",side:"edu",mode:"card",bq:"",bsel:"",fromPlan:"",newOpen:false,addOpen:false,sugOpen:""},LS.get("tree.ib",{})||{},{fromPlan:"",mode:"card",newOpen:false,addOpen:false,sugOpen:""});
 const ibPick=new Set();
 const ibKeep=()=>LS.set("tree.ib",{group:ibSt.group,side:ibSt.side,sel:ibSt.sel});
-const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Hard days",["Ready for today"]]];
-const IB_KIND={medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready for today"};
-const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["ready","Ready for today"]];
+const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Everyday learning",["Letters and sounds","Numbers and shapes","Time","Community of care"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Hard days",["Ready for today"]]];
+const IB_KIND={everyday:"Everyday learning",medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready for today"};
+const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["everyday","Everyday learning"],["ready","Ready for today"]];
 // the seven materials guides now open these cards, from their Materials library group, their Classroom area or a plan
 // that attached a guide before
 const IB_GUIDE={slug:{atelier:"studio-and-class-ateliers",clay:"clay",dramatic:"home-and-dramatic-play-area",noticing:"photography","piazza-tools":"piazza-and-culinary-atelier",workshop:"water",writing:"writing-center"},
