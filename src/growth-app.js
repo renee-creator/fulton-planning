@@ -570,7 +570,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   // the reflection prompts, one per line or list item, each one can be carried into the weekly journal
   const prompts=rf?String(rf.body).split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(Boolean):[];const carry=(d.carry||{}).prompt||"";
   const draftCard=dir?card(m.waiting?(m.draft?"Draft":"Hidden"):"Ready",`<div class="hint">${m.waiting?"Only you see this module. Educators see it once you mark it ready.":"Educators see this module. Hide it again keeps it for you only."}</div><div class="actions"><button class="btn small${m.waiting?"":" ghost"}" data-gmready="${H(slug)}|${m.waiting?1:0}">${m.waiting?"Mark it ready":"Hide it again"}</button></div>`):"";
-  const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmslides="${H(slug)}">Slides from this module</button><button class="linkbtn" data-gmslides="${H(slug)}" data-word="1">Word</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
+  const leadBtn=dir?`<button class="btn small ghost" data-gmlead="${H(slug)}">Turn into a live or virtual presentation</button><button class="btn small ghost" data-gmslides="${H(slug)}">Slides from this module</button><button class="linkbtn" data-gmslides="${H(slug)}" data-word="1">Word</button><button class="linkbtn" data-gmpptx="${H(slug)}|${deep?1:0}">PowerPoint</button><button class="btn small ghost" data-gmedit="${H(slug)}">Edit</button>`:"";
   let exBody="";
   // the DRDP module's examples come from accepted DRDP evidence, one for each measure, so each example shows a measure read from our own documentation
   // on any other module, opening Suggested asks the writing help to confirm the closest matches, once a day
@@ -638,6 +638,39 @@ function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:tr
   if(rf)out.push(slide("Reflect",plainLines(rf.body).slice(0,5)));
   out.push(slide("Plus and delta",["What went well today?","What would we change?"]));
   return out}
+/* A module as a PowerPoint, from its overview or its in-depth version. For an outside audience the deck carries the
+   credit line Fulton Community School & Farm on every slide, TREE's own steps read as general practice, links into
+   TREE read as plain names, and internal parts such as notes for the director and staff meeting steps are left out.
+   Children's names and photos stay, since they give the work its context; the director takes them out before sharing
+   a deck. The PowerPoint maker loads only when a deck is made. */
+let pptxLoad=null;
+const loadPptx=()=>pptxLoad||(pptxLoad=new Promise((ok,no)=>{if(window.PptxGenJS)return ok(window.PptxGenJS);const sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
+  sc.onload=()=>window.PptxGenJS?ok(window.PptxGenJS):no(new Error("The PowerPoint maker could not load."));sc.onerror=()=>{pptxLoad=null;no(new Error("The PowerPoint maker could not load. Check the connection and try again."))};document.head.appendChild(sc)}));
+const OUT_SKIP=/^(for the director|presenting this module|printables|share at a staff meeting|what changed|from our own documentation)/i;
+const outsideWords=t=>String(t||"").replace(/\[([^\]]+)\]\(tree:[^)]+\)/g,"$1").replace(/\bTREE observations\b/g,"observations").replace(/\ba TREE observation\b/g,"an observation").replace(/\bTREE observation\b/g,"observation")
+  .replace(/\s+(in|into|on|through) TREE\b/g,"").replace(/\bTREE's\s+/g,"our ").replace(/\bin the Idea bank\b/g,"among our ideas").replace(/\bThe Idea bank cards\b/g,"Our ideas");
+function deckModule(m,depth,outside){const base=depth&&m.depth?Object.assign({},m,{lead:m.depth.lead,sections:m.depth.sections}):m;
+  if(!outside)return base;return Object.assign({},base,{sections:base.sections.filter(x=>!OUT_SKIP.test(x.heading)).map(x=>Object.assign({},x,{body:outsideWords(x.body)}))})}
+async function moduleDeck(m,o){o=o||{};const mm=deckModule(m,o.depth,o.outside);let sl=moduleSlides(mm);const pics={};
+  for(const s of sl){if(!s._pic)continue;try{pics[s._pic]=await X.picData(s._pic)}catch(er){s._drop=true}}sl=sl.filter(s=>!s._drop);
+  if(o.format==="pdf"){for(const s of sl)if(s._pic){const pd=pics[s._pic];photoCache.set("pdimg:"+s._pic,{url:pd.url,bytes:pd.buf,w:pd.w,h:pd.h});delete s._pic}
+    if(o.outside)for(const s of sl)s.footer="Fulton Community School & Farm";await out("pdf",sl,m.title+(o.depth?", in depth":"")+(o.outside?", handout":" slides"));return}
+  const P=await loadPptx();const pres=new P();pres.layout="LAYOUT_WIDE";pres.title=m.title;pres.company="Fulton Community School & Farm";
+  const INK="1E2620",GREEN="2E5E45",SOFT="55605A",credit=o.outside?"Fulton Community School & Farm":"Fulton Community School";
+  sl.forEach((s,i)=>{const sd=pres.addSlide();sd.background={color:"FFFFFF"};
+    sd.addText(credit,{x:0.5,y:7.0,w:12.3,h:0.3,fontFace:"Georgia",fontSize:10,color:SOFT,align:"center"});
+    if(i===0){sd.addText(s.title,{x:0.8,y:2.2,w:11.7,h:1.4,fontFace:"Georgia",fontSize:40,bold:true,color:INK,align:"center",valign:"middle"});
+      sd.addShape(pres.ShapeType.line,{x:6.17,y:3.75,w:1,h:0,line:{color:GREEN,width:2}});
+      const sub=(s.blocks||[]).map(b=>b.text).filter(Boolean).join("\n");if(sub)sd.addText(sub,{x:1.2,y:4.0,w:10.9,h:1.6,fontFace:"Georgia",fontSize:18,color:SOFT,align:"center",valign:"top"});return}
+    sd.addText(s.title||"",{x:0.8,y:0.5,w:11.7,h:0.9,fontFace:"Georgia",fontSize:30,bold:true,color:INK,align:"center",valign:"middle"});
+    sd.addShape(pres.ShapeType.line,{x:6.17,y:1.45,w:1,h:0,line:{color:GREEN,width:2}});
+    const ph=(s.blocks||[]).find(b=>b.t==="photo"),pd=ph&&pics[s._pic];
+    if(pd){const r=pd.w&&pd.h?pd.w/pd.h:1.5;let h=5.1,w=h*r;if(w>11.7){w=11.7;h=w/r}sd.addImage({data:pd.url,x:(13.33-w)/2,y:1.7,w,h});return}
+    const lines=(s.blocks||[]).map(b=>b.text).filter(Boolean);if(!lines.length)return;
+    sd.addText(lines.length>1?lines.map(t=>({text:t,options:{bullet:{code:"2022"},paraSpaceAfter:10}})):lines[0],{x:1.2,y:1.8,w:10.9,h:4.9,fontFace:"Georgia",fontSize:lines.length>1?20:22,color:INK,align:lines.length>1?"left":"center",valign:"middle"})});
+  await pres.writeFile({fileName:safeFile(m.title+(o.depth?", in depth":"")+(o.outside?", outside audiences":""))+".pptx"})}
+window.TreeModuleDeck=async(slug,o)=>{const ms=await loadMods();const m=ms.modules[slug];if(!m){toast("That module is not in the PD library yet.");return}progress(o&&o.format==="pdf"?"Making the handout":"Making the PowerPoint");
+  try{await moduleDeck(m,o)}catch(er){toast(er.message||"The deck could not be made.")}};
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmrest],[data-gmrestback],[data-gmaccept],[data-gmorig],[data-gmslides],[data-gmorigrm],[data-gmorigback],[data-gmprint]");if(!t)return;e.preventDefault();const d=t.dataset;
   if(d.gmprint){const [slug,which]=d.gmprint.split("|");const ms=await loadMods();const m=ms.modules[slug];if(!m||!m.printables)return;const L=m.printables.list;
     const pick=which==="all"?L:which==="chosen"?L.filter(x=>{const c=document.querySelector(`[data-gmprpick="${x.id}"]`);return c&&c.checked}):L.filter(x=>x.id===which);
@@ -930,6 +963,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.d
   try{st.rlib=await ga("readings/onsite",{id:t.dataset.grlonsite,on:t.checked});toast(t.checked?"Marked In our library.":"No longer marked In our library.");redraw()}catch(er){t.checked=!t.checked;toast(er&&er.message||"That did not save.")}});
 
 // the director's Edit button on a module, the same editor as a How To guide and the PD library letter
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gmpptx]");if(!t)return;e.preventDefault();const [slug,dp]=t.dataset.gmpptx.split("|");window.TreeModuleDeck(slug,{depth:dp==="1"})});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gmtab]");if(!t)return;e.preventDefault();const [slug,w]=t.dataset.gmtab.split("|");st.modTab=st.modTab||{};st.modTab[slug]=w;redraw();window.scrollTo(0,0)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gmdepthedit]");if(!t||!window.TREE_PAGEEDIT)return;e.preventDefault();window.TREE_PAGEEDIT({path:t.dataset.gmdepthedit},async()=>{st.mods=null;redraw()})});
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmreadtime]");if(!t)return;e.preventDefault();const [slug,which]=t.dataset.gmreadtime.split("|");
