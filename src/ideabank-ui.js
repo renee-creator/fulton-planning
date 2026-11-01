@@ -35,8 +35,9 @@ const IB_STANCE_LEAD="Every card in the Idea bank begins with us. Children read 
 .ibg{display:flex;justify-content:space-between;width:100%;text-align:left;border:0;background:transparent;padding:7px 9px;border-radius:8px;cursor:pointer;font:inherit;color:inherit}
 .ibg[aria-current="true"]{background:var(--moss-soft,#e3ece2);font-weight:700}.ibrow{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;margin:0 0 6px}
 .ibrow[aria-current="true"]{border-color:var(--moss,#2f5d50)}.ibrow input{margin-top:4px}.ibrow button{flex:1;text-align:left;background:none;border:0;cursor:pointer;font:inherit;color:inherit;padding:0}
-.ibcardv h3{font-size:17px;margin:14px 0 4px}.ibcardv ul,.ibcardv ol{margin:4px 0;padding-left:20px}.ibset{border-left:4px solid var(--moss,#2f5d50);padding:6px 10px;margin:8px 0;background:var(--moss-soft,#f1f6ef);border-radius:6px}
-.ibtip{font-size:14px;margin-top:4px}.ibtop{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.iblines span{display:block}
+.ibcardv{max-width:760px;line-height:1.6}.ibcardv h3{font-size:17px;margin:0 0 6px;color:var(--moss,#2f5d50)}.ibcardv p{margin:0 0 10px}.ibcardv ul,.ibcardv ol{margin:4px 0;padding-left:22px}.ibcardv li{margin:0 0 8px}
+.ibsec{background:var(--moss-soft,#f1f6ef);border-radius:10px;padding:12px 14px;margin:12px 0}.ibsec p:last-child,.ibsec li:last-child{margin-bottom:0}.ibset{border-left:4px solid var(--moss,#2f5d50);padding:6px 10px;margin:8px 0;background:var(--moss-soft,#f1f6ef);border-radius:6px}
+.ibtip{font-size:14px;margin-top:4px}.ibtop{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.iblines span{display:block;font-style:italic;border-left:3px solid var(--moss,#2f5d50);padding:2px 0 2px 10px;margin:0 0 10px}
 .planres{margin-top:4px}.planres>summary{cursor:pointer}.planres .subrow{margin-top:4px}
 @media (max-width:900px){.ibwrap{grid-template-columns:minmax(0,1fr)}.ibnav{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}`;document.head.appendChild(st)})();
 async function ibLoad(force){if(!window.FP_API)return ib;if(ib&&!force)return ib;if(ibBusy)return ibBusy;
@@ -91,10 +92,44 @@ function ibListHtml(){const st=ibSt,shown=ibShown();const plan=st.fromPlan&&plan
     <div style="margin-top:8px">${shown.map(row).join("")||`<div class="empty">No card fits. Try other words or clear the filters.</div>`}</div></section>`}
 
 /* ---------- a card ---------- */
+/* A Connected to entry opens the very thing it names. A card opens the card. An artist, a book, a recipe or a song opens
+   over the page as Search opens it. A museum opens its page showing that place, a lens opens the lens and a PD module
+   opens the module. A line about a kind of recipe or song links each one that fits. */
+const ibNorm=t=>String(t||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+const IB_STOP=new Set(["the","and","for","with","our","from","songs","song","recipes","recipe","about","days","cold","wet","fresh","in","of","a"]);
+function ibLibFits(kind,words){if(typeof attachPool!=="function")return [];const W=ibNorm(words).split(" ").filter(w=>w.length>2&&!IB_STOP.has(w)).map(w=>w.replace(/(ies)$/,"y").replace(/s$/,""));if(!W.length)return [];
+  return attachPool().filter(a=>a.kind===kind).map(a=>{const t=ibNorm(a.title);return {a,n:W.filter(w=>t.includes(w)).length}}).filter(x=>x.n).sort((x,y)=>y.n-x.n).slice(0,4).map(x=>x.a)}
+const ibLibBtn=(kind,id,label)=>`<button class="linkbtn" data-libopen="${esc(kind+"|"+id)}">${esc(label)}</button>`;
 function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="linkbtn" data-ibopen="${esc(hit.id)}">${esc(k)}</button>`;
-  const go=/ on the Artists page\b/.test(k)?"artists":/^Garden page$/.test(k)?"garden":/^Recipe library$/.test(k)?"recipes":/^(Song book|Book collection)$/.test(k)?"songs":/ lens$/.test(k)?"lens":/cultural place|Museums and cultural places/.test(k)?"museums":"";
-  return go?`<button class="linkbtn" data-tview="${go}">${esc(k)}</button>`:esc(k)}
-function ibSectionHtml(s){return `<h3>${esc(s.h)}</h3>${s.style==="text"?`<p>${esc(s.text||"")}</p>`:s.style==="numbered"?`<ol>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`:s.style==="lines"?`<div class="iblines">${(s.items||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:`<ul>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`}`}
+  const page=(go,label)=>`<button class="linkbtn" data-tview="${go}">${esc(label||k)}</button>`;
+  if(typeof libData!=="undefined"&&!libData&&typeof loadLibrary==="function")loadLibrary();
+  // an artist, by the name before on the Artists page
+  const am=k.match(/^(.+?) on the Artists page\b(.*)$/);
+  if(am){const c=(typeof artCards==="function"?artCards():[]).find(x=>ibNorm(x.name)===ibNorm(am[1]))||(typeof artCards==="function"?artCards():[]).find(x=>ibNorm(x.name).includes(ibNorm(am[1]))||ibNorm(am[1]).includes(ibNorm(x.name)));
+    return c?`${ibLibBtn("artist",c.id,am[1])}${esc(" on the Artists page"+am[2])}`:page("artists")}
+  // the book collection, the recipe library and the song book, with each item the line names or fits linked
+  const lm=k.match(/^(?:The )?(Book collection|Recipe library|Song book)(?:, for (.+))?$/i);
+  if(lm){const kind=/book c/i.test(lm[1])?"book":/recipe/i.test(lm[1])?"recipe":"song",go=kind==="recipe"?"recipes":"songs";if(!lm[2])return page(go);
+    const pool=typeof attachPool==="function"?attachPool().filter(a=>a.kind===kind):[];
+    if(kind==="book"){let out=esc(lm[2]),any=false;for(const b of pool.slice().sort((x,y)=>y.title.length-x.title.length)){const at=lm[2].indexOf(b.title);if(at<0||out.indexOf(esc(b.title))<0)continue;out=out.replace(esc(b.title),ibLibBtn("book",b.id,b.title));any=true}
+      return any?`${esc(lm[1])}, for ${out}`:page(go)}
+    const fits=ibLibFits(kind,lm[2]);return fits.length?`${esc(k)}. ${fits.map(a=>ibLibBtn(kind,a.id,a.title.replace(/^© /,""))).join(", ")}`:page(go)}
+  // a lens, by its name
+  const ln=k.match(/^(?:The )?(.+?) lens$/);if(ln&&typeof LENSES!=="undefined"){const L=LENSES.find(l=>ibNorm(l.name)===ibNorm(ln[1])||ibNorm(l.name).includes(ibNorm(ln[1])));return L?`<button class="linkbtn" data-lensgo="${esc(L.id)}">${esc(k)}</button>`:page("lens")}
+  // a PD module, by its title
+  const pm=k.replace(/ PD module$| \(PD\)$/,"");const mods=(typeof gsPd!=="undefined"&&gsPd.modules)||[];if(typeof gsPdLoad==="function"&&!mods.length)gsPdLoad().then(()=>{if(view==="ideabank")renderMain()});
+  const mod=mods.find(m=>m&&m.title&&(ibNorm(m.title)===ibNorm(pm)||ibNorm(m.title).replace(/^the /,"")===ibNorm(pm).replace(/^the /,"")));
+  if(mod&&(mod.slug||mod.id))return `<button class="linkbtn" data-tview="stpd" data-stmod="${esc("m:"+(mod.slug||mod.id))}">${esc(k)}</button>`;
+  if(/^Garden page$|^The Garden page$/.test(k))return page("garden");
+  // a museum or cultural place, by its name, opening the page showing that place
+  const places=typeof mqPlaces==="function"&&typeof libData!=="undefined"&&libData&&libData.places?mqPlaces():[];
+  const pl=places.find(x=>ibNorm(k).startsWith(ibNorm(x.name)))||places.find(x=>ibNorm(k).includes(ibNorm(x.name)));
+  if(pl)return `<button class="linkbtn" data-ibplace="${esc(pl.name)}">${esc(k)}</button>`;
+  return /cultural place|Museums and cultural places/.test(k)?page("museums"):esc(k)}
+// a long text reads as short paragraphs of one or two sentences, with space between them
+function ibParas(t){const ss=String(t||"").split(/(?<=[.!?]["”']?)\s+(?=["“']?[A-Z0-9])/).filter(x=>x.trim());const out=[];
+  for(let i=0;i<ss.length;i+=2)out.push(ss.slice(i,i+2).join(" "));return out.map(x=>`<p>${esc(x)}</p>`).join("")}
+function ibSectionHtml(s){return `<div class="ibsec"><h3>${esc(s.h)}</h3>${s.style==="text"?ibParas(s.text):s.style==="numbered"?`<ol>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`:s.style==="lines"?`<div class="iblines">${(s.items||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:`<ul>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`}</div>`}
 function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=ibSt.fromPlan&&plans.get(ibSt.fromPlan);
   const used=plan&&(plan.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id);const fl=ibFields(c);
   return `<section class="card ibcardv"><span class="eyebrow">${esc(IB_KIND[c.type]||"")} · ${esc(c.group)}</span><h2 style="margin:4px 0 6px">${esc(home?c.home.title:c.title)}</h2>
@@ -113,16 +148,16 @@ function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=
         <label>The part to change<select id="ib-sgf" data-ibsgf="${esc(c.id)}">${fl.map(([k,l])=>`<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select></label>
         <label>The new wording<textarea id="ib-sgt" rows="5">${esc((v=>Array.isArray(v)?v.join("\n"):v||"")(ibAt(c,fl[0][0])))}</textarea></label>
         <label>Why, in a few words<input type="text" id="ib-sgn"></label></div><div class="actions"><button class="btn small" data-ibsgsend="${esc(c.id)}">Send to the director</button></div><div class="cnt">The director approves it or sets it aside.</div></details>`:""}</section>`}
-function ibStanceHtml(){return `<section class="card ibcardv"><span class="eyebrow">Before any card</span><h2 style="margin:4px 0 8px">How We Offer Ideas</h2><p>${esc(IB_STANCE_LEAD)}</p>${IB_STANCE.map(([h,t])=>`<h3>${esc(h)}</h3><p>${esc(t)}</p>`).join("")}</section>`}
+function ibStanceHtml(){return `<section class="card ibcardv"><span class="eyebrow">Before any card</span><h2 style="margin:4px 0 8px">How We Offer Ideas</h2><p>${esc(IB_STANCE_LEAD)}</p>${IB_STANCE.map(([h,t])=>`<div class="ibsec"><h3>${esc(h)}</h3>${ibParas(t)}</div>`).join("")}</section>`}
 function ibSeeingHtml(){const B=(ib.behaviors||[]),q=ibSt.bq.trim().toLowerCase();const list=B.filter(b=>!q||(b.label+" "+(b.keywords||[]).join(" ")).toLowerCase().includes(q));const b=B.find(x=>x.id===ibSt.bsel);
   const rows=b?ibMatch(b.needs||[],Object.fromEntries((b.supports||[]).map(s=>[s,b.mode==="avoid"?"avoid":b.mode==="both"?"both":"seek"])),b.mode,12):[];
   return `<section class="card ibcardv"><span class="eyebrow">Search by what is happening</span><h2 style="margin:4px 0 8px">What are you seeing?</h2>
     <p>Behavior is how a child meets a need. These are possibilities to wonder about, never labels. Try the first steps and write down what happened. If it keeps happening after what we tried, open a team inquiry. One hard moment is never an inquiry.</p><p class="ibset">${esc(IB_DEV_NOTE)}</p>
     <label class="lbl" for="ib-bq">Describe it in a word or two</label><input type="search" id="ib-bq" value="${esc(ibSt.bq)}" placeholder="throwing, biting, covering ears, climbing on tables" data-noproof="1">
     <div class="chips" style="margin-top:8px">${list.map(x=>`<button class="chip ${x.id===ibSt.bsel?"on":""}" type="button" data-ibbeh="${esc(x.id)}">${esc(x.label)}</button>`).join("")||`<span class="cnt">Nothing matches those words. Try another word.</span>`}</div>
-    ${b?`<h3>${esc(b.label)}</h3><p>${esc(b.what_we_might_see||"")}</p><h3>What the child might be seeking</h3><p>${esc(b.might_be_seeking||"")}</p>
-      ${has(b.development)?`<h3>Where it can fit in development (developmental stage)</h3><p>${esc(b.development)}</p>${(b.sources||[]).length?`<div class="cnt">From ${(b.sources||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(", ")}</div>`:""}`:""}
-      <h3>First steps</h3><ul>${(b.first_steps||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul><h3>Keeping everyone safe</h3><p>${esc(b.keep_safe||"")}</p>
+    ${b?`<h3>${esc(b.label)}</h3>${ibParas(b.what_we_might_see)}<h3>What the child might be seeking</h3>${ibParas(b.might_be_seeking)}
+      ${has(b.development)?`<h3>Where it can fit in development (developmental stage)</h3>${ibParas(b.development)}${(b.sources||[]).length?`<div class="cnt">From ${(b.sources||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(", ")}</div>`:""}`:""}
+      <h3>First steps</h3><ul>${(b.first_steps||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul><h3>Keeping everyone safe</h3>${ibParas(b.keep_safe)}
       <div class="chips">${[...(b.needs||[]),...(b.supports||[])].map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
       ${ibFromUsHtml(b.from_us||[])}${ibTriedHtml(b)}
       <h3>Ideas that may help</h3>${rows.map(r=>ibRowHtml(r)).join("")||`<div class="cnt">No card shares these needs yet.</div>`}`:""}</section>`}
@@ -167,12 +202,11 @@ function renderIdeaBank(){const m=$("#main");if(!m)return;
   const top=`<div class="ibtop"><button class="btn small${st.mode==="stance"?"":" ghost"}" data-ibmode="stance">How We Offer Ideas</button><button class="btn small${st.mode==="seeing"?"":" ghost"}" data-ibmode="seeing">What are you seeing?</button></div>`
   const famSwitch=ib&&ib.director&&!VIEW_AS?`<section class="card"><div class="lbl">Ideas to try at home</div><div class="hint">${ib.familyOn?"Families see the At home side of every card on the Family page, with your highlights first.":"Families do not see these ideas yet. Turn them on when you are ready."}</div><div class="actions"><button class="btn small${ib.familyOn?" ghost":""}" data-ibfamily="${ib.familyOn?0:1}">${ib.familyOn?"Turn off for families":"Turn on for families"}</button></div></section>`:"";
   const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c?ibCardHtml(c):"";
-  const phone=window.innerWidth<=900;
-  m.innerHTML=head+top+famSwitch+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+(phone&&(st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div>${right}`
+    m.innerHTML=head+top+famSwitch+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+((st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div><div id="ibright">${right}</div>`
     :`<div class="ibwrap"><div>${nav}</div><div>${ibListHtml()}</div><div id="ibright">${right}</div></div>`)}
-// a picked card on a phone shows on its own, with Back to the cards
+// a picked card, the stance or What are you seeing? shows on its own across the page, with Back to the cards
 function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
-  if(view!=="ideabank")goView("ideabank");else{renderMain();const r=$("#ibright");if(r&&window.innerWidth>900)r.scrollIntoView({block:"start"});else jumpTop()}}
+  if(view!=="ideabank")goView("ideabank");else{renderMain();jumpTop()}}
 window.TREE_IDEA_OPEN=ibOpen;
 document.addEventListener("input",e=>{const t=e.target;if(view!=="ideabank"||!t)return;
   if(t.id==="ib-q"||t.id==="ib-bq"){if(t.id==="ib-q"){ibSt.q=t.value;ibSt.mode=ibSt.mode==="card"?"card":ibSt.mode}else ibSt.bq=t.value;const at=t.selectionStart,id=t.id;clearTimeout(ibInputT);ibInputT=setTimeout(()=>{renderMain();const q=$("#"+id);if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}},150)}});
@@ -181,7 +215,7 @@ document.addEventListener("change",e=>{const t=e.target;if(!t||!t.dataset)return
   if(t.dataset.ibpick){if(t.checked)ibPick.add(t.dataset.ibpick);else ibPick.delete(t.dataset.ibpick);renderMain();return}
   if(t.dataset.ibtype){const g=$("#"+t.dataset.ibtype+"-group");if(g&&ib)g.innerHTML=((ib.types||{})[t.value]||[]).map(x=>`<option>${esc(x)}</option>`).join("");return}
   if(t.dataset.ibsgf){const c=ibCard(t.dataset.ibsgf),ta=$("#ib-sgt");if(c&&ta){const v=ibAt(c,t.value);ta.value=Array.isArray(v)?v.join("\n"):v||""}return}});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind],[data-ibfamily],[data-ibtry],[data-ibuntry],[data-ibtryopen]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibopen],[data-ibgroup],[data-ibsel],[data-ibmode],[data-ibchip],[data-ibclearf],[data-ibselall],[data-ibclearsel],[data-ibside],[data-ibuse],[data-ibhigh],[data-ibremove],[data-ibrestore],[data-ibaddgo],[data-ibnewgo],[data-ibsgsend],[data-ibdecide],[data-ibbeh],[data-ibinq],[data-ibplanback],[data-ibplanoff],[data-ibshare],[data-ibfind],[data-ibfamily],[data-ibplace],[data-ibtry],[data-ibuntry],[data-ibtryopen]");if(!t)return;const d=t.dataset;
   if(d.ibopen){e.preventDefault();if(libSheetOn){libSheetOn=null;libSheetPaint()}if(!ib)await ibLoad();ibOpen(d.ibopen);return}
   if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
   if(view!=="ideabank"&&!d.ibshare)return;
@@ -192,6 +226,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
   if(d.ibclearf){ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];renderMain();return}
   if(d.ibselall){for(const c of ibShown())ibPick.add(c.id);renderMain();return}
   if(d.ibclearsel){ibPick.clear();renderMain();return}
+  if(d.ibplace){if(typeof mqQ!=="undefined"){mqQ=d.ibplace;mqArea="All";mqTag="All"}goView("museums");return}
   if(d.ibside){ibSt.side=d.ibside;ibKeep();renderMain();return}
   if(d.ibplanback){const id=ibSt.fromPlan;ibSt.fromPlan="";if(id&&plans.get(id)){currentId=id;goView("plans",{keepPlan:true})}return}
   if(d.ibplanoff){ibSt.fromPlan="";renderMain();return}
@@ -265,8 +300,8 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     <div class="chips">${(ib.fromUs||[]).map(u=>`<button class="chip ${us.includes(u.name)?"on":""}" type="button" aria-pressed="${us.includes(u.name)}" data-ibiqus="${esc(u.name)}" ${dir?"":"disabled"}>${esc(u.name)}</button>`).join("")}</div>
     ${(ib.fromUs||[]).filter(u=>us.includes(u.name)).map(u=>`<p class="ibtip"><b>${esc(u.name)}.</b> ${esc(u.look)}</p>`).join("")}
     ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
-    <section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
-    ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}
+    ${typeof planResOk==="function"&&!planResOk()?"":`<section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
+    ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}`}
 document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!isDirector())return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}

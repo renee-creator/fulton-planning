@@ -1,5 +1,5 @@
 {
- "note": "Watch and Wonder taken out of the provocations and curiosity prompts, and the PD page that describes them.",
+ "note": "Watch and Wonder taken out of the provocations and curiosity prompts.",
  "changes": [
   {
    "path": "staff/library/prompts/provocations.md",
@@ -25,16 +25,6 @@
    "path": "staff/library/prompts/provocations.md",
    "from": "\n## Story Weaver\n",
    "to": "\n## Stories\n"
-  },
-  {
-   "path": "staff/pd/modules/40-questions-worth-asking.md",
-   "from": "source: The director's notes and discussion, October 27, 2026; the Role of the Teacher, from our family handbook and PD topics, 2015; the Art page of our 2017 family handbook; On the Floor Training, 2022; the Watch and Wonder Curiosity Prompt cards and kit prompts (the director's own); our provocations and curiosity prompts",
-   "to": "source: The director's notes and discussion, October 27, 2026; the Role of the Teacher, from our family handbook and PD topics, 2015; the Art page of our 2017 family handbook; On the Floor Training, 2022; our provocations and curiosity prompts"
-  },
-  {
-   "path": "staff/pd/modules/40-questions-worth-asking.md",
-   "from": "Our provocations and curiosity prompts hold the school's own wonderings, from the Watch and Wonder Curiosity Prompt cards, the kit prompts, the garden seasons and the artists.",
-   "to": "Our provocations and curiosity prompts hold the school's own wonderings, the garden seasons and the artists."
   }
  ]
 }
