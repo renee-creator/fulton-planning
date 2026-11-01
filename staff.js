@@ -1169,7 +1169,8 @@ module.exports = function staffModule(o) {
     noKitNames: ['code:once/no-kit-names.json', 'Watch and Wonder taken out of the provocations and curiosity prompts'],
     // Session 13, the director's alignment of the Idea bank cards and the PD modules, from its list in the private records
     s13Alignment: ['staff/once/s13-alignment.json', 'The Idea bank cards and PD modules aligned with the director\'s decisions, with links between them'],
-    s13Depth: ['staff/once/s13-depth.json', 'Each module\'s in-depth version beside its overview, aligned with the director\'s decisions'] };
+    s13Depth: ['staff/once/s13-depth.json', 'Each module\'s in-depth version beside its overview, aligned with the director\'s decisions'],
+    s13Consistency: ['staff/once/s13-consistency.json', 'PD modules consistent with each other and between their two versions'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
