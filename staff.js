@@ -1049,7 +1049,7 @@ module.exports = function staffModule(o) {
   const IB = require('./ideabank.js')({ S, get, put, log, isDirector, isKitchen, nameKey }); RECORD_EDIT.push(IB.SPEC);
   const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
-  const GD = require('./garden.js')({ recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
+  const GD = require('./garden.js')({ ask: o.ask, hasAsk: o.hasAsk, recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ edWords: () => edTexts(), get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id), putText, piecesChanged: () => { pieceCache = null; } });
   // PD paths and assignments, beside the PD library's modules
@@ -1175,7 +1175,11 @@ module.exports = function staffModule(o) {
     s13Drdp: ['staff/once/s13-drdp.json', 'Links to the DRDP (2025) and the DRDP reference in the DRDP module'],
     s13New: ['staff/once/s13-new.json', 'The Emergent Reader, The Emergent Mathematician and Concepts of Time, and the Everyday learning cards'],
     // the Artists page's note, once artist cards print their images and take the director's own photo (November 1, 2026)
-    s14Artists: ['staff/once/s14-artists.json', 'Artist cards print their images, and the director can add her own photo'] };
+    s14Artists: ['staff/once/s14-artists.json', 'Artist cards print their images, and the director can add her own photo'],
+    // mullein's card, chart paper as living documentation, and the cards for artists and songs the Idea bank names (November 1, 2026)
+    s14Garden: ['staff/once/s14-garden.json', 'Mullein filled in on the plant list'],
+    s14Chart: ['staff/once/s14-chart.json', 'Chart paper as living documentation, in the modules and the Idea bank'],
+    s14Library: ['staff/once/s14-library.json', 'A card for each artist the Idea bank names, and Song book lines that name their songs'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;

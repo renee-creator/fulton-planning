@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="5b304a086d17";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="45f7f9471c8d";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5633,13 +5633,14 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   // plants
   const pRow=p=>`<details class="gplant" id="ge-${esc(p.id)}"><summary><span><b>${esc(p.common)}</b> <i class="cnt">${esc(p.botanical||"")}${p.confirm?", to confirm":""}</i></span><span>${gdnMark(p)}</span></summary>
     ${gdnPhotoHtml(p)}
+    ${p.filled?`<div class="hint">TREE looked this plant up. Read it through and change anything that is not right for our site.${p.commonSays?` Usually written ${esc(p.commonSays)}.`:""}${dir?` <span class="actions" style="display:inline-flex;margin:0">${p.commonSays?`<button class="linkbtn" data-gpname="${esc(p.id)}|${esc(p.commonSays)}">Use ${esc(p.commonSays)}</button>`:""}<button class="linkbtn" data-gpchecked="${esc(p.id)}">It is checked</button></span>`:""}</div>`:""}
     <div class="cnt">${esc(p.where||(gdnBed(p.bed)||{}).name||"Where it sits is not set yet")}. ${esc((p.uses||[]).join(", "))}.${p.varietyConfirm!==false?` Variety ${p.variety?esc(p.variety)+", ":""}to confirm.`:p.variety?" Variety "+esc(p.variety)+".":""}${p.group?` The ${esc(p.group)} small group carries its name.`:""}</div>
     ${p.taste?`<div class="gsafe"><b>${p.eat==="look"?"For looking.":"What is safe to taste."}</b> ${esc(p.taste)}</div>`:""}${p.opens?`<div style="margin-top:4px">${esc(p.opens)}</div>`:""}
     ${(p.wonder||[]).length?`<ul class="gwonder">${p.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}${(p.words||{}).adult?`<div style="margin-top:4px">${esc(p.words.adult)}</div>`:""}
     ${(p.care||[]).length?`<div class="cnt" style="margin-top:4px">Care through the year. ${gdnCareText(p).map(x=>esc(x.charAt(0).toUpperCase()+x.slice(1))).join(". ")}.</div>`:""}
     ${(p.wildlife||[]).length?`<div class="cnt">Feeds ${esc(p.wildlife.join(", "))}.</div>`:""}
     <div class="gphotos">${((g.photos||[]).filter(x=>x.plant===p.id)).map(x=>`<img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"")}" alt="${esc(p.common)}${x.season?", "+esc(x.season):""}">`).join("")}</div>
-    <div class="actions"><button class="btn small ghost" data-gphoto="${esc(p.id)}">Add our photo</button>${printBtns("gplant",p.id,"Full plant page, PDF")}${dir?`<button class="linkbtn" data-gpedit="${esc(p.id)}">Change</button>${gdnChange("plants|"+p.id,"Change its words")}`:""}${dir&&g.mapPhoto&&!p.planned?gdnPlaceBtn("plant:"+p.id,spots):""}</div>
+    <div class="actions"><button class="btn small ghost" data-gphoto="${esc(p.id)}">Add our photo</button>${dir&&!p.filled&&(!p.opens||!(p.words||{}).child||!(p.care||[]).length)?`<button class="btn small ghost" data-gpfill="${esc(p.id)}">Look it up</button>`:""}${printBtns("gplant",p.id,"Full plant page, PDF")}${dir?`<button class="linkbtn" data-gpedit="${esc(p.id)}">Change</button>${gdnChange("plants|"+p.id,"Change its words")}`:""}${dir&&g.mapPhoto&&!p.planned?gdnPlaceBtn("plant:"+p.id,spots):""}</div>
     ${dir&&gdnEdit===p.id?gdnPlantForm(p,beds,g.uses):""}</details>`;
   const grown=plants.filter(p=>!p.planned),planned=plants.filter(p=>p.planned);
   // the plants, one section with three views, the list where plants are added and changed, the plant cards for children
@@ -5851,7 +5852,7 @@ function gdnAgreeDoc(k){const A=(gdn.agreements||{})[k]||{};const ph=(gdn.photos
 async function gdnCall(p,b,msg){try{gdn=await window.FP_API("/api/staff/garden"+(p?"/"+p:""),b||{});gdnAt=Date.now();if(msg)toast(msg);renderMain();return true}catch(e){toast(e&&e.message||"That did not work. Check the connection and try again.");return false}}
 async function gdnPickPhoto(){return new Promise(ok=>{const i=document.createElement("input");i.type="file";i.accept="image/*";i.capture="environment";i.onchange=()=>ok(i.files&&i.files[0]||null);i.click()})}
 async function gdnFaceFree(blob){const url=URL.createObjectURL(blob);try{const im=await new Promise((ok,no)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=no;x.src=url});return (await shFindFaces(im)).length===0}finally{URL.revokeObjectURL(url)}}
-document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gaseason],[data-gpreserve],[data-gseedshare],[data-gseedaccept],[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gtedit],[data-gtesave],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmoff],[data-gmapplace],[data-gkidmap],[data-goffer],[data-gcarry],[data-gfrecipe]");if(!t)return;
+document.addEventListener("click",async e=>{const t=(view==="garden"||view==="today"||view==="kitchen")&&e.target.closest("[data-gaseason],[data-gpreserve],[data-gseedshare],[data-gseedaccept],[data-gdone],[data-gready],[data-gmapready],[data-gharvest],[data-gpedit],[data-gpsave],[data-gpfill],[data-gpchecked],[data-gpname],[data-gpdel],[data-gphoto],[data-gguide],[data-gtadd],[data-gtaskdel],[data-gtedit],[data-gtesave],[data-gcomp],[data-gseed],[data-gseedgrow],[data-gtray],[data-gtrayready],[data-gtrayout],[data-gwild],[data-gbedding],[data-gbedadd],[data-gspaceadd],[data-gmapup],[data-gmplace],[data-gmoff],[data-gmapplace],[data-gkidmap],[data-goffer],[data-gcarry],[data-gfrecipe]");if(!t)return;
   const d=t.dataset,v=id=>(document.getElementById(id)||{}).value||"";
   if(d.gguide){gdnGuide=d.gguide;renderMain();return}
   if(d.gaseason){gdnASeason=d.gaseason;renderMain();return}
@@ -5872,7 +5873,12 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(d.gmapready){if(await gdnCall("mapready",{on:d.gmapready==="1"},d.gmapready==="1"?"The site map shows on sign-ups, plans, New Educator, the Family page and handouts.":"The site map shows on the Garden page only."))window.TREE_SITEMAP(true);return}
   if(d.gharvest){const r=v("gh-room");await gdnCall("harvest",{plant:v("gh-plant"),amount:v("gh-amount"),bed:v("gh-bed"),date:v("gh-date"),children:!!r,room:r},"Kept. It shows on the Kitchen page.");return}
   if(d.gpsave!=null){const uses=[...document.querySelectorAll("[data-gpuse]:checked")].map(x=>x.dataset.gpuse);const eat=v("gp-eat");if(eat==="look")uses.push("Look, don't eat");
-    gdnEdit=null;await gdnCall("plant",{id:d.gpsave||undefined,plant:{common:v("gp-common"),botanical:v("gp-bot"),bed:v("gp-bed"),eat,uses,gather:!!document.getElementById("gp-gather")?.checked,taste:v("gp-taste"),variety:v("gp-var"),words:{child:v("gp-child"),adult:v("gp-adult")}}},"Saved.");return}
+    gdnEdit=null;const before=new Set((gdn.plants||[]).map(x=>x.id));const ok=await gdnCall("plant",{id:d.gpsave||undefined,plant:{common:v("gp-common"),botanical:v("gp-bot"),bed:v("gp-bed"),eat,uses,gather:!!document.getElementById("gp-gather")?.checked,taste:v("gp-taste"),variety:v("gp-var"),words:{child:v("gp-child"),adult:v("gp-adult")}}},"Saved.");
+    // a new plant is looked up straight away, so its card fills in like the others
+    if(ok&&!d.gpsave){const n=(gdn.plants||[]).find(x=>!before.has(x.id));if(n){progress("Looking up "+n.common);await gdnCall("fill",{id:n.id},"Filled in. Read it through and confirm it.")}}return}
+  if(d.gpfill){t.disabled=true;const p=(gdn.plants||[]).find(x=>x.id===d.gpfill);progress("Looking up "+(p?p.common:"the plant"));await gdnCall("fill",{id:d.gpfill},"Filled in. Read it through and confirm it.");return}
+  if(d.gpchecked){await gdnCall("plant",{id:d.gpchecked,plant:{checked:true}},"Marked checked.");return}
+  if(d.gpname){const [id,name]=d.gpname.split("|");await gdnCall("plant",{id,plant:{common:name}},"Renamed.");return}
   if(d.gpdel){if(!confirm("Take this plant off the list?"))return;gdnEdit=null;await gdnCall("plant",{id:d.gpdel,remove:true});return}
   if(d.gphoto||d.gmapup){const f=await gdnPickPhoto();if(!f)return;toast("Checking the photo");const blob=await shrinkImage(f);
     if(!(await gdnFaceFree(blob).catch(()=>false))){toast(d.gmapup?"A face was found in that picture, so it is not kept. Choose a picture with no people.":"A face was found, so the photo is not kept. Our Garden photos never show children.");return}
@@ -6025,8 +6031,9 @@ function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="link
   const lm=k.match(/^(?:The )?(Book collection|Recipe library|Song book)(?:, for (.+))?$/i);
   if(lm){const kind=/book c/i.test(lm[1])?"book":/recipe/i.test(lm[1])?"recipe":"song",go=kind==="recipe"?"recipes":"songs";if(!lm[2])return page(go);
     const pool=typeof attachPool==="function"?attachPool().filter(a=>a.kind===kind):[];
-    if(kind==="book"){let out=esc(lm[2]),any=false;for(const b of pool.slice().sort((x,y)=>y.title.length-x.title.length)){const at=lm[2].indexOf(b.title);if(at<0||out.indexOf(esc(b.title))<0)continue;out=out.replace(esc(b.title),ibLibBtn("book",b.id,b.title));any=true}
-      return any?`${esc(lm[1])}, for ${out}`:page(go)}
+    // each title the line names becomes its own link, for books, songs and recipes alike (November 1, 2026)
+    {let out=esc(lm[2]),any=false;const bare=b=>String(b.title||"").replace(/^© /,"");for(const b of pool.slice().sort((x,y)=>bare(y).length-bare(x).length)){const t=bare(b);if(!t||lm[2].indexOf(t)<0||out.indexOf(esc(t))<0)continue;out=out.replace(esc(t),ibLibBtn(kind,b.id,t));any=true}
+      if(any||kind==="book")return any?`${esc(lm[1])}, for ${out}`:page(go)}
     const fits=ibLibFits(kind,lm[2]);return fits.length?`${esc(k)}. ${fits.map(a=>ibLibBtn(kind,a.id,a.title.replace(/^© /,""))).join(", ")}`:page(go)}
   // a lens, by its name
   const ln=k.match(/^(?:The )?(.+?) lens$/);if(ln&&typeof LENSES!=="undefined"){const L=LENSES.find(l=>ibNorm(l.name)===ibNorm(ln[1])||ibNorm(l.name).includes(ibNorm(ln[1])));return L?`<button class="linkbtn" data-lensgo="${esc(L.id)}">${esc(k)}</button>`:page("lens")}

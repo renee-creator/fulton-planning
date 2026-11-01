@@ -31,7 +31,8 @@ function make(list, opt = {}) {
   };
   files.set('staff/school.json', { doc: Object.assign({ open: { records: true, pd: true, handbook: true, newed: true, growth: true }, checkin: { week: 1, secondTime: '13:00', minutes: 20 } }, opt.school || {}), sha: 'x' });
   const events = opt.events || [];
-  const staff = require('../staff.js')({ gh, repo: 'o/r', store, log: () => {}, classrooms: () => ['West', 'North', 'South'], accounts, accountFor, saveAccounts: async () => true, isDirector, isKitchen, isOffice, nameKey,
+  for (const [k, v] of Object.entries(opt.files || {})) files.set(k, typeof v === 'string' ? { text: v } : { doc: v });
+  const staff = require('../staff.js')({ ask: opt.ask, hasAsk: opt.ask ? () => true : undefined, gh, repo: 'o/r', store, log: () => {}, classrooms: () => ['West', 'North', 'South'], accounts, accountFor, saveAccounts: async () => true, isDirector, isKitchen, isOffice, nameKey,
     keepOriginal: async () => {}, readOriginal: async () => Buffer.from(''), reminders, lensNow: () => null, rosterNames: () => list.filter(p => !p.kitchen && !p.office && !p.director).map(p => p.name),
     checkPasscode: (n, c) => c === '1357', nameBlocked: () => false, calendarEvents: async (f, t) => ({ events: events.filter(e => e.start <= t && (e.end || e.start) >= f) }), setSetting: () => {} });
   return { staff, files, accounts, sent, writes, store };

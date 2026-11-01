@@ -111,8 +111,9 @@ function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="link
   const lm=k.match(/^(?:The )?(Book collection|Recipe library|Song book)(?:, for (.+))?$/i);
   if(lm){const kind=/book c/i.test(lm[1])?"book":/recipe/i.test(lm[1])?"recipe":"song",go=kind==="recipe"?"recipes":"songs";if(!lm[2])return page(go);
     const pool=typeof attachPool==="function"?attachPool().filter(a=>a.kind===kind):[];
-    if(kind==="book"){let out=esc(lm[2]),any=false;for(const b of pool.slice().sort((x,y)=>y.title.length-x.title.length)){const at=lm[2].indexOf(b.title);if(at<0||out.indexOf(esc(b.title))<0)continue;out=out.replace(esc(b.title),ibLibBtn("book",b.id,b.title));any=true}
-      return any?`${esc(lm[1])}, for ${out}`:page(go)}
+    // each title the line names becomes its own link, for books, songs and recipes alike (November 1, 2026)
+    {let out=esc(lm[2]),any=false;const bare=b=>String(b.title||"").replace(/^© /,"");for(const b of pool.slice().sort((x,y)=>bare(y).length-bare(x).length)){const t=bare(b);if(!t||lm[2].indexOf(t)<0||out.indexOf(esc(t))<0)continue;out=out.replace(esc(t),ibLibBtn(kind,b.id,t));any=true}
+      if(any||kind==="book")return any?`${esc(lm[1])}, for ${out}`:page(go)}
     const fits=ibLibFits(kind,lm[2]);return fits.length?`${esc(k)}. ${fits.map(a=>ibLibBtn(kind,a.id,a.title.replace(/^© /,""))).join(", ")}`:page(go)}
   // a lens, by its name
   const ln=k.match(/^(?:The )?(.+?) lens$/);if(ln&&typeof LENSES!=="undefined"){const L=LENSES.find(l=>ibNorm(l.name)===ibNorm(ln[1])||ibNorm(l.name).includes(ibNorm(ln[1])));return L?`<button class="linkbtn" data-lensgo="${esc(L.id)}">${esc(k)}</button>`:page("lens")}

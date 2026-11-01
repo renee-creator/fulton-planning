@@ -232,9 +232,70 @@ module.exports = function garden(o) {
       if (b.words && typeof b.words === 'object') p.words = { child: txt(b.words.child, 400), adult: txt(b.words.adult, 1200) };
       if (Array.isArray(b.care)) p.care = b.care.filter(c => c && /^(0[1-9]|1[0-2])$/.test(c.month) && clean(c.text)).map(c => ({ id: c.id || rid('k'), month: c.month, text: txt(c.text, 160), stage: STAGES.includes(c.stage) ? c.stage : 'tend' }));
       if (Array.isArray(b.wildlife)) p.wildlife = b.wildlife.map(x => txt(x, 80)).filter(Boolean);
+      // the director has read what TREE filled in and confirms it
+      if (b.checked === true) { delete p.filled; delete p.commonSays; p.confirm = false; }
       if (p.eat !== 'food') p.uses = (p.uses || []).filter(u => u !== 'Food');
       if (p.eat !== 'partly') p.uses = (p.uses || []).filter(u => u !== 'Partly edible'); else if (!(p.uses || []).includes('Partly edible')) p.uses = [...(p.uses || []), 'Partly edible'];
       saveS({ plants: list }); return back();
+    }
+    /* a plant looked up once it is added, or later for one still missing its words. TREE drafts the botanical name, its
+       uses, what is safe, its words for children and adults, its wonderings, its care month by month and when it is ready,
+       and an openly licensed photo from iNaturalist. What the director wrote stays. A plant marked for looking stays for
+       looking, and everything filled in is marked to confirm (November 1, 2026). */
+    if (P === 'garden/fill') {
+      const list = JSON.parse(JSON.stringify(s.plants || [])); const p = list.find(x => x.id === body.id); if (!p) { err(req, res, 404, 'That plant is not on the list.'); return; }
+      if (!o.ask || (o.hasAsk && !o.hasAsk())) { err(req, res, 503, 'Looking plants up is not set up here yet.'); return; }
+      const where = p.where || (bedOf(s, p.bed) || {}).name || '';
+      const sample = (s.plants || []).find(x => x.words && x.words.child && x.opens && (x.care || []).length);
+      const strip = x => x ? { common: x.common, botanical: x.botanical, uses: x.uses, eat: x.eat, taste: x.taste, ready: x.ready, opens: x.opens, wonder: x.wonder, words: x.words, care: (x.care || []).map(c => ({ month: c.month, text: c.text, stage: c.stage })), wildlife: x.wildlife, permanent: x.permanent } : null;
+      const prompt = `A nature-based preschool farm in Santa Rosa, Sonoma County, California, keeps a card for each plant growing on its site. Children are two to five. We use no herbicides or pesticides.
+Fill in the card for this plant.
+Name as the director wrote it: ${JSON.stringify(p.common)}${p.botanical ? `\nBotanical name she gave: ${JSON.stringify(p.botanical)}` : ''}${where ? `\nWhere it grows on our site: ${JSON.stringify(where)}` : ''}
+Here is one finished card from our site, for the style and the length of each part:
+${JSON.stringify(strip(sample))}
+Answer with JSON only, with these keys.
+common (the usual common name, correctly spelled), botanical (the species, Latin), uses (any of ${JSON.stringify(USES)}), eat ("food", "partly" or "look", choosing "look" for anything not safely eaten by young children), taste (one sentence on what is safe to taste, or why we only look), ready (two-digit months when it flowers or is ready, as strings), opens (two sentences that open curiosity, true and plain), wonder (two lines, each starting "I wonder"), words (child, one or two short sentences a child hears; adult, two or three sentences including any safety point such as skin irritation or toxic parts), care (month by month for Sonoma County, each {month, text, stage} with stage one of ${JSON.stringify(STAGES)}, using no chemicals), wildlife (animals and insects it feeds or shelters), permanent (true for a perennial, tree or shrub).
+Writing rules. No dashes. No colons inside sentences. Plain warm sentences. Only facts you are sure of.`;
+      let got = null;
+      try { const r = await o.ask([{ type: 'text', text: prompt }], false, { max_tokens: 3000 }); if (r.status !== 200) throw new Error('busy');
+        const m = JSON.parse(r.text); const t = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+        got = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) { err(req, res, 502, 'TREE could not look the plant up just now. Try again in a minute.'); return; }
+      const say = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim();
+      const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length);
+      if (!p.botanical && got.botanical) { p.botanical = txt(say(got.botanical), 120); p.confirm = true; }
+      if (empty(p.taste) && got.taste) p.taste = txt(say(got.taste), 300);
+      if (empty(p.opens) && got.opens) p.opens = txt(say(got.opens), 600);
+      if (empty(p.wonder) && Array.isArray(got.wonder)) p.wonder = got.wonder.map(w => txt(say(w), 200)).filter(Boolean).slice(0, 3);
+      if (empty(p.ready) && Array.isArray(got.ready)) p.ready = got.ready.map(x => String(x).padStart(2, '0')).filter(m => /^(0[1-9]|1[0-2])$/.test(m));
+      if (empty(p.care) && Array.isArray(got.care)) p.care = got.care.filter(c => c && /^(0?[1-9]|1[0-2])$/.test(String(c.month)) && clean(c.text)).slice(0, 24).map(c => ({ id: rid('k'), month: String(c.month).padStart(2, '0'), text: txt(say(c.text), 160), stage: STAGES.includes(c.stage) ? c.stage : 'tend' }));
+      if (empty(p.wildlife) && Array.isArray(got.wildlife)) p.wildlife = got.wildlife.map(x => txt(say(x), 80)).filter(Boolean).slice(0, 8);
+      if (p.permanent == null && typeof got.permanent === 'boolean') p.permanent = got.permanent;
+      const w = got.words || {}; p.words = Object.assign({ child: '', adult: '' }, p.words);
+      if (!p.words.child && w.child) p.words.child = txt(say(w.child), 400);
+      // what we eat is the director's choice. The lookup may only make a plant more careful, never edible on its own
+      const said = ['food', 'partly', 'look'].includes(got.eat) ? got.eat : 'look'; const rank = { look: 0, partly: 1, food: 2 };
+      const was = p.eat || 'look'; if (!p.eat || rank[said] < rank[was]) p.eat = said;
+      let adult = say(w.adult); if (rank[said] > rank[p.eat]) adult = (adult ? adult + ' ' : '') + 'It may be edible. It stays for looking until the director confirms it.';
+      if (!p.words.adult && adult) p.words.adult = txt(adult, 1200);
+      const uses = new Set([...(p.uses || []), ...((Array.isArray(got.uses) ? got.uses : []).filter(u => USES.includes(u)))]);
+      if (p.eat !== 'food') uses.delete('Food'); if (p.eat !== 'partly') uses.delete('Partly edible'); if (p.eat === 'look') uses.add('Look, don\'t eat'); else uses.delete('Look, don\'t eat');
+      p.uses = [...uses];
+      if (!p.common || p.common.length < 3 || (got.common && say(got.common).toLowerCase() !== p.common.toLowerCase())) p.commonSays = txt(say(got.common || ''), 80);
+      // an openly licensed photo of the species from iNaturalist, credited on the card
+      if (!p.photo && p.botanical) {
+        try { const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 10000);
+          const r = await fetch('https://api.inaturalist.org/v1/taxa?rank=species&per_page=1&q=' + encodeURIComponent(p.botanical), { signal: ac.signal, headers: { Accept: 'application/json' } });
+          const tx = (((await r.json()).results) || [])[0];
+          // the species' first photo with an open license, since the first photo shown may keep all rights
+          const r2 = tx ? await fetch('https://api.inaturalist.org/v1/taxa/' + tx.id, { signal: ac.signal, headers: { Accept: 'application/json' } }) : null; clearTimeout(tm);
+          const full = r2 ? ((await r2.json()).results || [])[0] : null;
+          const LIC = { cc0: 'CC0', 'cc-by': 'CC BY', 'cc-by-sa': 'CC BY-SA', 'cc-by-nc': 'CC BY-NC', 'cc-by-nc-sa': 'CC BY-NC-SA' };
+          const ph = [tx && tx.default_photo, ...((full && full.taxon_photos) || []).map(x => x.photo)].find(x => x && LIC[String(x.license_code || '').toLowerCase()] && /^https:\/\//.test(x.medium_url || ''));
+          if (ph) p.photo = { url: ph.medium_url, by: txt(String(ph.attribution || '').replace(/^\(c\)\s*/i, '').replace(/,\s*some rights reserved.*$/i, ''), 120), license: LIC[String(ph.license_code).toLowerCase()], link: 'https://www.inaturalist.org/photos/' + ph.id, source: 'iNaturalist' };
+        } catch (e) { log('No iNaturalist photo for', p.botanical, e.message); }
+      }
+      p.filled = { at: Date.now(), by: 'TREE' };
+      saveS({ plants: list }); log('Plant looked up,', p.common); return back();
     }
     if (P === 'garden/bed') {
       const list = [...(s.beds || [])]; let b = list.find(x => x.id === body.id); if (body.remove) { saveS({ beds: list.filter(x => x.id !== body.id) }); return back(); }

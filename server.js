@@ -614,6 +614,7 @@ ONCE.push(['s13Format', () => staff.once.edits('s13Format', recsEdit)]);
 ONCE.push(['s13Drdp', () => staff.once.edits('s13Drdp', recsEdit)]);
 ONCE.push(['s13New', () => staff.once.edits('s13New', recsEdit)]);
 ONCE.push(['s14Artists', () => staff.once.edits('s14Artists', recsEdit)]);
+for (const k of ['s14Garden', 's14Chart', 's14Library']) ONCE.push([k, () => staff.once.edits(k, recsEdit)]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
@@ -696,7 +697,7 @@ function keepingDue() {
 const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it.id);
 function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
-const staff = require('./staff.js')({ gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
+const staff = require('./staff.js')({ ask: (c, careful, extra) => askClaude(c, careful, extra), hasAsk: () => !!anthropicKey(), gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), spaces: () => calendar.spaces(), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 staff.useRecsEdit(recsEdit);
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
