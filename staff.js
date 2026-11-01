@@ -1171,7 +1171,8 @@ module.exports = function staffModule(o) {
     s13Alignment: ['staff/once/s13-alignment.json', 'The Idea bank cards and PD modules aligned with the director\'s decisions, with links between them'],
     s13Depth: ['staff/once/s13-depth.json', 'Each module\'s in-depth version beside its overview, aligned with the director\'s decisions'],
     s13Consistency: ['staff/once/s13-consistency.json', 'PD modules consistent with each other and between their two versions'],
-    s13Format: ['staff/once/s13-format.json', 'Every PD overview in one shape, with Serving Two-Year-Olds in two versions'] };
+    s13Format: ['staff/once/s13-format.json', 'Every PD overview in one shape, with Serving Two-Year-Olds in two versions'],
+    s13Drdp: ['staff/once/s13-drdp.json', 'Links to the DRDP (2025) and the DRDP reference in the DRDP module'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
