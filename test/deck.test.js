@@ -50,6 +50,23 @@ test('an outside deck carries the full name, and a deck with no chosen photos us
   assert.ok(!Dk._draw(d.slides[0], d).includes('<script'), 'words are escaped');
 });
 
+test('chosen moments become evidence slides, in their part, and only cleared ones go outside', () => {
+  const Dk = deckKit();
+  const plan = [{ title: 'Key ideas', minutes: 15, moments: ['m1'] }, { title: 'The experience', minutes: 30, do: 'Look together.' }, { title: 'Plus and delta', minutes: 5 }];
+  const moments = [{ id: 'm1', text: 'Two children drew with chalk.', wonder: 'What did the lines mean?', date: '2026-10-14', room: 'West', language: 'Graphic', photo: { id: 'p1', thumb: 't1' }, outside: true },
+    { id: 'm2', text: 'A tall tower of blocks.', date: '2026-10-15', room: 'North', outside: false }];
+  const d = Dk.slidesFor(MOD, { plan, moments, photos: [{ key: 'obs:cover' }, { key: 'obs:p1' }, { key: 'obs:x' }] });
+  const ev = d.slides.filter(s => s.k === 'ev');
+  assert.deepStrictEqual(ev.map(s => d.plan[s.part].title), ['Key ideas', 'The experience']);
+  assert.strictEqual(ev[0].meta, 'October 14, 2026, West class, Graphic'); assert.strictEqual(ev[0].photo.key, 'obs:p1');
+  assert.ok(/Wondering\. What did the lines mean\?/.test(ev[0].notes));
+  const k = d.slides.map(s => s.k); assert.strictEqual(k[k.indexOf('ev') + 1], 'talk', 'evidence comes before the turn and talk');
+  assert.ok(!d.slides.some(s => s.k !== 'ev' && s.photo && s.photo.key === 'obs:p1'), 'a moment\'s photo is not used twice');
+  const o = Dk.slidesFor(MOD, { plan, moments, outside: true });
+  assert.deepStrictEqual(o.slides.filter(s => s.k === 'ev').map(s => s.quote), ['Two children drew with chalk.']);
+  for (const s of ev) assert.ok(Dk._draw(s, d).includes('From our documentation'));
+});
+
 test('an entry keeps its deck photos only in the shapes the deck can use', async () => {
   const h = await loaded([{ name: 'Dir', director: true }, { name: 'Ann', room: 'West' }]);
   const list = (await call(h.staff, 'Dir', 'pres/list')).body.list; const e = list[0];

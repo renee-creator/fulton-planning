@@ -39,11 +39,22 @@ function slidesFor(m,o){o=o||{};const K=kit();const out=o.outside;
   const q=String(o.question||"").trim()||((String(why&&why.body||"").match(/asks one question throughout\.\s*([^\n]+)/i)||[])[1]||"").trim();
   // the photos, in the order chosen. The first is the title slide's. With none chosen, the module's own pictures are used
   const chosen=(o.photos||[]).filter(p=>p&&p.key);const own=(mm.sections||[]).flatMap(x=>picsOf(x.body));
-  const cover=chosen[0]||null;const pool=(chosen.length?chosen.slice(1):own).slice();
   const plan=((o.plan||[]).length?o.plan:PLAN0).filter(p=>p&&String(p.title||"").trim());
+  /* the evidence, the entry's chosen moments, each in the part of the plan it was given to, and the others during the
+     experience. A deck for outside audiences carries only the moments the director cleared for them */
+  const mom=(o.moments||[]).filter(x=>x&&x.text&&(!out||x.outside));const evKey=x=>x.photo&&x.photo.id?"obs:"+x.photo.id:"";
+  const given=new Map();for(const [i,p] of plan.entries())for(const id of p.moments||[]){const x=mom.find(y=>y.id===id);if(x&&!given.has(x.id))given.set(x.id,i)}
+  const home=(()=>{const f=re=>plan.findIndex(p=>re.test(String(p.title).toLowerCase()));const a=f(/experience/);return a>=0?a:f(/key/)>=0?f(/key/):Math.max(0,plan.findIndex(p=>!/plus|delta/i.test(p.title)))})();
+  const evFor=i=>mom.filter(x=>(given.has(x.id)?given.get(x.id):home)===i).map(x=>{const k=evKey(x);
+    const when=x.date?new Date(x.date+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):"";
+    const meta=[when,x.room?(/,/.test(x.room)?x.room+" classes":x.room+" class"):"",x.language||""].filter(Boolean).join(", ");
+    return {k:"ev",quote:ow(plain(x.text)),meta,photo:k?{key:k,thumb:x.photo.thumb||"",cap:meta}:null,notes:[ow(plain(x.text)),x.wonder?"Wondering. "+ow(plain(x.wonder)):"",meta].filter(Boolean).join("\n\n")}});
+  // a photo that comes with a moment is shown with its words, so it is not used again elsewhere
+  const evKeys=new Set(mom.map(evKey).filter(Boolean));
+  const cover=chosen[0]||null;const pool=(chosen.length?chosen.slice(1):own).filter(p=>!evKeys.has(p.key));
   const S=[];const add=(s,part)=>{s.part=part;S.push(s);return s};
   add({k:"title",title:o.title||m.title,sub:o.subtitle||"",photo:cover,notes:o.subtitle||""},-1);
-  plan.forEach((p,i)=>{const t=String(p.title).toLowerCase(),min=+p.minutes||0,doT=ow(plain(p.do||""));
+  plan.forEach((p,i)=>{const t=String(p.title).toLowerCase(),min=+p.minutes||0,doT=ow(plain(p.do||""));const at0=S.length;
     add({k:"part",n:i+1,of:plan.length,title:p.title,minutes:min,color:PARTS[i%PARTS.length],notes:[doT,p.script?"Script. "+ow(plain(p.script)):""].filter(Boolean).join("\n\n")},i);
     if(/open/.test(t)){if(q)add({k:"q",text:q,notes:"The question we hold through the whole session."},i);
       add({k:"talk",prompt:doT||"Share a memory or a question that brings you into today's topic.",minutes:min,notes:doT},i)}
@@ -60,7 +71,10 @@ function slidesFor(m,o){o=o||{};const K=kit();const out=o.outside;
       L.forEach((x,j)=>add({k:"reflect",text:x,n:j+1,of:L.length,notes:x},i))}
     else if(/commit/.test(t)){const tt=first(tr&&tr.body,2)||doT||"Name one thing you will try.";add({k:"try",text:tt,notes:plain(tr&&tr.body)||doT},i);if(q)add({k:"q",text:q,notes:"The question again, to carry forward."},i)}
     else if(/plus|delta/.test(t))add({k:"plus",notes:doT||"One plus, what worked, and one delta, what to change next time."},i);
-    else add({k:"idea",label:p.title,phrase:first(doT,2)||p.title,points:[],notes:doT},i)});
+    else add({k:"idea",label:p.title,phrase:first(doT,2)||p.title,points:[],notes:doT},i);
+    // the part's evidence comes after the experience's opening words, or before the part's turn and talk, or at its end
+    const ev=evFor(i);if(ev.length){const last=S[S.length-1];const at=/experience/.test(t)?Math.min(S.length,at0+2):last&&last.k==="talk"&&last.part===i&&S.length-1>at0?S.length-1:S.length;
+      S.splice(at,0,...ev.map(x=>Object.assign(x,{part:i})))}});
   if(!plan.some(p=>/plus|delta/i.test(p.title)))add({k:"plus",notes:"One plus, what worked, and one delta, what to change next time."},plan.length-1);
   return {slides:S,plan,credit:out?"Fulton Community School & Farm":"Fulton Community School",title:o.title||m.title}}
 Dk.slidesFor=slidesFor;
@@ -97,6 +111,8 @@ function slideHtml(s,d){const cr=`<div class="dk-credit">${H(d.credit)}</div>`;c
     case"idea":return s.points.length?`<div class="dk-s dk-idea"><div class="dk-label">${H(s.label)}</div><div class="dk-pts" style="font-size:${ptSize(s.points)}px">${s.points.map((p,i)=>B(i,`<span class="dk-bar"></span>${H(p)}`)).join("")}</div>${cr}</div>`
       :`<div class="dk-s dk-idea"><div class="dk-label">${H(s.label)}</div><div class="dk-phrase" style="font-size:${size(s.phrase)}px">${H(s.phrase)}</div>${cr}</div>`;
     case"pw":return `<div class="dk-s dk-pw"><div class="dk-half">${img(s.pic,"dk-ease")}</div><div class="dk-side"><div class="dk-label">${H(s.label)}</div><div class="dk-pts" style="font-size:${Math.min(42,ptSize(s.points))}px">${s.points.map((p,i)=>B(i,`<span class="dk-bar"></span>${H(p)}`)).join("")}</div></div>${cr}</div>`;
+    case"ev":return s.pic?`<div class="dk-s dk-pw dk-ev"><div class="dk-half">${img(s.pic,"dk-ease")}</div><div class="dk-side"><div class="dk-label">From our documentation</div><div class="dk-evq" style="font-size:${Math.min(40,size(s.quote))}px">${H(clipQ(s.quote))}</div><div class="dk-evm">${H(s.meta)}</div></div>${cr}</div>`
+      :`<div class="dk-s dk-ev"><div class="dk-label">From our documentation</div><div class="dk-qm">“</div><div class="dk-evq" style="font-size:${size(s.quote)}px">${H(clipQ(s.quote))}</div><div class="dk-evm">${H(s.meta)}</div>${cr}</div>`;
     case"photo":return `<div class="dk-s dk-photo">${img(s.pic,"dk-ease")}${s.cap?`<div class="dk-cap">${H(s.cap)}</div>`:""}</div>`;
     case"q":return `<div class="dk-s dk-q"><div class="dk-qm">“</div><div class="dk-qt" style="font-size:${size(s.text,true)}px">${H(s.text)}</div>${cr}</div>`;
     case"talk":return `<div class="dk-s dk-talk" style="background:${C.mari}"><div class="dk-kick">Turn and talk</div><div class="dk-phrase" style="font-size:${size(s.prompt)}px">${H(s.prompt)}</div>${s.minutes?`<div class="dk-pmin">About ${s.minutes} minutes</div>`:""}${cr}</div>`;
@@ -104,6 +120,8 @@ function slideHtml(s,d){const cr=`<div class="dk-credit">${H(d.credit)}</div>`;c
     case"try":return `<div class="dk-s dk-try" style="background:${C.moss}"><div class="dk-kick">Try this week</div><div class="dk-phrase" style="font-size:${size(s.text)}px">${H(s.text)}</div>${cr}</div>`;
     case"plus":return `<div class="dk-s dk-plus"><div class="dk-label">Plus and delta</div><div class="dk-cols">${B(0,`<div class="dk-col"><div class="dk-ch" style="color:${C.moss}">Plus</div><div class="dk-cq">What went well today?</div></div>`)}${B(1,`<div class="dk-col"><div class="dk-ch" style="color:${C.clay}">Delta</div><div class="dk-cq">What would we change?</div></div>`)}</div>${cr}</div>`}
   return `<div class="dk-s"></div>`}
+// a long observation shows its opening on the slide, and the whole of it in the notes
+const clipQ=t=>{t=String(t||"");if(t.length<=320)return t;const c=t.slice(0,320).replace(/\s+\S*$/,"");return c+"…"};
 const builds=s=>s.k==="plus"?2:(s.k==="idea"||s.k==="pw")?(s.points||[]).length:0;
 
 const CSS=`.dk-ov{position:fixed;inset:0;background:#0d120f;z-index:2147483000;overflow:hidden;cursor:default;user-select:none;-webkit-user-select:none}
@@ -130,7 +148,7 @@ const CSS=`.dk-ov{position:fixed;inset:0;background:#0d120f;z-index:2147483000;o
 .dk-b{opacity:0;transform:translateY(18px);transition:opacity .55s ease,transform .55s ease}.dk-b.in{opacity:1;transform:none}
 .dk-pw .dk-half{position:absolute;left:0;top:0;bottom:0;width:50%;overflow:hidden}
 .dk-pw .dk-side{position:absolute;left:50%;right:0;top:0;bottom:0;padding:110px 90px 100px;display:flex;flex-direction:column}
-.dk-pw .dk-credit{left:50%}.dk-photo{background:#000}.dk-cap{position:absolute;left:0;right:0;bottom:0;padding:22px 90px;background:rgba(10,16,12,.72);color:#fff;font-size:28px;line-height:1.3}
+.dk-pw .dk-credit{left:50%}.dk-ev:not(.dk-pw){padding:110px 150px 110px;display:flex;flex-direction:column;background:#fff}.dk-ev .dk-qm{height:110px}.dk-evq{font-style:italic;line-height:1.3;flex:0 1 auto}.dk-pw .dk-evq{margin-top:auto}.dk-evm{font-size:26px;color:${C.soft};margin-top:30px;letter-spacing:.03em}.dk-pw .dk-evm{margin-bottom:auto}.dk-photo{background:#000}.dk-cap{position:absolute;left:0;right:0;bottom:0;padding:22px 90px;background:rgba(10,16,12,.72);color:#fff;font-size:28px;line-height:1.3}
 .dk-q{display:flex;flex-direction:column;justify-content:center;padding:0 170px;background:#fff}.dk-qm{font-size:260px;line-height:.6;color:${C.clay};height:120px}.dk-qt{font-style:italic;line-height:1.2}
 .dk-plus{padding:120px 150px;display:flex;flex-direction:column;background:#fff}.dk-cols{display:grid;grid-template-columns:1fr 1fr;gap:90px;flex:1;align-items:center}
 .dk-ch{font-size:84px;font-weight:bold}.dk-cq{font-size:48px;margin-top:20px;line-height:1.2}
@@ -144,7 +162,7 @@ const css=()=>{if(document.getElementById("dk-css"))return;const s=document.crea
 let P=null;
 async function deckFrom(o){const K=kit();if(!K.loadMods)throw new Error("Open the PD library once, then try again.");const ms=await K.loadMods();const m=ms.modules[o.slug];if(!m)throw new Error("That module is not in the PD library yet.");
   const e=o.entry||null;const outside=e?(e.audienceType==="external"||e.audienceType==="both"):!!o.outside;
-  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:e&&e.deck&&e.deck.photos,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});
+  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:e&&e.deck&&e.deck.photos,moments:e&&e.chosen,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});
   d.outside=outside;d.depth=!!o.depth;await loadPhotos(d);return d}
 Dk.present=async function(o){if(typeof progress==="function")progress("Opening the presentation");let d;try{d=await deckFrom(o)}catch(er){if(typeof toast==="function")toast(er.message||"The presentation could not open.");return}
   if(typeof toast==="function")toast("Click or press the arrow keys to move. Full screen and the presenter view are in the bar at the bottom.");css();
@@ -207,7 +225,7 @@ function clock(){if(!P||!P.win||P.win.closed)return;const doc=P.win.document,s=P
 /* ---------- the PowerPoint ---------- */
 const IN=px=>px/120,PT=px=>Math.round(px*0.6);
 Dk.pptx=async function(m,o){o=o||{};const K=kit();const e=o.entry||null;const outside=e?(e.audienceType==="external"||e.audienceType==="both"):!!o.outside;
-  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:e&&e.deck&&e.deck.photos,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});if(o._kinds)d.slides=d.slides.filter(s=>o._kinds.includes(s.k));await loadPhotos(d);
+  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:e&&e.deck&&e.deck.photos,moments:e&&e.chosen,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});if(o._kinds)d.slides=d.slides.filter(s=>o._kinds.includes(s.k));await loadPhotos(d);
   const Pp=await K.loadPptx();const pres=new Pp();pres.layout="LAYOUT_WIDE";// the PowerPoint maker writes these two into the file as they are, so an ampersand is written the way the file needs
   const xml=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");pres.title=xml(d.title);pres.company=xml("Fulton Community School & Farm");
   const hex=c=>c.replace("#","");const F="Georgia";
@@ -229,6 +247,11 @@ Dk.pptx=async function(m,o){o=o||{};const K=kit();const e=o.entry||null;const ou
     else if(s.k==="idea"){bg(C.cream);label(s.label,1.25,0.95,10.8);
       if(s.points.length)bullets(s.points,1.25,1.8,10.8,4.9,PT(ptSize(s.points)));else sd.addText(s.phrase,{x:1.25,y:1.8,w:10.8,h:4.9,fontFace:F,fontSize:PT(size(s.phrase)),color:hex(C.ink),valign:"middle"});credit()}
     else if(s.k==="pw"){bg(C.cream);await pic(s.pic,0,0,6.665,7.5);label(s.label,7.4,0.9,5.3);bullets(s.points,7.4,1.7,5.3,5,PT(Math.min(42,ptSize(s.points))));credit(null,true)}
+    else if(s.k==="ev"){bg(s.pic?C.cream:C.white);const qt=clipQ(s.quote);
+      if(s.pic){await pic(s.pic,0,0,6.665,7.5);label("From our documentation",7.4,0.9,5.3);sd.addText(qt,{x:7.4,y:1.7,w:5.3,h:4.2,fontFace:F,fontSize:PT(Math.min(40,size(s.quote))),italic:true,color:hex(C.ink),valign:"middle"});
+        sd.addText(s.meta,{x:7.4,y:6,w:5.3,h:0.5,fontFace:F,fontSize:14,color:hex(C.soft)});credit(null,true)}
+      else{label("From our documentation",1.25,0.95,10.8);sd.addText("“",{x:1.2,y:1.7,w:1.5,h:1.1,fontFace:F,fontSize:110,color:hex(C.clay)});sd.addText(qt,{x:1.25,y:2.5,w:10.8,h:3.3,fontFace:F,fontSize:PT(size(s.quote)),italic:true,color:hex(C.ink),valign:"top"});
+        sd.addText(s.meta,{x:1.25,y:6,w:10.8,h:0.5,fontFace:F,fontSize:15,color:hex(C.soft)});credit()}}
     else if(s.k==="photo"){bg("#000000");await pic(s.pic,0,0,13.33,7.5);if(s.cap){sd.addShape(pres.ShapeType.rect,{x:0,y:6.75,w:13.33,h:0.75,fill:{color:"0A100C",transparency:25},line:{color:"0A100C",transparency:100}});sd.addText(s.cap,{x:0.75,y:6.75,w:11.8,h:0.75,fontFace:F,fontSize:16,color:"FFFFFF",valign:"middle"})}}
     else if(s.k==="q"){bg(C.white);sd.addText("“",{x:1.3,y:0.9,w:2,h:1.6,fontFace:F,fontSize:150,color:hex(C.clay)});sd.addText(s.text,{x:1.4,y:2.2,w:10.5,h:3.8,fontFace:F,fontSize:PT(size(s.text,true)),italic:true,color:hex(C.ink),valign:"top"});credit()}
     else if(s.k==="talk"||s.k==="reflect"||s.k==="try"){const c=s.k==="talk"?C.mari:s.k==="reflect"?C.sky:C.moss,fg=s.k==="talk"?hex(C.ink):"FFFFFF";bg(c);
