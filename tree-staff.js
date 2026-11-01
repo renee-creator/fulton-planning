@@ -164,7 +164,10 @@ const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${
 
 /* ---------- a little Markdown, for the handbook and the pieces ---------- */
 function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>")
-  .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(m,t,u)=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`)}
+  .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(m,t,u)=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`)
+  // a link to another module, tree:pd/26-seeing-ourselves, or to an Idea bank card, tree:ib/writing-center, opens it in one tap
+  .replace(/\[([^\]]+)\]\(tree:pd\/(?:\d+-)?([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-stmod="m:${u}">${t}</button>`)
+  .replace(/\[([^\]]+)\]\(tree:ib\/([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-ibopen="${u}">${t}</button>`)}
 function md(text){const L=String(text||"").replace(/\r/g,"").split("\n");let h="",i=0;
   while(i<L.length){const l=L[i];
     if(!l.trim()){i++;continue}

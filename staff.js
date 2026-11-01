@@ -1166,7 +1166,9 @@ module.exports = function staffModule(o) {
     // Songs and stories and the materials guides now name Plans, Planning resources, and the Idea bank has its answers
     ideabankWords: ['code:once/ideabank-words.json', 'The Idea bank, and the planning resources under Plans'],
     // the provocations and curiosity prompts keep their questions, with no kit or company names
-    noKitNames: ['code:once/no-kit-names.json', 'Watch and Wonder taken out of the provocations and curiosity prompts'] };
+    noKitNames: ['code:once/no-kit-names.json', 'Watch and Wonder taken out of the provocations and curiosity prompts'],
+    // Session 13, the director's alignment of the Idea bank cards and the PD modules, from its list in the private records
+    s13Alignment: ['staff/once/s13-alignment.json', 'The Idea bank cards and PD modules aligned with the director\'s decisions, with links between them'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
