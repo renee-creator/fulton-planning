@@ -266,7 +266,7 @@ module.exports = function staffModule(o) {
   // every page of the school's own writing kept in the records as Markdown: PD modules, How To guides, the licensing
   // pieces, the New Educator pieces and letter, the materials guides, the Family page pieces, the wording the director
   // edits in place and the libraries for plans, such as recipes and the song book
-  const editable = p => /^staff\/(pd\/(modules|howto|licensing|printables)|newed|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
+  const editable = p => /^staff\/(pd\/(modules|depth|howto|licensing|printables)|newed|familypieces|wording)\/[a-z0-9-]+\.md$/.test(p) || /^staff\/library\/[a-z0-9-]+\/[a-z0-9-]+\.md$/.test(p);
   // the school's own wording the director edits in place, one page for each piece, such as the Family Questionnaire
   const WD = require('./wording.js');
   function wordingDoc(id) { const r = S.files.get('staff/wording/' + id + '.md'); return WD.parse(r ? r.text : ''); }
@@ -1168,7 +1168,8 @@ module.exports = function staffModule(o) {
     // the provocations and curiosity prompts keep their questions, with no kit or company names
     noKitNames: ['code:once/no-kit-names.json', 'Watch and Wonder taken out of the provocations and curiosity prompts'],
     // Session 13, the director's alignment of the Idea bank cards and the PD modules, from its list in the private records
-    s13Alignment: ['staff/once/s13-alignment.json', 'The Idea bank cards and PD modules aligned with the director\'s decisions, with links between them'] };
+    s13Alignment: ['staff/once/s13-alignment.json', 'The Idea bank cards and PD modules aligned with the director\'s decisions, with links between them'],
+    s13Depth: ['staff/once/s13-depth.json', 'Each module\'s in-depth version beside its overview, aligned with the director\'s decisions'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;

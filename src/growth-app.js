@@ -543,6 +543,15 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-drefview]"
 Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return drdpRefPage(my);const ms=await loadMods();let m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
   // the director reads a restored draft in the same page, beside the module educators know, and accepts it or goes back
   const viewing=isDir()&&st.restView===slug&&m.restored;if(viewing){try{m=Object.assign({},(await ga("module/restored",{slug})).module,{draft:false})}catch(er){st.restView="";toast(er.message||"The restored draft could not be opened.")}}
+  // a module with an in-depth version shows two tabs, Overview and In depth, each with about how long it takes. Progress,
+  // PD hours and the three ways in are shared by both, and the director edits each version on its own.
+  st.modTab=st.modTab||{};const deep=!viewing&&m.depth&&st.modTab[slug]==="depth";const tabs=!viewing&&m.depth;
+  const ov={lead:m.lead,sections:m.sections,read:m.read,path:m.path};if(deep)m=Object.assign({},m,{lead:m.depth.lead,sections:m.depth.sections});
+  const tLen=n=>{n=Number(n)||0;const h=Math.floor(n/60),mm=n%60;return (h?h+(h===1?" hour":" hours"):"")+(h&&mm?" ":"")+(mm?mm+" minutes":"")};
+  const tabBar=tabs?`<div class="tseg" role="group" aria-label="Version" style="margin:0 0 10px;display:flex;gap:6px;flex-wrap:wrap">
+    <button data-gmtab="${H(slug)}|overview" aria-pressed="${!deep}" style="text-align:left"><b>Overview</b><br><span class="cnt">The key ideas, about ${H(tLen(ov.read))} to read and reflect</span></button>
+    <button data-gmtab="${H(slug)}|depth" aria-pressed="${deep}" style="text-align:left"><b>In depth</b><br><span class="cnt">The full module with examples, family ideas and printables, about ${H(tLen(m.depth.read))} to read and reflect</span></button></div>
+    ${isDir()?`<div class="actions" style="margin:-4px 0 10px"><button class="linkbtn" data-gmreadtime="${H(slug)}|${deep?"depth":"overview"}">Change the time for this version</button>${deep?`<button class="linkbtn" data-gmdepthedit="${H(m.depth.path||"")}">Edit the in-depth version</button>`:""}</div>`:""}`:"";
   const d=await doc(meName(),true);const pr=(d.modules||{})[slug]||{};const dir=isDir();const ex=(ms.examples||{})[slug]||{examples:[]};
   const sec=h=>m.sections.find(s=>s.heading.toLowerCase().startsWith(h));
   const why=sec("why it matters"),reading=sec("reading"),own=sec("from fulton")||sec("from our own"),tr=sec("try this week"),rf=sec("reflect"),sh=sec("share at"),rd=sec("readings");
@@ -570,7 +579,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
     exBody=exPicker(slug,ex,sugg,Object.assign({fits:[]},exConfGet(slug)||{},{open}))}
   else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
-    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${viewing?"":(pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):"")}${viewing?"":leadBtn}</div>${restBar}${viewing?"":draftCard}${restCard}
+    <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${viewing?"":(pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):"")}${viewing?"":leadBtn}</div>${restBar}${viewing?"":draftCard}${restCard}${tabBar}
     ${why?card("Why it matters",md(why.body)):""}${waysCard}${reading?card("Reading",md(reading.body)):""}
     ${exBody||dir?card("From our own documentation",exBody):""}
     ${tr?card("Try this week",`${md(tr.body)}<label class="radio"><input type="checkbox" data-gmtried="${H(slug)}" ${pr.tried?"checked":""}><span>I tried it in my class</span></label>`):""}
@@ -921,6 +930,10 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.d
   try{st.rlib=await ga("readings/onsite",{id:t.dataset.grlonsite,on:t.checked});toast(t.checked?"Marked In our library.":"No longer marked In our library.");redraw()}catch(er){t.checked=!t.checked;toast(er&&er.message||"That did not save.")}});
 
 // the director's Edit button on a module, the same editor as a How To guide and the PD library letter
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gmtab]");if(!t)return;e.preventDefault();const [slug,w]=t.dataset.gmtab.split("|");st.modTab=st.modTab||{};st.modTab[slug]=w;redraw();window.scrollTo(0,0)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gmdepthedit]");if(!t||!window.TREE_PAGEEDIT)return;e.preventDefault();window.TREE_PAGEEDIT({path:t.dataset.gmdepthedit},async()=>{st.mods=null;redraw()})});
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmreadtime]");if(!t)return;e.preventDefault();const [slug,which]=t.dataset.gmreadtime.split("|");
+  const v=prompt("About how many minutes does this version take to read and reflect?");if(v==null)return;try{await ga("module/readtime",{slug,which,minutes:Number(v)});st.mods=null;toast("Saved.");redraw()}catch(er){toast(er.message||"The time could not be saved.")}});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gmedit]");if(!t||!window.TREE_PAGEEDIT)return;e.preventDefault();
   window.TREE_PAGEEDIT({module:t.dataset.gmedit},async()=>{st.mods=null;redraw()})});
 })();

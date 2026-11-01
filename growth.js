@@ -81,15 +81,25 @@ module.exports = function growthModule(c) {
     // an adapted module written as a draft says status draft, and waits for the director to mark it ready. Its source
     // note, its library description and its place in the list come from the same comment, so no new title is in this file
     return { slug, title: t[1].trim(), lead, minutes: Number(meta.minutes) || 0, serves: String(meta.serves || '').split(',').map(s => s.trim()).filter(Boolean), sections,
-      draft: /^draft$/i.test(meta.status || ''), source: meta.source || '', desc: meta.desc || '', order: Number(meta.order) || 0, sources: (meta.folds || '').split(';').map(s => s.trim()).filter(Boolean),
+      read: Number(meta.read) || 0, draft: /^draft$/i.test(meta.status || ''), source: meta.source || '', desc: meta.desc || '', order: Number(meta.order) || 0, sources: (meta.folds || '').split(';').map(s => s.trim()).filter(Boolean),
       links: String(meta.links || '').split(/[;,]/).map(s => s.trim()).filter(Boolean) };
   }
+  /* Each module can have two versions, an overview in staff/pd/modules and an in-depth version in staff/pd/depth, and
+     each shows about how long it takes to read and reflect. A read line in the opening note sets that time, and without
+     one TREE works it out from the length, at about 120 words a minute rounded up to the next 15 minutes. */
+  const DEPTH = 'staff/pd/depth/';
+  const readMinutes = text => { const n = String(text || '').replace(/^\s*<!--[\s\S]*?-->/, '').split(/\s+/).filter(Boolean).length; return Math.max(15, Math.ceil(n / 120 / 15) * 15); };
   function modules() {
     if (modCache) return modCache;
     const pre = 'staff/pd/modules/'; const out = {};
     for (const p of [...S.files.keys()].filter(p => p.startsWith(pre) && /\.md$/.test(p) && !p.slice(pre.length).includes('/')).sort()) {
       const slug = p.slice(pre.length).replace(/^\d+-/, '').replace(/\.md$/, '');
-      const mod = parseModule((S.files.get(p) || {}).text || '', slug); if (mod) out[slug] = Object.assign(mod, { path: p });
+      const text = (S.files.get(p) || {}).text || ''; const mod = parseModule(text, slug); if (!mod) continue;
+      mod.read = mod.read || readMinutes(text);
+      // the in-depth version, kept in staff/pd/depth beside the overview, shown as a second tab on the same module page
+      const dp = DEPTH + slug + '.md', dt = (S.files.get(dp) || {}).text || ''; const dm = dt && parseModule(dt, slug);
+      if (dm) mod.depth = { lead: dm.lead, sections: dm.sections, read: dm.read || readMinutes(dt), path: dp };
+      out[slug] = Object.assign(mod, { path: p });
     }
     modCache = out; return out;
   }
@@ -156,7 +166,7 @@ module.exports = function growthModule(c) {
       return { id: 'p' + i, title, kind: k ? k[1].toLowerCase() : 'card', body: body.trim() }; }).filter(x => x.title);
     return list.length ? { path: p, list } : null; };
   const modulesFor = me => { const dir = isDirector(me); const out = {};
-    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: waitingOf(k), restored: !!restoredAll()[k], printables: printablesOf(k) }); else if (published(k)) { const c = Object.assign({}, m, { printables: printablesOf(k) }); if (c.printables) c.printables = { list: c.printables.list }; delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); out[k] = c; } }
+    for (const [k, m] of Object.entries(modules())) { if (dir) out[k] = Object.assign({}, m, { waiting: waitingOf(k), restored: !!restoredAll()[k], printables: printablesOf(k) }); else if (published(k)) { const c = Object.assign({}, m, { printables: printablesOf(k) }); if (c.printables) c.printables = { list: c.printables.list }; delete c.source; delete c.sources; delete c.draft; delete c.path; c.sections = c.sections.filter(x => !/^(presenting this module|for the director)/i.test(x.heading)); if (c.depth) c.depth = { lead: c.depth.lead, read: c.depth.read, sections: c.depth.sections.filter(x => !/^(presenting this module|for the director|what changed)/i.test(x.heading)) }; out[k] = c; } }
     return out; };
   // the library's list, the design's modules in order, then modules written since, in their own order
   const libraryList = me => { const dir = isDirector(me); const m = modules();
@@ -700,6 +710,16 @@ module.exports = function growthModule(c) {
       const all = Object.assign({ accepted: {} }, get(RESTORED) || {}); all.accepted = Object.assign({}, all.accepted, { [slug]: { at: Date.now(), by: me, stamp: stampOf(r.text) } }); put(RESTORED, all);
       modCache = null; restCache = null; if (piecesChanged) piecesChanged(); log('Restored module accepted', slug, kept ? 'and the earlier version kept as ' + kept : '', 'by', me);
       json(req, res, 200, { modules: modulesFor(me), list: libraryList(me), kept }); return;
+    }
+    // the director changes about how long a version takes to read and reflect, kept as a read line in its opening note
+    if (P === 'module/readtime') {
+      if (!dir) return deny('Only the director changes the time.'); const slug = String(body.slug || ''); const m = modules()[slug]; const mins = Math.round(Number(body.minutes));
+      if (!m) return err(req, res, 404, 'That module is not here.'); if (!(mins >= 5 && mins <= 600)) return err(req, res, 400, 'Write the time in minutes, such as 45.');
+      const p = body.which === 'depth' ? (m.depth && m.depth.path) : m.path; const cur = p && (S.files.get(p) || {}).text; if (!cur) return err(req, res, 404, 'That version is not here.');
+      const hd = cur.match(/^\s*<!--[\s\S]*?-->/);
+      const next = hd ? (/^\s*read\s*:/mi.test(hd[0]) ? cur.replace(hd[0], hd[0].replace(/^(\s*read\s*:).*$/mi, '$1 ' + mins)) : cur.replace(hd[0], hd[0].replace(/-->$/, 'read: ' + mins + '\n-->'))) : '<!--\nread: ' + mins + '\n-->\n' + cur;
+      putText(p, next); modCache = null; log('Module time changed', slug, body.which === 'depth' ? 'in depth' : 'overview', mins, 'by', me);
+      json(req, res, 200, { modules: modulesFor(me) }); return;
     }
     // a reflection prompt the educator chooses to carry into the weekly journal, one at a time
     if (P === 'module/carry') {
