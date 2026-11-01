@@ -62,9 +62,17 @@ async function entryPage(my){const e=E(),dir=D(),ed=edit();
   let origs=[];if(ed&&e.module){try{const r=await fetch(window.FP_SERVER+"/api/staff/pd/originals",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({slug:e.module})});if(r.ok)origs=(await r.json()).list||[]}catch(er){}}
   const origFold=origs.length?fold("originals","Original materials",origs.length+(origs.length===1?" file":" files"),`<div class="hint">The original decks, guides, agendas and handouts from the module this entry was made from. Each opens in its own program to present or print.</div>${origs.map(x=>`<div class="prow"><span>${H(x.title)}</span><button class="btn small ghost" data-gmorig="${H(e.module)}|${H(x.id)}">Download</button></div>`).join("")}`):"";
   const h=head("Presenting",e.title||"Presenting",H(e.subtitle||""))+back+(dir?`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-pageedit="staff/presenting/${H(e.id)}.json">Edit the wording, with its history</button></div>`:"")+aboutCard(e)+creditCard(e)+
-    (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+origFold+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
+    (ed?notesFold(e)+meetingsFold(e)+evidenceFold(e):"")+chosenFold(e)+deckCard(e)+origFold+readingsFold(e)+planFold(e)+followFold(e)+(ed?printsFold(e):"")+(dir?doneCard(e):"");
   X.draw(my,h)}
 
+/* An entry made from a PD module always has its PowerPoint, made fresh from the module each time, from the overview or
+   the in-depth version. An entry for outside audiences gets the outside-audience adjustments and a handout as a PDF. */
+function deckCard(e){if(!e.module||!(edit()||D()))return"";const outside=e.audienceType==="external"||e.audienceType==="both";
+  const b=(depth,format,label)=>`<button class="btn small${format==="pptx"?"":" ghost"}" data-prdeck="${H(e.module)}|${depth?1:0}|${format}|${outside?1:0}">${H(label)}</button>`;
+  return card("Slide deck",`<div class="hint">${outside?"Made for outside audiences, with Fulton Community School & Farm on every slide, TREE's steps written as general practice and internal notes left out. Children's names and photos stay for context, so take them out before sharing the file.":"Made from the module as our own staff will see it."} Each deck is made fresh from the module, so it always carries the latest wording.</div>
+    <div class="actions">${b(false,"pptx","PowerPoint, overview")}${b(true,"pptx","PowerPoint, in depth")}${outside?b(false,"pdf","Handout, PDF"):""}</div><div class="cnt">If the module has no in-depth version, the in-depth deck uses the overview.</div>`)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-prdeck]");if(!t||!window.TreeModuleDeck)return;e.preventDefault();const [slug,dp,format,outside]=t.dataset.prdeck.split("|");
+  window.TreeModuleDeck(slug,{depth:dp==="1",format,outside:outside==="1"})});
 /* the entry's own details, which every reader sees. The day reads with its times, such as Saturday, May 22, 2027,
    9:00 am to 12:00 pm, and a day still to be settled says so. */
 // how an entry is offered, and who it is for
