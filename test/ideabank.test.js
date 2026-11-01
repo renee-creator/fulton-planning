@@ -104,7 +104,7 @@ test('families receive only the home side', async () => {
   const f = h.staff.ideabank.forFamily();
   assert.strictEqual(f.cards.length, SEED.cards.filter(c => c.home).length); assert.deepStrictEqual(f.highlights, ['clay']);
   for (const c of f.cards) assert.deepStrictEqual(Object.keys(c).sort(), ['group', 'id', 'sections', 'title']);
-  const s = JSON.stringify(f); assert.doesNotMatch(s, /Calm and grounding|proprioception|Open to all|For a child who seeks more|What the child might be seeking/);
+  const s = JSON.stringify(f); assert.doesNotMatch(s, /Steadying the body and feelings|proprioception|Open to all|For a child who seeks more|What the child might be seeking/);
   assert.strictEqual(f.cards.find(c => c.id === 'clay').title, 'Clay at Home');
 });
 
