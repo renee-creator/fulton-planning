@@ -145,7 +145,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 
   async function load(){const j=await api("/family/data");D=j;$("#gate").hidden=true;$("#main").hidden=false;render()}
   let tab=LS.get("fam-tab")||"", form=null, openRefl="";
-  const md=t=>{const lines=String(t||"").split("\n");let out="",list=false;const inl=s=>esc(s).replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,(m,a,u)=>`<a href="${u}" target="_blank" rel="noopener">${a}</a>`);
+  const md=t=>{const lines=String(t||"").split("\n");let out="",list=false;const inl=s=>esc(s).replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,(m,a,u)=>`<a href="${u}" target="_blank" rel="noopener">${a}</a>`).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>");
     for(const l of lines){if(/^\s*-\s+/.test(l)){if(!list){out+="<ul>";list=true}out+="<li>"+inl(l.replace(/^\s*-\s+/,""))+"</li>";continue}if(list){out+="</ul>";list=false}
       if(/^###\s+/.test(l))out+="<h3>"+inl(l.replace(/^###\s+/,""))+"</h3>";else if(l.trim())out+="<p>"+inl(l)+"</p>"}if(list)out+="</ul>";return out};
   function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
