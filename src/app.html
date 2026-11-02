@@ -4969,6 +4969,15 @@ function wrTrends(room,wk){const weeks=wrWeeksBack(wk),idx=new Map(weeks.map((w,
   const obs=per([...notices.values()].filter(n=>momentIn(n,room)));
   const ths=[...threads.values()].filter(t=>t&&t.status!=="closed"&&!t.unfollowed&&(room==="All"||t.classroom===room)).map(t=>({id:t.id,name:t.name||"A thread",room:t.classroom||"",status:t.status||"emerging",counts:per(threadNotices(t))}));
   return {weeks,obs,threads:ths}}
+// each week the reading sets every followed thread's status from its own observations, so the status matches what is
+// happening. A thread with no observations for the last two weeks rests. A closed thread is never changed. A class's
+// reading sets its own threads, and the whole school's reading only threads with no class. Each change is listed.
+function wrApplyStatuses(room,tr,given,c){const said=new Map((Array.isArray(given)?given:[]).filter(x=>x&&TSTATUS[x.status]&&x.status!=="closed").map(x=>[String(x.thread||""),x]));const out=[];
+  for(const t of tr.threads){const th=threads.get(t.id);if(!th||th.status==="closed"||th.unfollowed)continue;if(room==="All"&&th.classroom)continue;
+    const last2=(t.counts||[]).slice(-2);const quiet=last2.length===2&&last2.every(n=>!n);const s=said.get(t.name);
+    const to=quiet?"resting":s?s.status:"";const from=th.status||"emerging";if(!to||to===from)continue;
+    th.status=to;saveThread(th);out.push({id:th.id,thread:th.name||"A thread",from,to,why:quiet?"No observations in the last two weeks.":c(s.why)})}
+  return out}
 async function weeklyReport(room){if(!sample||!isDirector())return {ok:false};
   const wk=mondayOf(new Date());const tr=wrTrends(room,wk);
   const lens=[...scans.values()].filter(s=>s&&s.kind==="lens"&&String(s.room||"").endsWith("-"+room)).map(s=>({lens:s.lensName||"",summary:s.summary||"",gaps:s.gaps||[],team_questions:s.teamQuestions||[]}));
@@ -4984,20 +4993,20 @@ Observations kept each week, oldest first, for the weeks ${tr.weeks.join(", ")}.
 Each followed thread, with the status the team gave it and its observations each week, oldest first ${JSON.stringify(tr.threads.map(t=>({thread:t.name,status:TSTATUS[t.status]||"Emerging",team_notes:tNotes(threads.get(t.id)),counts:t.counts})))}
 The reports of the weeks before, newest first ${JSON.stringify(before)}
 Our threads use these words, and the report uses only them. Emerging is an interest just appearing. Growing is one children return to more and more. Deepening is one where children's thinking is going further. Resting is one children have stepped away from for now.
-Write four parts in those words, each one to three short sentences, compared with the weeks before where you can. Name the threads by name. Where a thread's status and what the observations show differ, say so, so the team can look again.
+Write four parts in those words, each one to three short sentences, compared with the weeks before where you can. Name the threads by name. The statuses you give become each thread's status this week, so name each thread in the part that matches the status you give it.
 "emerging" is what is just appearing.
 "growing" is what children are returning to more than before.
 "deepening" is where children's thinking is going further.
 "resting" is what children have stepped away from. Say so plainly when nothing has.
 "support" is one to three questions or ideas for the team that follow from what children are doing, each one sentence.
-"look_again" lists each thread whose status and what the observations show differ, with the thread's name exactly as given and one sentence on what the observations show. Leave it empty when none differ.
+"statuses" gives every followed thread listed here the status its observations and this week's readings show now, with the thread's name exactly as given, one of emerging, growing, deepening or resting, and one short sentence on what shows it. Read each thread's own observations, never the status the team gave it.
 Use only what is given here. Never invent children, quotes or events, and never name a child. Write any reading of children's thinking as a hypothesis, with words such as perhaps or it may be. ${STYLE}
-Return JSON {"emerging": text, "growing": text, "deepening": text, "resting": text, "support": [text], "look_again": [{"thread": name, "why": text}]}`;
+Return JSON {"emerging": text, "growing": text, "deepening": text, "resting": text, "support": [text], "statuses": [{"thread": name, "status": "emerging" or "growing" or "deepening" or "resting", "why": text}]}`;
   let out=null;try{out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"weekly-report"})}catch(e){return {ok:false}}
   const c=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s+/g,". ").trim();
   if(!out||!WR_PARTS.some(([k])=>out[k]))return {ok:false};
   const doc={id:wk+"-"+room,week:wk,room,createdAt:Date.now(),by:whoAmI(),support:(Array.isArray(out.support)?out.support:[out.support]).map(c).filter(Boolean).slice(0,3),
-    lookAgain:(Array.isArray(out.look_again)?out.look_again:[]).filter(x=>x&&tr.threads.some(t=>t.name===x.thread)).map(x=>({thread:String(x.thread),why:c(x.why)})).slice(0,6),
+    changes:wrApplyStatuses(room,tr,out.statuses,c),
     weeks:tr.weeks,obs:tr.obs,threads:tr.threads.map(t=>({id:t.id,name:t.name,status:t.status,counts:t.counts}))};
   for(const [k] of WR_PARTS)doc[k]=c(out[k]);
   reports.set(doc.id,doc);if(db)await db.doc("reports/"+doc.id).set(doc).catch(()=>{});return {ok:true}}
@@ -5019,6 +5028,7 @@ function wrHtml(r,title){const part=(h,t)=>has(t)?`<div class="wrpart"><div clas
   const prev=wrList().filter(x=>x.room===r.room&&x.week<r.week).sort((a,b)=>b.week.localeCompare(a.week))[0];
   return `<section class="card wrrep"><div class="secthead"><h3 style="font-size:19px">${esc(title)}</h3><span class="cnt">Week of ${esc(fmtDate(r.week))}${prev?`, compared with the weeks before`:", the first report, so there is nothing to compare with yet"}</span></div>
     ${WR_PARTS.map(([k,l])=>part(l,r[k])).join("")}
+    ${(r.changes||[]).length?`<div class="wrpart"><div class="lbl">Threads that changed this week</div><ul style="margin:4px 0 0;padding-left:20px">${r.changes.map(x=>`<li>${esc(x.thread)} moved from ${esc(TSTATUS[x.from]||x.from)} to ${esc(TSTATUS[x.to]||x.to)}. ${esc(x.why||"")}</li>`).join("")}</ul></div>`:""}
     ${(r.support||[]).length?`<div class="wrpart"><div class="lbl">To support the work</div><ul style="margin:4px 0 0;padding-left:20px">${r.support.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Week by week</h3><span class="cnt">The six weeks to ${esc(fmtDate(r.week))}</span></div>
       <table class="wrtab"><tbody><tr><td>Observations kept</td><td>${wrSpark(r.obs||[])}</td><td class="cnt">${esc((r.obs||[]).join(", "))}</td><td></td></tr>

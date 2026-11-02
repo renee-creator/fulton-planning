@@ -397,8 +397,9 @@ module.exports = function growthModule(c) {
     const parts = [['emerging', 'Emerging'], ['growing', 'Growing'], ['deepening', 'Deepening'], ['resting', 'Resting']].filter(([k]) => String(rep[k] || '').trim()).map(([k, l]) => l + '. ' + String(rep[k]).trim());
     const out = []; const id = () => rid('k');
     if (parts.length) out.push({ id: id(), reading: true, title, why: parts.join('\n') });
-    const look = (Array.isArray(rep.lookAgain) ? rep.lookAgain : []).filter(x => x && x.thread);
-    if (look.length) out.push({ id: id(), reading: true, title: 'Threads to look at again', why: look.map(x => x.thread + '. ' + String(x.why || '').trim() + ' Its status can change on the Threads page, under More.').join('\n') });
+    const S = { emerging: 'Emerging', growing: 'Growing', deepening: 'Deepening', resting: 'Resting' };
+    const moved = (Array.isArray(rep.changes) ? rep.changes : []).filter(x => x && x.thread);
+    if (moved.length) out.push({ id: id(), reading: true, title: 'Threads that changed this week', why: moved.map(x => x.thread + ' moved from ' + (S[x.from] || x.from) + ' to ' + (S[x.to] || x.to) + '. ' + String(x.why || '').trim()).join('\n') });
     const ideas = (rep.support || []).map(s => String(s || '').trim()).filter(Boolean).slice(0, 3);
     if (ideas.length) out.push({ id: id(), reading: true, title: 'Ways the team might support', why: ideas.join('\n'), ideas });
     return out;
