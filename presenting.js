@@ -236,7 +236,7 @@ module.exports = function presentingModule(c) {
         if (e.status === 'presented' && e.minutes !== was) { uncredit(e); if (e.minutes) credit(e, me); } }
       // in person, virtual or both, and who it is for, our own staff, other schools and groups, or both
       if ('mode' in b) e.mode = ['inperson', 'virtual', 'both'].includes(b.mode) ? b.mode : '';
-      if ('audienceType' in b) e.audienceType = ['internal', 'external', 'both'].includes(b.audienceType) ? b.audienceType : '';
+      if ('audienceType' in b) e.audienceType = ['internal', 'external', 'both', 'families'].includes(b.audienceType) ? b.audienceType : '';
       // the photos the deck uses, in order. The first is the title slide's. A photo is a picture kept in the records or an
       // observation photo, each with a short caption (November 1, 2026)
       if ('deck' in b) { const d = b.deck && typeof b.deck === 'object' ? b.deck : {};

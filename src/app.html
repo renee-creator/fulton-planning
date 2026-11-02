@@ -10459,7 +10459,7 @@ function ptBankEditor(){return `<div class="cnt" style="margin:6px 0">Change any
     <div class="actions" style="margin:0;align-items:center"><label class="nlcheck"><input type="checkbox" id="ptb-x-${esc(x.key)}" ${x.hidden?"checked":""}> Hide this idea</label><button class="btn small" data-ptbsave="${esc(x.key)}">Save</button>${x.changed?`<button class="linkbtn" data-ptbreset="${esc(x.key)}">Put back as it was</button>`:""}</div></div>`).join("")}`).join("")}`}
 const ptLogs=()=>[...participation.values()].filter(x=>x.kind==="log"&&!x.removed);
 // what an entry counts as. An entry from before kept no type, so it reads by what it was logged for.
-const PT_LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation"};
+const PT_LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation",learning:"Family learning"};
 const ptLogType=l=>{if(PT_LOGTYPE[l.type])return l.type;const it=l.itemId&&participation.get(l.itemId);return it&&it.type==="event"?"event":it&&it.type==="wish"?"donation":"job"};
 // a conference's hour is entered by TREE and is real even while the Family page is being tried
 const ptConf=l=>l.type==="conference"&&l.auto===true;

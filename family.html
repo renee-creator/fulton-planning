@@ -152,7 +152,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
   /* six tabs, each with one job. Welcome is for every family, with a new family's first steps below. Learning holds the
      pieces for families, Ideas to try at home and the places to visit. Our school holds the garden and our site, the map last */
-  const hasLearn=()=>!!((D.pieces||[]).length||D.ideasOn||(D.community&&D.community.places));
+  const hasLearn=()=>!!((D.pieces||[]).length||(D.learning||[]).length||D.ideasOn||(D.community&&D.community.places));
   const hasSchool=()=>{const G=D.gardenInfo||{};return !!((G.agreements||(G.guide||[]).length)||G.season||(G.recipes||[]).length||(G.seedLibrary||[]).length||(D.community&&D.community.plants)||D.siteMap)};
   const tabs=()=>{const t=[["welcome","Welcome"],["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"]];if(hasLearn())t.push(["learn","Learning"]);t.push(["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(hasSchool())t.push(["school","Our school"]);return t};
   // the museums and the plants on our site, drawn by community.js, the same as the public page
@@ -244,7 +244,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     return head+`<p class="small muted" style="margin:0 0 8px">${esc(t&&!strOpen?T("What our family can share, again"):T("What our family can share"))}</p>
       <textarea id="str" rows="4" maxlength="3000" aria-label="What our family can share">${esc(t)}</textarea><div style="margin-top:8px"><button class="btn sm" id="strsave">Save</button>${t&&!strOpen?` <button class="btn sm ghost" id="strkeep">Keep it as it is</button>`:""} <span class="small muted" id="strmsg"></span></div></section>`}
   // what each entry counts as
-  const LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation"};
+  const LOGTYPE={job:"Job",event:"Community event",conference:"Conference",donation:"Donation",learning:"Family learning"};
   // the director's job cards a family can do with no sign-up, each whole, folded until opened. I did this logs the time.
   // the job card behind a slot the director posted. Its steps show once a family signs up, unless she shows them before.
   function slotCardHtml(c){const L=xs=>xs&&xs.length?`<ul style="margin:2px 0 6px;padding-left:20px">${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
@@ -344,10 +344,45 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <div class="err" id="e4" aria-live="polite"></div><div><button class="btn">Send it</button></div></form></details></section>`;
     h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(LOGTYPE[x.type]||"Job")} · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
     return h}
+  /* Learning together. Pieces of about half an hour, released one at a time. Each ends with a few questions to wonder
+     about. Nothing is required, and what a parent writes is kept only on this device, in their own journal, never sent to
+     the school. Finishing a piece counts a half hour once for the child they choose. */
+  let learnOpen="";
+  const JKEY=()=>"fam-journal-"+String(D.email||"");
+  const journal=()=>{try{return JSON.parse(localStorage.getItem(JKEY())||"[]")}catch(e){return []}};
+  const journalSave=J=>{try{localStorage.setItem(JKEY(),JSON.stringify(J))}catch(e){}};
+  function learnParts(body){const s=String(body||"");const m=s.match(/^##\s+Wondering together\s*$/mi);if(!m)return {read:s,qs:[]};
+    const rest=s.slice(m.index+m[0].length);return {read:s.slice(0,m.index),qs:rest.split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").trim()).filter(l=>l&&!/^#/.test(l))}}
+  function togetherHtml(){const L=D.learning||[];if(!L.length)return "";const J=journal();
+    const one=p=>{const {read,qs}=learnParts(p.body);const done=p.done||[];const allDone=D.children.every(k=>done.includes(k.id));const mine=J.filter(e=>e.slug===p.slug).pop()||{};
+      return `<details class="shared" data-learn="${esc(p.slug)}" ${learnOpen===p.slug?"open":""}><summary>${esc(p.title)} <span class="small muted">about ${p.minutes} minutes${allDone?", finished":""}</span></summary>
+        <div class="md">${md(String(read).replace(/^##\s+/gm,"### "))}</div>
+        ${qs.length?`<h3 style="font-size:16px;margin:14px 0 4px;color:var(--moss)">Wondering together</h3><p class="small muted" style="margin:0 0 6px">Take a minute to wonder about these. Nothing is required. Anything you write stays on this device, in your own journal, and no one at school sees it.</p>
+          ${qs.map((q,i)=>`<label style="font-weight:400">${esc(q)}<textarea rows="2" data-wq="${esc(p.slug)}|${i}">${esc((mine.answers||{})[i]||"")}</textarea></label>`).join("")}`:""}
+        <div class="stack" style="margin-top:10px">${D.children.length>1?`<label>Which child it counts for<select id="lk-learn-${esc(p.slug)}">${D.children.map(k=>`<option value="${esc(k.id)}" ${done.includes(k.id)?"disabled":""}>${esc(k.first)}${done.includes(k.id)?", counted":""}</option>`).join("")}</select></label>`:""}
+          <div>${allDone?`<span class="small" style="color:var(--moss);font-weight:700">Finished. It counted a half hour.</span> <button class="link small" data-learnsave="${esc(p.slug)}">Save my wonderings</button>`:`<button class="btn sm" data-learndone="${esc(p.slug)}">I finished this</button>`}</div></div></details>`};
+    return `<section class="card"><h2>Learning together</h2><p class="small muted" style="margin:0 0 6px">Short pieces to read at your own pace, about half an hour each. Finishing one counts a half hour toward participation.</p>${L.map(one).join("")}
+      ${J.length?`<details class="shared"><summary>Our journal <span class="small muted">${J.length} ${J.length===1?"entry":"entries"}, on this device only</span></summary>${J.slice().reverse().map(e=>`<div class="sub"><b>${esc(e.title)}</b> <span class="small muted">${esc(day(e.date))}</span>${(e.qs||[]).map((q,i)=>(e.answers||{})[i]?`<p class="small" style="margin:4px 0"><i>${esc(q)}</i><br>${esc(e.answers[i])}</p>`:"").join("")}</div>`).join("")}<p style="margin:8px 0 0"><button class="link small" data-journalpdf="1">Save or print our journal</button></p></details>`:""}</section>`}
+  // what a parent wrote while wondering, kept in their own journal on this device
+  function keepWonder(slug){const p=(D.learning||[]).find(x=>x.slug===slug);if(!p)return;const {qs}=learnParts(p.body);const answers={};
+    document.querySelectorAll(`[data-wq^="${slug}|"]`).forEach(t=>{const i=t.dataset.wq.split("|")[1];if(t.value.trim())answers[i]=t.value.trim()});
+    const J=journal().filter(e=>e.slug!==slug);if(Object.keys(answers).length)J.push({slug,title:p.title,date:today(),qs,answers});journalSave(J)}
+  async function journalPdf(){const K=window.TREE_KIT;await K.loadScript(K.LIB.jspdf,"jspdf");await K.fonts();const d=K.pdf({format:"letter"});const H=792,M=54,TW=612-2*M;let y=M;
+    const line=(t,size,bold,gap)=>{d.setFont(bold?"pfB":"pfR","normal");d.setFontSize(size);for(const l of d.splitTextToSize(String(t),TW)){if(y+size*1.3>H-M){d.addPage();y=M}d.text(l,M,y+size,{baseline:"alphabetic"});y+=size*1.3}y+=gap||0};
+    line("Our journal",22,true,10);for(const e of journal()){line(e.title,13,true,2);line(day(e.date),10,false,6);(e.qs||[]).forEach((q,i)=>{if(!(e.answers||{})[i])return;line(q,11,true,2);line(e.answers[i],11,false,8)});y+=8}
+    return d.output("blob")}
+  document.addEventListener("toggle",e=>{const x=e.target;if(x&&x.dataset&&x.dataset.learn!=null){if(x.open)learnOpen=x.dataset.learn;else if(learnOpen===x.dataset.learn)learnOpen=""}},true);
+  document.addEventListener("click",async e=>{const b=e.target.closest("[data-learndone],[data-learnsave],[data-journalpdf]");if(!b||!D)return;e.preventDefault();const d=b.dataset;
+    try{if(d.learnsave){keepWonder(d.learnsave);render()}
+      else if(d.journalpdf){ideaPreview(await journalPdf(),"Our journal.pdf")}
+      else if(d.learndone){const slug=d.learndone;keepWonder(slug);const sel=document.getElementById("lk-learn-"+slug);b.disabled=true;
+        D=await api("/family/learned",{slug,childId:sel?sel.value:D.children[0].id});learnOpen=slug;render()}}
+    catch(er){b.disabled=false;alert(er.message||"That did not work. Check the connection and try again.")}});
   /* Learning. The pieces for families the director marked ready, under Good to know, then Ideas to try at home and the
      places to visit near us */
   function learnHtml(){let h="";
     if(ideaSel&&D.ideasOn)return ideasHtml();
+    h+=togetherHtml();
     // pieces for families, read from the school's records once the director marks each one ready
     if((D.pieces||[]).length)h+=`<section class="card"><h2>Good to know</h2>${D.pieces.map(p=>`<details class="shared"><summary>${esc(p.title)}</summary>${md(String(p.body).replace(/^##\s+/gm,"### "))}</details>`).join("")}</section>`;
     if(D.ideasOn)h+=ideasHtml();

@@ -1937,6 +1937,7 @@ async function handle(req, res) {
     else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false, { who: body.who, adults: body.adults, children: body.children, answer: body.answer });
     else if (path === '/family/recipe') r = familyPage.shareRecipe(f, body || {});
     else if (path === '/family/gather') r = familyPage.postGathering(f, body || {});
+    else if (path === '/family/learned') r = familyPage.learned(f, body || {});
     else if (path === '/family/ungather') r = familyPage.removeGathering(f, String(body.id || ''));
     else if (path === '/family/contactpref') r = familyPage.contactPref(f, !!body.out);
     else if (path === '/family/contacts') { json(req, res, 200, familyPage.contactList(f)); return; }

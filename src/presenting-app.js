@@ -46,9 +46,9 @@ async function listPage(my){const r=await pa("list");st.list=r.list;const dir=D(
   const row=x=>`<div class="prow"><span><b>${H(x.title)}</b>${x.subtitle?`<div class="cnt">${H(x.subtitle)}</div>`:""}<div class="cnt">${H([x.audience||"Audience not yet set",PR_AUD[x.audienceType]||"audience type not yet set",PR_MODE[x.mode]||"",x.date?fd(x.date):"",dur(x.minutes)].filter(Boolean).join(", "))}${x.presenters.length?`. Presented by ${H(kList(x.presenters))}`:""}</div></span>
     <span class="actions" style="margin:0">${x.status==="presented"?chip("ok","Presented "+fd(x.presentedOn)):""}<button class="btn small ghost" data-prsel="${H(x.id)}">${x.edit?"Open":"Read"}</button></span></div>`;
   // the list filters and sorts by internal, external or both
-  const aud=st.aud||"";const fit=x=>!aud||(aud==="unset"?!x.audienceType:x.audienceType===aud);const AO={internal:0,external:1,both:2};
+  const aud=st.aud||"";const fit=x=>!aud||(aud==="unset"?!x.audienceType:x.audienceType===aud);const AO={internal:0,external:1,both:2,families:3};
   const sorted=st.audSort?r.list.slice().sort((a,b)=>(AO[a.audienceType]??3)-(AO[b.audienceType]??3)):r.list;
-  const filt=`<div class="chips" role="group" aria-label="Audience type">${[["","All"],["internal","Internal"],["external","External"],["both","Both"],["unset","Not yet set"]].map(([k,l])=>`<button class="chip ${aud===k?"on":""}" type="button" data-praud="${k}" aria-pressed="${aud===k}">${l}</button>`).join("")}<button class="chip ${st.audSort?"on":""}" type="button" data-praudsort="1" aria-pressed="${!!st.audSort}">Sort by audience type</button></div>`;
+  const filt=`<div class="chips" role="group" aria-label="Audience type">${[["","All"],["internal","Internal"],["external","External"],["both","Both"],["families","Families"],["unset","Not yet set"]].map(([k,l])=>`<button class="chip ${aud===k?"on":""}" type="button" data-praud="${k}" aria-pressed="${aud===k}">${l}</button>`).join("")}<button class="chip ${st.audSort?"on":""}" type="button" data-praudsort="1" aria-pressed="${!!st.audSort}">Sort by audience type</button></div>`;
   const now=sorted.filter(x=>x.status!=="presented"&&fit(x)),done=sorted.filter(x=>x.status==="presented"&&fit(x));
   X.draw(my,head("PD and Licensing","Presenting",dir?"Every talk, PD session or module presented at our school or for other schools, each its own entry. Add educators as presenters and they work on the entry with you. Other educators see an entry once it is presented.":"The talks and PD sessions you present, and the ones we have presented. You see an entry when you are one of its presenters, and every entry once it is presented.")+
     filt+card("Being planned",now.length?now.map(row).join(""):empty(dir?"Start an entry below for a talk, a PD session or a module.":"An entry shows here when the director adds you as a presenter."))+
@@ -117,7 +117,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.i
    9:00 am to 12:00 pm, and a day still to be settled says so. */
 // how an entry is offered, and who it is for
 const PR_MODE={inperson:"In person",virtual:"Virtual",both:"In person and virtual"};
-const PR_AUD={internal:"Internal, our own staff",external:"External, other schools and groups",both:"Internal and external"};
+const PR_AUD={internal:"Internal, our own staff",external:"External, other schools and groups",both:"Internal and external",families:"Families, our parent sessions"};
 const prAudLine=e=>[e.audience?"For "+e.audience:"Audience not yet set",PR_AUD[e.audienceType]||"Audience type not yet set"].join(". ");
 const prWhen=e=>e.date?[fd(e.date)+(e.start?", "+clockTime(e.start)+(e.end?" to "+clockTime(e.end):""):""),e.dateNote||""].filter(Boolean).join(". "):"";
 function aboutCard(e){const ed=edit(),dir=D();

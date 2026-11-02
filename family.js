@@ -240,7 +240,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
   const items = () => { const gv = visits(); return listOf(d => d.kind === 'item' && d.gathering !== 'garden-visit' && !(d.gatheringId && gv.has(d.gatheringId)) && (!o.released || !(d.gathering || d.gatheringId) || o.released(d))); };
   const logs = () => listOf(d => d.kind === 'log' && !d.removed);
   // what each entry counts as. An entry from before kept no type, so it reads by what it was logged for.
-  const LOG_TYPES = ['job', 'event', 'conference', 'donation'];
+  const LOG_TYPES = ['job', 'event', 'conference', 'donation', 'learning'];
   const typeOf = l => { if (LOG_TYPES.includes(l.type)) return l.type; const r = l.itemId && recs().get(l.itemId); const it = r && !r.deleted && r.doc; return it && it.type === 'event' ? 'event' : it && it.type === 'wish' ? 'donation' : 'job'; };
   // a conference the class team marks complete counts one hour for that child, entered by TREE once, on the conference day.
   // A conference is real even while the Family page is being tried, so its hour shows in test mode too.
@@ -292,7 +292,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     let ideasFlag = false; try { ideasFlag = ideasOn ? !!ideasOn() : false; } catch (e) { ideasFlag = false; }
     const roles = c.roles.map(r => ({ name: String(r.name), role: r.role === 'pac' ? 'pac' : 'rep', classroom: r.classroom || '' }));
     const iHost = c.roles.some(r => norm(r.email) && norm(r.email) === f.email);
-    return { roles, iHost, contactOut: contactOut(f.email), ideasOn: ideasFlag, community: communityInfo, visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
+    return { roles, iHost, contactOut: contactOut(f.email), ideasOn: ideasFlag, community: communityInfo, visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), learning: piecesAll.filter(p => p.audience === 'learning').map(p => ({ slug: p.slug, title: p.title, body: p.body, minutes: p.minutes || 30, done: f.kids.filter(k => logs().some(l => l.learnId === p.slug && l.childId === k.id && !!l.test === f.test)).map(k => k.id) })), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
       texts: familyTexts(), welcome: c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME, aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
   }
 
@@ -348,6 +348,17 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     if (!mailText) return { error: 'Family email is not set up yet.' };
     const T = familyTexts(); const body = ['Dear ' + r.name + ',', '', T['PAC guide, welcome'], '', T['PAC guide, what you might do'], '', T['PAC guide, getting started'], '', T['PAC guide, a few reminders'], '', 'Fulton Community School'].join('\n');
     try { await mailText(e, 'Welcome to the Parent Advisory Council and class representatives', body); } catch (er) { return { error: 'The email could not be sent just now. ' + er.message }; }
+    return { ok: true };
+  }
+
+  /* a Learning together piece a family finished. It counts a half hour once for the child they choose, and nothing they
+     wrote while wondering leaves their own device */
+  function learned(f, b) {
+    let all = []; try { all = pieces ? pieces() || [] : []; } catch (e) { all = []; }
+    const p = all.find(x => x.audience === 'learning' && x.slug === String(b.slug || '')); if (!p) return { error: 'That piece is not here.' };
+    const kid = f.kids.find(k => k.id === String(b.childId || '')) || (f.kids.length === 1 ? f.kids[0] : null); if (!kid) return { error: 'Choose which child it counts for.' };
+    const id = 'lg-learn-' + p.slug + '-' + kid.id + (f.test ? '-test' : ''); const cur = recs().get(id); if (cur && !cur.deleted && cur.doc && !cur.doc.removed) return { ok: true };
+    save(id, { id, kind: 'log', type: 'learning', learnId: p.slug, email: f.email, childId: kid.id, what: 'Family learning, ' + p.title, date: laToday(), minutes: 30, hours: hoursOf(30), test: f.test, at: nowIso() });
     return { ok: true };
   }
 
@@ -630,7 +641,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;

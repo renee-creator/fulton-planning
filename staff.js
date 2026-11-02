@@ -206,17 +206,19 @@ module.exports = function staffModule(o) {
   // one Markdown file each in staff/familypieces, read through the signed-in server. A draft shows only to the director, with
   // its source note, until she marks it ready, and then reaches families on the Family page. The TK and kindergarten guide
   // (audience tk) reaches only families of children going to TK or kindergarten next year, beside the transition summary.
+  // A Learning together piece (audience learning, minutes about 30) shows under Learning together on the Learning tab, and
+  // finishing it adds a half hour toward participation.
   const FP_READY = 'staff/familypieces/ready.json';
   function familyPieces() {
     return [...S.files.keys()].filter(p => /^staff\/familypieces\/[a-z0-9-]+\.md$/.test(p)).sort().map(p => {
       let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
       if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
       const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
-      return { slug: p.slice(19, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), order: Number(meta.order) || 0, audience: meta.audience === 'tk' ? 'tk' : 'all', draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
+      return { slug: p.slice(19, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), order: Number(meta.order) || 0, audience: meta.audience === 'tk' ? 'tk' : meta.audience === 'learning' ? 'learning' : 'all', minutes: Math.min(120, Math.max(5, Number(meta.minutes) || 30)), draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
     }).filter(Boolean).sort((a, b) => a.order - b.order);
   }
   const fpReady = slug => !!(((get(FP_READY) || {}).pieces || {})[slug]);
-  const familyPiecesForFamily = () => familyPieces().filter(g => !g.draft || fpReady(g.slug)).map(g => ({ slug: g.slug, title: g.title, body: g.body, audience: g.audience }));
+  const familyPiecesForFamily = () => familyPieces().filter(g => !g.draft || fpReady(g.slug)).map(g => ({ slug: g.slug, title: g.title, body: g.body, audience: g.audience, minutes: g.minutes }));
 
   /* ---------- the materials guides ----------
      The seven one-page guides once kept in staff/guides are folded into their Idea bank cards. Their files stay in the
