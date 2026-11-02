@@ -1179,7 +1179,8 @@ module.exports = function staffModule(o) {
     // mullein's card, chart paper as living documentation, and the cards for artists and songs the Idea bank names (November 1, 2026)
     s14Garden: ['staff/once/s14-garden.json', 'Mullein filled in on the plant list'],
     s14Chart: ['staff/once/s14-chart.json', 'Chart paper as living documentation, in the modules and the Idea bank'],
-    s14Library: ['staff/once/s14-library.json', 'A card for each artist the Idea bank names, and Song book lines that name their songs'] };
+    s14Library: ['staff/once/s14-library.json', 'A card for each artist the Idea bank names, and Song book lines that name their songs'],
+    s14Images: ['staff/once/s14-images.json', 'Images for more artist cards, and three facts corrected'] };
   const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
