@@ -271,6 +271,39 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     return `<section class="card"><h2>${esc(J.title)}</h2>${J.lead?`<p class="small muted" style="margin:0 0 8px">${esc(J.lead)}</p>`:""}
       ${(I.guidelines||[]).length?`<details class="shared"><summary>${esc(I.title||"Before You Start")}</summary>${I.lead?`<p class="small" style="margin:4px 0">${esc(I.lead)}</p>`:""}${list(I.guidelines)}</details>`:""}
       ${J.groups.map(g=>`<h3 style="margin:12px 0 4px;font-size:16px">${esc(g.name)}</h3>${g.jobs.map(card).join("")}`).join("")}</section>`}
+  /* the Parent Advisory Council and the class representatives, named for every family, with the guide folded below.
+     A PAC member or representative posts a gathering here, and it shows under Ways to take part for every family */
+  let gForm=null;
+  function pacHtml(){const R=D.roles||[];if(!R.length&&!D.iHost)return "";
+    const pac=R.filter(r=>r.role==="pac"),cls=[...new Set(R.filter(r=>r.role==="rep").map(r=>r.classroom||""))].sort();
+    const guide=[["What you might do","PAC guide, what you might do"],["Getting started","PAC guide, getting started"],["What we offer you","PAC guide, what we offer you"],["A few reminders","PAC guide, a few reminders"],["Class representatives, welcoming new families","Class representative guide, welcoming new families"],["Class representatives, sharing class needs","Class representative guide, sharing class needs"],["Class representatives, who to go to","Class representative guide, who to go to"],["Class representatives, showing appreciation","Class representative guide, showing appreciation"],["Class representatives, a message you might send","Class representative guide, a message you might send"]];
+    return `<section class="card"><h2>PAC and class representatives</h2>${Tp("PAC and class representatives")}
+      ${pac.length?`<div class="sub"><b>Parent Advisory Council</b><div class="small">${pac.map(r=>esc(r.name)).join(", ")}</div></div>`:""}
+      ${cls.map(c=>`<div class="sub"><b>${esc(c?c+" class representative":"Class representative")}${R.filter(r=>r.role==="rep"&&(r.classroom||"")===c).length>1?"s":""}</b><div class="small">${R.filter(r=>r.role==="rep"&&(r.classroom||"")===c).map(r=>esc(r.name)).join(", ")}</div></div>`).join("")}
+      <details class="shared"><summary>Our guide for PAC members and class representatives</summary><div class="md">${md(T("PAC guide, welcome"))}${guide.map(([h,k])=>`<h3>${esc(h)}</h3>${md(T(k))}`).join("")}</div></details>
+      ${D.iHost?(gForm?gatherForm():`<div style="margin-top:10px"><button class="btn sm" data-gnew="1">Post a gathering</button></div>`):""}</section>`}
+  function gatherForm(){const g=gForm||{};const places=(()=>{try{return window.TREE_COMMUNITY&&D.community&&D.community.places?window.TREE_COMMUNITY.places(D.community.places).map(x=>x.name):[]}catch(e){return []}})();
+    return `<form id="gform" class="stack" style="margin-top:10px"><b>${g.id?"Change your gathering":"Post a gathering"}</b>
+      <label>What it is<input type="text" id="gt" maxlength="120" value="${esc(g.title||"")}" placeholder="Ex. Park playdate, book talk, clothing swap"></label>
+      <div class="row"><label>The day<input type="date" id="gd" min="${today()}" value="${esc(g.date||"")}"></label><label>Starts<input type="time" id="gs" value="${esc(g.start||"")}"></label><label>Ends<input type="time" id="ge" value="${esc(g.end||"")}"></label></div>
+      <label>Where<input type="text" id="gp" maxlength="160" list="gplaces" value="${esc(g.place||"")}" placeholder="A park, a museum or a home"></label><datalist id="gplaces">${places.map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+      <label>Hours it counts for<input type="number" id="gh" min="0.5" max="8" step="0.5" value="${esc(g.hours||1)}"></label>
+      <label>A few words for families<textarea id="gn" rows="3" maxlength="600">${esc(g.note||"")}</textarea></label>
+      <p class="small muted" style="margin:0">${esc(T("Hosted by families"))}</p>
+      <div class="err" id="ge6" aria-live="polite"></div><div><button class="btn sm">${g.id?"Save":"Post it"}</button> <button class="link" type="button" data-gcancel="1">Cancel</button></div></form>`}
+  /* the family contact list, email only, made fresh from the school's records each time it is downloaded */
+  function contactsHtml(){return `<section class="card"><h2>Our family contact list</h2>${Tp("Family contact list")}
+    <div style="margin:8px 0"><button class="btn sm" data-contacts="1">Download the list</button></div>
+    <p class="small muted" style="margin:0">${esc(T(D.contactOut?"Family contact list, left off":"Family contact list, leaving it"))} <button class="link small" data-contactout="${D.contactOut?"0":"1"}">${D.contactOut?"Add our email back":"Take our email off"}</button></p></section>`}
+  // the list as a PDF, the school's name, the note about who it is for, then each class with its families
+  async function contactsPdf(L){const K=window.TREE_KIT;await K.loadScript(K.LIB.jspdf,"jspdf");await K.fonts();const d=K.pdf({format:"letter"});const W=612,H=792,M=54,TW=W-2*M;let y=M;
+    const line=(t,size,bold,gap)=>{d.setFont(bold?"pfB":"pfR","normal");d.setFontSize(size);for(const l of d.splitTextToSize(String(t),TW)){if(y+size*1.3>H-M){d.addPage();y=M}d.text(l,M,y+size,{baseline:"alphabetic"});y+=size*1.3}y+=gap||0};
+    line("Fulton Community School",10,false,4);line("Family Contact List",22,true,8);line(T("Family contact list"),10,false,14);
+    const classes=[...new Set(L.rows.map(r=>r.classroom))];
+    for(const c of classes){if(y>H-M-60){d.addPage();y=M}line(c?c+" class":"Our families",14,true,6);
+      for(const r of L.rows.filter(x=>x.classroom===c)){line(r.child,11,true,1);for(const p of r.parents)line((p.name?p.name+", ":"")+p.email,11,false,1);y+=6}y+=8}
+    if(!L.rows.length)line("No families are on the list yet.",11,false,0);
+    return d.output("blob")}
   function partHtml(){const ks=D.children;let h="";
     h+=`<section class="card"><h2>Our hours this school year</h2>${ks.map(k=>`<div class="kid"><div class="top"><b>${esc(k.first)}</b><span>${k.hours} of ${k.goal}</span></div><div class="bar" role="img" aria-label="${k.hours} of ${k.goal} hours"><i style="width:${Math.min(100,k.hours/k.goal*100)}%"></i></div>${k.hours>=k.goal?`<div class="small muted">All ${k.goal} hours done. Thank you.</div>`:""}</div>`).join("")}
       <p class="small muted" style="margin:8px 0 0">${esc(T("Participation hours",{goal:D.goal}))}</p></section>`;
@@ -287,7 +320,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const itemCard=it=>{const full=it.spots&&it.taken>=it.spots&&!it.mine;
       return `<div class="item"><div class="top"><div>${it.type==="wish"?"":`<span class="tag ${it.type==="event"?"ev":""}">${it.type==="event"?"Community event":"Volunteer"}</span>`}<div><b>${esc(it.title)}</b></div>
         <div class="small muted">${esc([it.date?day(it.date):it.type==="wish"?"":"Any time",it.start?time(it.start)+(it.end?" to "+time(it.end):""):"",it.hours?"counts for "+hrs(it.hours):"",it.spots?(it.spots-it.taken>0?(it.spots-it.taken)+" of "+it.spots+" spots open":"Every spot is taken"):""].filter(Boolean).join(" · "))}</div>
-        ${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}${it.pointPerson?`<div class="small">Your point person is ${esc(it.pointPerson)}.</div>`:""}${it.walk&&D.walkInfo?walkAgreeHtml(D.walkInfo):""}${it.card?slotCardHtml(it.card):""}</div>
+        ${it.place?`<div class="small">${esc(it.place)}</div>`:""}${it.note?`<div class="small" style="white-space:pre-line">${esc(it.note)}</div>`:""}${it.hostedBy==="families"?`<div class="small muted">${esc(T("Hosted by families"))}${it.host?" Posted by "+esc(it.host)+".":""}</div>${it.mineHost?`<div class="small"><button class="link small" data-gedit="${esc(it.id)}">Change</button> · <button class="link small" data-gdel="${esc(it.id)}">Take it down</button></div>`:""}`:""}${it.pointPerson?`<div class="small">Your point person is ${esc(it.pointPerson)}.</div>`:""}${it.walk&&D.walkInfo?walkAgreeHtml(D.walkInfo):""}${it.card?slotCardHtml(it.card):""}</div>
         ${it.mine?`<div style="text-align:right"><div class="small" style="color:var(--moss);font-weight:700">${it.type==="wish"?"You are bringing it":"You are signed up"}</div>${signFor===it.id?"":`<button class="link small" data-signup="${esc(it.id)}">Change</button> · `}<button class="link small" data-signoff="${esc(it.id)}">Cancel</button></div>`:full||signFor===it.id?"":`<button class="btn sm" data-signup="${esc(it.id)}">${it.type==="wish"?"I can bring it":"Sign up"}</button>`}</div>
         ${it.mine&&signFor!==it.id?`<div class="small muted">${esc(whoLine(it.my,it.counts))}${it.my.answer?"<br>"+esc(it.my.answer):""}</div>`:""}
         ${signFor===it.id?signForm(it):""}</div>`};
@@ -298,6 +331,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(gaths.length)h+=`<section class="card"><h2>Gatherings</h2><p class="small muted" style="margin:0 0 6px">${esc(T("Gatherings"))}</p>${gaths.map(g=>`<div class="small muted" style="margin-top:8px"><b>${esc(GN[g.gathering])}</b>${g.gardenDay?", the season's garden day":""}</div>${itemCard(g)}${jobsOf(g).map(itemCard).join("")}`).join("")}</section>`;
     h+=jobsHtml();
     h+=`<section class="card"><h2>Ways to take part</h2>${ways.length?ways.map(itemCard).join(""):`<p class="muted" style="margin:0">${esc(T("Ways to take part, when none are posted"))}</p>`}</section>`;
+    h+=pacHtml()+contactsHtml();
     h+=visitHtml();
     if(wishes.length)h+=`<section class="card"><h2>Our wish list</h2><p class="small muted" style="margin:0 0 6px">${esc(T("Our wish list"))}</p>${wishes.map(itemCard).join("")}</section>`;
     h+=`<section class="card"><h2>Log something else</h2><form id="fl" class="stack"><label>What you did<input type="text" id="lw" maxlength="200" placeholder="Ex. Washed the dress-up clothes"></label>
@@ -468,6 +502,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value,type:$("#lt").value});render()}catch(er){$("#e3").textContent=er.message}};
     const fv=$("#fv");if(fv)fv.onsubmit=async e=>{e.preventDefault();$("#e5").textContent="";const f=document.querySelector('input[name="fvf"]:checked');
       try{D=await api("/family/visit",{what:$("#fvw").value,who:$("#fvn").value,when:$("#fvt").value,isFamily:f?f.value==="yes":undefined});visitOpen=false;render()}catch(er){visitOpen=true;$("#e5").textContent=er.message}};
+    const gf=$("#gform");if(gf)gf.onsubmit=async e=>{e.preventDefault();$("#ge6").textContent="";
+      try{D=await api("/family/gather",{id:(gForm||{}).id||"",title:$("#gt").value,date:$("#gd").value,start:$("#gs").value,end:$("#ge").value,place:$("#gp").value,hours:$("#gh").value,note:$("#gn").value});gForm=null;render()}catch(er){$("#ge6").textContent=er.message}};
     const pg=$("#pacegot");if(pg)pg.onclick=()=>{LS.set("fam-pace-"+new Date().getFullYear()+"-"+Math.floor(new Date().getMonth()/3),"1");render()};
     const ss=$("#strsave"),sk=$("#strkeep"),se=$("#stredit");const strSave=async()=>{try{D=await api("/family/strengths",{text:$("#str").value});strOpen=false;render()}catch(er){$("#strmsg").textContent=er.message}};
     if(ss)ss.onclick=strSave;if(sk)sk.onclick=strSave;if(se)se.onclick=()=>{strOpen=true;render();const t=$("#str");if(t)t.focus()};
@@ -486,6 +522,15 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   function enrollStatus(){const sp=document.querySelectorAll("[data-estat]");if(!sp.length||!window.enrollMissing)return;const miss=new Set(window.enrollMissing(readEnroll(),D.enrollForm).map(f=>f.k));
     sp.forEach(x=>{const sec=D.enrollForm[+x.dataset.estat];const n=sec.fields.filter(f=>miss.has(f.k)).length;x.textContent=n?`, ${n} to complete`:", complete";x.style.color=n?"var(--marigold)":"var(--moss)"})}
   let eTimer=null;document.addEventListener("input",e=>{if(e.target.dataset&&e.target.dataset.ef)enrollStatus()});document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.ef)enrollStatus()});document.addEventListener("input",e=>{if(!form||!form.startsWith("enroll")||!e.target.dataset.ef)return;clearTimeout(eTimer);const id=form.split("|")[1];eTimer=setTimeout(()=>api("/family/enroll",{childId:id,data:readEnroll(),done:false}).then(j=>{D=j}).catch(()=>{}),1200)});
+  // posting a gathering, taking it down, the contact list and leaving it
+  document.addEventListener("click",async e=>{const b=e.target.closest("[data-gnew],[data-gcancel],[data-gedit],[data-gdel],[data-contacts],[data-contactout]");if(!b||!D)return;e.preventDefault();const d=b.dataset;
+    try{if(d.gnew){gForm={};render();const t=$("#gt");if(t)t.focus()}
+      else if(d.gcancel){gForm=null;render()}
+      else if(d.gedit){const it=D.open.find(x=>x.id===d.gedit);if(it){gForm=Object.assign({},it);render();const f=$("#gform");if(f)f.scrollIntoView({block:"center"})}}
+      else if(d.gdel){if(!confirm("Take this gathering down? Families will no longer see it."))return;D=await api("/family/ungather",{id:d.gdel});render()}
+      else if(d.contactout){D=await api("/family/contactpref",{out:d.contactout==="1"});render()}
+      else if(d.contacts){b.disabled=true;const L=await api("/family/contacts",{});ideaPreview(await contactsPdf(L),"Family Contact List.pdf");b.disabled=false}}
+    catch(er){b.disabled=false;alert(er.message||"That did not work. Check the connection and try again.")}});
   document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b||!D)return;const d=b.dataset;
     try{
       if(d.signup){signFor=d.signup;render();const w=$("#sw");if(w)w.focus()}

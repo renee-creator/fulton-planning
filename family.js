@@ -114,7 +114,7 @@ function withoutOthers(text, child, all, opt) {
   return t;
 }
 
-module.exports = function family({ ideasOn, community, store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released, volunteer }) {
+module.exports = function family({ mailText, ideasOn, community, store, log, sign, noteChange, scheduleSave, mailCode, photoSrc, keepPhoto, handbook, walks, garden, siteMap, pieces, wording, recipeOf, addRecipe, released, volunteer }) {
   const o = { released };
   /* the Family page's own wording, kept in the private records in staff/wording, which the director edits in place.
      The Family Questionnaire, the Family Reflections, the first steps, the packing list, the All About Me book, the
@@ -124,7 +124,9 @@ module.exports = function family({ ideasOn, community, store, log, sign, noteCha
   // the Family page's own words, as the director wrote them in staff/wording/family-page-text.md, each part as it first
   // read until she writes it
   const FT = require('./family-text.js');
-  const familyTexts = () => { const out = FT.defaults(); const W = WD.map(words('family-page-text')); for (const [k, v] of Object.entries(W)) if (String(v || '').trim() && k in out) out[k] = String(v).trim(); return out; };
+  const familyTexts = () => { const out = FT.defaults(); const W = WD.map(words('family-page-text')); for (const [k, v] of Object.entries(W)) if (String(v || '').trim() && k in out) out[k] = String(v).trim();
+    // entries now round up to the next half hour, so a line written before that change says so
+    out['Participation hours'] = out['Participation hours'].replace(/next whole hour/g, 'next half hour'); return out; };
   const QUESTIONS = () => WD.list(words('family-questionnaire')).map(([, t]) => t);
   const REFLECTIONS = () => WD.list(words('family-reflections'));
   const CHECKS = () => WD.list(words('family-checklist')).map(([k, t]) => { const ps = WD.paras(t); const ls = WD.links(t); return [k, ps[0] || '', (ps[1] && !WD.links(ps[1]).length) ? ps[1] : '', ls]; });
@@ -140,7 +142,7 @@ module.exports = function family({ ideasOn, community, store, log, sign, noteCha
   const hbAck = (k, y) => (k.handbookAck || {})[y] || (y === '2026' && k.familyChecks && k.familyChecks.handbook ? { at: k.familyChecks.handbook } : null);
   const KIND = 'participation';
   const recs = () => store.recs[KIND];
-  const cfg = () => { const r = recs().get('config'); const d = r && !r.deleted && r.doc ? r.doc : {}; return { test: d.test !== false, goal: Number(d.goal) > 0 ? Number(d.goal) : 10, testers: Array.isArray(d.testers) ? d.testers : [], confOpen: !!d.confOpen, aa: d.aa && typeof d.aa === 'object' ? d.aa : {}, welcome: typeof d.welcome === 'string' ? d.welcome : '' }; };
+  const cfg = () => { const r = recs().get('config'); const d = r && !r.deleted && r.doc ? r.doc : {}; return { test: d.test !== false, goal: Number(d.goal) > 0 ? Number(d.goal) : 10, testers: Array.isArray(d.testers) ? d.testers : [], confOpen: !!d.confOpen, aa: d.aa && typeof d.aa === 'object' ? d.aa : {}, welcome: typeof d.welcome === 'string' ? d.welcome : '', roles: Array.isArray(d.roles) ? d.roles.filter(x => x && x.name) : [], firstFriday: d.firstFriday && typeof d.firstFriday === 'object' ? d.firstFriday : { on: false } }; };
   const getRec = (kind, id) => { const r = store.recs[kind].get(id); return r && !r.deleted && r.doc ? r.doc : null; };
   // in test mode, each family save notes which parts of the record the tester changed, with what they were before, so
   // Clear test entries puts back only those parts and never anything staff added since
@@ -172,7 +174,7 @@ module.exports = function family({ ideasOn, community, store, log, sign, noteCha
 
   // the school year runs from August, so hours start fresh each August
   function yearStart(d) { const t = d ? new Date(d) : new Date(); const y = t.getMonth() >= 7 ? t.getFullYear() : t.getFullYear() - 1; return y + '-08-01'; }
-  const hoursOf = minutes => Math.max(1, Math.ceil((Number(minutes) || 0) / 60));   // each entry rounds up to the next whole hour
+  const hoursOf = minutes => Math.max(0.5, Math.ceil((Number(minutes) || 0) / 30) / 2);   // each entry rounds up to the next half hour
 
   // ---------- who a family is ----------
   function childrenFor(email) {
@@ -257,12 +259,13 @@ module.exports = function family({ ideasOn, community, store, log, sign, noteCha
   }
   const firstOf = k => k.first || 'Your child';
   function familyView(f) {
+    try { firstFridays(); } catch (e) { log('First Friday not posted,', e.message); }
     const c = cfg(); const ys = yearStart(); const ids = new Set(f.kids.map(k => k.id)); const today = laToday();
     const mine = logs().filter(l => ids.has(l.childId) && (l.date || '') >= ys && (isConf(l) || !!l.test === f.test));
     const hours = f.kids.map(k => ({ id: k.id, first: firstOf(k), classroom: k.classroom || '', hours: mine.filter(l => l.childId === k.id).reduce((a, l) => a + (Number(l.hours) || 0), 0), goal: c.goal }));
     const open = items().filter(it => it.open !== false && !!it.test === f.test && (!it.date || it.date >= today) && (!it.classroom || f.kids.some(k => k.classroom === it.classroom)))
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
-      .map(it => { const ss = it.signups || []; const mineIn = ss.some(s => s.email === f.email); let card = null; try { card = it.jobId && volunteer && volunteer.slotCard ? volunteer.slotCard(it.jobId, mineIn) : null; } catch (e) { card = null; } return { id: it.id, pointPerson: it.pointPerson || '', card, type: it.type, title: it.title, note: it.note || '', walk: !!it.walk, date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), gathering: it.gathering || '', gatheringId: it.gatheringId || '', gardenDay: !!it.gardenDay, question: it.question || '', my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
+      .map(it => { const ss = it.signups || []; const mineIn = ss.some(s => s.email === f.email); let card = null; try { card = it.jobId && volunteer && volunteer.slotCard ? volunteer.slotCard(it.jobId, mineIn) : null; } catch (e) { card = null; } return { id: it.id, pointPerson: it.pointPerson || '', card, type: it.type, title: it.title, note: it.note || '', walk: !!it.walk, date: it.date || '', start: it.start || '', end: it.end || '', hours: Number(it.hours) || 0, spots: Number(it.spots) || 0, taken: ss.length, mine: ss.some(s => s.email === f.email), counts: asksCounts(it), gathering: it.gathering || '', gatheringId: it.gatheringId || '', gardenDay: !!it.gardenDay, question: it.question || '', hostedBy: it.hostedBy || '', host: it.host || '', place: it.place || '', mineHost: it.hostedBy === 'families' && it.hostEmail === f.email, my: (({ who, adults, children, answer } = {}) => ({ who, adults, children, answer }))(ss.find(s => s.email === f.email)) }; });
     // what this family signed up for that has happened and is not logged yet, so logging it is one tap
     const signed = items().filter(it => !!it.test === f.test && (it.signups || []).some(s => s.email === f.email) && (it.type === 'wish' ? it.status !== 'requested' : (it.date && it.date <= today && it.date >= ys)) && !mine.some(l => l.itemId === it.id))
       .map(it => ({ id: it.id, title: it.title, date: it.date, hours: Number(it.hours) || 0, type: it.type }));
@@ -287,8 +290,65 @@ module.exports = function family({ ideasOn, community, store, log, sign, noteCha
     // the museums and the plants on our site, each part once the director turns it on for families
     let communityInfo = null; try { communityInfo = community ? community() : null; } catch (e) { communityInfo = null; }
     let ideasFlag = false; try { ideasFlag = ideasOn ? !!ideasOn() : false; } catch (e) { ideasFlag = false; }
-    return { ideasOn: ideasFlag, community: communityInfo, visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
-      texts: familyTexts(), welcome: anyNew ? (c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME) : '', aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
+    const roles = c.roles.map(r => ({ name: String(r.name), role: r.role === 'pac' ? 'pac' : 'rep', classroom: r.classroom || '' }));
+    const iHost = c.roles.some(r => norm(r.email) && norm(r.email) === f.email);
+    return { roles, iHost, contactOut: contactOut(f.email), ideasOn: ideasFlag, community: communityInfo, visits, jobs, pieces: piecesAll.filter(p => p.audience === 'all'), gardenInfo, walkInfo, siteMap: mapInfo, test: f.test, goal: c.goal, pace, me, kidCount: f.kids.length, children: kidsOut, open, signed, entries, yearFrom: ys, menu: menuWeeks(today), calendarUrl: CALENDAR_URL, handbook: hy ? { year: hy } : null,
+      texts: familyTexts(), welcome: c.welcome || (wording && (WD.map(wording('school-words'))['Family welcome letter'] || '').trim()) || DEFAULT_WELCOME, aa: anyNew ? c.aa : {}, email: f.email, checks: anyNew ? CHECKS() : [], pack: anyNew ? PACK() : [], questions: anyNew ? QUESTIONS() : [], enrollForm: anyNew ? ENROLL_NOW() : [], reflectionQs: REFLECTIONS(), confOpen: c.confOpen, agreementWords: anyNew ? words('agreement') : null };
+  }
+
+  /* First Friday Morning Coffee, Tea and Chat, hosted by the director out front each month. While it is on in Family
+     participation, the coming first Fridays are posted as community events, half an hour each, skipping a day the menu
+     marks closed. A posted one can be changed or closed there like any other. */
+  function firstFridays() {
+    const c = cfg(), ff = c.firstFriday || {}; if (!ff.on) return 0; const today = laToday(); let n = 0;
+    for (let m = 0; m < 2; m++) {
+      const d = new Date(today.slice(0, 7) + '-01T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + m); while (d.getUTCDay() !== 5) d.setUTCDate(d.getUTCDate() + 1);
+      const day = d.toISOString().slice(0, 10); if (day < today) continue;
+      const mr = getRec('menus', day.slice(0, 7)); if (mr && mr.days && mr.days[day] && mr.days[day].closed) continue;
+      const id = 'it-ff-' + day + (c.test ? '-test' : ''); if (recs().get(id)) continue;
+      save(id, { id, kind: 'item', type: 'event', firstFriday: true, title: 'First Friday Morning Coffee, Tea and Chat', date: day, start: /^\d{2}:\d{2}$/.test(ff.start || '') ? ff.start : '', end: /^\d{2}:\d{2}$/.test(ff.end || '') ? ff.end : '', hours: 0.5, spots: 0, note: 'Out front at drop-off. Come for a few minutes or stay a while.', counts: false, open: true, signups: [], test: !!c.test, at: nowIso() }); n++;
+    }
+    if (n) log('First Friday posted for', n, n === 1 ? 'month' : 'months');
+    return n;
+  }
+
+  /* a gathering a PAC member or class representative posts for every family, such as a park playdate or a book talk.
+     It shows under Ways to take part as a community event hosted by families, with no approval needed. */
+  const hostRole = f => cfg().roles.find(r => norm(r.email) && norm(r.email) === f.email) || null;
+  function postGathering(f, b) {
+    const r = hostRole(f); if (!r) return { error: 'Only PAC members and class representatives post gatherings here.' };
+    const str = (x, n) => String(x || '').replace(/\s+/g, ' ').trim().slice(0, n);
+    const title = str(b.title, 120); if (!title) return { error: 'Give the gathering a name.' };
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : ''; if (!date || date < laToday()) return { error: 'Choose a day that is coming up.' };
+    const t = x => /^\d{2}:\d{2}$/.test(x || '') ? x : '';
+    const hours = Math.min(8, Math.max(0.5, Math.round((Number(b.hours) || 1) * 2) / 2));
+    const id = b.id && String(b.id).startsWith('it-host-') ? String(b.id) : newId('it-host');
+    const cur = recs().get(id); if (cur && cur.doc && cur.doc.hostEmail !== f.email) return { error: 'Only the family who posted it can change it.' };
+    save(id, Object.assign({}, cur && cur.doc, { id, kind: 'item', type: 'event', hostedBy: 'families', host: r.name, hostEmail: f.email, title, date, start: t(b.start), end: t(b.end), place: str(b.place, 160), note: String(b.note || '').trim().slice(0, 600), hours, spots: 0, counts: true, open: true, signups: (cur && cur.doc && cur.doc.signups) || [], classroom: r.role === 'rep' && b.classOnly ? r.classroom || '' : '', test: f.test, at: nowIso() }));
+    return { ok: true };
+  }
+  function removeGathering(f, id) { const r = recs().get(String(id || '')); const it = r && !r.deleted && r.doc; if (!it || it.hostEmail !== f.email) return { error: 'That is no longer listed.' }; save(it.id, Object.assign({}, it, { open: false, removed: true })); return { ok: true }; }
+
+  /* the family contact list, email only, made from the enrollment records for enrolled families. A parent may leave their
+     own email off. It is shared only within our community, for community building. */
+  const cpId = e => 'cp-' + crypto.createHash('sha256').update(norm(e)).digest('hex').slice(0, 16);
+  const contactOut = e => { const r = recs().get(cpId(e)); return !!(r && !r.deleted && r.doc && r.doc.out); };
+  function contactPref(f, out) { save(cpId(f.email), { id: cpId(f.email), kind: 'contactpref', out: !!out, at: nowIso() }); return { ok: true }; }
+  function contactList(f) {
+    const c = cfg(); const keep = new Set(c.test ? c.testers.flatMap(t => t.children || []) : []); const rows = [];
+    for (const [id, r] of store.recs.children) { const k = r.doc; if (r.deleted || !k || k.status === 'withdrawn' || (c.test && !keep.has(id))) continue;
+      const parents = (k.parents || []).filter(p => p && okEmail(norm(p.email)) && !contactOut(p.email)).map(p => ({ name: String(p.name || '').trim(), email: norm(p.email) }));
+      if (parents.length) rows.push({ child: firstOf(k), classroom: k.classroom || '', parents }); }
+    rows.sort((a, b) => a.classroom.localeCompare(b.classroom) || a.child.localeCompare(b.child));
+    return { rows, test: c.test };
+  }
+  /* the guide for PAC members and class representatives, emailed when the director sends the welcome */
+  async function pacWelcome(email) {
+    const e = norm(email); const r = cfg().roles.find(x => norm(x.email) === e); if (!r) return { error: 'That email is not on the PAC and representative list.' };
+    if (!mailText) return { error: 'Family email is not set up yet.' };
+    const T = familyTexts(); const body = ['Dear ' + r.name + ',', '', T['PAC guide, welcome'], '', T['PAC guide, what you might do'], '', T['PAC guide, getting started'], '', T['PAC guide, a few reminders'], '', 'Fulton Community School'].join('\n');
+    try { await mailText(e, 'Welcome to the Parent Advisory Council and class representatives', body); } catch (er) { return { error: 'The email could not be sent just now. ' + er.message }; }
+    return { ok: true };
   }
 
   function save(id, doc) { const cur = recs().get(id); recs().set(id, { doc, sha: cur && cur.sha, path: `${KIND}/${id}.json`, local: true }); noteChange(KIND, id); scheduleSave(KIND, id); }
@@ -570,7 +630,7 @@ module.exports = function family({ ideasOn, community, store, log, sign, noteCha
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;

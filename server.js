@@ -427,7 +427,13 @@ async function mailCode(to, code) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject: 'Your Fulton Community School family page code', body: `Your code for our family page is ${code}. It works for 15 minutes.\n\nFulton Community School` }), redirect: 'follow' });
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
-const familyPage = require('./family.js')({ community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
+// a longer email to a family, such as the guide for a new PAC member, through the same mailbox script
+async function mailText(to, subject, body) {
+  const url = process.env.FAMILY_MAIL_URL, key = process.env.FAMILY_MAIL_KEY; if (!url || !key) throw new Error('Family email is not set up yet');
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, to, subject, body }), redirect: 'follow' });
+  if (!r.ok) throw new Error('The mailbox answered ' + r.status);
+}
+const familyPage = require('./family.js')({ mailText, community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
@@ -711,7 +717,7 @@ let rev = 0; const changeLog = []; const BOOT_ID = crypto.randomBytes(6).toStrin
 function noteChange(kind, id) { rev++; changeLog.push({ rev, kind, id }); if (changeLog.length > 5000) changeLog.splice(0, 1000); if (kind === 'conferences') confHoursSoon(); }
 // a conference marked complete adds its hour to the child's participation, a moment after the save
 let confHoursTimer = null;
-function confHoursSoon() { clearTimeout(confHoursTimer); confHoursTimer = setTimeout(() => { try { if (store.ready) familyPage.conferenceHours(); } catch (e) { log('Conference hours not added,', e.message); } }, 1500); if (confHoursTimer.unref) confHoursTimer.unref(); }
+function confHoursSoon() { clearTimeout(confHoursTimer); confHoursTimer = setTimeout(() => { try { if (store.ready) { familyPage.conferenceHours(); familyPage.firstFridays(); } } catch (e) { log('Conference hours not added,', e.message); } }, 1500); if (confHoursTimer.unref) confHoursTimer.unref(); }
 
 let loading = null;
 // how much room the records use. GitHub asks for under 1 GB and strongly recommends under 5 GB. Its own count includes
@@ -1930,6 +1936,10 @@ async function handle(req, res) {
     if (path === '/family/data') r = familyPage.familyView(f);
     else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false, { who: body.who, adults: body.adults, children: body.children, answer: body.answer });
     else if (path === '/family/recipe') r = familyPage.shareRecipe(f, body || {});
+    else if (path === '/family/gather') r = familyPage.postGathering(f, body || {});
+    else if (path === '/family/ungather') r = familyPage.removeGathering(f, String(body.id || ''));
+    else if (path === '/family/contactpref') r = familyPage.contactPref(f, !!body.out);
+    else if (path === '/family/contacts') { json(req, res, 200, familyPage.contactList(f)); return; }
     else if (path === '/family/log') r = familyPage.addLog(f, body || {});
     else if (path === '/family/unlog') r = familyPage.removeLog(f, String(body.id || ''));
     else if (path === '/family/book') r = familyPage.book(f, String(body.slotId || ''), String(body.childId || ''), body.on !== false);
@@ -2049,6 +2059,7 @@ async function handle(req, res) {
   // reminders. A phone turns them on once, the director sees who receives them and can send a test
   if (path === '/api/push/key') { const a = accountFor(me.name); json(req, res, 200, { key: reminders.keys() ? reminders.keys().pub : '', phones: ((a && a.push) || []).length }); return; }
   if (path === '/api/push/subscribe') { if (!reminders.subscribe(me.name, body.sub, req.headers['user-agent'])) { err(req, res, 400, 'This phone could not turn reminders on.'); return; } json(req, res, 200, { ok: true }); return; }
+  if (path === '/api/family/pacwelcome') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends the welcome.'); return; } const r = await familyPage.pacWelcome(String(body.email || '')); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
   if (path === '/api/server-status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the server status.'); return; } json(req, res, 200, { lines: statusLines().map(([ok, text]) => ({ ok: !!ok, text })) }); return; }
   if (path === '/api/notify/status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees reminders.'); return; } json(req, res, 200, reminders.status()); return; }
   if (path === '/api/notify/test') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a test.'); return; }
