@@ -369,7 +369,10 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.gmapplace!=null&&gdnPlace){const r=t.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;const sp=gdnPlace;gdnPlace="";await gdnCall("map",{space:sp,x,y},"Placed on the map.");return}
   if(d.gmoff){await gdnCall("map",{space:d.gmoff,remove:true},"Taken off the map.");return}
-  if(d.gdone){t.disabled=true;await gdnCall("done",{task:d.gdone,day:d.day,undo:!!d.undo,passed:!!d.passed},d.passed?"Marked passed for this time.":undefined);return}
+  if(d.gdone){t.disabled=true;
+    // a task marked done or passed leaves the day's calendar on Today too, and an undo reads the calendar again
+    if(typeof todayCal!=="undefined"){if(!d.undo&&Array.isArray(todayCal.items))todayCal.items=todayCal.items.filter(x=>!(x.gid&&x.gid.startsWith("tgarden."+d.gdone+".")));else todayCal.at=0}
+    await gdnCall("done",{task:d.gdone,day:d.day,undo:!!d.undo,passed:!!d.passed},d.passed?"Marked passed for this time.":undefined);return}
   if(d.gready){await gdnCall("ready",{on:d.gready==="1"});return}
   if(d.gmapready){if(await gdnCall("mapready",{on:d.gmapready==="1"},d.gmapready==="1"?"The site map shows on sign-ups, plans, New Educator, the Family page and handouts.":"The site map shows on the Garden page only."))window.TREE_SITEMAP(true);return}
   if(d.gharvest){const r=v("gh-room");await gdnCall("harvest",{plant:v("gh-plant"),amount:v("gh-amount"),bed:v("gh-bed"),date:v("gh-date"),children:!!r,room:r},"Kept. It shows on the Kitchen page.");return}

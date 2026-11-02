@@ -899,7 +899,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
     /* a new educator reaches only the New Educator section until the director turns on full access */
     window.FP_STAFF=j.staff||null; const wasN=LS.get("fp-newhire")==="1"; LS.set("fp-newhire",j.newHire?"1":null); if(wasN!==!!j.newHire){ location.reload(); return; } notify(); if(j.staff&&j.staff.loading) staffAgain(0); obReapply(); }
   /* signed in while the educator records were still loading after an update, TREE asks again until Educators can open */
-  function staffAgain(n){ if(n>40) return; setTimeout(async()=>{ try{ const r=await api("/api/staff/info",{}); if(r.staff&&!r.staff.loading){ window.FP_STAFF=r.staff; notify(); if(typeof renderNav==="function") renderNav(); return; } }catch(e){} staffAgain(n+1); }, 3000); }
+  function staffAgain(n){ if(n>30) return; setTimeout(async()=>{ try{ const r=await api("/api/staff/info",{}); if(r.staff&&!r.staff.loading){ window.FP_STAFF=r.staff; notify(); if(typeof renderNav==="function") renderNav(); return; } }catch(e){} staffAgain(n+1); }, Math.min(60000, 5000*Math.pow(1.5,n))); }
   let polling=false;
   /* stop checking for changes after 10 quiet minutes, so a forgotten open tab does not keep asking */
   const IDLE_MS=10*60*1000; let lastActive=Date.now(), idle=false;
@@ -4725,7 +4725,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7c3c5e0425","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=97a48b6410","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4738,7 +4738,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=7c3c5e0425","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=97a48b6410","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="7469ceaf0a0b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="8cecd5b07716";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4899,7 +4899,7 @@ async function loadTodayCal(force){
   try{const j=await calView(day,day,force);
     const spaces=Object.fromEntries(((j.settings&&j.settings.spaces)||[]).map(s=>[s.id,s]));const cals=Object.fromEntries(((j.settings&&j.settings.calendars)||[]).map(c=>[c.id,c]));
     const out=[];
-    for(const e of j.events||[])out.push({kind:(e.conf||e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,sub:e.conf?"":(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
+    for(const e of j.events||[])out.push({kind:(e.conf||e.cal==="tconf"||String(e.id||"").startsWith("tconf."))?"conf":"school",start:e.allDay?"":String(e.start).slice(11,16),end:e.allDay?"":String(e.end).slice(11,16),title:e.title,gid:e.cal==="tgarden"?String(e.id||""):"",sub:e.conf?"":(cals[e.cal]||{}).name||"",menuMonth:e.cal==="tmenu"?String(e.start||"").slice(0,7):""});
     for(const b of j.bookings||[]){const sp=spaces[b.spaceId]||{};const mins=v=>typeof v==="number"?String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0"):"";
       out.push({kind:"space",start:b.week?"":mins(b.start),end:b.week?"":mins(b.end),week:!!b.week,title:sp.name||"A space",sub:[b.who||b.by,b.group||b.what].filter(Boolean).join(", ")})}
     out.sort((a,b)=>(a.start||"").localeCompare(b.start||""));
@@ -5868,7 +5868,10 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.gmapplace!=null&&gdnPlace){const r=t.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;const sp=gdnPlace;gdnPlace="";await gdnCall("map",{space:sp,x,y},"Placed on the map.");return}
   if(d.gmoff){await gdnCall("map",{space:d.gmoff,remove:true},"Taken off the map.");return}
-  if(d.gdone){t.disabled=true;await gdnCall("done",{task:d.gdone,day:d.day,undo:!!d.undo,passed:!!d.passed},d.passed?"Marked passed for this time.":undefined);return}
+  if(d.gdone){t.disabled=true;
+    // a task marked done or passed leaves the day's calendar on Today too, and an undo reads the calendar again
+    if(typeof todayCal!=="undefined"){if(!d.undo&&Array.isArray(todayCal.items))todayCal.items=todayCal.items.filter(x=>!(x.gid&&x.gid.startsWith("tgarden."+d.gdone+".")));else todayCal.at=0}
+    await gdnCall("done",{task:d.gdone,day:d.day,undo:!!d.undo,passed:!!d.passed},d.passed?"Marked passed for this time.":undefined);return}
   if(d.gready){await gdnCall("ready",{on:d.gready==="1"});return}
   if(d.gmapready){if(await gdnCall("mapready",{on:d.gmapready==="1"},d.gmapready==="1"?"The site map shows on sign-ups, plans, New Educator, the Family page and handouts.":"The site map shows on the Garden page only."))window.TREE_SITEMAP(true);return}
   if(d.gharvest){const r=v("gh-room");await gdnCall("harvest",{plant:v("gh-plant"),amount:v("gh-amount"),bed:v("gh-bed"),date:v("gh-date"),children:!!r,room:r},"Kept. It shows on the Kitchen page.");return}
@@ -10676,7 +10679,7 @@ function renderParticipation(){
         return `<details class="ptshort"><summary class="chiprow-label">Short of ${c.goal} hours, ${short.length}, for the fee in 1Core</summary><div class="cnt" style="white-space:pre-line;margin:6px 0" id="pt-shortlist">${esc(short.map(r=>`${kidName(r.k)}, ${r.k.classroom||""}, ${r.h} of ${c.goal} hours, ${c.goal-r.h} short`).join("\n"))}</div><button class="btn small ghost" data-ptcopyshort="1">Copy the list</button></details>`})()}
       ${rows.length?`<div class="tlist">${rows.map(({k,h})=>{const ls=logs.filter(l=>l.childId===k.id).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
         return `<details class="ptkid"><summary><span style="min-width:0"><b>${esc(kidName(k))}</b> <span class="cnt">${esc(k.classroom||"")}</span></span><span class="pthrs ${h>=c.goal?"done":h<ptPace(c.goal)?"behind":""}">${h} of ${c.goal}${h<c.goal&&h<ptPace(c.goal)?", behind":""}</span></summary>
-        ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(PT_LOGTYPE[ptLogType(l)])} · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span></span><button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
+        ${ls.length?ls.map(l=>`<div class="ptlog"><span>${esc(l.what)}${l.test?tag:""}<span class="cnt"> · ${esc(PT_LOGTYPE[ptLogType(l)])} · ${esc(fmtDate(l.date))} · ${l.hours} hour${l.hours==1?"":"s"}</span>${l.check?` <span class="chip soonish" title="${esc(l.check)}">Check this</span>`:""}</span>${l.check?`<button class="linkbtn" data-ptok="${esc(l.id)}">It's right</button>`:""}<button class="linkbtn" data-ptrm="${esc(l.id)}">Remove</button></div>`).join(""):`<div class="cnt">Nothing logged yet.</div>`}</details>`}).join("")}</div>`
         :`<div class="cnt">${test?"Link real children to a tester to see their hours here.":"No children on the roster."}</div>`}</section>
     ${isDirector()&&!VIEW_AS?`<section class="card"><div class="secthead"><h3 style="font-size:17px">The Family page's wording</h3></div><div class="cnt">Each piece is changed in place, with every earlier version kept and Restore this version.</div>
       <div class="actions">${[["family-page-text","The Family page's own words"],["family-questionnaire","Family Questionnaire"],["family-reflections","Family Reflections"],["family-checklist","First steps"],["family-packing","Packing list"],["family-aboutme","All About Me pages"],["family-enrollment","Enrollment form"],["agreement","Admission Tuition Agreement"]].map(([id,l])=>wordsEdit(id,l)).join("")}</div></section>`:""}
@@ -10692,8 +10695,9 @@ function renderParticipation(){
 /* the Parent Advisory Council and the class representatives, named on the Family page. Each one's email lets them post a
    gathering there, and Send the welcome emails them the guide. */
 let ptPacForm=null;
+const ptParentEmail=e=>{e=String(e||"").trim().toLowerCase();return [...children.values()].some(k=>k&&k.status!=="withdrawn"&&(k.parents||[]).some(p=>String(p&&p.email||"").trim().toLowerCase()===e))};
 function ptPacHtml(c){const R=c.roles||[];const dir=isDirector()&&!VIEW_AS;
-  const row=(r,i)=>`<div class="ptitem"><div style="min-width:0"><b>${esc(r.name)}</b><div class="cnt">${esc([r.role==="pac"?"Parent Advisory Council":(r.classroom?r.classroom+" class representative":"Class representative"),r.email||"No email, so they cannot post gatherings",r.welcomed?"Welcome sent "+fmtDate(r.welcomed):""].filter(Boolean).join(" · "))}</div></div>
+  const row=(r,i)=>`<div class="ptitem"><div style="min-width:0"><b>${esc(r.name)}</b><div class="cnt">${esc([r.role==="pac"?"Parent Advisory Council":(r.classroom?r.classroom+" class representative":"Class representative"),r.email||"No email, so they cannot post gatherings",r.welcomed?"Welcome sent "+fmtDate(r.welcomed):""].filter(Boolean).join(" · "))}</div>${r.email&&!ptParentEmail(r.email)?`<div class="cnt" style="color:var(--clay)">This email is not on any child's record, so they can't post gatherings yet. Check it against the enrollment record.</div>`:""}</div>
     ${dir?`<span class="actions">${r.email?`<button class="btn small ghost" data-ptpacwelcome="${i}">${r.welcomed?"Send the welcome again":"Send the welcome"}</button>`:""}<button class="linkbtn" data-ptpacdel="${i}">Remove</button></span>`:""}</div>`;
   const f=ptPacForm;
   return `<section class="card"><div class="secthead"><h3 style="font-size:17px">PAC and class representatives</h3>${dir&&!f?`<button class="btn small" data-ptpacnew="1">Add someone</button>`:""}</div>
@@ -10731,12 +10735,14 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.ptpaccancel){ptPacForm=null;renderMain();return}
   if(d.ptpacsave){const v=id=>($("#"+id)?.value||"").trim();const name=v("pac-name"),email=v("pac-email").toLowerCase(),role=v("pac-role")==="rep"?"rep":"pac",classroom=role==="rep"?v("pac-class"):"";
     if(!name){toast("Type their name.");return}if(email&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)){toast("Check the email.");return}
-    ptPacForm=null;saveCfg({roles:(c.roles||[]).concat([{name,email,role,classroom}])}).then(()=>toast(name+" added."));return}
+    const known=!email||ptParentEmail(email);
+    ptPacForm=null;saveCfg({roles:(c.roles||[]).concat([{name,email,role,classroom}])}).then(()=>toast(known?name+" added.":name+" added. That email is not on any child's record yet, so they can't post gatherings until it matches a parent's email."));return}
   if(d.ptpacdel!=null){const R=(c.roles||[]).slice();const r=R[+d.ptpacdel];if(!r||!confirm("Take "+r.name+" off the list?"))return;R.splice(+d.ptpacdel,1);saveCfg({roles:R});return}
   if(d.ptpacwelcome!=null){const R=(c.roles||[]).slice();const r=R[+d.ptpacwelcome];if(!r)return;t.disabled=true;
     api("/api/family/pacwelcome",{email:r.email}).then(()=>{R[+d.ptpacwelcome]=Object.assign({},r,{welcomed:iso(new Date())});return saveCfg({roles:R})}).then(()=>toast("The welcome went to "+r.name+".")).catch(er=>{t.disabled=false;toast(er&&er.message||"The welcome could not be sent.")});return}
-  if(d.ptff){saveCfg({firstFriday:Object.assign({},c.firstFriday||{},{on:t.checked})}).then(()=>toast(t.checked?"First Friday will be posted each month.":"First Friday is no longer posted."));return}
-  if(d.ptffsave){saveCfg({firstFriday:Object.assign({},c.firstFriday||{},{start:$("#ff-start")?.value||"",end:$("#ff-end")?.value||""})}).then(()=>toast("Saved."));return}
+  if(d.ptff){const f0=c.firstFriday||{};if(t.checked&&!(/^\d{2}:\d{2}$/.test($("#ff-start")?.value||f0.start||"")&&/^\d{2}:\d{2}$/.test($("#ff-end")?.value||f0.end||""))){t.checked=false;toast("Choose the start and end times first, then turn it on.");return}
+    saveCfg({firstFriday:Object.assign({},c.firstFriday||{},{on:t.checked})}).then(()=>toast(t.checked?"First Friday will be posted each month.":"First Friday is no longer posted."));return}
+  if(d.ptffsave){const s=$("#ff-start")?.value||"",en=$("#ff-end")?.value||"";if(s&&en&&en<=s){toast("The end comes after the start.");return}saveCfg({firstFriday:Object.assign({},c.firstFriday||{},{start:s,end:en})}).then(()=>toast("Saved. First Fridays already posted change to these times unless one was changed by hand."));return}
   if(d.ptconfopen){saveCfg({confOpen:t.checked}).then(()=>toast(t.checked?"Families can choose conference times.":"Conference sign-ups are closed."));return}
   if(d.ptslotnew){ptSlotForm={purpose:d.ptslotnew};renderMain();return}
   if(d.ptslotcancel){ptSlotForm=null;renderMain();return}
@@ -10752,7 +10758,7 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
   if(d.ptwelcomereset){saveCfg({welcome:""});return}
 });
 document.addEventListener("click",e=>{if(view!=="participation")return;const t=e.target.closest("button");if(!t)return;const d=t.dataset;const c=ptCfg();
-  if(VIEW_AS&&(d.ptsave||d.ptadd||d.ptrm||d.ptclear||d.pttest)){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(VIEW_AS&&(d.ptsave||d.ptadd||d.ptrm||d.ptok||d.ptclear||d.pttest)){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const saveCfg=nc=>ptSave("config",Object.assign({kind:"config"},c,nc,{updatedAt:Date.now()})).then(renderMain);
   if(d.ptnew){ptForm={type:"task"};renderMain();return}
   if(d.ptcancel){ptForm=null;renderMain();return}
@@ -10787,6 +10793,7 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
     const id=v.id||ptNewId("it");ptSave(id,Object.assign({kind:"item",signups:[],open:true,test:!!c.test,createdAt:Date.now(),createdBy:myName()||""},participation.get(id)||{},v,{id,updatedAt:Date.now()})).then(()=>{ptForm=null;renderMain();toast("Saved. Families see it on the Family page.")});return}
   if(d.ptdel){const x=participation.get(d.ptdel);if(x&&(x.signups||[]).length&&!t.dataset.sure){t.dataset.sure="1";t.textContent="Delete it, families signed up";return}participation.delete(d.ptdel);db.doc("participation/"+d.ptdel).delete().then(()=>{ptForm=null;renderMain()});return}
   if(d.ptopen){const x=participation.get(d.ptopen);if(x)ptSave(x.id,Object.assign({},x,{open:x.open===false,updatedAt:Date.now()})).then(renderMain);return}
+  if(d.ptok){const l=participation.get(d.ptok);if(l){const n=Object.assign({},l,{checkedBy:myName()||"",checkedAt:Date.now()});delete n.check;ptSave(l.id,n).then(()=>{renderMain();toast("Marked as checked.")})}return}
   if(d.ptrm){const l=participation.get(d.ptrm);if(l)ptSave(l.id,Object.assign({},l,{removed:true,removedBy:myName()||"",removedAt:Date.now()})).then(()=>{renderMain();toast("Removed from the hours.")});return}
   if(d.ptadd){const em=($("#pt-temail")?.value||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(em)){toast("Type an email address.");return}if(c.testers.some(x=>x.email===em)){toast("That email is already a tester.");return}
     ptOpen="t"+c.testers.length;saveCfg({testers:[...c.testers,{email:em,children:[]}]});return}
@@ -15260,7 +15267,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7c3c5e0425","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=97a48b6410","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

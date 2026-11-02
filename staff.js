@@ -112,8 +112,12 @@ module.exports = function staffModule(o) {
   }
   async function flushAll() { for (const [p, t] of S.timers) { clearTimeout(t); S.timers.delete(p); } const ps = [...S.files].filter(([, r]) => r.local).map(([p]) => p); return (await Promise.all(ps.map(p => flush(p).catch(() => false)))).every(Boolean); }
 
+  // after a failed load TREE waits before reading every record again, 2 then 5 then 10 minutes, so a spent GitHub
+  // allowance has time to come back. Requests in between are told the records are still loading.
+  const WAITS = [2, 5, 10].map(m => m * 60000); let failN = 0, retryAt = 0;
   async function load() {
     if (S.loading) return S.loading;
+    if (Date.now() < retryAt) throw new Error('Waiting before reading the educator records again');
     S.loading = (async () => {
       const tree = await gh('GET', `/repos/${repo}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);
       // when the hourly allowance is spent, the list comes through GraphQL, which has an allowance of its own
@@ -153,7 +157,8 @@ module.exports = function staffModule(o) {
       // the two starting Presenting entries, made once
       try { PR.seed(); } catch (e) { log('Presenting entries could not be started', e.message); }
       log(`Loaded educator records, ${[...S.files.keys()].filter(p => p.startsWith('staff/people/')).length} people, ${[...S.files.keys()].filter(p => p.startsWith('staff/handbook/')).length} handbook sections`);
-    })().catch(e => { S.loading = null; throw e; });
+      failN = 0; retryAt = 0;
+    })().catch(e => { S.loading = null; retryAt = Date.now() + WAITS[Math.min(failN, WAITS.length - 1)]; failN++; log('Educator records could not be read, trying again in', Math.round((retryAt - Date.now()) / 60000), 'minutes,', e.message); throw e; });
     return S.loading;
   }
   // the school's settings start with every part closed to educators. The handbook, the welcome and the pieces themselves

@@ -70,7 +70,7 @@ test('every entry has a type, and a completed conference adds one hour once', as
   assert.strictEqual(by('Came to the potluck').type, 'event'); assert.strictEqual(by('A conference').type, 'job', 'a family never enters a conference');
   const confs = d.entries.filter(x => x.type === 'conference');
   assert.deepStrictEqual(confs.map(x => [x.what, x.hours, x.child, x.mine]), [['Family conference', 1, 'Pip', false]], 'only the completed one, shown in test mode too');
-  assert.strictEqual(d.children.find(k => k.first === 'Pip').hours, 1 + 1 + 2 + 1 + 1);
+  assert.strictEqual(d.children.find(k => k.first === 'Pip').hours, 0.5 + 1 + 2 + 1 + 1, 'the 30 minutes of jars count a half hour');
   assert.match((await fx.as(fam, '/family/unlog', { id: confs[0].id })).body.error || '', /not yours/);
   // the class team marks Ivy's complete, and its hour follows, once however often it is saved
   for (let i = 0; i < 2; i++) await fx.as(dee, '/api/write', { op: 'set', kind: 'conferences', id: 'ivy--2026-27-fall', data: { childId: 'ivy', schoolYear: '2026-27', term: 'Fall', status: 'complete', confDate: today, note: 'x' + i } });
@@ -98,6 +98,6 @@ test('on a phone, a family opens a card and logs it with I did this', async t =>
   assert.doesNotMatch(txt, /[—–]|\bteacher|\bClaude\b/);
   await p.click('details[open] [data-jobdid]'); await p.fill('details[open] input[type=number]', '0.5'); await p.selectOption('details[open] select', 'pip');
   await p.click('details[open] [data-jobsave]'); await p.waitForSelector(`.entry:has-text("${first.title}")`);
-  assert.match(await p.innerText(`.entry:has-text("${first.title}")`), /Job[\s\S]*1 hour/);
+  assert.match(await p.innerText(`.entry:has-text("${first.title}")`), /Job[\s\S]*0\.5 hours/, 'half an hour counts a half hour');
   assert.deepStrictEqual(errors, []);
 });

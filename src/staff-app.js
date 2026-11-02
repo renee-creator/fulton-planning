@@ -641,7 +641,10 @@ async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){retu
       <div class="stmd" style="margin-top:6px">${md(x.body)}</div><div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button>`:""}${peBtn("staff/familypieces/"+x.slug+".md")}</div>
       ${x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`).join("")}`,`${L.filter(x=>x.waiting).length} waiting`)}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-fpready]");if(!t)return;if(typeof VIEW_AS!=="undefined"&&VIEW_AS)return toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");
-  const [slug,on]=t.dataset.fpready.split("|");try{await api("familypieces/ready",{slug,on:on==="1"});toast(on==="1"?"Marked ready. Families see it now.":"Taken off the Family page.");redraw()}catch(er){fail(er)}});
+  const [slug,on]=t.dataset.fpready.split("|");
+  // showing a piece to families asks once more, since families see it the moment it is ready
+  if(on==="1"&&!t.dataset.armed){t.dataset.armed="1";t.textContent="Show it to every family";t.classList.add("warn");setTimeout(()=>{if(t.isConnected&&t.dataset.armed){delete t.dataset.armed;t.textContent="Mark it ready";t.classList.remove("warn")}},8000);return}
+  try{await api("familypieces/ready",{slug,on:on==="1"});toast(on==="1"?"Marked ready. Families see it now.":"Taken off the Family page.");redraw()}catch(er){fail(er)}});
 async function proposalsCard(k,ed){let r;try{r=await api("proposals")}catch(e){return ""}
   const all=(r.list||[]).filter(x=>x.doc===k&&(k!=="family"||x.edition===ed));
   // rewrites of a passage in a plan, the idea bank or one of our pages, such as one that would have children collect

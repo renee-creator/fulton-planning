@@ -371,7 +371,7 @@ async function famVersionCard(slug){const L=(await famVersions()).filter(x=>x.mo
   return card("For families",`<div class="hint">The family version of this module, read on the Family page under Learning together. Finishing it counts a half hour toward a family's participation. A draft reaches no family until you mark it ready.</div>
     ${L.length?L.map(x=>`<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b> ${x.waiting?chip("soonish","Draft"):chip("ok","On the Family page")} <span class="cnt">about ${x.minutes||30} minutes</span></summary>
       <div class="stmd" style="margin-top:6px">${md(x.body)}</div><div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button>`:""}${X.peBtn?X.peBtn("staff/familypieces/"+x.slug+".md","Edit it"):""}</div></details>`).join("")
-      :`<div class="cnt">No family version yet.</div>`}`)}
+      :`<div class="cnt">No family version yet.</div>`}`,L.length?(L.every(x=>x.waiting)?"Draft":L.every(x=>!x.waiting)?"On the Family page":"Some on the Family page"):"None yet")}
 
 async function loadMods(force){if(!st.mods||force)st.mods=await ga("modules");return st.mods}
 Gr.libraryHtml=async function(pcs,dn){const b=B();if(!b)return "";const d=await doc(meName()).catch(()=>({modules:{}}));const m=d.modules||{};

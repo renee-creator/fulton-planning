@@ -45,7 +45,7 @@ const ENROLL = [
   { title: '', fields: [T('sun', '', { type: 'check', value: true })] },
 ];
 // the welcome letter new families see first, from Fulton's Welcome Letter and Logistics. The office can change it on the Participation page.
-const DEFAULT_WELCOME = "We are so excited to welcome your family to Fulton Community School. This is an exciting time for your family and a new adventure to embark upon. Your checklist below walks you through everything to do before the first day, including your [1Core parent portal](https://family.1core.com/). We look forward to seeing you in person soon!\n\n### Arriving each day\nPlease arrive between 8:30 and 8:50 AM so your child can use the bathroom, wash hands, fill their water bottle and have sunscreen on, then meet their educators. Children should be settled by 9:00 AM.\n\n### Every day, rain or shine\nAll children go outside every day, including rainy days. Rain changes our outdoor spaces and offers new possibilities for play and learning, and children know when they are prepared. Your checklist lists the rain gear and clothes to keep at school.\n\n### Using the bathroom at our school\nChildren at our school use the bathroom independently. Before your child comes to school in underwear, they need to be fully independent in the bathroom and tell us when they need to go. Until then, please send diapers or pull-ups.\n\n### Saying goodbye\nGoodbyes can be hard, and that is normal. Feelings change from day to day and month to month, just like they do for adults. A brief, predictable goodbye of a couple of minutes helps most. Let your child know they are going to school, share a short book or activity, give a hug, say \"Goodbye, I will come back and pick you up,\" and tell an educator you are leaving. Please do not leave without saying goodbye. Educators will comfort your child and call you if your child keeps having a hard time.\n\n### Your visit and the All About Me book\nChoose a visit time on this page. Welcoming children before their first day helps them feel secure and connected. Make the All About Me book here too, and we print and laminate it so your child can share it with friends.\n\n### Important reminders\n- Please tell us in person about any allergies, sensitivities or dietary needs on the school visit day, even if they are on your forms.\n- No outside food. Nuts of any kind are not allowed because of severe allergies.\n- Children must be free of symptoms for 24 hours before returning to school.\n\n### School hours\nMorning program 8:30 AM to 12:00 PM. Full day, Monday 8:30 AM to 12:30 PM and Tuesday to Friday 8:30 AM to 4:00 PM. Early care 7:30 to 8:30 AM and after care Tuesday to Friday 4:00 to 5:00 PM, with advance sign-up. Late pickup is $1 per minute. To change your schedule, email the director.";
+const DEFAULT_WELCOME = "We are so glad to welcome your family to Fulton Community School. Your checklist below walks you through everything to do before the first day, including your [1Core parent portal](https://family.1core.com/). We look forward to seeing you in person soon!\n\n### Arriving each day\nPlease arrive between 8:30 and 8:50 AM so your child can use the bathroom, wash hands, fill their water bottle and have sunscreen on, then meet their educators. Children should be settled by 9:00 AM.\n\n### Every day, rain or shine\nAll children go outside every day, including rainy days. Rain changes our outdoor spaces and offers new possibilities for play and learning, and children know when they are prepared. Your checklist lists the rain gear and clothes to keep at school.\n\n### Using the bathroom at our school\nChildren at our school use the bathroom independently. Before your child comes to school in underwear, they need to be fully independent in the bathroom and tell us when they need to go. Until then, please send diapers or pull-ups.\n\n### Saying goodbye\nGoodbyes can be hard, and that is normal. Feelings change from day to day and month to month, for children and adults. A brief, predictable goodbye of a couple of minutes helps most. Let your child know they are going to school, share a short book or activity, give a hug, say \"Goodbye, I will come back and pick you up,\" and tell an educator you are leaving. Please do not leave without saying goodbye. Educators will comfort your child and call you if your child keeps having a hard time.\n\n### Your visit and the All About Me book\nChoose a visit time on this page. Welcoming children before their first day helps them feel secure and connected. Make the All About Me book here too, and we print and laminate it so your child can share it with friends.\n\n### Important reminders\n- Please tell us in person about any allergies, sensitivities or dietary needs on the school visit day, even if they are on your forms.\n- No outside food. Nuts of any kind are not allowed because of severe allergies.\n- Children must be free of symptoms for 24 hours before returning to school.\n\n### School hours\nMorning program 8:30 AM to 12:30 PM. Full day, Monday 8:30 AM to 12:30 PM and Tuesday to Friday 8:30 AM to 4:00 PM. Early care 7:30 to 8:30 AM and after care Tuesday to Friday 4:00 to 5:00 PM, with advance sign-up. Late pickup is $1 per minute. To change your schedule, email the director.";
 const CALENDAR_URL = 'https://calendar.google.com/calendar/embed?src=c_fb2e747462e605bde4e83259ffadf24b98a87617bb24eca797ad223dc34930d2%40group.calendar.google.com&ctz=America%2FLos_Angeles';
 
 /* The transition summary a family reads never names or shows another child. Other children's first and last names,
@@ -305,8 +305,16 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
       const d = new Date(today.slice(0, 7) + '-01T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + m); while (d.getUTCDay() !== 5) d.setUTCDate(d.getUTCDate() + 1);
       const day = d.toISOString().slice(0, 10); if (day < today) continue;
       const mr = getRec('menus', day.slice(0, 7)); if (mr && mr.days && mr.days[day] && mr.days[day].closed) continue;
-      const id = 'it-ff-' + day + (c.test ? '-test' : ''); if (recs().get(id)) continue;
-      save(id, { id, kind: 'item', type: 'event', firstFriday: true, title: 'First Friday Morning Coffee, Tea and Chat', date: day, start: /^\d{2}:\d{2}$/.test(ff.start || '') ? ff.start : '', end: /^\d{2}:\d{2}$/.test(ff.end || '') ? ff.end : '', hours: 0.5, spots: 0, note: 'Out front at drop-off. Come for a few minutes or stay a while.', counts: false, open: true, signups: [], test: !!c.test, at: nowIso() }); n++;
+      const id = 'it-ff-' + day + (c.test ? '-test' : ''); const st = /^\d{2}:\d{2}$/.test(ff.start || '') ? ff.start : '', en = /^\d{2}:\d{2}$/.test(ff.end || '') ? ff.end : '';
+      const cur = recs().get(id);
+      if (cur) {
+        // one already posted follows new times saved in Family participation, unless someone changed its times by hand
+        const it = !cur.deleted && cur.doc; if (!it || it.removed) continue;
+        const was = it.ffTimes || { start: it.start || '', end: it.end || '' };
+        if (it.start === was.start && it.end === was.end && (it.start !== st || it.end !== en)) save(id, Object.assign({}, it, { start: st, end: en, ffTimes: { start: st, end: en }, at: nowIso() }));
+        continue;
+      }
+      save(id, { id, kind: 'item', type: 'event', firstFriday: true, title: 'First Friday Morning Coffee, Tea and Chat', date: day, start: st, end: en, ffTimes: { start: st, end: en }, hours: 0.5, spots: 0, note: 'Out front at drop-off. Come for a few minutes or stay a while.', counts: false, open: true, signups: [], test: !!c.test, at: nowIso() }); n++;
     }
     if (n) log('First Friday posted for', n, n === 1 ? 'month' : 'months');
     return n;
@@ -321,10 +329,13 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     const title = str(b.title, 120); if (!title) return { error: 'Give the gathering a name.' };
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : ''; if (!date || date < laToday()) return { error: 'Choose a day that is coming up.' };
     const t = x => /^\d{2}:\d{2}$/.test(x || '') ? x : '';
-    const hours = Math.min(8, Math.max(0.5, Math.round((Number(b.hours) || 1) * 2) / 2));
+    const start = t(b.start), end = t(b.end); if (start && end && end <= start) return { error: 'The end time comes after the start time.' };
+    const mins = s => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
+    // with both times given, the hours follow them, to the next half hour
+    const hours = start && end ? Math.min(8, hoursOf(mins(end) - mins(start))) : Math.min(8, Math.max(0.5, Math.round((Number(b.hours) || 1) * 2) / 2));
     const id = b.id && String(b.id).startsWith('it-host-') ? String(b.id) : newId('it-host');
     const cur = recs().get(id); if (cur && cur.doc && cur.doc.hostEmail !== f.email) return { error: 'Only the family who posted it can change it.' };
-    save(id, Object.assign({}, cur && cur.doc, { id, kind: 'item', type: 'event', hostedBy: 'families', host: r.name, hostEmail: f.email, title, date, start: t(b.start), end: t(b.end), place: str(b.place, 160), note: String(b.note || '').trim().slice(0, 600), hours, spots: 0, counts: true, open: true, signups: (cur && cur.doc && cur.doc.signups) || [], classroom: r.role === 'rep' && b.classOnly ? r.classroom || '' : '', test: f.test, at: nowIso() }));
+    save(id, Object.assign({}, cur && cur.doc, { id, kind: 'item', type: 'event', hostedBy: 'families', host: r.name, hostEmail: f.email, title, date, start, end, place: str(b.place, 160), note: String(b.note || '').trim().slice(0, 600), hours, spots: 0, counts: true, open: true, signups: (cur && cur.doc && cur.doc.signups) || [], classroom: r.role === 'rep' && b.classOnly ? r.classroom || '' : '', test: f.test, at: nowIso() }));
     return { ok: true };
   }
   function removeGathering(f, id) { const r = recs().get(String(id || '')); const it = r && !r.deleted && r.doc; if (!it || it.hostEmail !== f.email) return { error: 'That is no longer listed.' }; save(it.id, Object.assign({}, it, { open: false, removed: true })); return { ok: true }; }
@@ -490,12 +501,17 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     return { ok: true };
   }
   // a photo for the All About Me book, kept with the school's photos
+  const photoDay = new Map();
   async function photo(f, childId, data) {
     const k = f.kids.find(x => x.id === childId); if (!k) return { error: 'Choose the child.' };
+    // a family adds up to twenty photos a day, plenty for an All About Me book
+    const pk = f.email + '|' + laToday(); if ((photoDay.get(pk) || 0) >= 20) return { error: 'That is twenty photos today. Add more tomorrow.' };
+    if (photoDay.size > 2000) photoDay.clear();
     const buf = Buffer.from(String(data || ''), 'base64'); if (buf.length < 1000 || buf.length > 6 * 1024 * 1024) return { error: 'That photo could not be used. Choose a smaller one.' };
     if (!(buf[0] === 0xff && buf[1] === 0xd8)) return { error: 'Choose a photo, such as a JPEG.' };
     const id = crypto.randomBytes(6).toString('hex') + '-aboutme.jpg';
     try { await keepPhoto(id, buf); } catch (e) { return { error: 'The photo could not be kept just now. Try again in a minute.' }; }
+    photoDay.set(pk, (photoDay.get(pk) || 0) + 1);
     return { id, src: photoSrc(id) };
   }
   function aboutMe(f, childId, pages, done) {
@@ -612,9 +628,18 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     else if (b.jobId) { const j = volunteer && volunteer.job(String(b.jobId)); if (!j) return { error: 'That job is no longer listed.' }; jobId = j.id; what = j.title; type = 'job'; }
     if (!what) return { error: 'Say what you did.' };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > laToday()) return { error: 'Choose the day, today or earlier.' };
-    if (!(minutes > 0) || minutes > 24 * 60) return { error: 'Say how long it took.' };
+    if (!(minutes > 0)) return { error: 'Say how long it took.' };
+    if (minutes > 24 * 60) return { error: "That's more than a day. The box is in hours, so 30 minutes is 0.5." };
+    const hours = hoursOf(minutes);
+    // the same entry twice within two minutes is a second tap of Save
+    const recent = Date.now() - 2 * 60000;
+    if (listOf(d => d.kind === 'log' && !d.removed && d.email === f.email && d.childId === kid.id && d.what === what && d.date === date && d.hours === hours && Date.parse(d.at || 0) > recent).length) return { ok: true, same: true };
+    // a long entry, or one that takes the child's week past ten hours, still counts and is marked for the office to look at
+    const wk = new Date(date + 'T12:00:00Z'); wk.setUTCDate(wk.getUTCDate() - ((wk.getUTCDay() + 6) % 7)); const from = wk.toISOString().slice(0, 10); wk.setUTCDate(wk.getUTCDate() + 6); const to = wk.toISOString().slice(0, 10);
+    const week = listOf(d => d.kind === 'log' && !d.removed && d.childId === kid.id && d.date >= from && d.date <= to).reduce((s, d) => s + (Number(d.hours) || 0), 0);
+    const check = hours > 4 ? 'More than four hours in one entry' : week + hours > 10 ? 'More than ten hours this week for this child' : '';
     const id = newId('lg');
-    save(id, { id, kind: 'log', type, email: f.email, childId: kid.id, itemId, ...(jobId ? { jobId } : {}), what, date, minutes, hours: hoursOf(minutes), test: f.test, at: nowIso() });
+    save(id, { id, kind: 'log', type, email: f.email, childId: kid.id, itemId, ...(jobId ? { jobId } : {}), what, date, minutes, hours, ...(check ? { check } : {}), test: f.test, at: nowIso() });
     return { ok: true };
   }
   function removeLog(f, id) {

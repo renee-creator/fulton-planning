@@ -11,6 +11,7 @@
 //   ANTHROPIC_API_KEY   the same key TREE uses
 //   ALLOWED_ORIGINS     extra websites allowed to use this server, separated by commas (optional)
 //   KAYMBU_INBOX_KEY    a long secret shared with the Kaymbu Apps Script, which turns on the Kaymbu inbox (optional)
+//   BACKUP_KEY          a long secret for the nightly backup script only. Until it is set the backup uses KAYMBU_INBOX_KEY
 //
 // Open this service's address in a browser to see a status page.
 
@@ -23,6 +24,8 @@ const PORT = process.env.PORT || 3000;
 const MAX_BODY_BYTES = 30 * 1024 * 1024;
 const INBOUND_MAX_BYTES = 20 * 1024 * 1024;   // an email from the mailbox script, read before its key can be checked
 const LOGIN_MAX_BYTES = 64 * 1024;            // a sign-in is a name and a few numbers
+const SMALL_MAX_BYTES = 256 * 1024;           // a Family page or public form, or a staff request without a good sign-in
+const FAMILY_PHOTO_MAX_BYTES = 9 * 1024 * 1024; // one photo for the All About Me book, up to 6 MB before it is encoded
 const FLUSH_DELAY_MS = Number(process.env.FLUSH_DELAY_MS) || 15000;   // typing is gathered into one GitHub save
 const UPSTREAM_TIMEOUT_MS = 300000;
 const READS_PER_HOUR = Number(process.env.READS_PER_HOUR) || 800;      // whole-school scans send one request per plan
@@ -204,11 +207,18 @@ function saveAccounts(by) {
 // a name that keeps getting the code wrong is held for fifteen minutes
 // a name that keeps getting the code wrong waits fifteen minutes, then twice as long after each further run of five, up to a day
 const nameTries = new Map();
-function nameBlocked(n) { const t = nameTries.get(nameKey(n)); return !!t && t.until > Date.now(); }
-function nameWrong(n) { const k = nameKey(n), now = Date.now(); if (!k) return; if (nameTries.size > 5000) for (const [x, v] of nameTries) if (v.until <= now && now - v.last > 864e5) nameTries.delete(x);
+// a lock is kept on the sign-in itself as well, so a restart never clears it
+const savedLock = n => { const a = accountFor(n); return a && a.lock && a.lock.until > Date.now() ? a.lock : null; };
+function nameBlocked(n) { const t = nameTries.get(nameKey(n)); return (!!t && t.until > Date.now()) || !!savedLock(n); }
+// wrong tries count against the sign-in that was matched, whatever part of the name was typed
+function nameWrong(n, acct) { if (acct && acct.name) n = acct.name; const k = nameKey(n), now = Date.now(); if (!k) return; if (nameTries.size > 5000) for (const [x, v] of nameTries) if (v.until <= now && now - v.last > 864e5) nameTries.delete(x);
   const t = nameTries.get(k) || { count: 0, locks: 0, until: 0, last: 0 }; if (now - t.last > 864e5) { t.count = 0; t.locks = 0; }
-  t.count++; t.last = now; if (t.count >= 5) { t.until = now + Math.min(15 * 60000 * Math.pow(2, t.locks), 864e5); t.locks++; t.count = 0; } nameTries.set(k, t); }
-function waitWords(n) { const t = nameTries.get(nameKey(n)); const m = t ? Math.ceil((t.until - Date.now()) / 60000) : 15; return m >= 90 ? Math.round(m / 60) + ' hours' : m + ' minute' + (m === 1 ? '' : 's'); }
+  const sl = savedLock(n); if (sl && !t.locks) t.locks = sl.locks || 0;
+  t.count++; t.last = now; if (t.count >= 5) { t.until = now + Math.min(15 * 60000 * Math.pow(2, t.locks), 864e5); t.locks++; t.count = 0;
+    const a = accountFor(n); if (a) { a.lock = { until: t.until, locks: t.locks }; saveAccounts('TREE, a sign-in locked after wrong passcodes'); } }
+  nameTries.set(k, t); }
+function clearLock(a) { if (!a) return; nameTries.delete(nameKey(a.name)); if (a.lock) { delete a.lock; saveAccounts('TREE, a sign-in unlocked'); } }
+function waitWords(n) { const sl = savedLock(n), t0 = nameTries.get(nameKey(n)); const t = t0 && t0.until > Date.now() ? t0 : sl; const m = t ? Math.ceil((t.until - Date.now()) / 60000) : 15; return m >= 90 ? Math.round(m / 60) + ' hours' : m + ' minute' + (m === 1 ? '' : 's'); }
 // a new sign-in, or one whose code was cleared, starts with a six-number code the director hands to the educator
 const newStart = () => String(crypto.randomInt(100000, 1000000));
 const sameText = (a, b) => { a = String(a || ''); b = String(b || ''); return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); };
@@ -1195,8 +1205,15 @@ let drdpSha = '', DRDP_DESC = null;
 const DRDP_LV = { RE: 'Responding Earlier', RL: 'Responding Later', EE: 'Exploring Earlier', EM: 'Exploring Middle', EL: 'Exploring Later', BE: 'Building Earlier', BM: 'Building Middle', BL: 'Building Later', IE: 'Integrating Earlier', IM: 'Integrating Middle', IL: 'Integrating Later' };
 async function loadDrdp() {
   if (!drdpSha) { DRDP_DESC = null; log('No DRDP descriptors in the records, so DRDP requests go without the official wording'); return; }
-  try { const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${drdpSha}`); DRDP_DESC = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); log('DRDP descriptors loaded,', Object.keys(DRDP_DESC.ptk || {}).length, 'preschool and', Object.keys(DRDP_DESC.it || {}).length, 'infant and toddler measures'); }
-  catch (e) { DRDP_DESC = null; log('Could not read the DRDP descriptors', e.message); }
+  try { const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${drdpSha}`); if (b.status !== 200 || !b.json || typeof b.json.content !== 'string') throw new Error('GitHub answered ' + b.status); drdpFails = 0; DRDP_DESC = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); log('DRDP descriptors loaded,', Object.keys(DRDP_DESC.ptk || {}).length, 'preschool and', Object.keys(DRDP_DESC.it || {}).length, 'infant and toddler measures'); }
+  catch (e) { DRDP_DESC = null; drdpRetryAt = Date.now() + [2, 5, 10][Math.min(drdpFails, 2)] * 60000; drdpFails++; log('Could not read the DRDP descriptors, trying again when they are next needed', e.message); }
+}
+// descriptors that could not be read at the start are read again the next time someone needs them, after a short wait
+let drdpFails = 0, drdpRetryAt = 0, drdpLoading = null;
+async function ensureDrdp() {
+  if (DRDP_DESC || !drdpSha || Date.now() < drdpRetryAt) return;
+  if (!drdpLoading) drdpLoading = loadDrdp().finally(() => { drdpLoading = null; });
+  await drdpLoading;
 }
 function drdpBlock(view, codes) {
   const v = DRDP_DESC && DRDP_DESC[view]; if (!v) return '';
@@ -1550,6 +1567,13 @@ function json(req, res, status, obj) {
   send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, body);
 }
 function err(req, res, status, message) { json(req, res, status, { error: message }); }
+// the nightly backup holds every record, so it has its own key, BACKUP_KEY on Render. Until that is set it uses the inbox key.
+let backupKeyNoted = false;
+function backupKey() {
+  const own = cleanKey(process.env.BACKUP_KEY); if (own) return own;
+  if (!backupKeyNoted) { backupKeyNoted = true; log('The backup uses the inbox key. Set BACKUP_KEY on Render and in the backup script to give it its own.'); }
+  return cleanKey(process.env.KAYMBU_INBOX_KEY);
+}
 function readBody(req, limit) {
   const max = limit || MAX_BODY_BYTES;
   return new Promise((resolve, reject) => {
@@ -1848,7 +1872,7 @@ async function handle(req, res) {
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
   // the mailbox script's key, when it rides in a header or the address, is checked before a large email is read
   if (path.startsWith('/inbound/')) {
-    const key = cleanKey(process.env.KAYMBU_INBOX_KEY); const early = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || '');
+    const key = path === '/inbound/backup' ? backupKey() : cleanKey(process.env.KAYMBU_INBOX_KEY); const early = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || '');
     // with no key set on Render the inbox is off, so nothing is read at all
     if (!key || (early && !sameText(early, key))) { req.resume(); log('Inbox email refused before reading,', key ? 'the key is not right' : 'the inbox key is not set'); err(req, res, 403, 'Not allowed'); return; }
   }
@@ -1862,7 +1886,7 @@ async function handle(req, res) {
   // record kind comes back as one gzipped JSON bundle the script keeps in Google Drive. Sign-ins stay out, since they hold passcodes.
   if (path === '/inbound/backup') {
     let b = {}; try { b = await readBody(req, 64 * 1024); } catch (e) { b = {}; }
-    const key = cleanKey(process.env.KAYMBU_INBOX_KEY), given = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || (b && b.key) || '');
+    const key = backupKey(), given = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || (b && b.key) || '');
     if (!key || !given || !sameText(given, key)) { log('Backup refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
     if (!store.ready) await loadAll();
     if (!store.ready) { err(req, res, 503, 'The records could not be loaded, so there is nothing to back up yet.'); return; }
@@ -1886,7 +1910,7 @@ async function handle(req, res) {
   if (path === '/inbound/feed-order') {
     let b; try { b = await readBody(req, INBOUND_MAX_BYTES); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
-    if (!key || cleanKey(b.key) !== key) { log('Order email refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
+    if (!key || !sameText(cleanKey(b.key), key)) { log('Order email refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
     if (!store.ready) await loadAll();
     // an email can carry other emails or PDF invoices forwarded as attachments, and each is read on its own
     const parts = [];
@@ -1901,7 +1925,11 @@ async function handle(req, res) {
   if (!ALLOWED_ORIGINS.includes(origin)) { req.resume(); err(req, res, 403, 'This website is not allowed to use the TREE server. Origin received ' + (origin || 'none') + '.'); return; }
 
   let body;
-  try { body = await readBody(req, path === '/login' ? LOGIN_MAX_BYTES : MAX_BODY_BYTES); }
+  // a request is read only up to what its page needs. The Family page and the public pages send small forms and one photo,
+  // and a staff request without a good sign-in is read only a little, since it is refused anyway
+  const famOrPublic = path.startsWith('/family/') || path.startsWith('/public/');
+  const limit = path === '/login' ? LOGIN_MAX_BYTES : path === '/family/photo' ? FAMILY_PHOTO_MAX_BYTES : famOrPublic ? SMALL_MAX_BYTES : (path.startsWith('/api/') && !readSession(req)) ? SMALL_MAX_BYTES : MAX_BODY_BYTES;
+  try { body = await readBody(req, limit); }
   catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
 
   // the Family page. A family's sign-in never reaches the staff side, and the staff side never takes one
@@ -1985,7 +2013,8 @@ async function handle(req, res) {
         if (near.length === 1) a = near[0];
       }
       // an educator who has left Fulton gets the same answer as a wrong passcode
-      if (a && isFormerAccount(a)) { noteWrong(ip); nameWrong(name); log('Sign-in refused,', a.name, 'left Fulton', a.leaveOn); err(req, res, 403, NOPE); return; }
+      if (a && nameBlocked(a.name)) { err(req, res, 429, 'Too many wrong passcodes for that name. Wait ' + waitWords(a.name) + ' and try again, or ask the director.'); return; }
+      if (a && isFormerAccount(a)) { noteWrong(ip); nameWrong(name, a); log('Sign-in refused,', a.name, 'left Fulton', a.leaveOn); err(req, res, 403, NOPE); return; }
       if (a) {
         // a passcode set on Render for this same name still signs in, as a backup to the TREE sign-in
         if (given.length >= 6 && /[^0-9]/.test(given) && !isFormerAccount(a)) { const t0 = matchPasscode(given); if (t0 && nameKey(t0.name) === nameKey(a.name)) { nameTries.delete(nameKey(name)); log('Signed in with the Render passcode', t0.name); json(req, res, 200, { token: makeSession(t0.name), name: t0.name, director: isDirector(t0.name), teachers: teacherNames() }); return; } }
@@ -1993,19 +2022,19 @@ async function handle(req, res) {
           // the first sign-in sets the educator's own four numbers, as the director wants, and only with the six-number
           // start code she handed them, checked both when it is typed and again when the new passcode is saved
           const startGiven = String(body.newCode == null ? given : body.start || '').trim();
-          if (!a.start || !sameText(startGiven, a.start)) { noteWrong(ip); nameWrong(name); err(req, res, 403, 'That name and start code do not match. Type the six numbers the director gave you.'); return; }
+          if (!a.start || !sameText(startGiven, a.start)) { noteWrong(ip); nameWrong(name, a); err(req, res, 403, 'That name and start code do not match. Type the six numbers the director gave you.'); return; }
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
           if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }
           if (String(body.again || '') !== c) { err(req, res, 400, 'The two passcodes are not the same. Type them again.'); return; }
           if (/^(\d)\1{3}$/.test(c) || ['1234', '4321', '0123', '9876'].includes(c)) { err(req, res, 400, 'That passcode is easy to guess. Choose four other numbers.'); return; }
-          a.code = c; delete a.start; a.setAt = Date.now(); a.v = (a.v || 0) + 1; a.lastAt = Date.now(); nameTries.delete(nameKey(a.name));
+          a.code = c; delete a.start; a.setAt = Date.now(); a.v = (a.v || 0) + 1; a.lastAt = Date.now(); nameTries.delete(nameKey(a.name)); delete a.lock;
           await saveAccounts(a.name);
           log('Passcode set by', a.name);
           json(req, res, 200, { token: makeSession(a.name, a.v), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
         }
-        if (!sameText(given, a.code)) { noteWrong(ip); nameWrong(name); err(req, res, 403, NOPE); return; }
-        a.lastAt = Date.now(); nameTries.delete(nameKey(name)); nameTries.delete(nameKey(a.name)); log('Signed in', a.name);
+        if (!sameText(given, a.code)) { noteWrong(ip); nameWrong(name, a); err(req, res, 403, NOPE); return; }
+        a.lastAt = Date.now(); nameTries.delete(nameKey(name)); clearLock(a); log('Signed in', a.name);
         json(req, res, 200, { token: makeSession(a.name, a.v || 0), name: a.name, director: isDirector(a.name), teachers: teacherNames() }); return;
       }
       // a name with no TREE sign-in can still use a passcode set on Render
@@ -2066,7 +2095,7 @@ async function handle(req, res) {
   if (path === '/api/notify/test') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a test.'); return; }
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
   // the official wording of each DRDP level, so an educator reads what a level means before confirming it. Signed-in staff only.
-  if (path === '/api/drdp-levels') { const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
+  if (path === '/api/drdp-levels') { await ensureDrdp(); const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) }); return; }
@@ -2132,6 +2161,15 @@ async function handle(req, res) {
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of ST) delete body.patch[k]; }
       // the allergy and dietary line is confirmed by the office, so an educator's save keeps it as it is
       // and so are the contacts a family typed on the enrollment form, which wait for the office to accept
+      // a parent's email is how that parent signs into the Family page, so only the director and office change it
+      if (!isOffice(me.name)) {
+        const was = (cur && !cur.deleted && Array.isArray(cur.doc.parents)) ? cur.doc.parents : [];
+        const keepEmails = list => Array.isArray(list) ? list.map((p, i) => { if (!p || typeof p !== 'object') return p; const q = Object.assign({}, p);
+          const same = was.find(w => w && w.name && p.name && String(w.name).trim().toLowerCase() === String(p.name).trim().toLowerCase()) || was[i];
+          if (same && same.email !== undefined) q.email = same.email; else delete q.email; return q; }) : list;
+        if (body.data && typeof body.data === 'object' && body.data.parents !== undefined) body.data.parents = keepEmails(body.data.parents);
+        if (body.patch && typeof body.patch === 'object' && body.patch.parents !== undefined) body.patch.parents = keepEmails(body.patch.parents);
+      }
       if (!isOffice(me.name)) for (const k of ['diet', 'contactsOffer']) { if (body.data && typeof body.data === 'object') { if (cur && !cur.deleted && cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; }
         if (body.patch && typeof body.patch === 'object') delete body.patch[k]; }
       // a transition summary reaches a family only when the director shares it, so an educator's save never shares one or takes one away
@@ -2415,7 +2453,7 @@ async function handle(req, res) {
     // a DRDP request carries the official definitions and level descriptors for its view
     let drdpUsed;
     if (body.purpose === 'drdp' && body.drdp && (body.drdp.view === 'ptk' || body.drdp.view === 'it')) {
-      const block = drdpBlock(body.drdp.view, body.drdp.codes); drdpUsed = !!block;
+      await ensureDrdp(); const block = drdpBlock(body.drdp.view, body.drdp.codes); drdpUsed = !!block;
       for (const b of content) if (b.type === 'text') b.text = b.text.includes('[[DRDP_DESCRIPTORS]]') ? b.text.replace('[[DRDP_DESCRIPTORS]]', block) : b.text;
     }
     const kb = Math.round(JSON.stringify(content).length / 1024);
@@ -2460,7 +2498,7 @@ async function handle(req, res) {
       if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved to the records. Try again.'); return; }
       log('Sign-in saved for', a.name, 'by', me.name); list(); return;
     }
-    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
+    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); delete a.lock; await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
     // Remove is only for a sign-in added by mistake. Someone with records leaves Fulton instead, so nothing of theirs is lost.
     if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; }
       if (hasRecords(a.name)) { err(req, res, 400, a.name + ' has records here, so choose Leaving our school. Their records are kept.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }

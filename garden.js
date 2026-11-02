@@ -359,7 +359,8 @@ Writing rules. No dashes. No colons inside sentences. Plain warm sentences. Only
     for (let d = from; d <= to; d = addDays(d, 1)) { const dow = new Date(d + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue;
       // a monthly task posts on the month's first school day, so a month starting on a weekend still has it
       const firstSchool = (() => { let f = d.slice(0, 8) + '01'; for (;;) { const w = new Date(f + 'T12:00:00Z').getUTCDay(); if (w > 0 && w < 6) return f; f = addDays(f, 1); } })();
-      for (const t of mine(tasksFor(d, s), name)) if (t.kind === 'repeat' || t.kind === 'animal' || (t.kind === 'month' && d === firstSchool))
+      // a task marked done or passed leaves the calendar, the same as it leaves Today's garden card
+      for (const t of mine(tasksFor(d, s), name)) if (!t.done && (t.kind === 'repeat' || t.kind === 'animal' || (t.kind === 'month' && d === firstSchool)))
         out.push({ id: 'tgarden.' + t.id + '.' + d, cal: 'tgarden', title: 'Garden, ' + t.text + (t.room ? ', ' + t.room : ''), desc: (t.bedName ? t.bedName + '. ' : '') + 'Mark it done on the Garden page or Today.', allDay: true, start: d, end: d }); }
     return out;
   }

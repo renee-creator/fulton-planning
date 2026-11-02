@@ -12,8 +12,11 @@ const nextYm = ym => { const [y, m] = ym.split('-').map(Number); return m === 12
 const firstMonday = ym => { let d = ym + '-01'; while (new Date(d + 'T12:00:00Z').getUTCDay() !== 1) d = addDays(d, 1); return d; };
 
 test('first Mondays, team meetings for each Class, a closure asked once, and next steps carried over', async t => {
-  // a month ahead that is neither December nor February, so it has an all-staff meeting
-  let ym = nextYm(laToday().slice(0, 7)); if (['12', '02'].includes(ym.slice(5))) ym = nextYm(ym);
+  // TREE asks the director about this month and next, so the test picks the first of those whose first Monday is still
+  // ahead and that has an all-staff meeting (December and February have none). Late in November or January neither
+  // qualifies, and the test waits for another day.
+  const t0 = laToday(); const ym = [t0.slice(0, 7), nextYm(t0.slice(0, 7))].find(m => !['12', '02'].includes(m.slice(5)) && firstMonday(m) >= t0);
+  if (!ym) { t.skip('No first Monday with an all-staff meeting is ahead this month or next'); return; }
   const fm = firstMonday(ym), second = addDays(fm, 7), third = addDays(fm, 14);
   const ymd = fm.replace(/-/g, '');
   const feed = () => 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nX-WR-CALNAME:School\r\n' +

@@ -80,7 +80,7 @@ test('a family version sits on its PD module page for the director, and stays of
   await sd.p.waitForSelector('text=For families', { timeout: 15000 });
   let txt = await sd.p.innerText('#main');
   assert.match(txt, /For families[\s\S]*Big Feelings at Home[\s\S]*Draft/);
-  await sd.p.click('summary:has-text("Big Feelings at Home")'); await sd.p.click('[data-fpready="together-feelings|1"]');
+  await sd.p.click('summary:has-text("Big Feelings at Home")'); await sd.p.click('[data-fpready="together-feelings|1"]'); await sd.p.waitForSelector('text=Show it to every family'); await sd.p.click('[data-fpready="together-feelings|1"]');
   await sd.p.waitForSelector('text=On the Family page', { timeout: 10000 });
   assert.strictEqual((await fx.as(dee, '/api/staff/familypieces', {})).body.list.find(x => x.slug === 'together-feelings').waiting, false);
   assert.doesNotMatch(await sd.p.innerText('#main'), /[—–]|\bClaude\b/);

@@ -111,7 +111,7 @@ test('the Family page\'s own words start as they read and change when the direct
   const tok = (await fx.login('Dee', 'director-pass-1')).token;
   const P = 'staff/wording/family-page-text.md';
   const o = (await fx.as(tok, '/api/staff/page', { path: P })).body;
-  assert.strictEqual(o.parts.length, 47); assert.strictEqual(o.parts.find(p => p.heading === 'Our wish list').body, 'Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.');
+  assert.strictEqual(o.parts.length, 62); assert.strictEqual(o.parts.find(p => p.heading === 'Our wish list').body, 'Things the school would love, from fruit trees to art materials. Bringing one counts toward your hours.');
   const parts = o.parts.map(p => ({ body: p.heading === 'Our wish list' ? 'Things the school would love. Bringing one counts toward your hours.' : p.body }));
   const sv = await fx.as(tok, '/api/staff/page/save', { path: P, title: o.title, parts, note: 'Shorter', stamp: o.stamp, keep: true });
   assert.strictEqual(sv.status, 200, JSON.stringify(sv.body));

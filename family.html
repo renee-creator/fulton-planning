@@ -534,7 +534,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     // on a phone, the chosen tab slides into view in its row, without moving the page
     {const nav=document.querySelector("#main nav.tabs"),cur=nav&&nav.querySelector("[aria-current]");if(nav&&cur&&nav.scrollWidth>nav.clientWidth)nav.scrollLeft=cur.offsetLeft-(nav.clientWidth-cur.offsetWidth)/2}
     const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};
-    const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value,type:$("#lt").value});render()}catch(er){$("#e3").textContent=er.message}};
+    const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();const sb=fl.querySelector("button[type=submit],button:not([type])");if(sb&&sb.disabled)return;if(sb)sb.disabled=true;$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value,type:$("#lt").value});render()}catch(er){if(sb)sb.disabled=false;$("#e3").textContent=er.message}};
     const fv=$("#fv");if(fv)fv.onsubmit=async e=>{e.preventDefault();$("#e5").textContent="";const f=document.querySelector('input[name="fvf"]:checked');
       try{D=await api("/family/visit",{what:$("#fvw").value,who:$("#fvn").value,when:$("#fvt").value,isFamily:f?f.value==="yes":undefined});visitOpen=false;render()}catch(er){visitOpen=true;$("#e5").textContent=er.message}};
     const gf=$("#gform");if(gf)gf.onsubmit=async e=>{e.preventDefault();$("#ge6").textContent="";
@@ -576,8 +576,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       else if(d.logcancel){logFor=null;render()}
       else if(d.jobdid){jobFor=jobFor===d.jobdid?null:d.jobdid;render()}
       else if(d.jobcancel){jobFor=null;render()}
-      else if(d.jobsave){const id=d.jobsave;try{D=await api("/family/log",{jobId:id,childId:$("#jk-"+id).value,date:$("#jd-"+id).value,minutes:Math.round((Number($("#jh-"+id).value)||0)*60)});jobFor=null;render()}catch(er){const x=$("#je-"+id);if(x)x.textContent=er.message}}
-      else if(d.logsave){const id=d.logsave;D=await api("/family/log",{itemId:id,childId:$("#lk-"+id).value,minutes:Math.round((Number($("#lh-"+id).value)||0)*60)});logFor=null;render()}
+      else if(d.jobsave){const id=d.jobsave;b.disabled=true;try{D=await api("/family/log",{jobId:id,childId:$("#jk-"+id).value,date:$("#jd-"+id).value,minutes:Math.round((Number($("#jh-"+id).value)||0)*60)});jobFor=null;render()}catch(er){b.disabled=false;const x=$("#je-"+id);if(x)x.textContent=er.message}}
+      else if(d.logsave){const id=d.logsave;b.disabled=true;D=await api("/family/log",{itemId:id,childId:$("#lk-"+id).value,minutes:Math.round((Number($("#lh-"+id).value)||0)*60)});logFor=null;render()}
       else if(d.unlog){D=await api("/family/unlog",{id:d.unlog});render()}
       else if(d.tab){tab=d.tab;LS.set("fam-tab",tab);render();window.scrollTo(0,0)}
       else if(d.book){const on=!b.classList.contains("on");D=await api("/family/book",{slotId:d.book,childId:d.kid,on});render()}
