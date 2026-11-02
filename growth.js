@@ -387,10 +387,26 @@ module.exports = function growthModule(c) {
   }
   function teamItem(date, room) { const a = pdd().agendas[teamId(date, room)] || null; const [st, en] = teamTimes(room);
     return { id: teamId(date, room), date, kind: 'team', room, title: room + ' class team meeting', start: (a && a.start) || st, end: (a && a.end) || en, agenda: a ? withPres(a, '') : null, carried: openSteps(room, date) }; }
+  // the weekly reading's report for a class, or for the whole school (All), the one for that meeting's week or the most
+  // recent before it, as agenda items. Where the threads are, the threads to look at again, and the ways to support.
+  function readingBlocks(room, date) {
+    const wk = mondayOf(date); const all = [...(store.recs.reports || new Map()).values()].filter(r => r && !r.deleted && r.doc && r.doc.room === room).map(r => r.doc);
+    const rep = all.filter(r => String(r.week || '') <= wk).sort((a, b) => String(b.week).localeCompare(String(a.week)))[0]; if (!rep) return [];
+    const longDay = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+    const title = rep.week === wk ? "From this week's reading" : 'From the reading of the week of ' + longDay(rep.week);
+    const parts = [['emerging', 'Emerging'], ['growing', 'Growing'], ['deepening', 'Deepening'], ['resting', 'Resting']].filter(([k]) => String(rep[k] || '').trim()).map(([k, l]) => l + '. ' + String(rep[k]).trim());
+    const out = []; const id = () => rid('k');
+    if (parts.length) out.push({ id: id(), reading: true, title, why: parts.join('\n') });
+    const look = (Array.isArray(rep.lookAgain) ? rep.lookAgain : []).filter(x => x && x.thread);
+    if (look.length) out.push({ id: id(), reading: true, title: 'Threads to look at again', why: look.map(x => x.thread + '. ' + String(x.why || '').trim() + ' Its status can change on the Threads page, under More.').join('\n') });
+    const ideas = (rep.support || []).map(s => String(s || '').trim()).filter(Boolean).slice(0, 3);
+    if (ideas.length) out.push({ id: id(), reading: true, title: 'Ways the team might support', why: ideas.join('\n'), ideas });
+    return out;
+  }
   // a team meeting's agenda starts from the class's own week, and the team removes or adds what it wants
   function teamStart(room, date) {
     const live = k => [...(store.recs[k] || new Map()).values()].filter(r => r && !r.deleted && r.doc).map(r => r.doc);
-    const mon = mondayOf(date), last = addDays(mon, -7); const blocks = []; const id = () => rid('k');
+    const mon = mondayOf(date), last = addDays(mon, -7); const blocks = readingBlocks(room, date); const id = () => rid('k');
     const plans = live('plans').filter(x => x.classroom === room && (x.weekOf === mon || x.weekOf === last) && !['ready', 'reviewed'].includes(x.status) && x.type !== 'notice');
     // each kind of plan named once with how many, and each list ends its sentences once
     const longDay = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
@@ -500,7 +516,7 @@ module.exports = function growthModule(c) {
     const deny = m => err(req, res, 403, m || 'This is not open yet.');
     // a class team reaches its own team meetings whether or not the growth pages are open yet
     const teamOnly = !allowed(me);
-    if (teamOnly && !(['pd/list', 'pd/team', 'pd/step', 'pd/today', 'pd/save'].includes(P) && takesPart(me) && !isNewHire(me))) return deny('This part of TREE is not open yet.');
+    if (teamOnly && !(['pd/list', 'pd/team', 'pd/step', 'pd/today', 'pd/save', 'pd/reading'].includes(P) && takesPart(me) && !isNewHire(me))) return deny('This part of TREE is not open yet.');
     // a new hire before full access reaches only their own growth, never other staff's moments or the PD days
     const OWN = ['boot', 'mine', 'plan', 'journal/open', 'journal/save', 'journal/bring', 'checkin/pre', 'checkin/followed', 'eval/self', 'eval/goals', 'modules', 'module/progress', 'schedule'];
     if (isNewHire(me) && !OWN.includes(P)) return deny('This opens once the director turns on full access.');
@@ -807,7 +823,13 @@ module.exports = function growthModule(c) {
     if (P === 'pd/team') {
       const room = String(body.room || ''), date = String(body.date || ''); if (!ROOMS().includes(room) || !ISO.test(date)) return err(req, res, 400, 'Choose the team meeting.');
       if (!roomsFor(me).includes(room)) return deny('Each class team sees its own team meetings.');
-      json(req, res, 200, Object.assign(teamItem(date, room), { start: teamStart(room, date) })); return;
+      json(req, res, 200, Object.assign(teamItem(date, room), { start: teamStart(room, date), reading: readingBlocks(room, date) })); return;
+    }
+    // the weekly reading as agenda items, a class's for its team, the whole school's for the director's all-staff meeting
+    if (P === 'pd/reading') {
+      const room = String(body.room || ''), date = String(body.date || ''); if (!ISO.test(date)) return err(req, res, 400, 'Choose the day.');
+      if (room === 'All' ? !dir : !(ROOMS().includes(room) && roomsFor(me).includes(room))) return deny('Each class team reads its own class.');
+      json(req, res, 200, { blocks: readingBlocks(room, date) }); return;
     }
     if (P === 'pd/step') {
       const d = pdd(); const a = d.agendas[String(body.id || '')]; if (!a || a.kind !== 'team') return err(req, res, 404, 'That team meeting is not here.');
@@ -843,7 +865,7 @@ module.exports = function growthModule(c) {
       const isTeam = b.kind === 'team' && ROOMS().includes(b.room);
       if (isTeam ? !roomsFor(me).includes(b.room) : !dir) return deny(isTeam ? 'Each class team builds its own team meeting agenda.' : 'The director builds each agenda.');
       const kind = isTeam ? 'team' : b.kind === 'meeting' ? 'meeting' : 'pdday'; const id = isTeam ? teamId(b.date, b.room) : b.date + '-' + kind; const d = pdd(); const was = d.agendas[id] || {};
-      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: (MODULE_LIST.some(m => m[0] === x.module) || (!!modules()[x.module] && (dir || published(x.module)))) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '',
+      const blocks = (Array.isArray(b.blocks) ? b.blocks : []).slice(0, 24).map(x => ({ id: String(x.id || rid('k')).slice(0, 20), time: /^\d{2}:\d{2}$/.test(x.time || '') ? x.time : '', title: txt(x.title, 200), why: txt(x.why, 600), how: ['whole', 'class', 'pairs', 'quiet', ''].includes(x.how) ? x.how : '', prepare: txt(x.prepare, 600), readings: (x.readings || []).slice(0, 8).map(String), module: (MODULE_LIST.some(m => m[0] === x.module) || (!!modules()[x.module] && (dir || published(x.module)))) ? x.module : '', area: AREA_KEYS.includes(x.area) ? x.area : '', closing: !!x.closing, reading: !!x.reading, ideas: (Array.isArray(x.ideas) ? x.ideas : []).slice(0, 3).map(s => txt(s, 400)).filter(Boolean), presenting: /^pr[a-f0-9]{10}$/.test(x.presenting || '') ? x.presenting : '',
         // a guest session, training our team receives from outside presenters, with its presenters, their organization,
         // its length, its link and any handout
         guest: !!x.guest && x.guest !== 'no', guestBy: txt(x.guestBy, 200), guestOrg: txt(x.guestOrg, 200), guestMinutes: Math.max(0, Math.min(600, Math.round(+x.guestMinutes || 0))), guestLink: /^https:\/\//.test(x.guestLink || '') ? String(x.guestLink).slice(0, 600) : '', guestHandout: /^https:\/\//.test(x.guestHandout || '') ? String(x.guestHandout).slice(0, 600) : '', guestPeople: Math.max(0, Math.min(200, Math.round(+x.guestPeople || 0))) }))
