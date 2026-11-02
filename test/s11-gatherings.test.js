@@ -159,7 +159,10 @@ test('gatherings stay with the staff until the director marks them ready, and fa
     await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector("text=Taking part", { timeout: 10000 }); await p.click("text=Taking part"); await p.waitForTimeout(800);
     const txt = await p.evaluate(() => document.body.innerText);
     assert.match(txt, /Gatherings[\s\S]*Second Saturday[\s\S]*Second Saturday helper/);
-    assert.match(txt, /Winter in our garden/); assert.match(txt, /Recipes from our kitchen[\s\S]*Pumpkin muffins/); assert.match(txt, /Our seed library[\s\S]*Sunflower/);
+    // the season, the recipes and the seed library are under Our school
+    await p.click('button[data-tab="school"]'); await p.waitForTimeout(500);
+    const ours = await p.evaluate(() => document.body.innerText);
+    assert.match(ours, /Winter in our garden/); assert.match(ours, /Recipes from our kitchen[\s\S]*Pumpkin muffins/); assert.match(ours, /Our seed library[\s\S]*Sunflower/);
     assert.deepStrictEqual(errors, []);
   });
 });

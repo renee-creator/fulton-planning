@@ -60,6 +60,10 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 .pmd h4{font-size:17px;margin:14px 0 4px;color:var(--moss)}.pmd h5{font-size:15px;margin:12px 0 4px}.pmd p{margin:6px 0}.pmd ul,.pmd ol{margin:6px 0;padding-left:22px}.pmd li{margin:3px 0}.pmd li.pmnest{list-style:none}.pmd blockquote{margin:6px 0;padding-left:12px;border-left:3px solid var(--line)}.pmd img{max-width:100%;height:auto;display:block;margin:8px auto}.pmd table{border-collapse:collapse;width:100%;font-size:14px}.pmd td,.pmd th{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}.pmd .tw{overflow-x:auto}
 .hbpart{border-top:1px solid var(--line);padding:10px 0}.hbpart>summary{font-size:17px}.hbsec{margin:10px 0 0}.hbsec h3{font-size:16px;margin:12px 0 2px}
 [hidden]{display:none!important}
+/* computer, two columns of cards across a wider page. Forms and a single card stay one readable column */
+@media (min-width:900px){.wrap{max-width:1100px}.cols{column-count:2;column-gap:16px}.cols>section{break-inside:avoid;-webkit-column-break-inside:avoid;display:inline-block;width:100%;vertical-align:top}.cols>.span{column-span:all;display:block}.one{max-width:720px;margin:0 auto}}
+/* phone, the tabs slide sideways in one row and every button is easy to tap */
+@media (max-width:699px){.tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px 2px}.tabs::-webkit-scrollbar{display:none}.tabs button{flex:none;min-height:44px}.btn,.slot{min-height:44px}}
 </style>
 </head>
 <body>
@@ -146,16 +150,20 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       if(/^###\s+/.test(l))out+="<h3>"+inl(l.replace(/^###\s+/,""))+"</h3>";else if(l.trim())out+="<p>"+inl(l)+"</p>"}if(list)out+="</ul>";return out};
   function kidPick(id){const ks=D.children;if(ks.length===1)return `<input type="hidden" id="${id}" value="${esc(ks[0].id)}">`;
     return `<label>Which child it counts for<select id="${id}">${ks.map(k=>`<option value="${esc(k.id)}">${esc(k.first)}</option>`).join("")}</select></label>`}
-  const tabs=()=>{const t=[];if(D.children.some(k=>k.isNew))t.push(["welcome","Welcome"]);t.push(["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"],["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(D.community&&(D.community.places||D.community.plants))t.push(["places","Places and plants"]);if(D.ideasOn)t.push(["ideas","Ideas to try at home"]);return t};
+  /* six tabs, each with one job. Welcome is for every family, with a new family's first steps below. Learning holds the
+     pieces for families, Ideas to try at home and the places to visit. Our school holds the garden and our site, the map last */
+  const hasLearn=()=>!!((D.pieces||[]).length||D.ideasOn||(D.community&&D.community.places));
+  const hasSchool=()=>{const G=D.gardenInfo||{};return !!((G.agreements||(G.guide||[]).length)||G.season||(G.recipes||[]).length||(G.seedLibrary||[]).length||(D.community&&D.community.plants)||D.siteMap)};
+  const tabs=()=>{const t=[["welcome","Welcome"],["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"]];if(hasLearn())t.push(["learn","Learning"]);t.push(["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(hasSchool())t.push(["school","Our school"]);return t};
   // the museums and the plants on our site, drawn by community.js, the same as the public page
   const cmState=window.TREE_COMMUNITY?window.TREE_COMMUNITY.state():null;let cmBound=false;
-  function placesHtml(){const C=window.TREE_COMMUNITY;if(!C||!D.community)return "";if(!document.getElementById("cm-css")){const st=document.createElement("style");st.id="cm-css";st.textContent=C.CSS;document.head.appendChild(st)}
-    if(!cmBound){cmBound=true;C.bind($("#main"),cmState,()=>{if(tab==="places")render()})}return C.html(D.community,cmState,SERVER)}
+  function placesHtml(part){const C=window.TREE_COMMUNITY;if(!C||!D.community||!D.community[part])return "";if(!document.getElementById("cm-css")){const st=document.createElement("style");st.id="cm-css";st.textContent=C.CSS;document.head.appendChild(st)}
+    if(!cmBound){cmBound=true;C.bind($("#main"),cmState,()=>{if(tab==="learn"||tab==="school")render()})}return C.html({[part]:D.community[part]},cmState,SERVER)}
   /* Ideas to try at home. The home side of every Idea bank card, by group and by search, with the director's highlights
      first under Happening at school now. Only the home side reaches this page. Each prints as one page, PDF or Word. */
   const ID_GROUPS=["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things","Movement and risky play","Indoor spaces","Shared spaces","Outdoor spaces","Children's interests","Across the year on our site"];
   let IDEAS=null,ideaSel="",ideaQ="",ideaBusy=false;
-  async function ideasLoad(){if(IDEAS||ideaBusy)return;ideaBusy=true;try{IDEAS=await api("/family/ideas")}catch(e){IDEAS={cards:[],highlights:[],error:e.message}}ideaBusy=false;if(tab==="ideas")render()}
+  async function ideasLoad(){if(IDEAS||ideaBusy)return;ideaBusy=true;try{IDEAS=await api("/family/ideas")}catch(e){IDEAS={cards:[],highlights:[],error:e.message}}ideaBusy=false;if(tab==="learn")render()}
   const ideaCard=id=>((IDEAS&&IDEAS.cards)||[]).find(c=>c.id===id);
   function ideaSecHtml(x){return `<h3>${esc(x.h)}</h3>${x.style==="text"?`<p>${esc(x.text)}</p>`:x.style==="lines"?(x.items||[]).map(t=>`<p style="margin:2px 0">${esc(t)}</p>`).join(""):`<${x.style==="numbered"?"ol":"ul"}>${(x.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</${x.style==="numbered"?"ol":"ul"}>`}`}
   function ideasHtml(){if(!IDEAS){ideasLoad();return `<section class="card"><p class="muted">Opening the ideas.</p></section>`}
@@ -197,7 +205,7 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
     return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
   function welcomeHtml(){const ks=D.children.filter(k=>k.isNew);
-    return `<section class="card"><h2>Welcome to Fulton Community School</h2><details class="letter" ${LS.get("fam-letter")?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
+    return `<section class="card"><h2>Welcome to Fulton Community School</h2><details class="letter" ${LS.get("fam-letter")||!D.children.some(k=>k.isNew)?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
     ks.map(k=>{const e=k.enroll||{},q=k.questionnaire;const steps=[
       [hbRead(k),"Read the Family Handbook",hbRead(k)?(k.handbook?`Read the ${k.handbook.year} edition.`:"Read."):T("First steps, the Family Handbook"),`<button class="btn sm ${hbRead(k)?"ghost":""}" data-chk="${esc(k.id)}|handbook">${hbRead(k)?"Undo":"I have read it"}</button>`,hbLink()],
       [!!e.done,"Enrollment information",e.done?T("First steps, enrollment information complete"):e.at?T("First steps, enrollment information in progress"):T("First steps, enrollment information"),`<button class="btn sm ${e.done?"ghost":""}" data-form="enroll|${esc(k.id)}">${e.done?"Review":e.at?"Continue":"Start"}</button>`],
@@ -287,19 +295,6 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const GN={"second-saturday":"Second Saturday","play-garden":"Play Garden","work-day":"Work day"};
     const gaths=D.open.filter(it=>GN[it.gathering]),jobsOf=g=>D.open.filter(it=>it.gatheringId===g.id);
     const ways=D.open.filter(it=>it.type!=="wish"&&!GN[it.gathering]&&!(it.gatheringId&&gaths.some(g=>g.id===it.gatheringId))),wishes=D.open.filter(it=>it.type==="wish");
-    // pieces for families, read from the school's records once the director marks each one ready
-    if((D.pieces||[]).length)h+=`<section class="card"><h2>For families</h2>${D.pieces.map(p=>`<details class="shared"><summary>${esc(p.title)}</summary>${md(String(p.body).replace(/^##\s+/gm,"### "))}</details>`).join("")}</section>`;
-    // the garden, its agreements for families and the children's plant guide
-    if(D.gardenInfo&&(D.gardenInfo.agreements||(D.gardenInfo.guide||[]).length)){const G=D.gardenInfo,A=G.agreements||{};
-      h+=`<section class="card"><h2>Our garden</h2>${(G.guiding||[]).length?`<p style="margin:0 0 6px">${esc(G.guiding.join(" "))}</p>`:""}${A.intro?`<p style="margin:0 0 6px">${esc(A.intro)}</p>`:""}${(A.items||[]).length?`<ul style="margin:4px 0;padding-left:18px">${A.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
-        ${(G.guide||[]).length?`<details style="margin-top:8px"><summary>Plant cards</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">${G.guide.map(p=>`<div style="border:1px solid #e3dccb;border-radius:12px;padding:8px;min-width:0">${p.photo?`<img src="${esc(p.photo)}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px">`:""}<b>${esc(p.common)}</b><div class="small">${esc(p.words)}</div><div class="small"><b>${p.eat==="food"?"Food":p.eat==="partly"?"Partly edible":"Look, don't eat"}</b>${p.eat==="partly"&&p.taste?". "+esc(p.taste):""}${p.gather?". Gather with an educator":""}</div></div>`).join("")}</div></details>`:""}</section>`}
-    // the season sheet and the recipes the director chose to share, and the seeds families may take home
-    {const G=D.gardenInfo||{};
-      if(G.season)h+=`<section class="card"><h2>${esc(G.season.name)} in our garden</h2>${G.season.lead?`<p style="margin:0 0 6px">${esc(G.season.lead)}</p>`:""}${(G.season.parts||[]).map(p=>`<details class="shared"><summary>${esc(p.key)}</summary>${md(p.text)}</details>`).join("")}</section>`;
-      if((G.recipes||[]).length)h+=`<section class="card"><h2>Recipes from our kitchen</h2>${G.recipes.map(r=>`<details class="shared"><summary>${esc(r.title)}${r.kind==="sensory"?" <span class=\"small muted\">for play only</span>":""}</summary><div style="white-space:pre-line">${esc(r.text)}</div></details>`).join("")}</section>`;
-      if((G.seedLibrary||[]).length)h+=`<section class="card"><h2>Our seed library</h2><p class="small muted" style="margin:0 0 6px">${esc(T("Our seed library"))}</p><ul style="margin:4px 0;padding-left:18px">${G.seedLibrary.map(x=>`<li>${esc(x.name)}${x.variety?", "+esc(x.variety):""}</li>`).join("")}</ul></section>`;}
-    // the site map, the photo from above and the names of the spaces, the same map TREE shows everywhere
-    if(D.siteMap&&window.SiteMap)h+=`<section class="card"><h2>Our site</h2><p class="small muted" style="margin:0 0 8px">${esc(T("Our site"))}</p><div id="fam-smap"></div></section>`;
     if(gaths.length)h+=`<section class="card"><h2>Gatherings</h2><p class="small muted" style="margin:0 0 6px">${esc(T("Gatherings"))}</p>${gaths.map(g=>`<div class="small muted" style="margin-top:8px"><b>${esc(GN[g.gathering])}</b>${g.gardenDay?", the season's garden day":""}</div>${itemCard(g)}${jobsOf(g).map(itemCard).join("")}`).join("")}</section>`;
     h+=jobsHtml();
     h+=`<section class="card"><h2>Ways to take part</h2>${ways.length?ways.map(itemCard).join(""):`<p class="muted" style="margin:0">${esc(T("Ways to take part, when none are posted"))}</p>`}</section>`;
@@ -315,6 +310,31 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
       <div class="err" id="e4" aria-live="polite"></div><div><button class="btn">Send it</button></div></form></details></section>`;
     h+=`<section class="card"><h2>What we have logged</h2>${D.entries.length?D.entries.map(x=>`<div class="entry"><span>${esc(x.what)}<span class="small muted"> · ${esc(LOGTYPE[x.type]||"Job")} · ${esc(day(x.date))}${ks.length>1?" · "+esc(x.child):""}</span></span><span style="white-space:nowrap">${hrs(x.hours)}${x.mine?` <button class="link small" data-unlog="${esc(x.id)}" aria-label="Remove ${esc(x.what)}">Remove</button>`:""}</span></div>`).join(""):`<p class="muted" style="margin:0">Nothing logged yet this school year.</p>`}</section>`;
     return h}
+  /* Learning. The pieces for families the director marked ready, under Good to know, then Ideas to try at home and the
+     places to visit near us */
+  function learnHtml(){let h="";
+    if(ideaSel&&D.ideasOn)return ideasHtml();
+    // pieces for families, read from the school's records once the director marks each one ready
+    if((D.pieces||[]).length)h+=`<section class="card"><h2>Good to know</h2>${D.pieces.map(p=>`<details class="shared"><summary>${esc(p.title)}</summary>${md(String(p.body).replace(/^##\s+/gm,"### "))}</details>`).join("")}</section>`;
+    if(D.ideasOn)h+=ideasHtml();
+    h+=placesHtml("places");
+    return h}
+  /* Our school. The garden and its plant cards, the season, our recipes and seed library, the plants and animals on our
+     site, and the site map last */
+  function schoolHtml(){let h="";
+    // the garden, its agreements for families and the children's plant guide
+    if(D.gardenInfo&&(D.gardenInfo.agreements||(D.gardenInfo.guide||[]).length)){const G=D.gardenInfo,A=G.agreements||{};
+      h+=`<section class="card"><h2>Our garden</h2>${(G.guiding||[]).length?`<p style="margin:0 0 6px">${esc(G.guiding.join(" "))}</p>`:""}${A.intro?`<p style="margin:0 0 6px">${esc(A.intro)}</p>`:""}${(A.items||[]).length?`<ul style="margin:4px 0;padding-left:18px">${A.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+        ${(G.guide||[]).length?`<details style="margin-top:8px"><summary>Plant cards</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">${G.guide.map(p=>`<div style="border:1px solid #e3dccb;border-radius:12px;padding:8px;min-width:0">${p.photo?`<img src="${esc(p.photo)}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px">`:""}<b>${esc(p.common)}</b><div class="small">${esc(p.words)}</div><div class="small"><b>${p.eat==="food"?"Food":p.eat==="partly"?"Partly edible":"Look, don't eat"}</b>${p.eat==="partly"&&p.taste?". "+esc(p.taste):""}${p.gather?". Gather with an educator":""}</div></div>`).join("")}</div></details>`:""}</section>`}
+    // the season sheet and the recipes the director chose to share, and the seeds families may take home
+    {const G=D.gardenInfo||{};
+      if(G.season)h+=`<section class="card"><h2>${esc(G.season.name)} in our garden</h2>${G.season.lead?`<p style="margin:0 0 6px">${esc(G.season.lead)}</p>`:""}${(G.season.parts||[]).map(p=>`<details class="shared"><summary>${esc(p.key)}</summary>${md(p.text)}</details>`).join("")}</section>`;
+      if((G.recipes||[]).length)h+=`<section class="card"><h2>Recipes from our kitchen</h2>${G.recipes.map(r=>`<details class="shared"><summary>${esc(r.title)}${r.kind==="sensory"?" <span class=\"small muted\">for play only</span>":""}</summary><div style="white-space:pre-line">${esc(r.text)}</div></details>`).join("")}</section>`;
+      if((G.seedLibrary||[]).length)h+=`<section class="card"><h2>Our seed library</h2><p class="small muted" style="margin:0 0 6px">${esc(T("Our seed library"))}</p><ul style="margin:4px 0;padding-left:18px">${G.seedLibrary.map(x=>`<li>${esc(x.name)}${x.variety?", "+esc(x.variety):""}</li>`).join("")}</ul></section>`;}
+    h+=placesHtml("plants");
+    // the site map, the photo from above and the names of the spaces, the same map TREE shows everywhere
+    if(D.siteMap&&window.SiteMap)h+=`<section class="card span"><h2>Our site</h2><p class="small muted" style="margin:0 0 8px">${esc(T("Our site"))}</p><div id="fam-smap"></div></section>`;
+    return h}
   // the school's newsletter, as the director posted it, the latest open and earlier months below
   function newsHtml(){const ns=D.menu.news||[];if(!ns.length)return "";
     const link=t=>esc(t).replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.length>48?u.slice(0,46)+"…":u}</a>`);
@@ -323,6 +343,14 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     const body=n=>n.blocks.map(b=>`<h3 style="margin:18px 0 6px">${esc(b.h)}</h3>${(b0=b.h,para(b.text))}${b.photos.length?`<div class="nphotos">${b.photos.map(p=>`<figure><img src="${esc(SERVER+p.src)}" alt="${esc(p.cap||"A photo from the newsletter")}" loading="lazy">${p.cap?`<figcaption class="small muted">${esc(p.cap)}</figcaption>`:""}</figure>`).join("")}</div>`:""}`).join("");
     const [first,...rest]=ns;
     return `<section class="card news"><h2>${esc(first.title)}</h2>${body(first)}</section>${rest.length?`<section class="card"><h2>Earlier newsletters</h2>${rest.map(n=>`<details class="shared"><summary>${esc(n.title)}</summary>${body(n)}</details>`).join("")}</section>`:""}`}
+  /* the farm bin letter, its first sentence as one short line and the rest folded closed below */
+  function binHtml(t){const s=String(t).trim();const m=s.match(/^[\s\S]*?[.!?](?=\s|$)/);const first=m?m[0]:s,rest=s.slice(first.length).trim();
+    return `<section class="card"><h2>In this week's farm bin</h2><p style="margin:0">${esc(first)}</p>${rest?`<details style="margin-top:8px"><summary>The whole letter</summary><p style="white-space:pre-line;margin:8px 0 0">${esc(rest)}</p></details>`:""}</section>`}
+  /* closures that fall on school days in a row read as one stretch, from the first day to the last, and single days below */
+  function closuresHtml(cs){const ds=[...new Set(cs)].sort();const nextSchoolDay=d=>{const x=new Date(d+"T12:00:00");do{x.setDate(x.getDate()+1)}while(x.getDay()===0||x.getDay()===6);return x.toISOString().slice(0,10)};
+    const runs=[];for(const d of ds){const r=runs[runs.length-1];if(r&&nextSchoolDay(r[r.length-1])===d)r.push(d);else runs.push([d])}
+    const long=runs.filter(r=>r.length>1),one=runs.filter(r=>r.length===1);
+    return `${long.map(r=>`<div class="small">${esc(day(r[0]))} to ${esc(day(r[r.length-1]))}</div>`).join("")}${one.length?`<div class="small"${long.length?' style="margin-top:4px"':""}>${one.map(r=>esc(day(r[0]))).join(", ")}</div>`:""}`}
   function foodHtml(){const m=D.menu,t=today();const wk=(from,to)=>m.days.filter(d=>d.date>=from&&d.date<=to);
     const mon=m.days.length?m.days[0].date:t;const next=m.days.length>5?m.days[5].date:"";
     const dayCard=d=>d.closed?`<div class="mday closed"><b>${esc(day(d.date))}</b><div>No school</div></div>`:`<div class="mday ${d.date===t?"today":""}"><b>${esc(day(d.date))}</b>${d.am?`<div><span class="k">Morning snack</span> ${esc(d.am)}</div>`:""}${d.lunch?`<div><span class="k">Lunch</span> ${esc(d.lunch)}</div>`:""}${d.pm?`<div><span class="k">Afternoon snack</span> ${esc(d.pm)}</div>`:""}${!d.am&&!d.lunch?`<div class="small muted">Not posted yet</div>`:""}</div>`;
@@ -330,9 +358,9 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     return newsHtml()+`<section class="card"><h2>This week's menu</h2><div class="mweek">${m.days.slice(0,5).map(dayCard).join("")}</div>
       ${next?`<details><summary>Next week</summary><div class="mweek" style="margin-top:8px">${m.days.slice(5,10).map(dayCard).join("")}</div></details>`:""}
       <p style="margin:10px 0 0"><a href="${esc(MENU)}" target="_blank" rel="noopener">The whole month, and where our food comes from</a></p></section>
-      ${m.binNote?`<section class="card"><h2>In this week's farm bin</h2><p style="white-space:pre-line;margin:0">${esc(m.binNote)}</p></section>`:""}
+      ${m.binNote?binHtml(m.binNote):""}
       ${m.recipe?`<section class="card"><details><summary><b>${esc(m.recipe.name)}</b>, a recipe from our kitchen</summary><p style="white-space:pre-line;margin:8px 0 0">${esc(m.recipe.text)}</p></details></section>`:""}
-      <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b><div class="small">${m.closures.map(c=>esc(day(c))).join(", ")}</div></div>`:`<div class="small muted">No closures in the next two months.</div>`}
+      <section class="card"><h2>Coming up</h2>${m.closures.length?`<div><b>No school</b>${closuresHtml(m.closures)}</div>`:`<div class="small muted">No closures in the next two months.</div>`}
       ${D.open.filter(o=>o.type==="event").length?`<div style="margin-top:8px"><b>Community events</b>${D.open.filter(o=>o.type==="event").map(o=>`<div class="small">${esc(o.title)}, ${esc(day(o.date))}${o.start?" at "+esc(time(o.start)):""}</div>`).join("")}</div>`:""}
       <p style="margin:10px 0 0"><a href="${esc(D.calendarUrl)}" target="_blank" rel="noopener">The school calendar</a> · ${D.handbook?`<button class="link" data-hbread="">The Family Handbook</button>`:""}</p></section>`}
   // when a new edition of the Family Handbook becomes current, a returning family reads it and says so once, for all
@@ -424,14 +452,18 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(!imgs.length){rHold=setTimeout(rel,60);return}let left=imgs.length;const one=()=>{if(--left<=0){clearTimeout(rHold);rHold=setTimeout(rel,60)}};imgs.forEach(i=>{i.addEventListener("load",one,{once:true});i.addEventListener("error",one,{once:true})});rHold=setTimeout(rel,4000)}
   function renderInner(){
     if(form&&form.startsWith("hb|")){$("#main").innerHTML=handbookHtml();return}
-    if(form){$("#main").innerHTML=(D.test?`<div class="banner"><b>Test mode.</b> Anything you do here is marked as a test.</div>`:"")+formHtml();return}
-    const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
+    if(form){$("#main").innerHTML=`<div class="one">${(D.test?`<div class="banner"><b>Test mode.</b> Anything you do here is marked as a test.</div>`:"")+formHtml()}</div>`;return}
+    // a new family opens on Welcome and a returning family on their child
+    const T=tabs();if(!T.some(t=>t[0]===tab))tab=D.children.some(k=>k.isNew)?"welcome":"kids";
     let h=D.test?`<div class="banner"><b>Test mode.</b> The school is trying this page out. Anything you do here is marked as a test.</div>`:"";
     h+=`<nav class="tabs" aria-label="Family page">${T.map(([k,l])=>`<button data-tab="${k}" ${tab===k?'aria-current="page"':""}>${esc(l)}</button>`).join("")}</nav>`;
     h+=hbNewHtml();
-    h+=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():tab==="places"&&D.community?placesHtml():tab==="ideas"?ideasHtml():foodHtml();
+    {const body=tab==="welcome"?welcomeHtml():tab==="kids"?kidsHtml():tab==="part"?partHtml():tab==="learn"?learnHtml():tab==="school"?schoolHtml():foodHtml();
+      h+=(body.match(/<section\b/g)||[]).length>1?`<div class="cols">${body}</div>`:`<div class="one">${body}</div>`}
     h+=`<p class="small muted" style="text-align:center"><button class="link" id="out">Sign out</button></p>`;
     $("#main").innerHTML=h;
+    // on a phone, the chosen tab slides into view in its row, without moving the page
+    {const nav=document.querySelector("#main nav.tabs"),cur=nav&&nav.querySelector("[aria-current]");if(nav&&cur&&nav.scrollWidth>nav.clientWidth)nav.scrollLeft=cur.offsetLeft-(nav.clientWidth-cur.offsetWidth)/2}
     const frc=$("#frc");if(frc)frc.onsubmit=async e=>{e.preventDefault();$("#e4").textContent="";try{await api("/family/recipe",{title:$("#rcn").value,ingredients:$("#rci").value,steps:$("#rcs").value,story:$("#rct").value});frc.reset();$("#e4").textContent="Thank you. The director will read it soon."}catch(er){$("#e4").textContent=er.message}};
     const fl=$("#fl");if(fl)fl.onsubmit=async e=>{e.preventDefault();$("#e3").textContent="";try{D=await api("/family/log",{what:$("#lw").value,date:$("#ld").value,minutes:Math.round((Number($("#lm").value)||0)*60),childId:$("#lk").value,type:$("#lt").value});render()}catch(er){$("#e3").textContent=er.message}};
     const fv=$("#fv");if(fv)fv.onsubmit=async e=>{e.preventDefault();$("#e5").textContent="";const f=document.querySelector('input[name="fvf"]:checked');

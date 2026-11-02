@@ -181,7 +181,7 @@ test('the Idea bank in TREE', async t => {
     assert.strictEqual((await fx.as('', '/family/ideas', {})).status, 401, 'signed in families only');
     const p = await (await br.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const errors = []; p.on('pageerror', e => errors.push(e.message));
     await p.addInitScript(([k]) => { localStorage.setItem('fam-token', k); }, [fam]);
-    await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('button[data-tab="ideas"]', { timeout: 10000 }); await p.click('button[data-tab="ideas"]');
+    await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('button[data-tab="learn"]', { timeout: 10000 }); await p.click('button[data-tab="learn"]');
     await p.waitForSelector('text=Happening at school now');
     await p.click('button[data-idea="clay"]'); await p.waitForSelector('text=Clay at Home');
     const txt = await p.innerText('#main'); assert.match(txt, /Wonder together/); assert.doesNotMatch(txt, /Feeds|Open to all|Your presence/);

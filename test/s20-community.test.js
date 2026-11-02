@@ -54,19 +54,19 @@ test('each part waits for its switch, and the public page holds only the museums
   assert.strictEqual((await data()).community, null);
 });
 
-test('a family opens Places and plants, and anyone opens the public page', async t => {
+test('a family opens the places under Learning and the plants under Our school, and anyone opens the public page', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const { fx, fam, sw } = await setup(t);
   await sw('family', true); await sw('plantsFamily', true); await sw('public', true);
   const br = await b.launch(); t.after(() => br.close());
   const p = await (await br.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const errors = []; p.on('pageerror', e => errors.push(e.message));
   await p.addInitScript(([k]) => { localStorage.setItem('fam-token', k); }, [fam]);
-  await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('text=Places and plants', { timeout: 10000 }); await p.click('button[data-tab="places"]');
+  await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('button[data-tab="learn"]', { timeout: 10000 }); await p.click('button[data-tab="learn"]');
   await p.waitForSelector('text=Places to visit near us');
   assert.strictEqual(await p.evaluate(() => [...document.querySelectorAll('#main details')].some(d => d.open)), false, 'every part starts folded');
   await p.click('summary:has-text("Places to visit near us")'); await p.click('[data-cmarea="Napa County"]'); await p.click('[data-cmtag="Native"]');
   assert.match(await p.innerText('#main'), /1 of 198 places/); assert.match(await p.innerText('#main'), /Bothe-Napa Valley State Park/);
-  await p.click('summary:has-text("Plants on our site")'); await p.click('summary:has-text("Calendula")');
+  await p.click('button[data-tab="school"]'); await p.click('summary:has-text("Plants on our site")'); await p.click('summary:has-text("Calendula")');
   assert.match(await p.innerText('#main'), /Bright orange flowers\.[\s\S]*Partly edible\. We taste only the petals\./);
   assert.doesNotMatch(await p.innerText('body'), /[—–]|\bteacher|\bClaude\b/);
   assert.deepStrictEqual(errors, []);

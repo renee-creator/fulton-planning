@@ -1,5 +1,5 @@
 'use strict';
-// The farm animals on the Family page's Places and plants, each a fold with its card and each named animal with its own
+// The farm animals on the Family page's Our school, each a fold with its card and each named animal with its own
 // photo beside its name. The public page keeps only the plants. Made-up names only.
 const test = require('node:test');
 const assert = require('node:assert');
@@ -35,7 +35,7 @@ test('a family sees each animal, its card and each named animal with its photo, 
   const br = await b.launch(); t.after(() => br.close());
   const p = await (await br.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const errors = []; p.on('pageerror', e => errors.push(e.message));
   await p.addInitScript(([k]) => { localStorage.setItem('fam-token', k); }, [fam]);
-  await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('text=Places and plants', { timeout: 10000 }); await p.click('button[data-tab="places"]');
+  await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('button[data-tab="school"]', { timeout: 10000 }); await p.click('button[data-tab="school"]');
   await p.waitForSelector('text=Our animals');
   assert.strictEqual(await p.evaluate(() => [...document.querySelectorAll('#main details')].some(d => d.open)), false, 'every part starts folded');
   await p.click('summary:has-text("Our animals")'); await p.click('summary:has-text("Goats")');
