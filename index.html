@@ -4725,7 +4725,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=97a48b6410","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0b0bde6177","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4738,7 +4738,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=97a48b6410","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=0b0bde6177","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8cecd5b07716";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="b713f021f5ee";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9829,9 +9829,9 @@ ${prs.length?"\nProjects the class is part of.\n"+prs.map(p=>p.name).join("\n"):
 ${past.length?"\nWhat educators noticed at earlier unboxings.\n"+past.map(n=>firstLine(n.noticed,240)).join("\n"):""}
 ${binIdeas().length?"\nQuestions the team already holds. Do not repeat these.\n"+binIdeas().slice(0,20).map(i=>i.text).join("\n"):""}
 
-First, suggest 4 questions an educator could hold while the children explore the bin. Each question is the educator's own wondering about what the children might notice, test, compare or care about, written as an open question or a hypothesis, never in a child's voice and never as a lesson to deliver. After each question add one short sentence naming what might be set out on the table, using only this week's produce and simple tools such as a scale, magnifiers, paper and pencils, and a knife the educator handles. Connect a question to a thread, a project, the farms, the garden, the chickens or the goats only where the connection is real. No seasonal themes, no crafts, no worksheets, no steps.
+First, suggest 4 questions an educator could hold while the children explore the bin. Each question is the educator's own wondering about what the children might notice, test, compare or care about, written as an open question or a hypothesis, never in a child's voice and never as a lesson to deliver. After each question add one short sentence naming what might be set out on the table, using only this week's produce and simple tools such as a scale, magnifiers, paper and pencils, and a knife the educator handles. Connect a question to a thread, a project, the farms, the garden, the chickens or the goats only where the connection is clear. No seasonal themes, no crafts, no worksheets, no steps.
 
-Second, suggest 4 simple ways the small group could prepare and share some of this produce, in one or two sentences each. Use only what young children can do with real care, such as washing, scrubbing, tearing, peeling, snapping, shelling, scooping out seeds, cutting with a child-safe knife, or tasting the same food raw and cooked. Keep any cooking to what an educator can do simply, such as roasting squash or potatoes or warming greens, and keep added ingredients to a few, such as olive oil, salt or lemon. Each one ends in eating and sharing it together. Do not suggest composting, since what is left goes to the chickens and goats.
+Second, suggest 4 simple ways the small group could prepare and share some of this produce, in one or two sentences each. Use only what young children can do with care, such as washing, scrubbing, tearing, peeling, snapping, shelling, scooping out seeds, cutting with a child-safe knife, or tasting the same food raw and cooked. Keep any cooking to what an educator can do simply, such as roasting squash or potatoes or warming greens, and keep added ingredients to a few, such as olive oil, salt or lemon. Each one ends in eating and sharing it together. Do not suggest composting, since what is left goes to the chickens and goats.
 The food is treated with respect. It is never used as an art material, a stamp, a toy or a building material, and nothing is wasted for an activity.
 
 Write in plain, warm language. Do not use colons, em dashes, or analogies.
@@ -10595,7 +10595,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-gkind]");i
 let participation=new Map(),ptForm=null,ptKidQ="",ptOpen="";
 const ptCfg=()=>Object.assign({test:true,goal:10,testers:[]},participation.get("config")||{});
 const ptItems=()=>[...participation.values()].filter(x=>x.kind==="item");
-// ways to take part to start from, so posting one is a tap. At home gives working families real options.
+// ways to take part to start from, so posting one is a tap. At home gives working families options.
 const PT_BANK=[
   {g:"At school",items:[{type:"task",title:"Garden workday",hours:3,note:"Weeding, planting and watering with the children's small groups."},{type:"task",title:"Animal care morning",hours:2,note:"Feeding and cleaning with the chickens and goats, alongside the children."},{type:"task",title:"Kitchen prep with the chef",hours:2,note:"Washing and chopping for lunch in the school kitchen."},{type:"task",title:"Help on a creek walk",hours:2,note:"An extra adult so a small group can walk to the creek."},{type:"task",title:"Wash classroom materials",hours:2,note:"Washing blocks, baskets and loose parts."},{type:"task",title:"Fix and build",hours:3,note:"Repairs around the yards and studios."}]},
   {g:"At home",items:[{type:"task",title:"Sew or mend dress-up clothes",hours:2,note:"Pick up a bag at the office and bring it back mended."},{type:"task",title:"Wash classroom laundry",hours:1,note:"Take home a bag of towels and smocks on Friday, bring it back Monday."},{type:"task",title:"Prepare art materials at home",hours:2,note:"Cutting, sorting and bundling materials for the studios."},{type:"task",title:"Translate a family letter",hours:1,note:"For families who read another language."},{type:"task",title:"Make playdough",hours:1,note:"A batch for a classroom, with the recipe from the office."},{type:"task",title:"Collect materials for the children to reuse",hours:1,note:"Clean bottle caps, corks, jar lids, cardboard tubes, fabric scraps and ribbon for the studios. We are nut free, so nothing that held nuts or nut butters, please."}]},
@@ -15267,7 +15267,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=97a48b6410","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0b0bde6177","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

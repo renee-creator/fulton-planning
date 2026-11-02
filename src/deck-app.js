@@ -14,7 +14,7 @@ const C={moss:"#2b5a40",sky:"#245b78",clay:"#984331",mari:"#f2b955",ink:"#1b2920
 const PARTS=["moss","sky","clay","mari"];
 // the parts of our PD template, for a deck made straight from the PD library with no Presenting entry
 const PLAN0=[{title:"Opening",minutes:10,do:"Each person shares a personal question or a memory that brings them into the topic."},{title:"Framing",minutes:15,do:""},{title:"Key ideas",minutes:15,do:""},
-  {title:"The experience",minutes:45,do:"A tour, a lab or a case study with real documentation of our own."},{title:"Reflection",minutes:20,do:"Notice and Wonder about the experience, then table talk."},{title:"Commitment",minutes:10,do:"Each person names one thing they will try."},{title:"Plus and delta",minutes:5,do:""}];
+  {title:"The experience",minutes:45,do:"A tour, a lab or a case study with our own documentation."},{title:"Reflection",minutes:20,do:"Notice and Wonder about the experience, then table talk."},{title:"Commitment",minutes:10,do:"Each person names one thing they will try."},{title:"Plus and delta",minutes:5,do:""}];
 
 /* ---------- words ---------- */
 const plain=t=>String(t||"").replace(/\*\*/g,"").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").replace(/^#+\s*/gm,"").replace(/^\s*([-*]|\d+\.)\s+/gm,"").replace(/[ \t]+/g," ").trim();
