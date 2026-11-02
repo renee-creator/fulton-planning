@@ -63,3 +63,26 @@ test('the director writes a family piece in full, kept with its earlier version'
   assert.ok(hist.some(h => /Old words/.test(h.text || '') || h.title === 'Old Title'), 'the earlier version is kept');
 });
 
+
+test('a family version sits on its PD module page for the director, and stays off the Family Handbook card', async t => {
+  const MOD = PIECE.replace('minutes: 30\n', 'minutes: 30\nmodule: documentation\n');
+  const fx = await start({ more: put => { put('staff/familypieces/together-feelings.md', MOD); put('staff/familypieces/info.md', '<!--\nstatus: draft\naudience: all\n-->\n# Good to Know Piece\n\nWords.\n'); } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  const L = (await fx.as(dee, '/api/staff/familypieces', {})).body.list;
+  assert.strictEqual(L.find(x => x.slug === 'together-feelings').module, 'documentation');
+  const chromium = await browser(); if (!chromium) return;
+  const { signedIn } = require('./fixture.js');
+  const b = await chromium.launch(); t.after(() => b.close());
+  const sd = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280); const errors = []; sd.p.on('pageerror', e => errors.push(e.message));
+  await sd.p.evaluate(() => goView('stpd')); await new Promise(r => setTimeout(r, 3000));
+  await sd.p.evaluate(() => { const L = [...document.querySelectorAll('[data-stmod="m:documentation"]')]; L[L.length - 1].click(); });
+  await sd.p.waitForSelector('text=For families', { timeout: 15000 });
+  let txt = await sd.p.innerText('#main');
+  assert.match(txt, /For families[\s\S]*Big Feelings at Home[\s\S]*Draft/);
+  await sd.p.click('summary:has-text("Big Feelings at Home")'); await sd.p.click('[data-fpready="together-feelings|1"]');
+  await sd.p.waitForSelector('text=On the Family page', { timeout: 10000 });
+  assert.strictEqual((await fx.as(dee, '/api/staff/familypieces', {})).body.list.find(x => x.slug === 'together-feelings').waiting, false);
+  assert.doesNotMatch(await sd.p.innerText('#main'), /[—–]|\bClaude\b/);
+  assert.deepStrictEqual(errors, []);
+});

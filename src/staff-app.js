@@ -635,7 +635,7 @@ const yearSpan=y=>y?y+" to "+(+y+1):"";
 /* proposed sections wait here for the director, and nothing changes in the document until she accepts one. Accepting
    adds it as a new section, which keeps its own earlier versions from then on like every other section. */
 /* pieces for the Family page, each a draft only the director sees until she marks it ready */
-async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){return ""}const L=r.list||[];if(!L.length)return "";
+async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){return ""}const L=(r.list||[]).filter(x=>x.audience!=="learning");if(!L.length)return "";
   return card("Family page pieces",`<div class="hint">Pieces for families, read on the Family page under For families. The TK and kindergarten guide shows only to families of children going to TK or kindergarten next year, beside the transition summary. A draft reaches no family until you mark it ready.</div>
     ${L.map(x=>`<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b> ${x.waiting?chip("soonish","Draft"):chip("ok","On the Family page")}${x.audience==="tk"?` <span class="cnt">For TK and kindergarten families</span>`:x.audience==="learning"?` <span class="cnt">Learning together, about ${x.minutes||30} minutes</span>`:""}</summary>
       <div class="stmd" style="margin-top:6px">${md(x.body)}</div><div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button>`:""}${peBtn("staff/familypieces/"+x.slug+".md")}</div>

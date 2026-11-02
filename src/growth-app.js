@@ -364,6 +364,15 @@ async function momentsPage(my){st.moments=(await ga("moments")).list;const f=st.
       ${m.mine||isDir()?`<div><button class="linkbtn" data-gmrm="${H(m.id)}">Remove</button></div>`:""}</div>`).join(""):`<div class="cnt">Moments and Kudos you can see appear here.</div>`))}
 
 /* ---------- the PD library's modules ---------- */
+/* a module's family version, the Learning together piece families read on the Family page, kept beside its module for
+   the director to read, edit and release. Only the director sees it here. */
+async function famVersions(){try{return ((await api("familypieces")).list||[]).filter(x=>x.audience==="learning")}catch(e){return []}}
+async function famVersionCard(slug){const L=(await famVersions()).filter(x=>x.module===slug);
+  return card("For families",`<div class="hint">The family version of this module, read on the Family page under Learning together. Finishing it counts a half hour toward a family's participation. A draft reaches no family until you mark it ready.</div>
+    ${L.length?L.map(x=>`<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b> ${x.waiting?chip("soonish","Draft"):chip("ok","On the Family page")} <span class="cnt">about ${x.minutes||30} minutes</span></summary>
+      <div class="stmd" style="margin-top:6px">${md(x.body)}</div><div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button>`:""}${X.peBtn?X.peBtn("staff/familypieces/"+x.slug+".md","Edit it"):""}</div></details>`).join("")
+      :`<div class="cnt">No family version yet.</div>`}`)}
+
 async function loadMods(force){if(!st.mods||force)st.mods=await ga("modules");return st.mods}
 Gr.libraryHtml=async function(pcs,dn){const b=B();if(!b)return "";const d=await doc(meName()).catch(()=>({modules:{}}));const m=d.modules||{};
   const last=(d.checkins||[]).find(c=>c.focus&&c.focus.area);const fit=last?b.modules.find(x=>x.ready&&x.areas.includes(last.focus.area)&&!["howto","licensing"].includes(x.slug)):null;
@@ -584,7 +593,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
     ${exBody||dir?card("From our own documentation",exBody):""}
     ${tr?card("Try this week",`${md(tr.body)}<label class="radio"><input type="checkbox" data-gmtried="${H(slug)}" ${pr.tried?"checked":""}><span>I tried it in my class</span></label>`):""}
     ${rf?card("Reflect",`${prompts.map(q=>`<div class="gq"><div class="stq">${H(q)}</div><div class="actions" style="margin:4px 0 0"><button class="pill" aria-pressed="${carry===q}" data-gmcarry="${H(slug)}">${carry===q?"In my journal this week":"Carry to my journal"}</button></div></div>`).join("")}<label class="fld-label">What happened when I tried it<textarea rows="4" id="gmod-ref">${H(pr.reflection||"")}</textarea></label><div class="cnt">Your reflection counts as evidence for ${H(serves.join(" and "))}. Only you and the director read it.</div>`):""}
-    ${fam?card("With families",md(fam.body)):""}${prog?card("Into our program",md(prog.body)):""}
+    ${fam?card("With families",md(fam.body)):""}${dir?await famVersionCard(slug):""}${prog?card("Into our program",md(prog.body)):""}
     ${sh?card("Share at a staff meeting",`${md(sh.body)}<label class="fld-label">What I will share, if I want a note<textarea rows="2" id="gmod-share">${H(pr.share||"")}</textarea></label>`):""}
     ${rd?card("Readings",md(rd.body)):""}${await (async()=>{const R2=((await loadReadings()).list||[]).filter(x=>(x.modules||[]).includes(slug));const bk=R2.filter(x=>x.kind!=="article"),ar=R2.filter(x=>x.kind==="article");
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}

@@ -214,7 +214,7 @@ module.exports = function staffModule(o) {
       let text = (S.files.get(p) || {}).text || ''; const meta = {}; const m = text.match(/^\s*<!--([\s\S]*?)-->/);
       if (m) { for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.+?)\s*$/i); if (kv) meta[kv[1].toLowerCase()] = kv[2]; } text = text.slice(m[0].length); }
       const t = text.match(/^#\s+(.+)$/m); if (!t) return null;
-      return { slug: p.slice(19, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), order: Number(meta.order) || 0, audience: meta.audience === 'tk' ? 'tk' : meta.audience === 'learning' ? 'learning' : 'all', minutes: Math.min(120, Math.max(5, Number(meta.minutes) || 30)), draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
+      return { slug: p.slice(19, -3), title: t[1].trim(), body: text.slice(t.index + t[0].length).trim(), order: Number(meta.order) || 0, audience: meta.audience === 'tk' ? 'tk' : meta.audience === 'learning' ? 'learning' : 'all', minutes: Math.min(120, Math.max(5, Number(meta.minutes) || 30)), module: /^[a-z0-9-]{1,40}$/.test(meta.module || '') ? meta.module : '', draft: /^draft$/i.test(meta.status || ''), source: meta.source || '' };
     }).filter(Boolean).sort((a, b) => a.order - b.order);
   }
   const fpReady = slug => !!(((get(FP_READY) || {}).pieces || {})[slug]);
