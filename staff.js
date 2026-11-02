@@ -576,8 +576,16 @@ module.exports = function staffModule(o) {
         put(HELP, Object.assign({}, hd, { list: [...L, x] })); json(req, res, 200, Object.assign({}, helpFor(me), { added: x.id })); return; }
       json(req, res, 200, helpFor(me)); return;
     }
-    if (P === 'familypieces' || P === 'familypieces/ready') {
+    if (P === 'familypieces' || P === 'familypieces/ready' || P === 'familypieces/write') {
       if (!dir) return deny('Only the director reviews the Family page pieces.');
+      // a new piece, or a piece written again in full, kept with its earlier version so Restore brings it back
+      if (P === 'familypieces/write') { const slug = String(body.slug || ''), text = String(body.text || '').replace(/\r/g, '').trim() + '\n';
+        if (!/^[a-z0-9-]{2,60}$/.test(slug) || !/^\s*<!--[\s\S]*?-->\s*#\s+\S/.test(text) || text.length > 60000) return err(req, res, 400, 'That piece could not be read.');
+        const fp = 'staff/familypieces/' + slug + '.md', cur = S.files.get(fp);
+        if (cur && typeof cur.text === 'string' && cur.text.trim() !== text.trim()) { const hh = Object.assign({ path: fp, history: [] }, get(PAGE_HIST(fp)) || {});
+          hh.history = [...(hh.history || []), { title: (cur.text.match(/^#\s+(.+)$/m) || [])[1] || slug, text: cur.text, at: hh.updatedAt || 0, by: hh.updatedBy || '', note: hh.note || '' }].slice(-100);
+          Object.assign(hh, { note: String(body.note || 'Written again in full').slice(0, 300), updatedAt: Date.now(), updatedBy: me }); put(PAGE_HIST(fp), hh); }
+        putText(fp, text); log('Family page piece written', fp, 'by', me); }
       if (P === 'familypieces/ready') { const g = familyPieces().find(x => x.slug === String(body.slug || '')); if (!g) return err(req, res, 404, 'That piece is not here.');
         const all = Object.assign({ pieces: {} }, get(FP_READY) || {}); all.pieces = Object.assign({}, all.pieces); if (body.on) all.pieces[g.slug] = { on: today(), by: me }; else delete all.pieces[g.slug]; put(FP_READY, all); }
       json(req, res, 200, { list: familyPieces().map(g => Object.assign({}, g, { waiting: g.draft && !fpReady(g.slug) })) }); return;

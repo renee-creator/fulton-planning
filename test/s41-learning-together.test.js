@@ -48,3 +48,18 @@ test('a Learning together piece counts a half hour once and the wonderings stay 
   assert.doesNotMatch(await p.innerText('body'), /[—–]|\bteacher|\bClaude\b/);
   assert.deepStrictEqual(errors, []);
 });
+
+test('the director writes a family piece in full, kept with its earlier version', async t => {
+  const fx = await start({ more: put => { put('staff/familypieces/tk.md', '<!--\nstatus: draft\naudience: tk\n-->\n# Old Title\n\nOld words.\n'); } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  assert.strictEqual((await fx.as(ann, '/api/staff/familypieces/write', { slug: 'tk', text: '<!--\n-->\n# X\n' })).status, 403);
+  assert.strictEqual((await fx.as(dee, '/api/staff/familypieces/write', { slug: 'tk', text: 'No comment and no title' })).status, 400);
+  let L = (await fx.as(dee, '/api/staff/familypieces/write', { slug: 'tk', text: '<!--\nstatus: draft\naudience: tk\n-->\n# New Title\n\nNew words.\n', note: 'Merged' })).body.list;
+  assert.deepStrictEqual(L.map(x => [x.slug, x.title, x.audience, x.waiting]), [['tk', 'New Title', 'tk', true]]);
+  L = (await fx.as(dee, '/api/staff/familypieces/write', { slug: 'together-new', text: '<!--\nstatus: draft\naudience: learning\nminutes: 30\n-->\n# A New Piece\n\nWords.\n' })).body.list;
+  assert.deepStrictEqual(L.map(x => x.slug).sort(), ['tk', 'together-new']);
+  const hist = (await fx.as(dee, '/api/staff/page', { path: 'staff/familypieces/tk.md' })).body.history || [];
+  assert.ok(hist.some(h => /Old words/.test(h.text || '') || h.title === 'Old Title'), 'the earlier version is kept');
+});
+
