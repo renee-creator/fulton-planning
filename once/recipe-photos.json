@@ -1,0 +1,285 @@
+{
+ "note": "A photo for each recipe, from Wikimedia Commons with its credit, free to share, added once.",
+ "changes": [
+  {
+   "path": "staff/library/recipes/applesauce.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Apple-sauce-544676.jpg/960px-Apple-sauce-544676.jpg | Photo from Wikimedia Commons, CC0 | https://commons.wikimedia.org/wiki/File:Apple-sauce-544676.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/banana-muffins.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Banana-Cinnamon_Muffins.jpg/960px-Banana-Cinnamon_Muffins.jpg | Photo by Roozitaa, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Banana-Cinnamon_Muffins.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/bean-rice-bowls.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Rice_and_beans_stew_in_bowl.jpg/960px-Rice_and_beans_stew_in_bowl.jpg | Photo by daSupremo, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Rice_and_beans_stew_in_bowl.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/blanched-fava-beans.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Liat_Portal_for_Foodie_Disorder_-_Fresh_Fava_Beans.jpg/960px-Liat_Portal_for_Foodie_Disorder_-_Fresh_Fava_Beans.jpg | Photo by HaJunkiyada, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Fresh_Fava_Beans.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/broccoli-cheese-soup.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/9/9a/Broccoli_cheese_soup.jpg | Photo by NonstickRon from Edgewater, FL, USA, CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Broccoli_cheese_soup.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/bubble-solution.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Reflection_in_a_soap_bubble_edit.jpg/960px-Reflection_in_a_soap_bubble_edit.jpg | Photo by Brocken Inaglory, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Reflection_in_a_soap_bubble_edit.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/chicken-noodle-soup.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Chicken_noodle_soup_%281%29.jpg/960px-Chicken_noodle_soup_%281%29.jpg | Photo by Bruin from Columbus, Ohio, U.S.A., CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Chicken_noodle_soup_(1).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/cilantro-sauce.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Mojo_verde_y_papas_arrug%C3%A1s.jpg/960px-Mojo_verde_y_papas_arrug%C3%A1s.jpg | Photo by Abhay Kumar from San Francisco, CA, USA, CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Mojo_verde_y_papas_arrug%C3%A1s.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/cinnamon-mini-muffins.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Cinnamon_Apple_Muffins_%281%29.jpg/960px-Cinnamon_Apple_Muffins_%281%29.jpg | Photo by Roozitaa, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Cinnamon_Apple_Muffins_(1).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/cinnamon-toast.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Butter_Toast.jpg/960px-Butter_Toast.jpg | Photo by Gannu03, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Butter_Toast.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/cloud-dough.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Mixing_Bowl_of_Flour.JPG/960px-Mixing_Bowl_of_Flour.JPG | Photo by ParentingPatch, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Mixing_Bowl_of_Flour.JPG\n-->"
+  },
+  {
+   "path": "staff/library/recipes/corn-on-the-cob.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Boiled_corn_on_a_white_plate.jpg/960px-Boiled_corn_on_a_white_plate.jpg | Photo by TudorTulok, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Boiled_corn_on_a_white_plate.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/corn-pudding.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Southwestern_corn_pudding_%2829307618538%29.jpg/960px-Southwestern_corn_pudding_%2829307618538%29.jpg | Photo by Joey Doll, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Southwestern_corn_pudding_(29307618538).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/cornstarch-clay.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Cornstarch_mixed_with_water.jpg/960px-Cornstarch_mixed_with_water.jpg | Photo by kalaya, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Cornstarch_mixed_with_water.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/cucumber-yogurt-dip.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Tzatziki_IMGP1444.jpg/960px-Tzatziki_IMGP1444.jpg | Photo by Nikodem Nijaki, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Tzatziki_IMGP1444.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/flour-paste.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/4/48/Papier_mache.jpg | Photo by Larry D. Moore, CC BY 4.0 | https://commons.wikimedia.org/wiki/File:Papier_mache.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/flower-watercolors.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/0/06/Natural_dye_colour_wheel.jpg | Photo by Roued, CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Natural_dye_colour_wheel.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/fresh-pasta.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Fresh_pasta.jpg/960px-Fresh_pasta.jpg | Photo by Psanchez820, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Fresh_pasta.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/fresh-peas.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/-2021-07-27_Fresh_harvested_peas%2C_Trimingham%2C_Norfolk_%281%29.JPG/960px--2021-07-27_Fresh_harvested_peas%2C_Trimingham%2C_Norfolk_%281%29.JPG | Photo by Kolforn, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:-2021-07-27_Fresh_harvested_peas,_Trimingham,_Norfolk_(1).JPG\n-->"
+  },
+  {
+   "path": "staff/library/recipes/fresh-ricotta.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Ricotta_fresca_%28Wiki_Loves_Sicilia%29.jpg/960px-Ricotta_fresca_%28Wiki_Loves_Sicilia%29.jpg | Photo by 8w9d, CC0 | https://commons.wikimedia.org/wiki/File:Ricotta_fresca_(Wiki_Loves_Sicilia).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/fruit-leather.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Cuirs_de_fruits_kiwi_banane_pomme_raisin_canneberge_pomme_kiwi_tomate.jpg/960px-Cuirs_de_fruits_kiwi_banane_pomme_raisin_canneberge_pomme_kiwi_tomate.jpg | Photo by Matthieu Deuté, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Cuirs_de_fruits_kiwi_banane_pomme_raisin_canneberge_pomme_kiwi_tomate.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/gak.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Green_Slime_in_hand.JPG/960px-Green_Slime_in_hand.JPG | Photo by Ciphers, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Green_Slime_in_hand.JPG\n-->"
+  },
+  {
+   "path": "staff/library/recipes/garlic-toast.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Garlic_toast.jpg/960px-Garlic_toast.jpg | Photo by Scudsvlad, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Garlic_toast.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/garlicky-greens.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Sauteed_kale_-_Cambridge%2C_MA.jpg/960px-Sauteed_kale_-_Cambridge%2C_MA.jpg | Photo by Daderot, CC0 | https://commons.wikimedia.org/wiki/File:Sauteed_kale_-_Cambridge,_MA.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/green-onion-pancakes.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Scallion_pancakes.jpg/960px-Scallion_pancakes.jpg | Photo by Fumikas Sagisavas, CC0 | https://commons.wikimedia.org/wiki/File:Scallion_pancakes.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/herb-butter.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Kr%C3%A4uterbutter_%284228354791%29.jpg/960px-Kr%C3%A4uterbutter_%284228354791%29.jpg | Photo by Katrin Gilger, CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Kr%C3%A4uterbutter_(4228354791).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/hummus.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Du_hummus_au_Kotopo.jpg/960px-Du_hummus_au_Kotopo.jpg | Photo by Benoît Prieur, CC0 | https://commons.wikimedia.org/wiki/File:Du_hummus_au_Kotopo.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/lentil-soup.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Bowl_of_lentil_soup_with_green_and_red_lentils.jpg/960px-Bowl_of_lentil_soup_with_green_and_red_lentils.jpg | Photo by Whoisjohngalt, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Bowl_of_lentil_soup_with_green_and_red_lentils.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/minestrone-soup.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Liat_Portal_for_Foodie_Disorder_-_Homemade_minestrone_soup.jpg/960px-Liat_Portal_for_Foodie_Disorder_-_Homemade_minestrone_soup.jpg | Photo by HaJunkiyada, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Liat_Portal_for_Foodie_Disorder_-_Homemade_minestrone_soup.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/oat-crackers.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Oatcakes_%281%29.jpg/960px-Oatcakes_%281%29.jpg | Photo by Jon Thomson from London / Kingussie, UK, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Oatcakes_(1).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/oatmeal-pancakes.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Pancakes%2C_Ehrenbach.jpg/960px-Pancakes%2C_Ehrenbach.jpg | Photo by Gerda Arendt, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Pancakes,_Ehrenbach.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/oobleck.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Corn_speaker.jpg/960px-Corn_speaker.jpg | Photo by Daniel Christensen, CC BY 3.0 | https://commons.wikimedia.org/wiki/File:Corn_speaker.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/pancakes.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Waffles_with_Strawberries.jpg/960px-Waffles_with_Strawberries.jpg | Photo by Parkerman & Christie from San Diego, USA, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Waffles_with_Strawberries.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/pear-slices-cheese.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Cheese%26Pears.jpg/960px-Cheese%26Pears.jpg | Photo by DueAncore, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Cheese%26Pears.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/pickled-radishes.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Pickled_radish_slices.jpg/960px-Pickled_radish_slices.jpg | Photo by Fumikas Sagisavas, CC0 | https://commons.wikimedia.org/wiki/File:Pickled_radish_slices.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/playdough.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Home_made_play_dough.jpg/960px-Home_made_play_dough.jpg | Photo by Bobjgalindo, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Home_made_play_dough.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/popcorn.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Bowl_of_Popcorn_%28Unsplash%29.jpg/960px-Bowl_of_Popcorn_%28Unsplash%29.jpg | Photo by Alex Munsell, CC0 | https://commons.wikimedia.org/wiki/File:Bowl_of_Popcorn_(Unsplash).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/pork-adobo-coconut-rice.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Pork_Adobo_-_11618429074.jpg/960px-Pork_Adobo_-_11618429074.jpg | Photo by pulaw, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Pork_Adobo_-_11618429074.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/potato-leek-soup.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Potato_Leek_Soup_%284258747258%29.jpg/960px-Potato_Leek_Soup_%284258747258%29.jpg | Photo by Vegan Feast Catering, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Potato_Leek_Soup_(4258747258).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/quinoa-porridge.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Quinoa_2.jpg/960px-Quinoa_2.jpg | Photo by ProjectManhattan, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Quinoa_2.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/radish-toast.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Radishes_on_toast_%2813889687953%29.jpg/960px-Radishes_on_toast_%2813889687953%29.jpg | Photo by Suzette from Arnhem, Netherlands, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Radishes_on_toast_(13889687953).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/roasted-squash-seeds.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Pumpkin_Seeds_macro_1.jpg/960px-Pumpkin_Seeds_macro_1.jpg | Photo by Daniel Schwen, CC BY 3.0 | https://commons.wikimedia.org/wiki/File:Pumpkin_Seeds_macro_1.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/rosemary-focaccia.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/A_homemade_rosemary_focaccia_baked_in_the_United_States.jpg/960px-A_homemade_rosemary_focaccia_baked_in_the_United_States.jpg | Photo by Gatorfan252525, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:A_homemade_rosemary_focaccia_baked_in_the_United_States.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/salsa-fresca.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Pico_de_Gallo_Homemade_2014.JPG/960px-Pico_de_Gallo_Homemade_2014.JPG | Photo by Lord Laitinen, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Pico_de_Gallo_Homemade_2014.JPG\n-->"
+  },
+  {
+   "path": "staff/library/recipes/salt-dough.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Corbeille_de_pain_r%C3%A9alis%C3%A9e_en_p%C3%A2te_%C3%A0_sel.JPG/960px-Corbeille_de_pain_r%C3%A9alis%C3%A9e_en_p%C3%A2te_%C3%A0_sel.JPG | Photo by Marianne Casamance, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Corbeille_de_pain_r%C3%A9alis%C3%A9e_en_p%C3%A2te_%C3%A0_sel.JPG\n-->"
+  },
+  {
+   "path": "staff/library/recipes/sauerkraut.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Sauerkraut_Jar.jpg/960px-Sauerkraut_Jar.jpg | Photo by Bdubay, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Sauerkraut_Jar.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/sauteed-bok-choy.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Stir_Fried_Bok_Choy%2C_Aug_2025.jpg/960px-Stir_Fried_Bok_Choy%2C_Aug_2025.jpg | Photo by Ralff Nestor Nacor, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Stir_Fried_Bok_Choy,_Aug_2025.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/seed-granola.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Sunflower_seeds_%28left%29_and_pumpkin_seeds_%28right%29_in_a_persian_grocery_in_Tehrangeles.JPG/960px-Sunflower_seeds_%28left%29_and_pumpkin_seeds_%28right%29_in_a_persian_grocery_in_Tehrangeles.JPG | Photo by Alexis Doine, CC0 | https://commons.wikimedia.org/wiki/File:Sunflower_seeds_(left)_and_pumpkin_seeds_(right)_in_a_persian_grocery_in_Tehrangeles.JPG\n-->"
+  },
+  {
+   "path": "staff/library/recipes/spring-greens-frittata.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/%D0%A4%D1%80%D0%B8%D1%82%D0%B0%D1%82%D0%B0_%D1%81%D0%BE_%D1%81%D0%BF%D0%B0%D0%BD%D0%B0%D1%9C_%2801%29.jpg/960px-%D0%A4%D1%80%D0%B8%D1%82%D0%B0%D1%82%D0%B0_%D1%81%D0%BE_%D1%81%D0%BF%D0%B0%D0%BD%D0%B0%D1%9C_%2801%29.jpg | Photo by Deodora333, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:%D0%A4%D1%80%D0%B8%D1%82%D0%B0%D1%82%D0%B0_%D1%81%D0%BE_%D1%81%D0%BF%D0%B0%D0%BD%D0%B0%D1%9C_(01).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/squash-soup-white-beans.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/9/9f/Autumn_Soup_%28Unsplash%29_cropped.jpg | Photo by Cala, CC0 | https://commons.wikimedia.org/wiki/File:Autumn_Soup_(Unsplash)_cropped.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/strawberry-lemonade.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Lemonade_with_strawberry.jpg/960px-Lemonade_with_strawberry.jpg | Photo by E4024, CC BY-SA 4.0 | https://commons.wikimedia.org/wiki/File:Lemonade_with_strawberry.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/tempeh-tacos.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Tempeh_tacos_%2828309798007%29.jpg/960px-Tempeh_tacos_%2828309798007%29.jpg | Photo by Joey Doll, CC BY 2.0 | https://commons.wikimedia.org/wiki/File:Tempeh_tacos_(28309798007).jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/tortillas.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Masa_de_tortillas.jpg/960px-Masa_de_tortillas.jpg | Photo by Artemisa Martínez, CC0 | https://commons.wikimedia.org/wiki/File:Masa_de_tortillas.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/whole-wheat-bread.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Vegan_no-knead_whole_wheat_bread_loaf%2C_sliced%2C_September_2010.jpg/960px-Vegan_no-knead_whole_wheat_bread_loaf%2C_sliced%2C_September_2010.jpg | Photo by Veganbaking.net, CC BY-SA 2.0 | https://commons.wikimedia.org/wiki/File:Vegan_no-knead_whole_wheat_bread_loaf,_sliced,_September_2010.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/yogurt.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Yogurt_%28homemade%29_with_Vermont_maple_syrup_-_Massachusetts.jpg/960px-Yogurt_%28homemade%29_with_Vermont_maple_syrup_-_Massachusetts.jpg | Photo by Daderot, CC0 | https://commons.wikimedia.org/wiki/File:Yogurt_(homemade)_with_Vermont_maple_syrup_-_Massachusetts.jpg\n-->"
+  },
+  {
+   "path": "staff/library/recipes/zucchini-bread.md",
+   "from": "\n-->",
+   "to": "\nphoto: https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Costata_Romanesco_zucchini_and_zucchini_bread.jpg/960px-Costata_Romanesco_zucchini_and_zucchini_bread.jpg | Photo by Temaciejewski, CC BY-SA 3.0 | https://commons.wikimedia.org/wiki/File:Costata_Romanesco_zucchini_and_zucchini_bread.jpg\n-->"
+  }
+ ]
+}

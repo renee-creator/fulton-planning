@@ -91,7 +91,8 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     const sec = (h, v) => { const t = String(v || '').replace(/\r/g, '').trim().slice(0, 8000); return t ? `## ${h}\n\n${t}\n\n` : `## ${h}\n\n`; };
     let body = '';
     if (kind === 'recipe') body = sec('Ingredients', b.ingredients) + sec('Tools', b.tools) + sec('Steps', b.steps) + (b.dairyFree ? sec('Dairy free', b.dairyFree) : '') + (b.glutenFree ? sec('Gluten free', b.glutenFree) : '') + (b.notes ? sec('Notes', b.notes) : '');
-    if (kind === 'song') body = sec('Words', b.words);
+    // a song found by Find the song keeps the parts it drafted, each only when it has words, then its words
+    if (kind === 'song') body = [['Why we sing it', b.why], ['When we sing it', b.when], ['Movement or game', b.movement], ['I wonder', b.wonder], ['Connections', b.connections]].filter(([, v]) => String(v || '').trim()).map(([k, v]) => sec(k, v)).join('') + sec('Words', b.words);
     if (kind === 'readaloud') body = sec('About', b.about);
     if (kind === 'book') {
       const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);

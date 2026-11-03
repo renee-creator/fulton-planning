@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4747046de4eb";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="77fa67f16605";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6785,7 +6785,16 @@ function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";con
    A song marked © shows the © sign beside its title, its songwriter, a link to a recording and, once the director adds
    them from our own song books, its words, which show and print. A traditional song shows its words and prints them.
    The director adds songs, their words and their mark (November 1, 2026). The read-alouds sit beside the songs, our own stories and traditional tales, each with its reading guide. */
-let songTab="songs",songOpen="",songAdd=false,bookAdd=false;
+let songTab="songs",songOpen="",songAdd=false,bookAdd=false,songFound=null,songBusy=false;
+/* Find the song. The writing help drafts a new song from its title, its songwriter or Traditional, whether it is ©, and
+   why, when and how we sing it, in our voice. It gives the words only for a traditional song old enough to be free to
+   share, and leaves them empty for a © song, for the director to add from our own song books. Nothing saves until she
+   adds the song. */
+async function songFind(title){if(!sample)return null;
+  const prompt=`A preschool's song book is adding the children's song "${title}". ${STYLE}
+Return JSON {"title": the song's usual title, "songwriter": the songwriter, or "Traditional" when it has no known writer, "copyright": true when the song or its usual words were written by a known songwriter after 1928 or you are not sure, false only for a traditional song whose words are older than 1929, "words": the usual words line by line only when copyright is false and you are sure of them, otherwise "", "why": two short sentences on why we sing it with young children, "when": one sentence on when in our day it fits, "movement": one or two sentences on a movement or game that goes with it, or "", "wonder": two questions to wonder about with the children, one per line, "connections": a few words on what it connects to in our garden, animals, seasons or play}.
+Never invent a songwriter. Write "Source unknown" when you do not know it.`;
+  return await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"song"})}
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
 const songWords=x=>recPart(x,"Words");
 const songParts=x=>(x.parts||[]).filter(p=>!/^words$/i.test(p.key)&&String(p.text||"").trim());
@@ -6800,8 +6809,10 @@ function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML
   m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Songs, stories and books</h2><div class="sub">Our song book, our read-alouds for meeting time and our book collection.</div></div>
     <div class="tseg" role="group" aria-label="Songs or stories" style="margin-bottom:10px"><button data-songtab="songs" aria-pressed="${songTab==="songs"}">Song book</button><button data-songtab="books" aria-pressed="${songTab==="books"}">Read-alouds</button><button data-songtab="collection" aria-pressed="${songTab==="collection"}">Books</button></div>
     ${songTab==="songs"?`<section class="card"><div class="hint">A song marked © shows the © mark beside its title, its songwriter and a recording, and its words once the director adds them from our own song books. A traditional song shows its words.</div>${songs.map(songRow).join("")||`<div class="empty">No songs yet.</div>`}</section>
-      ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="kfields"><label>Title<input type="text" id="sg-t"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional"></label><label>A recording<input type="url" id="sg-l" placeholder="https://"></label></div>
-        <label class="radio"><input type="checkbox" id="sg-c" checked><span>©, the © mark shows beside its title</span></label><div class="actions"><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
+      ${dir?`<section class="card">${songAdd?`<div class="lbl">A new song</div><div class="cnt">Type the title, then Find the song fills in the rest for you to check.</div><div class="kfields"><label>Title<input type="text" id="sg-t" value="${esc((songFound&&songFound.title)||"")}"></label><label>Songwriter<input type="text" id="sg-w" placeholder="Ex. Traditional" value="${esc((songFound&&songFound.songwriter)||"")}"></label><label>A recording<input type="url" id="sg-l" placeholder="https://" value="${esc((songFound&&songFound.link)||"")}"></label></div>
+        <label class="radio"><input type="checkbox" id="sg-c" ${!songFound||songFound.copyright?"checked":""}><span>©, the © mark shows beside its title</span></label>
+        ${songFound?[["why","Why we sing it"],["when","When we sing it"],["movement","Movement or game"],["wonder","I wonder"],["connections","Connections"],["words","Words"]].map(([k,l])=>`<label class="fld-label">${l}<textarea id="sg-${k}" rows="${k==="words"?8:2}" placeholder="${k==="words"&&songFound.copyright?"Add the words from our own song books":""}">${esc(songFound[k]||"")}</textarea></label>`).join(""):""}
+        <div class="actions"><button class="btn small ghost" data-songfind="1" ${songBusy?"disabled":""}>${songBusy?"Finding":"Find the song"}</button><button class="btn small" data-songsave="1">Add the song</button><button class="linkbtn" data-songadd="0">Cancel</button></div>`:`<button class="btn small ghost" data-songadd="1">Add a song</button>`}</section>`:""}`
     :songTab==="collection"?bookCollectionHtml():`<section class="card"><div class="hint">Read-alouds for meeting time, our own stories of our garden, animals and seasons and traditional tales retold for our school, each with a reading guide.</div>${books.map(readRow).join("")||`<div class="empty">No read-alouds yet.</div>`}</section>`}`}
 /* ---------- The book collection ----------
    Our vetted books, each with why we chose it, the kind of reading it suits, a reading guide with I notice and I wonder,
@@ -6856,12 +6867,17 @@ function readTextDoc(x){const text=readPages(readText(x)).map(p=>p.text).filter(
   const card=asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:[dText("",text)]},{sub:"A read-aloud"});
   try{if(card&&card.centered&&window.jspdf){const doc=planDoc({unit:"pt",format:"letter"});const F=cFlow(doc,cReady(card),accOf(card.acc)||ACC.story);if(!F.over&&F.pages.length===1&&!(F.pages[0].s<.72))return card}}catch(e){}
   return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",text)]}}
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords]");if(!t||view!=="songs")return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords],[data-songfind]");if(!t||view!=="songs")return;const d=t.dataset;
   if(d.songtab){songTab=d.songtab;renderMain();return}
-  if(d.songadd!=null){songAdd=d.songadd==="1";renderMain();return}
+  if(d.songadd!=null){songAdd=d.songadd==="1";songFound=null;renderMain();return}
+  if(d.songfind){const title=($("#sg-t")?.value||"").trim();if(!title){toast("Type the song's title first.");return}if(!sample){toast("The writing help is not available here.");return}
+    songBusy=true;renderMain();try{const o=await songFind(title)||{};const c=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();
+      songFound={title:c(o.title)||title,songwriter:c(o.songwriter),copyright:o.copyright!==false,words:o.copyright===false?String(o.words||"").trim():"",why:c(o.why),when:c(o.when),movement:c(o.movement),wonder:String(o.wonder||"").trim(),connections:c(o.connections),
+        link:"https://open.spotify.com/search/"+encodeURIComponent(c(o.title)||title)}}catch(er){toast("The song could not be found just now.")}songBusy=false;renderMain();return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   try{if(d.songsave){const title=($("#sg-t")?.value||"").trim();if(!title){toast("Give the song a title.");return}
-      libData=await window.FP_API("/api/staff/library/add",{kind:"song",title,songwriter:($("#sg-w")?.value||"").trim(),link:($("#sg-l")?.value||"").trim(),copyright:!!$("#sg-c")?.checked});songAdd=false;toast("Added to the song book.");renderMain();return}
+      const tv=k=>($("#sg-"+k)?.value||"").trim();
+      libData=await window.FP_API("/api/staff/library/add",{kind:"song",title,songwriter:tv("w"),link:tv("l"),copyright:!!$("#sg-c")?.checked,why:tv("why"),when:tv("when"),movement:tv("movement"),wonder:tv("wonder"),connections:tv("connections"),words:tv("words")});songAdd=false;songFound=null;toast("Added to the song book.");renderMain();return}
     if(d.songcopy){const [path,on]=d.songcopy.split("|");libData=await window.FP_API("/api/staff/library/copyright",{path,on:on==="1"});toast(on==="1"?"Marked ©. Its words stay, with the mark beside its title.":"The © mark is off.");renderMain();return}
     if(d.songwords){libData=await window.FP_API("/api/staff/library/copyright",{path:d.songwords,place:true});window.TREE_EDIT_PAGE({path:d.songwords},()=>loadLibrary(true))}}catch(er){toast(er&&er.message||"That did not save.")}});
 document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.dataset&&d.dataset.songrow!=null&&d.open)songOpen=d.dataset.songrow;if(d&&d.dataset&&d.dataset.readrow!=null&&d.open)songOpen="r:"+d.dataset.readrow},true);
@@ -7096,7 +7112,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
       ${parts(x.parts,/^(ingredients|tools|steps)$/i)}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}${recKindOf(x)==="food"?" "+pageEditBtn("staff/wording/food-rule.md","Edit the food rule"):""}</div>`}
   if(kind==="song"){const w=songWords(x),c=songCopy(x);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("songwords",esc(x.id),c?"Title card":"Words",true)}${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}</div><h2>${c?"© ":""}${esc(x.title)}</h2><div class="cnt">${esc((x.meta||{}).songwriter||"")}</div>
-      ${w?`<div style="white-space:pre-line;margin:8px 0;font-size:17px">${esc(w)}</div>`:c?`<div class="cnt">The words of a © song are never kept in TREE.</div>`:""}${parts(songParts(x),/^$/)}`}
+      ${w?`<div style="white-space:pre-line;margin:8px 0;font-size:17px">${esc(w)}</div>`:""}${parts(songParts(x),/^$/)}`}
   if(kind==="readaloud"){const t=readText(x);
     return `<div class="actions" style="flex-wrap:wrap">${printBtns("readguide",esc(x.id),"Reading guide",true)}${t?printBtns("readtext",esc(x.id),"The story"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(readGuideParts(x),/^$/)}
       ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary>${readPagesHtml(t)}</details>`:""}`}

@@ -554,6 +554,8 @@ ONCE.push(['parks', () => staff.once.edits('parks', recsEdit)]);
 // the museum list with its opening sections and photos, and the parks with every part of the guide and photos
 ONCE.push(['museums2', () => staff.once.edits('museums2', recsEdit)]);
 ONCE.push(['parks2', () => staff.once.edits('parks2', recsEdit)]);
+// a photo for each recipe, in its opening comment
+ONCE.push(['recipePhotos', () => staff.once.edits('recipePhotos', recsEdit)]);
 // the Idea bank's Help answers, and the Help answers and PD pages that named Documentation for the pages now under Plans,
 // Planning resources, from once/ideabank-words.json
 ONCE.push(['ideabankWords', () => staff.once.edits('ideabankWords', recsEdit)]);
