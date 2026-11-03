@@ -40,7 +40,7 @@ test('the Idea bank in TREE', async t => {
     for (const k of ['slides', 'walls', 'stories', 'grant', 'kitchen']) assert.ok(docs.includes(k), k + ' stays');
     await s.p.evaluate(() => goView('plans')); await wait(300);
     assert.strictEqual(await s.p.evaluate(() => document.querySelector('details.planres') && document.querySelector('details.planres').open), false, 'Planning resources starts closed');
-    assert.deepStrictEqual(await s.p.evaluate(() => [...document.querySelectorAll('details.planres [data-tview]')].map(x => x.textContent)), ['Idea bank', 'Garden', 'Artists', 'Museums and cultural places', 'Recipes', 'Songs and stories']);
+    assert.deepStrictEqual(await s.p.evaluate(() => [...document.querySelectorAll('details.planres [data-tview]')].map(x => x.textContent)), ['Idea bank', 'Garden', 'Artists', 'Recipes', 'Songs and stories']);
     for (const v of ['garden', 'recipes', 'songs', 'artists', 'ideabank']) {
       await s.p.evaluate(v => goView(v), v); await wait(400);
       assert.strictEqual(await s.p.evaluate(() => secOf(view)), 'plans');

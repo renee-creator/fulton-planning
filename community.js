@@ -1,4 +1,4 @@
-/* The museums and the plants on our site, for the whole community. The Family page and the public page places.html both
+/* The parks and museums near us and the plants on our site, for the whole community. The Family page and the public page places.html both
    draw them here, from what the server sends once the director turns each part on. The museum list is the director's
    own page, each place one line with its name linked to its own site, its town, a few words and its tags. The plants are
    each plant's card in the children's words, its full plant page and the field guide for each yard, with our own photo
@@ -20,23 +20,29 @@
   // st holds what the reader chose, the area, the tag and the words searched for
   function html(c, st, base) {
     let h = '';
-    if (c && c.places) {
-      const all = places(c.places), areas = (c.places.parts || []).map(p => p.key);
+    // places to explore, the parks near us and the museums and cultural places, one card with a choice between them.
+    // Each list keeps its own areas and tags, and choosing the other list starts its filters fresh.
+    const lists = [['parks', 'Parks', c && c.parks], ['places', 'Museums and cultural places', c && c.places]].filter(x => x[2] && (x[2].parts || []).length);
+    if (lists.length) {
+      const which = lists.some(x => x[0] === st.which) ? st.which : lists[0][0]; const P = lists.find(x => x[0] === which)[2];
+      const all = places(P), areas = (P.parts || []).map(p => p.key);
       const n = new Map(); for (const x of all) for (const t of x.tags) n.set(t.tag, (n.get(t.tag) || 0) + 1);
       const tags = [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
+      const area = areas.includes(st.area) ? st.area : 'All', tag = tags.includes(st.tag) ? st.tag : 'All';
       const q = String(st.q || '').trim().toLowerCase();
-      const shown = all.filter(x => (st.area === 'All' || x.area === st.area) && (st.tag === 'All' || x.tags.some(t => t.tag === st.tag)) && (!q || [x.name, x.town, x.about, tagText(x)].join(' ').toLowerCase().includes(q)));
-      const chip = (k, v, cur) => `<button type="button" class="cm-chip${cur === v ? ' on' : ''}" data-cm${k}="${esc(v)}" aria-pressed="${cur === v}">${esc(v)}</button>`;
-      const filtered = st.area !== 'All' || st.tag !== 'All' || !!q;
-      h += `<section class="card cm"><details ${st.placesOpen ? 'open' : ''} data-cmfold="places"><summary><h2 style="display:inline">Places to visit near us</h2></summary>
-        ${c.places.lead ? `<p class="small muted">${esc(c.places.lead)}</p>` : ''}
-        <div class="small" style="font-weight:700">Area</div><div class="cm-chips">${['All', ...areas].map(a => chip('area', a, st.area)).join('')}</div>
-        <div class="small" style="font-weight:700">What it holds</div><div class="cm-chips">${['All', ...tags].map(t => chip('tag', t, st.tag)).join('')}</div>
-        <label class="small">Find a place<input type="search" id="cm-q" value="${esc(st.q || '')}" placeholder="A place, a town or what it holds"></label>
-        <p class="small muted">${shown.length} of ${all.length} places.</p>
+      const shown = all.filter(x => (area === 'All' || x.area === area) && (tag === 'All' || x.tags.some(t => t.tag === tag)) && (!q || [x.name, x.town, x.about, tagText(x)].join(' ').toLowerCase().includes(q)));
+      const chip = (k, v, cur, label) => `<button type="button" class="cm-chip${cur === v ? ' on' : ''}" data-cm${k}="${esc(v)}" aria-pressed="${cur === v}">${esc(label || v)}</button>`;
+      const filtered = area !== 'All' || tag !== 'All' || !!q; const word = which === 'parks' ? 'parks' : 'places';
+      h += `<section class="card cm"><details ${st.placesOpen ? 'open' : ''} data-cmfold="places"><summary><h2 style="display:inline">Places to explore</h2></summary>
+        ${lists.length > 1 ? `<div class="cm-chips" role="group" aria-label="Which places">${lists.map(x => chip('which', x[0], which, x[1])).join('')}</div>` : ''}
+        ${P.lead ? `<p class="small muted">${esc(P.lead)}</p>` : ''}
+        <div class="small" style="font-weight:700">Area</div><div class="cm-chips">${['All', ...areas].map(a => chip('area', a, area)).join('')}</div>
+        <div class="small" style="font-weight:700">${which === 'parks' ? 'What it has' : 'What it holds'}</div><div class="cm-chips">${['All', ...tags].map(t => chip('tag', t, tag)).join('')}</div>
+        <label class="small">${which === 'parks' ? 'Find a park' : 'Find a place'}<input type="search" id="cm-q" value="${esc(st.q || '')}" placeholder="${which === 'parks' ? 'A park, a town or what it has' : 'A place, a town or what it holds'}"></label>
+        <p class="small muted">${shown.length} of ${all.length} ${word}.</p>
         ${areas.map(a => { const xs = shown.filter(x => x.area === a); if (!xs.length) return ''; let kind = '';
           return `<details class="cm-area" ${filtered ? 'open' : ''}><summary><b>${esc(a)}</b> <span class="small muted">${xs.length}</span></summary>${xs.map(x => { const k = x.kind && x.kind !== kind ? `<div class="small" style="font-weight:700;margin-top:8px">${esc(x.kind)}</div>` : ''; kind = x.kind;
-            return k + `<div class="cm-place"><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="small muted">${esc(x.town)}</span><div class="small">${esc(x.about)}</div><div class="small muted">${esc(tagText(x))}</div></div>`; }).join('')}</details>`; }).join('') || '<p class="small muted">No place matches.</p>'}
+            return k + `<div class="cm-place"><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="small muted">${esc(x.town)}</span><div class="small">${esc(x.about)}</div><div class="small muted">${esc(tagText(x))}</div></div>`; }).join('')}</details>`; }).join('') || `<p class="small muted">No ${which === 'parks' ? 'park' : 'place'} matches.</p>`}
       </details></section>`;
     }
     if (c && c.plants && ((c.plants.plants || []).length || (c.plants.fieldGuides || []).length)) {
@@ -70,9 +76,9 @@
     + '.cm input[type=search]{display:block;width:100%;box-sizing:border-box;margin:4px 0;padding:8px;border:1px solid #c9c1ad;border-radius:8px;font:inherit}';
   // the chips, the search and the folds, with draw to draw again after a choice
   function bind(el, st, draw) {
-    el.addEventListener('click', e => { const b = e.target.closest('[data-cmarea],[data-cmtag]'); if (!b) return; if (b.dataset.cmarea) st.area = b.dataset.cmarea; else st.tag = b.dataset.cmtag; draw(); });
+    el.addEventListener('click', e => { const b = e.target.closest('[data-cmarea],[data-cmtag],[data-cmwhich]'); if (!b) return; if (b.dataset.cmwhich) { st.which = b.dataset.cmwhich; st.area = 'All'; st.tag = 'All'; st.q = ''; } else if (b.dataset.cmarea) st.area = b.dataset.cmarea; else st.tag = b.dataset.cmtag; draw(); });
     el.addEventListener('input', e => { if (e.target.id !== 'cm-q') return; st.q = e.target.value; const at = e.target.selectionStart; draw(); const i = el.querySelector('#cm-q'); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (er) {} } });
     el.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.cmfold) st[d.dataset.cmfold + 'Open'] = d.open; }, true);
   }
-  root.TREE_COMMUNITY = { html, bind, places, CSS, state: () => ({ area: 'All', tag: 'All', q: '', placesOpen: false, plantsOpen: false, animalsOpen: false }) };
+  root.TREE_COMMUNITY = { html, bind, places, CSS, state: () => ({ which: '', area: 'All', tag: 'All', q: '', placesOpen: false, plantsOpen: false, animalsOpen: false }) };
 })(typeof window !== 'undefined' ? window : this);

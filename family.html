@@ -157,8 +157,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
   const tabs=()=>{const t=[["welcome","Welcome"],["kids",D.children.length>1?"Our children":D.children[0].first],["part","Taking part"]];if(hasLearn())t.push(["learn","Learning"]);t.push(["food",(D.menu.news||[]).length?"News, menu and calendar":"Menu and calendar"]);if(hasSchool())t.push(["school","Our school"]);return t};
   // the museums and the plants on our site, drawn by community.js, the same as the public page
   const cmState=window.TREE_COMMUNITY?window.TREE_COMMUNITY.state():null;let cmBound=false;
-  function placesHtml(part){const C=window.TREE_COMMUNITY;if(!C||!D.community||!D.community[part])return "";if(!document.getElementById("cm-css")){const st=document.createElement("style");st.id="cm-css";st.textContent=C.CSS;document.head.appendChild(st)}
-    if(!cmBound){cmBound=true;C.bind($("#main"),cmState,()=>{if(tab==="learn"||tab==="school")render()})}return C.html({[part]:D.community[part]},cmState,SERVER)}
+  function placesHtml(part){const C=window.TREE_COMMUNITY;const both=part==="places";if(!C||!D.community||!(D.community[part]||(both&&D.community.parks)))return "";if(!document.getElementById("cm-css")){const st=document.createElement("style");st.id="cm-css";st.textContent=C.CSS;document.head.appendChild(st)}
+    if(!cmBound){cmBound=true;C.bind($("#main"),cmState,()=>{if(tab==="learn"||tab==="school")render()})}return C.html(both?{places:D.community.places,parks:D.community.parks}:{[part]:D.community[part]},cmState,SERVER)}
   /* Ideas to try at home. The home side of every Idea bank card, by group and by search, with the director's highlights
      first under Happening at school now. Only the home side reaches this page. Each prints as one page, PDF or Word. */
   const ID_GROUPS=["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things","Movement and risky play","Indoor spaces","Shared spaces","Outdoor spaces","Children's interests","Across the year on our site"];

@@ -118,7 +118,7 @@ function communityOut(who) {
   const ph = x => !x ? null : x.own ? { src: photoSrc(x.own) } : { src: x.url, credit: x.credit || '', link: x.link || '' };
   const plants = c.plants ? { plants: c.plants.plants.map(p => Object.assign({}, p, { photo: ph(p.photo) })), fieldGuides: c.plants.fieldGuides.map(f => ({ title: f.title, intro: f.intro || '', entries: f.entries.map(e => Object.assign({}, e, { photo: ph(e.photo) })) })),
     animals: who === 'family' ? (c.plants.animals || []).map(a => Object.assign({}, a, { photo: ph(a.photo), names: a.names.map(n => Object.assign({}, n, { photo: ph(n.photo) })) })) : [] } : null;
-  return { places: c.places, plants };
+  return { places: c.places, parks: c.parks || null, plants };
 }
 function photoSrc(id) { return '/original/' + encodeURIComponent(id) + '?t=' + encodeURIComponent(photoKey(id)); }
 function checkPhotoKey(tok, id) {
@@ -549,6 +549,8 @@ ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
 // the director's list of museums and cultural places, added once from once/museums.json
 ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
+// the parks near us from the director's field guide, added once from once/parks.json
+ONCE.push(['parks', () => staff.once.edits('parks', recsEdit)]);
 // the Idea bank's Help answers, and the Help answers and PD pages that named Documentation for the pages now under Plans,
 // Planning resources, from once/ideabank-words.json
 ONCE.push(['ideabankWords', () => staff.once.edits('ideabankWords', recsEdit)]);

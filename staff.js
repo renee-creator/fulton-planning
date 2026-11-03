@@ -1175,6 +1175,7 @@ module.exports = function staffModule(o) {
     s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'],
     freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
+    parks: ['code:once/parks.json', 'Parks, trails and beaches across Sonoma County from the director\'s field guide, checked November 2, 2026'],
     s12ReadAlouds: ['staff/once/s12-read-alouds.json', 'Our own read-alouds and traditional tales in place of the Watch and Wonder books'],
     s12Review: ['staff/once/s12-review.json', 'Fixes from the review of TREE after Session 12'],
     // the Idea bank. Help answers and the PD pages that named Documentation for the Garden, Artists, Museums, Recipes,
@@ -1284,7 +1285,7 @@ module.exports = function staffModule(o) {
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
   return { ideabank: { forFamily: () => (S.ready ? IB.forFamily() : null), familyOn: () => (S.ready ? IB.familyOn() : false), canOpen: (b, r) => (S.ready ? IB.canOpen(b, r) : false), NEEDS: IB.NEEDS, SUPPORTS: IB.SUPPORTS, US: IB.US }, dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, // the museums and the plants on our site for the whole community, each part only once the director turns its switch on
     community: who => { if (!S.ready) return null; const sw = LIB.placeSwitches(); const fam = who === 'family';
-      const places = (fam ? sw.family : sw.public) ? LIB.placesOut() : null; const plants = (fam ? sw.plantsFamily : sw.public) ? GD.community() : null;
-      return places || plants ? { places, plants } : null; },
+      const places = (fam ? sw.family : sw.public) ? LIB.placesOut() : null; const parks = (fam ? sw.family : sw.public) ? LIB.parksOut() : null; const plants = (fam ? sw.plantsFamily : sw.public) ? GD.community() : null;
+      return places || parks || plants ? { places, parks, plants } : null; },
     volunteer: { forFamily: () => (S.ready ? VOL.forFamily() : null), job: id => (S.ready ? VOL.jobForFamily(id) : null), slotCard: (id, signed) => (S.ready ? VOL.slotCard(id, signed) : null) }, once: { schoolWords: onceSchoolWords, trainingLinks: onceTrainingLinks, kyr2026: onceKyr2026, edits: onceEdits, volunteerJobs: () => VOL.once() }, load, handle, flushAll, bootInfo, dump, isNewHire, isFormerEducator, formerNames, hasFiles, markLeft, removeFormer, tick, handbook, policies: POL, growthTick: () => G.tick(), pieces, dueFor, calendarExtra: (f, t, me) => { try { return S.ready ? [...G.calendarExtra(f, t, me), ...GD.calendar(f, t, me), ...PA.calendar(f, t, me)] : []; } catch (e) { return []; } }, paths: PA, garden: GD, displayMoments: () => G.displayMoments(), rev: () => G.rev() + '.' + PA.rev() };
 };

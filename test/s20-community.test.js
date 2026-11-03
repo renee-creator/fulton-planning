@@ -19,7 +19,7 @@ const more = put => {
 async function setup(t) {
   const fx = await start({ more }); t.after(() => fx.stop());
   const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
-  for (let i = 0; i < 100; i++) { const l = (await fx.as(dee, '/api/staff/library', {})).body; if (l && l.places) break; await wait(200); }
+  for (let i = 0; i < 100; i++) { const l = (await fx.as(dee, '/api/staff/library', {})).body; if (l && l.places && l.parks) break; await wait(200); }
   const c = await fx.as('', '/family/code', { email: 'pip.family@example.test' });
   const fam = (await fx.as('', '/family/login', { email: 'pip.family@example.test', code: c.body.code })).body.token;
   const sw = async (key, on) => (await fx.as(dee, '/api/staff/library/places/switch', { key, on })).body;
@@ -46,7 +46,7 @@ test('each part waits for its switch, and the public page holds only the museums
   // the public page
   await sw('public', true);
   const r = await pub(); assert.strictEqual(r.status, 200);
-  assert.deepStrictEqual(Object.keys(r.body).sort(), ['places', 'plants']);
+  assert.deepStrictEqual(Object.keys(r.body).sort(), ['parks', 'places', 'plants']);
   assert.doesNotMatch(JSON.stringify(r.body), /\bPip\b|pip\.family|\bAnn\b|\bDee\b/, 'no child, family or educator');
   // the plants wait for the Garden to be ready, wherever they show
   const g = (await fx.as(dee, '/api/staff/garden', {})).body; assert.ok(g.ready);
@@ -62,9 +62,12 @@ test('a family opens the places under Learning and the plants under Our school, 
   const p = await (await br.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const errors = []; p.on('pageerror', e => errors.push(e.message));
   await p.addInitScript(([k]) => { localStorage.setItem('fam-token', k); }, [fam]);
   await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('button[data-tab="learn"]', { timeout: 10000 }); await p.click('button[data-tab="learn"]');
-  await p.waitForSelector('text=Places to visit near us');
+  await p.waitForSelector('text=Places to explore');
   assert.strictEqual(await p.evaluate(() => [...document.querySelectorAll('#main details')].some(d => d.open)), false, 'every part starts folded');
-  await p.click('summary:has-text("Places to visit near us")'); await p.click('[data-cmarea="Napa County"]'); await p.click('[data-cmtag="Native"]');
+  await p.click('summary:has-text("Places to explore")');
+  // the parks come first, each with a question to wonder about, then the museums and cultural places
+  assert.match(await p.innerText('#main'), /Parks[\s\S]*Museums and cultural places[\s\S]*60 of 60 parks/); assert.match(await p.innerText('#main'), /Santa Rosa[\s\S]*West County and Coast/);
+  await p.click('[data-cmwhich="places"]'); await p.click('[data-cmarea="Napa County"]'); await p.click('[data-cmtag="Native"]');
   assert.match(await p.innerText('#main'), /1 of 198 places/); assert.match(await p.innerText('#main'), /Bothe-Napa Valley State Park/);
   await p.click('button[data-tab="school"]'); await p.click('summary:has-text("Plants on our site")'); await p.click('summary:has-text("Calendula")');
   assert.match(await p.innerText('#main'), /Bright orange flowers\.[\s\S]*Partly edible\. We taste only the petals\./);
@@ -72,7 +75,7 @@ test('a family opens the places under Learning and the plants under Our school, 
   assert.deepStrictEqual(errors, []);
   // the public page, with no sign-in
   const q = await (await br.newContext({ viewport: { width: 390, height: 800 } })).newPage(); const qe = []; q.on('pageerror', e => qe.push(e.message));
-  await q.goto(`http://localhost:${fx.web}/places.html?server=${fx.api}`); await q.waitForSelector('text=Places to visit near us', { timeout: 10000 });
+  await q.goto(`http://localhost:${fx.web}/places.html?server=${fx.api}`); await q.waitForSelector('text=Places to explore', { timeout: 10000 });
   await q.click('summary:has-text("Plants on our site")'); await q.click('summary:has-text("North yard")');
   assert.match(await q.innerText('body'), /Western fence lizard[\s\S]*Photo by A\. Observer/);
   assert.deepStrictEqual(qe, []);

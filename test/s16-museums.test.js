@@ -46,6 +46,9 @@ test('the page filters by area and tag, and prints one place as a card and the r
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.evaluate(() => goView('museums')); await s.p.waitForSelector('[data-mqgroup]', { timeout: 15000 });
+  // the parks come first on Places to explore, in the PD library, and the museums are one tap away
+  assert.match(await s.p.innerText('#main'), /PD library, for families[\s\S]*Places to explore[\s\S]*Parks[\s\S]*Santa Rosa/i);
+  await s.p.click('[data-mqwhich="places"]'); await s.p.waitForSelector('[data-mqgroup="Napa County"]', { timeout: 15000, state: 'attached' });
   const r = await s.p.evaluate(async () => {
     const out = {}; window.makePdf = (docs, n) => { out.pdf = { n, docs }; }; window.makeDocx = (docs, n) => { out.word = { n, docs }; };
     const click = async (sel, key) => { if (key) delete out[key]; document.querySelector(sel).click(); if (key) for (let i = 0; i < 60 && !out[key]; i++) await new Promise(r => setTimeout(r, 100)); return key ? out[key] : null; };
