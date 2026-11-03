@@ -36,6 +36,7 @@ module.exports = function library(o) {
   const pictures = () => { const out = {};
     for (const p of S.imgs.keys()) { const m = p.match(/^staff\/library\/images\/([a-z0-9_]+)\.(png|jpe?g|webp)$/i); if (m) out[m[1].toLowerCase()] = { from: 'library', path: p }; }
     for (const [k, v] of Object.entries((get(PICS) || {}).list || {})) if (v && v.id) out[k] = { from: 'photo', id: v.id, by: v.by || '', at: v.at || 0 };
+      else if (v && v.url) out[k] = { from: 'web', url: v.url, credit: v.credit || '', link: v.link || '' };
     return out; };
   const WD = require('./wording.js');
   const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud', explorations: 'exploration', books: 'book' };
@@ -48,7 +49,7 @@ module.exports = function library(o) {
   function item(path) {
     const r = S.files.get(path); if (!r || typeof r.text !== 'string') return null;
     const meta = META(r.text), doc = WD.parse(r.text); const m = path.match(/^staff\/library\/([a-z0-9-]+)\/([a-z0-9-]+)\.md$/);
-    const x = { id: m[2], path, kind: DIRS[m[1]] || m[1], title: doc.title || m[2], lead: doc.lead || '', meta, parts: doc.parts, draft: /^draft$/i.test(meta.status || '') };
+    const x = { id: m[2], path, kind: DIRS[m[1]] || m[1], title: doc.title || m[2], lead: doc.lead || '', meta, parts: doc.parts, draft: /^draft$/i.test(meta.status || ''), removed: String(meta.removed || '') };
     return x;
   }
   const paths = dir => [...S.files.keys()].filter(p => p.startsWith('staff/library/' + dir + '/') && /\.md$/.test(p)).sort();
@@ -57,7 +58,9 @@ module.exports = function library(o) {
   // the book collection, our vetted books, each with why we chose it, its reading guide and its vetting notes. Anyone on
   // staff suggests a book, and a suggestion waits as a draft until the director approves it after vetting.
   function list(me) {
-    const all = dir => paths(dir).map(item).filter(x => x && sees(x, me));
+    // a card the director removed is left out for everyone, and waits in her own Removed list to be put back
+    const all = dir => paths(dir).map(item).filter(x => x && !x.removed && sees(x, me));
+    const removed = isDirector(me) ? Object.fromEntries(Object.keys(DIRS).map(d => [DIRS[d], paths(d).map(item).filter(x => x && x.removed).map(x => ({ id: x.id, path: x.path, kind: x.kind, title: x.title, removed: x.removed }))])) : null;
     const pr = item('staff/library/prompts/provocations.md');
     const ar = item('staff/library/prompts/artists.md');
     // the museums and cultural places, the director's alone until she shows the page to educators
@@ -67,7 +70,7 @@ module.exports = function library(o) {
     // the words of a read-aloud are for educators only, so the kitchen's sign-in reads its guide without them
     const ra = all('readalouds').map(x => isKitchen(me) ? Object.assign({}, x, { parts: (x.parts || []).filter(p => !/^text$/i.test(p.key || '')) }) : x);
     return { recipes: all('recipes'), songs: all('songs'), readalouds: ra, books: isKitchen(me) ? [] : all('books'), explorations: all('explorations'), farms: fm && Array.isArray(fm.list) ? fm.list : [], provocations: pr ? { title: pr.title, lead: pr.lead, parts: pr.parts, path: pr.path } : null, artists: ar ? { title: ar.title, lead: ar.lead, parts: ar.parts, path: ar.path } : null, places: pl && plSees ? Object.assign({ title: pl.title, lead: pl.lead, parts: pl.parts, path: pl.path, shown: plShown }, isDirector(me) ? { switches: placeSwitches() } : {}) : null,
-      parks: pk && plSees ? { title: pk.title, lead: pk.lead, parts: pk.parts, path: pk.path, shown: plShown } : null, pictures: pictures(), artPhotos: (get(ART_PHOTOS) || {}).list || {}, modules: { 'looking-together': pdShown('looking-together') } };
+      parks: pk && plSees ? { title: pk.title, lead: pk.lead, parts: pk.parts, path: pk.path, shown: plShown } : null, pictures: pictures(), artPhotos: (get(ART_PHOTOS) || {}).list || {}, modules: { 'looking-together': pdShown('looking-together') }, removed };
   }
   // a new page in a library. The director and the kitchen add a recipe that is ready. An educator's recipe and a family's
   // wait as drafts for the director. Only the director adds a song or a read-aloud.
@@ -127,9 +130,14 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       try { const buf = await o.readImage(x.path); send(req, res, 200, { 'Content-Type': /\.png$/i.test(x.path) ? 'image/png' : /\.webp$/i.test(x.path) ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That picture is not here.'); } return; }
     // a photo from the piazza for an item, kept once the face check on the device found no face. An educator adds one for an
     // item with no picture, and only the director replaces a picture already there.
-    if (P === 'library/picture') { const k = String(body.name || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60); const id = String(body.id || '');
+    if (P === 'library/picture') { const k = String(body.name || body.key || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60); const id = String(body.id || '');
       if (!k) { err(req, res, 400, 'Name the ingredient or tool.'); return; }
       if (body.remove) { if (!isDirector(me)) { err(req, res, 403, 'The director takes a picture away.'); return; } const all = Object.assign({ list: {} }, get(PICS) || {}); delete all.list[k]; put(PICS, all); json(req, res, 200, list(me)); return; }
+      // a picture from Wikimedia Commons, free to share, chosen by the director, shown with its credit
+      if (body.url) { if (!isDirector(me)) { err(req, res, 403, 'The director chooses a picture from the web.'); return; }
+        const url = String(body.url); if (!/^https:\/\/upload\.wikimedia\.org\/[^\s"<>]+$/.test(url)) { err(req, res, 400, 'Only a picture from Wikimedia Commons is kept.'); return; }
+        const one = v => String(v || '').replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 300); const link = /^https:\/\/commons\.wikimedia\.org\/[^\s"<>]+$/.test(String(body.link || '')) ? String(body.link) : '';
+        const all = Object.assign({ list: {} }, get(PICS) || {}); all.list = Object.assign({}, all.list, { [k]: { url: url.slice(0, 600), credit: one(body.credit), link: link.slice(0, 600), by: me, at: Date.now() } }); put(PICS, all); json(req, res, 200, list(me)); return; }
       // only a photo kept from this page, never an observation's photo, which may show a child
       if (!/^[a-z0-9]{12}-recipe-picture\.(jpe?g|png)$/i.test(id) || body.noFace !== true) { err(req, res, 400, 'A photo is kept only once the face check finds no face.'); return; }
       if (pictures()[k] && !isDirector(me)) { err(req, res, 403, 'This item has a picture. The director chooses to replace it.'); return; }
@@ -160,6 +168,9 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       const r = S.files.get(x.path); let t = String(r.text || '').replace(/\n## (Words|In English)\s*\n[\s\S]*?(?=\n## |$)/g, '').trimEnd();
       t += '\n\n## Words\n\n' + words + '\n' + (english ? '\n## In English\n\n' + english + '\n' : '');
       putText(x.path, t); const lang = String(body.language || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 40); if (lang && !/^english$/i.test(lang)) setMeta(x.path, 'language', lang); json(req, res, 200, list(me)); return; }
+    // the director removes a card from TREE, and it waits in her Removed list, or she puts it back
+    if (P === 'library/remove') { if (!dir) { err(req, res, 403, 'Only the director removes a card.'); return; }
+      setMeta(x.path, 'removed', body.on === false ? null : new Date().toISOString().slice(0, 10)); log('Library card', body.on === false ? 'put back' : 'removed', x.path, 'by', me); json(req, res, 200, list(me)); return; }
     if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } if (!body.place) setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
       // a song has a place for its words, ready for the director to add them, with the mark or without it
       if (!body.on || body.place) { const r = S.files.get(x.path); if (r && !/^##\s+Words\s*$/m.test(r.text)) putText(x.path, r.text.trimEnd() + '\n\n## Words\n\n'); }

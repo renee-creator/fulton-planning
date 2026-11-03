@@ -22,23 +22,43 @@ const demoFracText=n=>{const w=Math.floor(n+1e-9),f=n-w,F=[[.25,"1/4"],[1/3,"1/3
 function demoCanvas(w,h,draw){const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");g.lineCap="round";g.lineJoin="round";g.strokeStyle=DEMO_INK;g.fillStyle=DEMO_SOFT;g.lineWidth=DEMO_LINE;draw(g,w,h);return c.toDataURL("image/png")}
 const demoRR=(g,x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
 // the picture library's key for an item, such as whole_wheat_flour for 2 3/4 cups whole wheat flour, or banana for 5 bananas, mashed
-const demoKey=t=>{let x=String(t||"").toLowerCase().replace(/\(.*?\)/g,"").split(",")[0].replace(/^(a|an|the|some|our)\s+/,"").replace(/[^a-z\s]/g," ").trim().replace(/\s+/g," ");
+/* the item's own name, with counts, amounts, units, who it is for and alternatives taken away, so "1 pound fava pods
+   each child", "two soup pots" and "child knives and a knife adult" read as fava pod, soup pot and child knife */
+const DEMO_NUM=/\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|a few|several|half|a|an)\b/g;
+const DEMO_UNIT=/\b(spoonfuls?|pounds?|lbs?|ounces?|oz|cups?|tablespoons?|teaspoons?|handfuls?|pinch(es)?|bunch(es)?|heads?|cloves?|stalks?|sprigs?|slices?|pieces?|cans?|bags?|boxes?|jars?|bottles?|packages?|sticks?|quarts?|pints?|gallons?|liters?|grams?|servings?|dash(es)?|drops?|leaves of|of)\b/g;
+const DEMO_FIX={knive:"knife",knives:"knife",leaves:"leaf",loaves:"loaf",halves:"half",scissor:"scissors",tongs:"tongs",glasses:"glass",dishes:"dish",peaches:"peach",radishes:"radish",potatoes:"potato",tomatoes:"tomato"};
+function demoClean(t){let x=String(t||"").toLowerCase().replace(/\(.*?\)/g," ").split(",")[0];
+  x=x.replace(/\b(for |per )?(each|every) (child|children|person|pair|table|group|bowl|cup|plate)\b|\bper (child|person)\b|\bfor (the )?(children|adults?|table)\b|\bwith (a |its )?lid\b|\(adult\)|\badult\b/g," ").replace(/^\s*(and|or)\s+/,"");
+  // "dry black or pinto beans" keeps black beans, and "water for rice" keeps water
+  {const o=x.split(/\s+or\s+/);if(o.length>1&&o[1].trim().split(/\s+/).length===2&&/s$/.test(o[1].trim())&&!/s$/.test(o[0].trim()))x=o[0].trim()+" "+o[1].trim().split(/\s+/).slice(-1)[0];else x=o[0]}
+  x=x.split(/\s+and an?\s+|\s*\/\s*|\s+(for|to|in|on)\s+/)[0].replace(/\s+each\s*$/,"");
+  x=x.replace(/\bmeasuring (cups?|spoons?)\b/g,(m,u)=>"measuring_"+u.replace(/s$/,""));
+  x=x.replace(/[0-9½¼¾⅓⅔.\/-]+/g," ").replace(DEMO_NUM," ").replace(DEMO_UNIT," ").replace(/[^a-z_\s]/g," ").replace(/\s+/g," ").trim().replace(/^(and|or)\s+/,"");
+  return x}
+const demoKey=t=>{const x0=demoClean(t);let x=x0.replace(/^(some|our|the)\s+/,"");
+  x=x.replace(/\b(large|small|medium|fresh|dried|ripe|chopped|mashed|sliced|grated|softened|melted|warm|cold|boiling|ground|raw|cooked|about|plus|more|for|the|to|taste|extra|clean|whole)\b/g," ").replace(/\s+/g," ").trim();
+  const w=x.split(" ");let last=w.pop()||"";if(DEMO_FIX[last])last=DEMO_FIX[last];else last=/(ss|us|scissors|tongs)$/.test(last)?last:last.replace(/(ches|shes|sses|xes)$/,m=>m.slice(0,-2)).replace(/ies$/,"y").replace(/oes$/,"o").replace(/s$/,"");
+  if(DEMO_FIX[last])last=DEMO_FIX[last];return [...w,last].filter(Boolean).join("_")};
+const demoKeyOld=t=>{let x=String(t||"").toLowerCase().replace(/\(.*?\)/g,"").split(",")[0].replace(/^(a|an|the|some|our)\s+/,"").replace(/[^a-z\s]/g," ").trim().replace(/\s+/g," ");
   x=x.replace(/\b(large|small|medium|fresh|dried|ripe|chopped|mashed|sliced|grated|softened|melted|warm|cold|boiling|ground|raw|cooked|about|plus|more|for|the|to|taste)\b/g," ").replace(/\s+/g," ").trim();
   const w=x.split(" ");const last=w.pop()||"";const sing=/(ss|us)$/.test(last)?last:last.replace(/(ches|shes|sses|xes)$/,m=>m.slice(0,-2)).replace(/ies$/,"y").replace(/oes$/,"o").replace(/s$/,"");return [...w,sing].filter(Boolean).join("_")};
-const demoPicOf=key=>{const P=(libData&&libData.pictures)||{};if(P[key])return Object.assign({key},P[key]);const parts=key.split("_");for(let i=1;i<parts.length;i++){const k=parts.slice(i).join("_");if(P[k]&&P[k].from==="photo"&&false)return Object.assign({key:k},P[k])}return null};
+const demoPicOf=(key,old)=>{const P=(libData&&libData.pictures)||{};if(P[key])return Object.assign({key},P[key]);if(old&&P[old])return Object.assign({key:old},P[old]);const parts=key.split("_");for(let i=1;i<parts.length;i++){const k=parts.slice(i).join("_");if(P[k]&&P[k].from==="photo"&&false)return Object.assign({key:k},P[k])}return null};
+// the credits for the web pictures on a sheet, each once, printed small at its foot
+const demoCredits=list=>{const c=[...new Set((list||[]).map(p=>p&&p.credit).filter(Boolean))];return c.length?"Pictures from Wikimedia Commons. "+c.join(". ")+".":""};
 const demoPicCache=new Map();
 // a picture as a data address for the PDF and the Word file, read once
-async function demoPicData(pic){if(!pic)return null;const ck=pic.from+"|"+(pic.id||pic.path);if(demoPicCache.has(ck))return demoPicCache.get(ck);let blob=null;
-  try{if(pic.from==="photo"&&window.FP_ORIGINAL_URL)blob=await (await fetch(window.FP_ORIGINAL_URL(pic.id))).blob();
+async function demoPicData(pic){if(!pic)return null;const ck=pic.from+"|"+(pic.id||pic.path||pic.url);if(demoPicCache.has(ck))return demoPicCache.get(ck);let blob=null;
+  try{if(pic.from==="web"&&/^https:\/\/upload\.wikimedia\.org\//.test(pic.url||""))blob=await (await fetch(pic.url)).blob();
+    else if(pic.from==="photo"&&window.FP_ORIGINAL_URL)blob=await (await fetch(window.FP_ORIGINAL_URL(pic.id))).blob();
     else{const r=await fetch(window.FP_SERVER+"/api/staff/library/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({name:pic.key})});if(r.ok)blob=await r.blob()}}catch(e){blob=null}
   if(!blob||!blob.size){demoPicCache.set(ck,null);return null}
   // drawn onto white as a JPEG, so the PDF and Word file stay small and every picture sits on the same white
   const url=await new Promise(ok=>{const im=new Image();const u=URL.createObjectURL(blob);im.onload=()=>{const m=900,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok({data:c.toDataURL("image/jpeg",.86),w:c.width,h:c.height})};im.onerror=()=>{URL.revokeObjectURL(u);ok(null)};im.src=u});
-  demoPicCache.set(ck,url);return url}
+  const out=url&&pic.from==="web"?Object.assign({},url,{credit:pic.credit||""}):url;demoPicCache.set(ck,out);return out}
 // every item the recipes name, ingredients and tools, by key, for the Pictures still needed list
 function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){
-    for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
-    for(const l of libLines(recPart(x,"Tools"))){const k=demoKey(l);if(k&&!out.has(k))out.set(k,{key:k,name:k.replace(/_/g," "),kind:"tool",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
+    for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(q?q.item:l),name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
+    for(const l of libLines(recPart(x,"Tools"))){const k=demoKey(l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(l),name:k.replace(/_/g," "),kind:"tool",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);if(q&&q.unit){const k=q.unit==="cup"?"measuring_cup":q.unit;if(!out.has(k))out.set(k,{key:k,name:q.unit==="cup"?"measuring cup":q.unit,kind:"measure",recipes:new Set()});out.get(k).recipes.add(x.title)}}}
   return [...out.values()]}
 // the adult hand, for a step only an adult does
@@ -63,11 +83,11 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
       // the measure first, the right cup or spoon repeated for how many, with the amount in large type
       const amount=first&&q&&q.n?demoFracText(q.n)+(q.unit?" "+q.unit+(q.n>1?"s":""):""):"";
       if(first&&q&&q.unit){const mk=q.unit==="cup"?"measuring_cup":q.unit;const mp=await demoPicData(demoPicOf(mk));if(mp)demoFills(q).forEach(f=>pics.push({img:mp.data,w:.6,cap:demoFracText(f)+" "+q.unit}))}
-      const pd=await demoPicData(demoPicOf(key));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
-    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/[^A-Za-z-]/g,"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
+      const pd=await demoPicData(demoPicOf(key,demoKeyOld(q?q.item:line)));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true,credit:pd.credit||""});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
+    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/[^A-Za-z-]/g,"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t),demoKeyOld(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true,credit:pd.credit||""});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
     const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:demoClock(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:demoClock(),w:.7,cap:"wait",drawn:true});
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
-  const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t)));return {text:t,img:pd?pd.data:null}};
+  const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t),demoKeyOld(q?q.item:t)));return {text:t,img:pd?pd.data:null,credit:(pd&&pd.credit)||""}};
   const overview={title:x.title,ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
   return {overview,sheets,hand:demoHand()}}
 // the set as a PDF, letter or poster, Andika throughout
@@ -93,6 +113,7 @@ async function demoPosterPdf(x){if(!window.jspdf)await TREE_KIT.loadScript(TREE_
     if(pics.length){const n=pics.length,w=Math.min(room-(pics.some(p=>p.cap)?34:0),(pw-40-(n-1)*12)/n);let px=cx+20+(pw-40-(n*w+(n-1)*12))/2;
       for(const pc of pics){if(w>30)doc.addImage(pc.img,demoFmt(pc.img),px,ty,w,w);if(pc.cap){font(!!pc.big);doc.setFontSize(18);doc.text(doc.splitTextToSize(pc.cap,Math.max(w+10,120)).slice(0,2),px+w/2,ty+w+22,{align:"center"})}px+=w+12}}
     else if(sh.words.length){font(true);doc.setFontSize(Math.min(28,fs));for(const wd of sh.words.slice(0,4)){doc.text(doc.splitTextToSize(wd.big,pw-40)[0],cx+20,ty+24);ty+=34}}});
+  {const c=demoCredits(P.sheets.flatMap(s=>s.pics));if(c){font(false);doc.setFontSize(12);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,W),M,S.h-M/2)}}
   return doc.output("blob")}
 async function demoPosterWord(x){const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);
   const img=(data,w)=>new D.ImageRun({data:Uint8Array.from(atob(data.split(",")[1]),c=>c.charCodeAt(0)),type:/^data:image\/png/.test(data)?"png":"jpg",transformation:{width:Math.round(w),height:Math.round(w)}});
@@ -102,7 +123,7 @@ async function demoPosterWord(x){const D=await TREE_KIT.word();await TREE_KIT.fo
   const rows=[];for(let i=0;i<P.sheets.length;i+=cols){const cs=P.sheets.slice(i,i+cols).map(cellOf);while(cs.length<cols)cs.push(new D.TableCell({width:{size:Math.floor(tw/cols),type:D.WidthType.DXA},children:[new D.Paragraph("")]}));rows.push(new D.TableRow({cantSplit:true,children:cs}))}
   const need=[...P.overview.ings,...P.overview.tools];
   const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,60,true)]}),new D.Paragraph({children:[run("What we need",26,true)]}),new D.Paragraph({children:need.map(it=>run(it.text+"     ",18))}),
-    new D.Table({width:{size:tw,type:D.WidthType.DXA},columnWidths:Array(cols).fill(Math.floor(tw/cols)),rows})]}];
+    new D.Table({width:{size:tw,type:D.WidthType.DXA},columnWidths:Array(cols).fill(Math.floor(tw/cols)),rows}),...(demoCredits(P.sheets.flatMap(s=>s.pics))?[new D.Paragraph({spacing:{before:240},children:[run(demoCredits(P.sheets.flatMap(s=>s.pics)),12)]})]:[])]}];
   const docx=TREE_KIT.wordFile(D,{size:"poster",sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}
 async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k;
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};
@@ -110,6 +131,8 @@ async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!wi
   font(true);doc.setFontSize(34*k);doc.text(P.overview.title,M,M+30*k);doc.setFontSize(20*k);doc.text("What we need",M,M+70*k);
   let y=M+86*k;const row=(it)=>{if(it.img)doc.addImage(it.img,demoFmt(it.img),M,y,44*k,44*k);font(false);doc.setFontSize(16*k);doc.text(doc.splitTextToSize(it.text,S.w-M*2-60*k),M+(it.img?56*k:0),y+27*k);y+=50*k;if(y>S.h-M-50*k){doc.addPage([S.w,S.h]);y=M}};
   P.overview.ings.forEach(row);if(P.overview.tools.length){font(true);doc.setFontSize(20*k);doc.text("Tools",M,y+20*k);y+=34*k;P.overview.tools.forEach(row)}
+  const credit=list=>{const c=demoCredits(list);if(!c)return;font(false);doc.setFontSize(8*k);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,S.w-M*2),M,S.h-M/2-8*k);doc.setTextColor(47,59,47)};
+  credit([...P.overview.ings,...P.overview.tools]);
   for(const sh of P.sheets){doc.addPage([S.w,S.h]);font(true);doc.setFillColor(47,59,47);doc.circle(M+28*k,M+28*k,28*k,"F");doc.setTextColor(255,255,255);doc.setFontSize(28*k);doc.text(String(sh.n),M+28*k,M+38*k,{align:"center"});doc.setTextColor(47,59,47);
     doc.setFontSize(44*k);const lines=doc.splitTextToSize(sh.text,S.w-M*2-(sh.adult?130*k:0));doc.text(lines,M,M+110*k);let top=M+110*k+lines.length*50*k;
     if(sh.adult){doc.addImage(P.hand,"PNG",S.w-M-90*k,M,90*k,90*k);font(false);doc.setFontSize(14*k);doc.text("An adult does this step",S.w-M,M+104*k,{align:"right"})}
@@ -117,7 +140,8 @@ async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!wi
     // the amounts and the items with no picture yet, in large type
     for(const w of sh.words){if(top>S.h-M-60*k)break;font(true);doc.setFontSize(30*k);const wl=doc.splitTextToSize(w.big,S.w-M*2);doc.text(wl,M,top+30*k);top+=wl.length*36*k+6*k}
     if(sh.words.length)top+=10*k;
-    let x0=M,lineH=0;for(const p of sh.pics){const w=150*k*p.w,h=w;if(x0+w>S.w-M){x0=M;top+=lineH+(p.big?44:30)*k;lineH=0}if(top+h>S.h-M)break;doc.addImage(p.img,demoFmt(p.img),x0,top,w,h);if(p.cap){font(!!p.big);doc.setFontSize((p.big?24:15)*k);doc.text(doc.splitTextToSize(p.cap,w+10*k),x0+w/2,top+h+(p.big?26:16)*k,{align:"center"})}x0+=w+14*k;lineH=Math.max(lineH,h)}}
+    let x0=M,lineH=0;for(const p of sh.pics){const w=150*k*p.w,h=w;if(x0+w>S.w-M){x0=M;top+=lineH+(p.big?44:30)*k;lineH=0}if(top+h>S.h-M)break;doc.addImage(p.img,demoFmt(p.img),x0,top,w,h);if(p.cap){font(!!p.big);doc.setFontSize((p.big?24:15)*k);doc.text(doc.splitTextToSize(p.cap,w+10*k),x0+w/2,top+h+(p.big?26:16)*k,{align:"center"})}x0+=w+14*k;lineH=Math.max(lineH,h)}
+    credit(sh.pics)}
   return doc.output("blob")}
 // the same set as a Word file, one page for each sheet
 async function demoWord(x,size){if(size==="poster")return demoPosterWord(x);const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size],k=S.w/612;
@@ -127,5 +151,5 @@ async function demoWord(x,size){if(size==="poster")return demoPosterWord(x);cons
     ...P.overview.ings.map(it=>new D.Paragraph({children:[...(it.img?[img(it.img,44*k)]:[]),run("  "+it.text,15)]})),...(P.overview.tools.length?[new D.Paragraph({children:[run("Tools",18,true)]}),...P.overview.tools.map(it=>new D.Paragraph({children:[...(it.img?[img(it.img,44*k)]:[]),run("  "+it.text,15)]}))]:[])]}];
   for(const sh of P.sheets)sections.push({children:[new D.Paragraph({children:[run(String(sh.n),28,true),...(sh.adult?[run("     ",12),img(P.hand,70*k),run("  An adult does this step",13)]:[])]}),new D.Paragraph({spacing:{before:300,after:300},children:[run(sh.text,40,true)]}),
     ...sh.words.map(w=>new D.Paragraph({children:[run(w.big,32,true)]})),
-    new D.Paragraph({children:sh.pics.flatMap(p=>[img(p.img,120*k*p.w),run("  ",10)])}),...(sh.pics.some(p=>p.cap)?[new D.Paragraph({children:[run(sh.pics.map(p=>p.cap).filter(Boolean).join(",  "),20,true)]})]:[])]});
+    new D.Paragraph({children:sh.pics.flatMap(p=>[img(p.img,120*k*p.w),run("  ",10)])}),...(sh.pics.some(p=>p.cap)?[new D.Paragraph({children:[run(sh.pics.map(p=>p.cap).filter(Boolean).join(",  "),20,true)]})]:[]),...(demoCredits(sh.pics)?[new D.Paragraph({spacing:{before:240},children:[run(demoCredits(sh.pics),7)]})]:[])]});
   const docx=TREE_KIT.wordFile(D,{size,sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}

@@ -1281,7 +1281,7 @@ module.exports = function staffModule(o) {
   // who holds the Garden educator role. Until someone does, the director holds it, which the pages read as an empty list.
   const gardenEducators = () => S.ready ? staffNames().filter(n => profileOf(n).garden && !isFormerEducator(n)).sort() : [];
   // a recipe from the library as families read it, ingredients, then the steps, then the dairy free and gluten free versions
-  function recipeForFamily(id) { const x = LIB.item('staff/library/recipes/' + String(id).replace(/[^a-z0-9-]/g, '') + '.md'); if (!x || x.draft) return null;
+  function recipeForFamily(id) { const x = LIB.item('staff/library/recipes/' + String(id).replace(/[^a-z0-9-]/g, '') + '.md'); if (!x || x.draft || x.removed) return null;
     const L = k => ((x.parts.find(p => p.key.toLowerCase() === k.toLowerCase()) || {}).text || '').split('\n').map(l => (l.match(/^\s*[-*]\s+(.*)$/) || [])[1]).filter(Boolean);
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
