@@ -35,7 +35,7 @@ test('each part waits for its switch, and the public page holds only the museums
   assert.strictEqual((await fx.as(ann, '/api/staff/library', {})).body.places, null);
   await sw('show', true); assert.ok((await fx.as(ann, '/api/staff/library', {})).body.places, 'every educator once shown');
   await sw('family', true);
-  let c = (await data()).community; assert.ok(c.places && c.places.parts.length === 9); assert.strictEqual(c.plants, null, 'the plants wait for their own switch');
+  let c = (await data()).community; assert.ok(c.places && c.places.parts.length === 10); assert.strictEqual(c.plants, null, 'the plants wait for their own switch');
   await sw('plantsFamily', true);
   c = (await data()).community;
   assert.deepStrictEqual(c.plants.plants.map(p => p.common), ['Calendula'], 'a planned plant stays with the staff');
@@ -47,7 +47,7 @@ test('each part waits for its switch, and the public page holds only the museums
   await sw('public', true);
   const r = await pub(); assert.strictEqual(r.status, 200);
   assert.deepStrictEqual(Object.keys(r.body).sort(), ['parks', 'places', 'plants']);
-  assert.doesNotMatch(JSON.stringify(r.body), /\bPip\b|pip\.family|\bAnn\b|\bDee\b/, 'no child, family or educator');
+  assert.doesNotMatch(JSON.stringify(r.body).replace(/Photo by [^|]+\|/g, ''), /\bPip\b|pip\.family|\bAnn\b|\bDee\b/, 'no child, family or educator, beside a photographer\'s credit');
   // the plants wait for the Garden to be ready, wherever they show
   const g = (await fx.as(dee, '/api/staff/garden', {})).body; assert.ok(g.ready);
   await sw('family', false); await sw('plantsFamily', false);
@@ -66,7 +66,7 @@ test('a family opens the places under Learning and the plants under Our school, 
   assert.strictEqual(await p.evaluate(() => [...document.querySelectorAll('#main details')].some(d => d.open)), false, 'every part starts folded');
   await p.click('summary:has-text("Places to explore")');
   // the parks come first, each with a question to wonder about, then the museums and cultural places
-  assert.match(await p.innerText('#main'), /Parks[\s\S]*Museums and cultural places[\s\S]*60 of 60 parks/); assert.match(await p.innerText('#main'), /Santa Rosa[\s\S]*West County and Coast/);
+  assert.match(await p.innerText('#main'), /Parks[\s\S]*Museums and cultural places[\s\S]*61 of 61 parks/); assert.match(await p.innerText('#main'), /Santa Rosa[\s\S]*West County and Coast/);
   await p.click('[data-cmwhich="places"]'); await p.click('[data-cmarea="Napa County"]'); await p.click('[data-cmtag="Native"]');
   assert.match(await p.innerText('#main'), /1 of 198 places/); assert.match(await p.innerText('#main'), /Bothe-Napa Valley State Park/);
   await p.click('button[data-tab="school"]'); await p.click('summary:has-text("Plants on our site")'); await p.click('summary:has-text("Calendula")');

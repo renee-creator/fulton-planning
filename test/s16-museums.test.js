@@ -23,7 +23,10 @@ test('the list comes in once, and educators see it only once the director shows 
   // the one-time step runs once the records have loaded, so wait for it rather than a fixed time
   let d = null; for (let i = 0; i < 100 && !d; i++) { d = (await fx.as(dee, '/api/staff/library', {})).body.places; if (!d) await new Promise(r => setTimeout(r, 200)); }
   assert.ok(d, 'the director sees the list'); assert.strictEqual(d.shown, false);
-  assert.deepStrictEqual(lines(d.parts.map(p => p.text).join('\n')), lines(LIST.create), 'every place as written');
+  const NOW = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'once', 'museums2.json'), 'utf8')).changes[0].to;
+  for (let i = 0; i < 50 && !/About this list/.test(JSON.stringify(d.parts)); i++) { await new Promise(r => setTimeout(r, 200)); d = (await fx.as(dee, '/api/staff/library', {})).body.places; }
+  assert.deepStrictEqual(lines(d.parts.map(p => p.text).join('\n')), lines(NOW), 'every place as written, with the opening sections and photos');
+  assert.strictEqual(d.parts[0].key, 'About this list');
   assert.strictEqual((await fx.as(ann, '/api/staff/library', {})).body.places, null, 'an educator waits for the director');
   assert.strictEqual((await fx.as(ann, '/api/staff/library/places/show', { on: true })).status, 403);
   assert.strictEqual((await fx.as(dee, '/api/staff/library/places/show', { on: true })).body.places.shown, true);
@@ -35,8 +38,8 @@ test('the list comes in once, and educators see it only once the director shows 
   assert.strictEqual((await fx.as(dee, '/api/staff/page/save', { path: d.path, stamp: pg.stamp, title: pg.title, parts, note: 'A test place', keep: true })).status, 200);
   assert.strictEqual((await fx.as(ann, '/api/staff/page', { path: d.path })).status, 403, 'only the director edits it');
   const after = (await fx.as(dee, '/api/staff/library', {})).body.places;
-  assert.strictEqual(lines(after.parts.map(p => p.text).join('\n')).length, 199);
-  assert.strictEqual((await fx.as(dee, '/api/staff/page', { path: d.path })).body.history.length, 1);
+  assert.strictEqual(lines(after.parts.map(p => p.text).join('\n')).length, lines(NOW).length + 1);
+  assert.strictEqual((await fx.as(dee, '/api/staff/page', { path: d.path })).body.history.length, 2, 'the list before the opening sections and photos, then before the test place');
 });
 
 test('the page filters by area and tag, and prints one place as a card and the rest as lists', async t => {

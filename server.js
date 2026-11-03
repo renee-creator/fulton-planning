@@ -551,6 +551,9 @@ ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
 ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
 // the parks near us from the director's field guide, added once from once/parks.json
 ONCE.push(['parks', () => staff.once.edits('parks', recsEdit)]);
+// the museum list with its opening sections and photos, and the parks with every part of the guide and photos
+ONCE.push(['museums2', () => staff.once.edits('museums2', recsEdit)]);
+ONCE.push(['parks2', () => staff.once.edits('parks2', recsEdit)]);
 // the Idea bank's Help answers, and the Help answers and PD pages that named Documentation for the pages now under Plans,
 // Planning resources, from once/ideabank-words.json
 ONCE.push(['ideabankWords', () => staff.once.edits('ideabankWords', recsEdit)]);

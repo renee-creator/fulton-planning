@@ -1175,6 +1175,8 @@ module.exports = function staffModule(o) {
     s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'],
     freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
+    museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
+    parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
     parks: ['code:once/parks.json', 'Parks, trails and beaches across Sonoma County from the director\'s field guide, checked November 2, 2026'],
     s12ReadAlouds: ['staff/once/s12-read-alouds.json', 'Our own read-alouds and traditional tales in place of the Watch and Wonder books'],
     s12Review: ['staff/once/s12-review.json', 'Fixes from the review of TREE after Session 12'],
