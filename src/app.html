@@ -9567,13 +9567,6 @@ async function binLoad(fresh){
   binFeed.at=Date.now();binFeed.busy=false;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderBin();
 }
 
-// where the week stands for this class, the steps of a bin week in order
-function binStepsHtml(b,room){const held=binHeld(b,room);const ideas=binIdeas().filter(i=>held[i.id]);
-  const q=ideas.filter(i=>binKind(i)==="question").length,p=ideas.filter(i=>binKind(i)==="prep").length,kept=binMoments(room,b.id).length;
-  const coming=b.date>=iso(new Date());const step=(done,t,s)=>`<li style="margin:4px 0"><b>${done===null?"Then.":done?"Done.":"Next."}</b> ${t}${s?` <span class="cnt">${s}</span>`:""}</li>`;
-  const steps=[step(true,"See what is coming in the bin"),step(q>0,"Choose a question or two to hold",q?q+" chosen":"None chosen yet"),step(p>0,"Choose a way to prepare it",p?p+" chosen":"None chosen yet"),
-    step(null,"Print the bin sheet for the table",q||p?"Ready to print with what you chose":"Once something is chosen"),step(kept>0,"Keep what the children noticed",kept?kept+" kept":coming?"After the bin is opened":"Nothing kept yet")];
-  return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${esc(room)} class this week</h3></div><ol style="margin:4px 0 0;padding-left:20px;list-style:none">${steps.join("")}</ol></section>`}
 function renderBin(){
   const b=binCurrent(),room=binRoomNow(),list=binAll();
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
@@ -9588,7 +9581,6 @@ function renderBin(){
   const days=b.date?parseIso(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
   const keys=new Set((b.items||[]).map(it=>binKey(it.name)));
   const depth=list.filter(x=>x.date<b.date).length;
-  h+=binStepsHtml(b,room);
   h+=`<section class="card"><div class="secthead"><div><h3 style="font-size:19px;margin:0">In our bin, ${esc(days)}</h3>
       <div class="cnt">${b.source==="hand"?"Added by hand":"As FEED listed it"}${b.date>=iso(new Date())?". FEED may still swap an item on packing day.":""}</div></div>
       <div class="actions">${older?`<button class="linkbtn" data-binweek="${esc(older.id)}">‹ ${esc(fmtDate(older.date).replace(/, \d{4}$/,""))}</button>`:""}${newer?`<button class="linkbtn" data-binweek="${esc(newer.id)}">${esc(fmtDate(newer.date).replace(/, \d{4}$/,""))} ›</button>`:""}</div></div>

@@ -4725,7 +4725,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7f09c83133","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=f39937c811","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4738,7 +4738,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=7f09c83133","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=f39937c811","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="140844723bea";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="1e03bab82cb5";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9726,13 +9726,6 @@ async function binLoad(fresh){
   binFeed.at=Date.now();binFeed.busy=false;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderBin();
 }
 
-// where the week stands for this class, the steps of a bin week in order
-function binStepsHtml(b,room){const held=binHeld(b,room);const ideas=binIdeas().filter(i=>held[i.id]);
-  const q=ideas.filter(i=>binKind(i)==="question").length,p=ideas.filter(i=>binKind(i)==="prep").length,kept=binMoments(room,b.id).length;
-  const coming=b.date>=iso(new Date());const step=(done,t,s)=>`<li style="margin:4px 0"><b>${done===null?"Then.":done?"Done.":"Next."}</b> ${t}${s?` <span class="cnt">${s}</span>`:""}</li>`;
-  const steps=[step(true,"See what is coming in the bin"),step(q>0,"Choose a question or two to hold",q?q+" chosen":"None chosen yet"),step(p>0,"Choose a way to prepare it",p?p+" chosen":"None chosen yet"),
-    step(null,"Print the bin sheet for the table",q||p?"Ready to print with what you chose":"Once something is chosen"),step(kept>0,"Keep what the children noticed",kept?kept+" kept":coming?"After the bin is opened":"Nothing kept yet")];
-  return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${esc(room)} class this week</h3></div><ol style="margin:4px 0 0;padding-left:20px;list-style:none">${steps.join("")}</ol></section>`}
 function renderBin(){
   const b=binCurrent(),room=binRoomNow(),list=binAll();
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
@@ -9747,7 +9740,6 @@ function renderBin(){
   const days=b.date?parseIso(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
   const keys=new Set((b.items||[]).map(it=>binKey(it.name)));
   const depth=list.filter(x=>x.date<b.date).length;
-  h+=binStepsHtml(b,room);
   h+=`<section class="card"><div class="secthead"><div><h3 style="font-size:19px;margin:0">In our bin, ${esc(days)}</h3>
       <div class="cnt">${b.source==="hand"?"Added by hand":"As FEED listed it"}${b.date>=iso(new Date())?". FEED may still swap an item on packing day.":""}</div></div>
       <div class="actions">${older?`<button class="linkbtn" data-binweek="${esc(older.id)}">‹ ${esc(fmtDate(older.date).replace(/, \d{4}$/,""))}</button>`:""}${newer?`<button class="linkbtn" data-binweek="${esc(newer.id)}">${esc(fmtDate(newer.date).replace(/, \d{4}$/,""))} ›</button>`:""}</div></div>
@@ -15310,7 +15302,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7f09c83133","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=f39937c811","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

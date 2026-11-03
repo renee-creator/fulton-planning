@@ -42,7 +42,7 @@ if(!document.getElementById("staffcss")){const c=document.createElement("style")
 .strow{display:grid;gap:6px;border-top:1px solid var(--line);padding:12px 0}.strow:first-of-type{border-top:0}
 .strow .sttop{display:flex;justify-content:space-between;gap:8px 14px;flex-wrap:wrap;align-items:baseline}
 .stfiles{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
-.stmd h3{font-size:16px;margin:14px 0 6px}.stmd h4{font-size:14.5px;margin:12px 0 4px}.stmd p{margin:0 0 9px;line-height:1.55}.stmd ul,.stmd ol{margin:0 0 10px;padding-left:22px}.stmd li{margin:3px 0;line-height:1.5}
+.stmd{max-width:72ch}.stmd h3{font-size:16.5px;margin:22px 0 8px}.stmd h4{font-size:15px;margin:18px 0 6px}.stmd p{margin:0 0 14px;line-height:1.7}.stmd ul,.stmd ol{margin:0 0 14px;padding-left:22px}.stmd li{margin:6px 0;line-height:1.6}
 .stmd table{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 12px}.stmd td,.stmd th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
 .stmd .tw{max-width:100%;overflow-x:auto}
 .stseq{display:grid;gap:8px}.stseq>div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}.stseq>div.now{border-color:var(--moss);box-shadow:0 0 0 1px var(--moss)}

@@ -40,10 +40,12 @@ test('a Learning together piece counts a half hour once and the wonderings stay 
   await p.addInitScript(([k]) => { localStorage.setItem('fam-token', k); }, [fam]);
   await p.goto(`http://localhost:${fx.web}/family.html?server=${fx.api}`); await p.waitForSelector('button[data-tab="learn"]', { timeout: 10000 }); await p.click('button[data-tab="learn"]');
   await p.click('summary:has-text("Big Feelings at Home")');
-  await p.fill('[data-wq="together-feelings|0"]', 'A quiet corner and a hug'); await p.selectOption('#lk-learn-together-feelings', 'pip'); await p.click('[data-learndone="together-feelings"]');
-  await p.waitForSelector('text=Our journal');
-  const txt = await p.innerText('#main'); assert.match(txt, /Our journal[\s\S]*1 entry, on this device only/);
-  assert.ok(sent.every(s => !/quiet corner/.test(s)), 'the wonderings never leave the device');
+  // the questions are there to ponder, with nothing to fill in
+  let txt = await p.innerText('#main'); assert.match(txt, /Wondering together[\s\S]*Questions to ponder[\s\S]*What helps your child feel steady\?/);
+  assert.strictEqual(await p.locator('[data-learn="together-feelings"] textarea').count(), 0);
+  await p.selectOption('#lk-learn-together-feelings', 'pip'); await p.click('[data-learndone="together-feelings"]');
+  for (let i = 0; i < 50 && (await data()).children[0].hours !== 0.5; i++) await new Promise(r => setTimeout(r, 200));
+  txt = await p.innerText('#main'); assert.doesNotMatch(txt, /Our journal/);
   assert.deepStrictEqual((await data()).children.map(k => k.hours), [0.5, 0.5]);
   assert.doesNotMatch(await p.innerText('body'), /[—–]|\bteacher|\bClaude\b/);
   assert.deepStrictEqual(errors, []);

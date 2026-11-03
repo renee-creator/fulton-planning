@@ -1,5 +1,5 @@
 'use strict';
-// The Weekly bin page shows where the class's week stands, names our bin and the kitchen's produce apart, folds the farms
+// The Weekly bin page names our bin and the kitchen's produce apart, folds the farms
 // into Our farms, and starts a question from a food new in the bin this year. Made-up names only.
 const test = require('node:test');
 const assert = require('node:assert');
@@ -17,7 +17,7 @@ test('the weekly bin page, its steps, its two lists, our farms and wondering fro
     binFeed.at = Date.now(); binWeek = day(1); binRoom = 'West'; goView('bin'); await new Promise(r => setTimeout(r, 800));
     return document.getElementById('main').innerText;
   });
-  assert.match(txt, /West class this week[\s\S]*Done\. See what is coming in the bin[\s\S]*Next\. Choose a question or two to hold[\s\S]*Then\. Print the bin sheet/);
+  assert.doesNotMatch(txt, /class this week|Done\. See what/);
   assert.match(txt, /In our bin, /);
   assert.match(txt, /New in the bin this year[\s\S]*Wonder about Fennel/); assert.doesNotMatch(txt, /Wonder about Carrots/);
   await s.p.click('[data-binact="wonder"]');
