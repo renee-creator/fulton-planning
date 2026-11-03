@@ -17,6 +17,9 @@ test('a ticked garden task leaves Today, and all done says so', async t => {
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 390); t.after(() => s.close());
   await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('text=In the garden today', { timeout: 15000 });
   await s.p.waitForSelector('text=2 to do');
+  // the card folds to one line, and opens to its tasks, and it stays open the next time
+  assert.strictEqual(await s.p.$eval('details.gtoday', d => d.open), false);
+  await s.p.click('details.gtoday > summary');
   await s.p.click('#main .gtask:has-text("Turn the compost") button.gdone');
   await s.p.waitForSelector('text=1 to do', { timeout: 15000 });
   assert.doesNotMatch(await s.p.innerText('#main'), /Turn the compost/);

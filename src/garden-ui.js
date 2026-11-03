@@ -86,8 +86,11 @@ function gdnTaskForm(ek,t){const plan=t.kind==="month"||t.kind==="repeat",beds=(
 function gardenTodayHtml(){if(isKitchenUser())return "";if(gdn===null)loadGarden();if(!gdnOk())return "";// a task ticked done or passed leaves Today, and stays on the Garden page to undo
   const all=gdn.today||[],list=all.filter(t=>!t.done);if(!all.length)return "";
   const left=list.length;
-  return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">In the garden today</h3><button class="linkbtn" data-tview="garden">Garden</button></div><div class="cnt">${left?left+" to do":"All done"}${!gdn.ready?". A draft, only you see it":""}</div>
-    ${list.length?`<div class="gtasks">${list.slice(0,8).map(t=>gdnTaskRow(t,iso(new Date()))).join("")}</div>`:""}</section>`}
+  // it folds to one line, and stays open or closed the way it was left in this browser
+  let open=false;try{open=localStorage.getItem("tree.gtodayopen")==="1"}catch(e){}
+  return `<details class="card gtoday" style="margin-top:14px" ${open?"open":""}><summary style="cursor:pointer"><h3 style="font-size:17px;display:inline;margin:0">In the garden today</h3> <span class="cnt">${left?left+" to do":"All done"}${!gdn.ready?". A draft, only you see it":""}</span></summary>
+    ${list.length?`<div class="gtasks">${list.map(t=>gdnTaskRow(t,iso(new Date()))).join("")}</div>`:""}<div class="actions" style="margin-top:6px"><button class="linkbtn" data-tview="garden">Open the Garden</button></div></details>`}
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("gtoday")){try{localStorage.setItem("tree.gtodayopen",d.open?"1":"0")}catch(er){}}},true);
 function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){loadGarden();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Garden</div></section>`;return}
   if(!gdnOk()){m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2></div><section class="card"><div class="empty">The Garden opens once the director marks it ready.</div></section>`;return}
   const g=gdn,dir=isDirector()&&!VIEW_AS,kit=isKitchenUser(),day=iso(new Date()),mm=day.slice(5,7),room=myRoom();
@@ -307,8 +310,8 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
   if((gdn.animals||[]).includes(x)){const c=x.card&&typeof x.card==="object"?x.card:{know:x.card||""};
     return {display:true,type:"report",acc:"story",title:c.title||x.name,meta:[],blocks:[...photo,...(c.know?[dText("",c.know)]:[]),...(c.wonder?[dText("",c.wonder)]:[]),...(c.family?[dText("",c.family)]:[]),
       ...(x.vocab||[]).length?[dList("Words",x.vocab)]:[],...(x.health?[dText("Health first",x.health)]:[]),...(c.rule?[Object.assign(dText("",c.rule),{strong:true})]:[]),...credit]}}
-  if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
-  return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...((x.wonder||[])[0]?[dText("",x.wonder[0])]:[]),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
+  if((gdn.plants||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.common,meta:[x.botanical||""].filter(Boolean),blocks:[...photo,dText("",(x.words||{}).child||x.opens||""),...(x.wonder||[]).filter(Boolean).map(w=>dText("",w)),dText("",x.eat==="food"?"Food":x.eat==="partly"?"Partly edible. "+(x.taste||"An adult names the part to taste."):"Look, don't eat"),...credit]};
+  return {display:true,type:"report",acc:"story",title:x.name,meta:[x.scientific||""].filter(Boolean),blocks:[...photo,dText("",x.sign&&typeof x.sign==="object"?x.sign.description||x.know||"":x.sign||x.know||""),...(x.wonder||[]).filter(Boolean).map(w=>dText("",w)),...(x.tracks?[dText("Tracks",x.tracks)]:[]),...(x.scat?[dText("Scat",x.scat)]:[]),...credit]}}
 /* A field guide card is a grid of photos, two across, each tile the entry's own Garden photo, the same one its single card
    prints, with its name beneath. An entry with no photo yet has a soft tile with its name in it. Six fit on a page, and more
    go on to a page of their own, its title marked continued. */
@@ -342,8 +345,15 @@ window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=g
 
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const want=id?new Set(String(id).split(",")):null;const ps=(gdn.plants||[]).filter(p=>!want||want.has(p.id));
-  if(kind==="children")return ps.map(p=>asCard({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(gdnPhotoOf(p.id)?[{t:"photo",key:"gp-"+p.id,src:gdnPhotoOf(p.id),maxH:300}]:[]),dText("",(p.words||{}).child||""),dText("",[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".")]},{sub:p.botanical||""}));
-  return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks:ps.map(p=>dText(`${p.common}, ${p.botanical||""}`,gdnAdultLine(p)))}]}
+  // each plant's own photo, ours once there is one and the stand-in with its credit until then
+  const ph=p=>{const s=gdnPhotoSrc(p);return s?{photo:{t:"photo",key:s.key,src:s.src,maxH:300},credit:s.credit||""}:{photo:null,credit:""}};
+  const eatLine=p=>[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".";
+  if(kind==="children")return ps.map(p=>{const x=ph(p);return asCard({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(x.photo?[x.photo]:[]),dText("",(p.words||{}).child||""),dText("",eatLine(p)),...(x.credit?[{t:"small",label:"",lines:[x.credit]}]:[])]},{sub:p.botanical||""})});
+  // the full plant pages, every plant with its photo, its card words, everything it holds and its wonderings, nothing cut
+  const blocks=[];for(const p of ps){const x=ph(p);blocks.push(dSub(p.common+(p.botanical?", "+p.botanical:"")));if(x.photo)blocks.push(Object.assign({},x.photo,{maxH:200}));if(x.credit)blocks.push(dText("",x.credit));
+    if(has((p.words||{}).child))blocks.push(dText("Plant card",(p.words||{}).child));blocks.push(dText("Full plant page",gdnAdultLine(p)));blocks.push(dText("Food or look",eatLine(p)+(p.taste?" "+p.taste:"")));
+    if(p.opens)blocks.push(dText("",p.opens));if((p.wonder||[]).length)blocks.push(dList("Wonderings",p.wonder))}
+  return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks}]}
 // one clean sheet for a season, for the staff room or a wall
 function gdnSeasonDoc(S){const D=gdnSeason(S);const blocks=[];if(D.lead)blocks.push(dText("",D.lead));
   for(const [l,items] of D.sections){blocks.push(dList(l,items));if(l==="What we preserve"&&gdnFoodRule())blocks.push(dText("Our food rule",gdnFoodRule()))}

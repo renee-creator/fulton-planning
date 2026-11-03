@@ -88,7 +88,7 @@ function ibListHtml(){const st=ibSt,shown=ibShown();const plan=st.fromPlan&&plan
     <details><summary class="linkbtn">Filter by setting${st.levels.length?" ("+st.levels.length+")":""}</summary>${chipRow(ib.levels||[],st.levels,"levels")}</details>
     ${st.needs.length||st.sups.length||st.levels.length?`<div class="actions"><button class="linkbtn" data-ibclearf="1">Clear the filters</button></div>`:""}
     <div class="actions" style="justify-content:space-between"><span class="cnt">${shown.length} ${shown.length===1?"card":"cards"}</span><button class="btn small ghost" data-ibselall="1">Select all shown</button></div>
-    ${ibPick.size?`<div class="ibset"><b>${ibPick.size} selected for printing</b><div class="actions">${printBtns("ibcards",esc(st.side+"|"+[...ibPick].join(",")),"Print selected",true)}<button class="linkbtn" data-ibclearsel="1">Clear</button></div><div class="cnt">${st.side==="home"?"The At home side prints":"The educator side prints"}, one card to a page.</div></div>`:""}
+    ${ibPick.size?`<div class="ibset"><b>${ibPick.size} selected for printing</b><div class="actions">${printBtns("ibcards",esc(st.side+"|"+[...ibPick].join(",")),"Print selected",true)}${printBtns("ibcards",esc(st.side+"-full|"+[...ibPick].join(",")),"Print the whole cards")}<button class="linkbtn" data-ibclearsel="1">Clear</button></div><div class="cnt">${st.side==="home"?"The At home side prints":"The educator side prints"}, one card to a page.</div></div>`:""}
     <div style="margin-top:8px">${shown.map(row).join("")||`<div class="empty">No card fits. Try other words or clear the filters.</div>`}</div></section>`}
 
 /* ---------- a card ---------- */
@@ -137,7 +137,7 @@ function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=
     <p>${esc(home?"For families to try at home.":c.summary||"")}</p>
     ${!home&&c.setting&&c.setting.level?`<div class="ibset"><b>${esc(c.setting.level)}</b>${has(c.setting.why)?` <span>${esc(c.setting.why)}</span>`:""}</div>`:""}
     ${c.home?`<div class="seg" role="group" aria-label="Card version"><button data-ibside="edu" aria-pressed="${!home}">For educators</button><button data-ibside="home" aria-pressed="${home}">At home</button></div>`:""}
-    <div class="actions">${printBtns("ibcards",esc((home?"home":"edu")+"|"+c.id),"Print this card",true)}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
+    <div class="actions">${printBtns("ibcards",esc((home?"home":"edu")+"|"+c.id),"Print this card",true)}${printBtns("ibcards",esc((home?"home":"edu")+"-full|"+c.id),"Print the whole card")}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
       ${dir&&c.home?`<button class="btn small ghost" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families":"Highlight for families"}</button><button class="btn small ghost" data-ibshare="${esc(c.id)}">Share</button>`:""}
       ${dir?pageEditBtn("staff/library/ideabank/cards.json","Edit",c.id):""}</div>
     ${(home?c.home.sections:c.sections||[]).map(ibSectionHtml).join("")}
@@ -272,13 +272,25 @@ function ibDoc(c,side){const home=side==="home"&&!!c.home;const S=home?c.home.se
   const pick=home?["Ways to try it","Your child's role","Wonder together","What your child is learning"].map(by).filter(Boolean)
     :[S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it works on hard days"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
   const sub=home?"To try at home":[IB_KIND[c.type],c.setting&&c.setting.level].filter(has).join(", ");const title=home?c.home.title:c.title;
-  const make=n=>pick.map(s=>s.style==="text"?dText(s.h,s.text):dList(s.h,(s.items||[]).slice(0,n)));
-  for(const n of [6,4,3]){const card=asCard({display:true,type:"report",acc:"story",title,meta:[],blocks:make(n)},{sub});if(card&&card.centered){card.over=c.group;if(volFit(card))return card}}
-  return {display:true,type:"report",acc:"story",title,meta:[sub],blocks:make(6)}}
-async function ibPrintDocs(spec){if(!ib)await ibLoad();const i=String(spec||"").indexOf("|"),side=spec.slice(0,i),ids=spec.slice(i+1).split(",").filter(Boolean);
+  // every item of the parts it shows, and a card with more than fits continues on a second page
+  const blocks=pick.map(s=>s.style==="text"?dText(s.h,s.text):dList(s.h,(s.items||[]).filter(Boolean)));
+  const card=asCard({display:true,type:"report",acc:"story",title,meta:[],blocks},{sub});if(card&&card.centered){card.over=c.group;return card}
+  return {display:true,type:"report",acc:"story",title,meta:[sub],blocks}}
+// the whole card, every part of that side in order with every item, laid out as a readable sheet over as many pages as
+// it needs
+function ibFullDoc(c,side){const home=side==="home"&&!!c.home;const S=(home?c.home.sections:c.sections)||[];
+  const title=home?c.home.title:c.title;const sub=home?"To try at home":[IB_KIND[c.type],c.group,c.setting&&c.setting.level].filter(has).join(", ");
+  const blocks=[];if(!home&&has(c.summary))blocks.push(dText("",c.summary));if(home)blocks.push(dText("","For families to try at home."));
+  if(!home&&c.setting&&has(c.setting.level))blocks.push(dText(c.setting.level,c.setting.why||""));
+  for(const s of S){if(s.style==="text"){if(has(s.text))blocks.push(dText(s.h,s.text))}else{const it=(s.items||[]).filter(Boolean);if(it.length)blocks.push(dList(s.h,s.style==="numbered"?it.map((t,i)=>(i+1)+". "+t):it))}}
+  if(!home){if((c.feeds||[]).length)blocks.push(dText("Feeds",c.feeds.join(", ")));if((c.supports||[]).length)blocks.push(dText("Supports",c.supports.join(", ")));
+    if(has(c.seeks))blocks.push(dText("",c.seeks));if(has(c.avoids))blocks.push(dText("",c.avoids));if((c.connected||[]).length)blocks.push(dList("Connected to",c.connected))}
+  return {display:true,type:"report",acc:"story",title,meta:[sub].filter(has),blocks}}
+async function ibPrintDocs(spec){if(!ib)await ibLoad();const i=String(spec||"").indexOf("|"),side0=spec.slice(0,i),ids=spec.slice(i+1).split(",").filter(Boolean);
+  const full=/-full$/.test(side0),side=side0.replace(/-full$/,"");
   if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});try{await loadPrintFonts()}catch(e){}
-  return ids.map(ibCard).filter(Boolean).map(c=>ibDoc(c,side))}
-const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const one=ids.length===1&&ibCard(ids[0]);return one?(spec.startsWith("home|")&&one.home?one.home.title:one.title+" Idea bank card"):"Idea bank cards"};
+  return ids.map(ibCard).filter(Boolean).map(c=>full?ibFullDoc(c,side):ibDoc(c,side))}
+const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const one=ids.length===1&&ibCard(ids[0]);const full=/^[a-z]+-full\|/.test(spec);return one?(/^home/.test(spec)&&one.home?one.home.title:one.title+" Idea bank card")+(full?", whole card":""):"Idea bank cards"+(full?", whole cards":"")};
 
 /* ---------- a team inquiry ----------
    What the class tried before the inquiry opened, when it came from What are you seeing?, then three hypothesis

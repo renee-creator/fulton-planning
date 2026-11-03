@@ -5342,9 +5342,13 @@ const recPart=(x,k)=>((x.parts||[]).find(p=>p.key.toLowerCase()===k.toLowerCase(
 const recKindOf=x=>/^sensory$/i.test((x.meta||{}).kind||"")?"sensory":"food";
 const recCanEdit=()=>(isDirector()||isKitchenUser())&&!VIEW_AS;
 const SENSORY_NOTE="Sensory recipes use pantry staples only, such as flour, salt, cornstarch and oil, never fresh food or produce. We color with garden plants and use no glitter.";
+// a library page's own photo, from its opening comment, photo: <image> | <credit> | <its page>
+function libPhoto(x){const v=String(((x&&x.meta)||{}).photo||"");if(!v)return null;const [src,credit,link]=v.split("|").map(s=>s.trim());return /^https:\/\//.test(src||"")?{src,credit:credit||"",link:/^https:\/\//.test(link||"")?link:"",key:"lp-"+x.id}:null}
+function libPhotoHtml(x){const p=libPhoto(x);if(!p)return "";return `<img src="${esc(p.src)}" alt="${esc(x.title)}" loading="lazy" style="width:100%;max-width:420px;border-radius:12px;display:block;margin:8px 0 4px">${p.credit?`<div class="cnt" style="margin-bottom:8px">${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.credit)}</a>`:esc(p.credit)}</div>`:""}`}
+const libPhotoBlocks=x=>{const p=libPhoto(x);return p?[{t:"photo",key:p.key,src:p.src,maxH:260},...(p.credit?[dText("",p.credit)]:[])]:[]};
 function recipeCard(x){const parts=(x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key));const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
   return `<details class="strow" data-recrow="${esc(x.id)}" ${recOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${esc(x.title)}</b> <span class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</span>${x.draft?` <span class="pill" style="pointer-events:none">Draft</span>`:""}${recPart(x,"Dairy free")?` <span class="gtag food">Dairy free version</span>`:""}${recPart(x,"Gluten free")?` <span class="gtag food">Gluten free version</span>`:""}</summary>
-    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.meta||{}).allergens?`<div class="gsafe"><b>Contains ${esc(x.meta.allergens)}.</b> Check each child's food notes first.</div>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
+    ${libPhotoHtml(x)}${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.meta||{}).allergens?`<div class="gsafe"><b>Contains ${esc(x.meta.allergens)}.</b> Check each child's food notes first.</div>`:""}${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
     ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
     ${parts.map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
     ${recPhotoFor===x.id?recPhotoPick(x):""}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}${recKindOf(x)==="food"?" "+pageEditBtn("staff/wording/food-rule.md","Edit the food rule"):""}</div>
@@ -5528,7 +5532,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-recp
   try{progress("Checking the photo for faces");const blob=await (await fetch(window.FP_ORIGINAL_URL(id))).blob();if(!(await gdnFaceFree(blob))){toast("A face may show in this photo, so it is not used. Choose another.");return}
     libData=await window.FP_API("/api/staff/library/photo",{path,step,photo:id});recPhotoFor="";toast("The photo stands on step "+step+".");renderMain()}catch(er){toast(er&&er.message||"The photo could not be checked.")}});
 // a recipe as a page, PDF and Word
-function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";const blocks=[];if(x.lead)blocks.push(dText("",x.lead));
+function recipeDocFor(x){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";const blocks=[...libPhotoBlocks(x)];if(x.lead)blocks.push(dText("",x.lead));
   for(const k of ["Ingredients","Tools"])if(recPart(x,k))blocks.push(dList(k,libLines(recPart(x,k))));
   if(recPart(x,"Steps"))blocks.push(dList("Steps",libLines(recPart(x,"Steps")),true));
   for(const p of (x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key)))blocks.push(libLines(p.text).length?dList(p.key,libLines(p.text)):dText(p.key,p.text));
@@ -5814,7 +5818,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-attopen],[
   if(d.attrm!=null){p.attached=(p.attached||[]).filter((_,i)=>i!==+d.attrm);if(!p.attached.length)delete p.attached;persist(p);renderMain()}});
 document.addEventListener("input",e=>{if(e.target.id!=="att-q")return;attachQ=e.target.value;const at=e.target.selectionStart;renderMain();const q=$("#att-q");if(q){q.focus();try{q.setSelectionRange(at,at)}catch(er){}}});
 // a food exploration as a page to print, its wonderings and steps in our words
-function explDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["Food exploration"],blocks:[...(x.lead?[dText("",x.lead)]:[]),...(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>{const ls=libLines(p.text);return ls.length?dList(p.key,ls):dText(p.key,String(p.text).replace(/[#*]/g,""))}),dText("","We only taste what an adult has named edible. We are nut free.")]}}
+function explDoc(x){return {display:true,type:"report",acc:"story",title:x.title,meta:["Food exploration"],blocks:[...libPhotoBlocks(x),...(x.lead?[dText("",x.lead)]:[]),...(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>{const ls=libLines(p.text);return ls.length?dList(p.key,ls):dText(p.key,String(p.text).replace(/[#*]/g,""))}),dText("","We only taste what an adult has named edible. We are nut free.")]}}
 // what is attached, as pages printed after the plan. A © song prints its words once the director has added them.
 async function attachDocs(p){if(!libData)await loadLibrary();if((p.attached||[]).some(a=>a.kind==="idea"||a.kind==="guide")&&!ib)await ibLoad();const docs=[],recipes=[];
   for(const a of p.attached||[]){
@@ -5843,7 +5847,7 @@ function libItemOf(kind,id){if(kind==="garden")return typeof gdnEntry==="functio
 function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div class="empty">${!libData||((kind==="idea"||kind==="guide")&&!ib)?`<span class="spin"></span> Opening it`:"It is no longer in our libraries."}</div>`;
   const parts=(list,skip)=>(list||[]).filter(p=>!skip.test(p.key)&&String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("");
   if(kind==="recipe"){const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
-    return `<div class="actions" style="flex-wrap:wrap">${printBtns("recdemo",esc(x.id),"Demonstration sheets",true)}${printBtns("recipe",esc(x.id),"Recipe")}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</div>${x.lead?`<p>${esc(x.lead)}</p>`:""}
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("recdemo",esc(x.id),"Demonstration sheets",true)}${printBtns("recipe",esc(x.id),"Recipe")}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([(x.meta||{}).source||"",(x.meta||{}).made?"Made in the "+String(x.meta.made).toLowerCase():""].filter(Boolean).join(" · "))}</div>${libPhotoHtml(x)}${x.lead?`<p>${esc(x.lead)}</p>`:""}
       ${recPart(x,"Ingredients")?`<div class="lbl">Ingredients</div>${guideMd(recPart(x,"Ingredients"))}`:""}${recPart(x,"Tools")?`<div class="lbl">Tools</div>${guideMd(recPart(x,"Tools"))}`:""}
       ${recPart(x,"Steps")?`<div class="lbl">Steps</div><ol style="margin:4px 0;padding-left:20px">${libLines(recPart(x,"Steps")).map(l=>`<li>${esc(l)}</li>`).join("")}</ol>`:""}
       ${parts(x.parts,/^(ingredients|tools|steps)$/i)}<div class="hint">${recKindOf(x)==="food"?(fr?"<b>Our food rule.</b> "+esc(fr)+" ":"")+"We are nut free.":esc(SENSORY_NOTE)}${recKindOf(x)==="food"?" "+pageEditBtn("staff/wording/food-rule.md","Edit the food rule"):""}</div>`}
@@ -5855,7 +5859,7 @@ function libSheetBody(kind,id){const x=libItemOf(kind,id);if(!x)return `<div cla
       ${t?`<details style="margin-top:8px"><summary class="linkbtn">The story</summary>${readPagesHtml(t)}</details>`:""}`}
   if(kind==="book"){const m=x.meta||{};return `<div class="actions" style="flex-wrap:wrap">${printBtns("bookcard",esc(x.id),"Card",true)}${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">Find the book</a>`:""}</div><h2>${esc(x.title)}</h2><div class="cnt">${esc([m.author,m.year].filter(Boolean).join(", "))}</div>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^vetting notes$/i)}`}
   if(kind==="exploration"){const rc=(x.meta||{}).recipe&&libRecipe(x.meta.recipe);
-    return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}${x.path?pageEditBtn(x.path,"Edit this exploration"):""}</div><h2>${esc(x.title)}</h2>${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
+    return `<div class="actions" style="flex-wrap:wrap">${printBtns("exploration",esc(x.id),"Food exploration",true)}${rc?`<button class="btn small ghost" data-libopen="${esc("recipe|"+rc.id)}">Its recipe, ${esc(rc.title)}</button>`:""}${x.path?pageEditBtn(x.path,"Edit this exploration"):""}</div><h2>${esc(x.title)}</h2>${libPhotoHtml(x)}${x.lead?`<p>${esc(x.lead)}</p>`:""}${parts(x.parts,/^$/)}<div class="hint">We only taste what an adult has named edible. We are nut free.</div>`}
   if(kind==="idea"||kind==="guide")return `<div class="actions" style="flex-wrap:wrap">${printBtns("ibcards",esc("edu|"+x.id),"Card",true)}<button class="btn small ghost" data-ibopen="${esc(x.id)}">Open in the Idea bank</button></div><h2>${esc(x.title)}</h2><div class="cnt">${esc((IB_KIND[x.type]||"")+", "+x.group)}</div><p>${esc(x.summary||"")}</p>${x.setting&&x.setting.level?`<div class="ibset"><b>${esc(x.setting.level)}</b> ${esc(x.setting.why||"")}</div>`:""}${(x.sections||[]).slice(0,3).map(ibSectionHtml).join("")}`;
   if(kind==="artist")return `<div class="actions" style="flex-wrap:wrap">${printBtns("artistcard",esc(x.id),"Card",true)}${x.links.map(([t2,u])=>`<a class="btn small ghost" href="${esc(u)}" target="_blank" rel="noopener">${esc(t2)}</a>`).join("")}</div><h2>${esc(x.name)}</h2>
     ${x.photo||x.picture?`<img src="${esc(artImgSrc(x))}" alt="${esc(x.name)}" style="max-width:100%;max-height:360px;object-fit:contain;border-radius:6px">`:artShownHtml(x)}
@@ -11739,7 +11743,7 @@ function threadDoc(t){
   {const ns=threadNotices(t).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0)),posts=ns.filter((n,i)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
     const ph=spread(posts,2);if(ph.length){blocks.push(dSub("Moments along the way"));ph.forEach(n=>{blocks.push(dPhoto(n,150,false));blocks.push(dText([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentBody(n)||n.noticed,220)))})}}
   if((t.languages||[]).length)blocks.push(dTags("Languages children are using",t.languages));
-  if((t.next||[]).length)blocks.push(dList("What we might offer next",t.next.slice(0,4)));
+  if((t.next||[]).length)blocks.push(dList("What we might offer next",t.next.filter(Boolean)));
   if(has(t.notes))blocks.push(dText("Team notes",t.notes));
   const meta=[["Class",t.classroom||"All classes"],["Seen",weeksSpan([...(t.weeks||[]),...threadLinkedPlans(t).map(p=>p.weekOf)])]];if(pr)meta.push(["Project",pr.name]);
   return {display:true,type:"report",acc:"smallgroup",title:t.name,meta,blocks};
@@ -12423,8 +12427,24 @@ function cFlow(doc,md,A){
   const fm=fontMapOf(md);if(!Object.keys(fm).length)return cFlow0(doc,md,A);
   CFONT=fm;try{const F=cFlow0(doc,md,A);F.pages.forEach(L=>L.ops.forEach(o=>{if(o.k&&fm[o.k])o.k=fm[o.k]}));return F}finally{CFONT={}}
 }
+// a card with more than fits keeps every word. It fills the first page with its photo and as many parts as fit, and the
+// rest continues on pages titled continued. A part too long for one page splits by its lines, or by its sentences.
+function cSplitBlock(b){const lines=Array.isArray(b.lines)&&b.lines.length>1?b.lines:null;
+  if(lines){const k=Math.ceil(lines.length/2);return [Object.assign({},b,{lines:lines.slice(0,k)}),Object.assign({},b,{lines:lines.slice(k),label:b.label?b.label+", continued":b.label})]}
+  const t=String(b.text||"");let parts=t.split("\n");if(parts.length<2)parts=t.match(/[^.!?]+[.!?]+["')]*\s*|[^.!?]+$/g)||[t];if(parts.length<2)return null;
+  const k=Math.ceil(parts.length/2),j=parts.length===t.split("\n").length?"\n":"";
+  return [Object.assign({},b,{text:parts.slice(0,k).join(j).trim()}),Object.assign({},b,{text:parts.slice(k).join(j).trim(),label:b.label?b.label+", continued":b.label})]}
+function cContinue(doc,md,A,L0){let rest=[...(md.blocks||[])];const sheets=[],pages=[];let first=true,guard=0;
+  while(rest.length&&guard++<60){const base=first?md:Object.assign({},md,{photos:[],title:(md.title||"")+", continued",sub:""});
+    let k=rest.length,T=null;for(;k>0;k--){T=cLayout(doc,Object.assign({},base,{blocks:rest.slice(0,k)}),A);if(!T.over&&!(T.s<.8))break}
+    if(k===0){const sp=cSplitBlock(rest[0]);if(sp){rest=[...sp,...rest.slice(1)];continue}
+      k=1;T=cLayout(doc,Object.assign({},base,{blocks:rest.slice(0,1)}),A)}
+    const sh=Object.assign({},base,{blocks:rest.slice(0,k)});sheets.push(sh);pages.push(T);rest=rest.slice(k);first=false}
+  if(!pages.length)return {sheets:[md],pages:[L0],over:L0.over};
+  return {sheets,pages,over:pages.some(p=>p.over)}}
 function cFlow0(doc,md,A){
-  const L=cLayout(doc,md,A);if(!md.flow||!L.over||!(md.photos||[]).length)return {sheets:[md],pages:[L],over:L.over};
+  const L=cLayout(doc,md,A);if(!L.over&&(md.flow||!(L.s<.8)))return {sheets:[md],pages:[L],over:false};
+  if(!md.flow||!(md.photos||[]).length)return cContinue(doc,md,A,L);
   const B=md.blocks||[];let k=B.length-1;
   for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=1)break}
   // a single long block is split by its lines, so the photo still has its words beneath it
