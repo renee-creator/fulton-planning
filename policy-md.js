@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const LINK = /^\[((?:\\.|[^\]\\])*)\]\(((?:https?:\/\/|mailto:)[^)\s]+)\)/;
+  const LINK = /^\[((?:\\.|[^\]\\])*)\]\(((?:https?:\/\/|mailto:|tree:)[^)\s]+)\)/;
   // a line of words as runs of text, each bold, italic, underlined or a link as it says
   function runs(s, base) {
     s = String(s || ''); base = base || {}; const out = []; let cur = '', b = !!base.b, i = !!base.i, u = !!base.u;
@@ -24,7 +24,9 @@
     }
     push(); return out;
   }
-  const runsHtml = rs => rs.map(r => { if (r.br) return '<br>'; let h = esc(r.text); if (r.u) h = '<u>' + h + '</u>'; if (r.i) h = '<i>' + h + '</i>'; if (r.b) h = '<b>' + h + '</b>';
+  // a link to a place in TREE, such as tree:fh/air-quality-protocol, opens there inside TREE, and reads as its words elsewhere
+  const runsHtml = (rs, o) => rs.map(r => { if (r.br) return '<br>'; let h = esc(r.text); if (r.u) h = '<u>' + h + '</u>'; if (r.i) h = '<i>' + h + '</i>'; if (r.b) h = '<b>' + h + '</b>';
+    if (r.link && /^tree:/.test(r.link)) return o && o.tree ? `<button class="linkbtn" data-treelink="${esc(r.link)}">${h}</button>` : h;
     return r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">${h}</a>` : h; }).join('');
   const plain = rs => rs.map(r => r.br ? '\n' : r.text).join('');
   const LI = /^(\s*)([-*+]|\d+\.)\s+(.*)$/;
@@ -64,13 +66,13 @@
     return out;
   }
   // the blocks as a page. pic(src, alt) gives a picture's tag, so each page fetches pictures its own way.
-  function html(text, pic) {
+  function html(text, pic, o) {
     let h = ''; const B = blocks(text); let q = false;
     for (const b of B) {
       if (!!b.quote !== q) { h += q ? '</blockquote>' : '<blockquote>'; q = !!b.quote; }
-      if (b.t === 'h') h += `<h${Math.min(5, b.level + 1)}>${runsHtml(b.runs)}</h${Math.min(5, b.level + 1)}>`;
+      if (b.t === 'h') h += `<h${Math.min(5, b.level + 1)}>${runsHtml(b.runs, o)}</h${Math.min(5, b.level + 1)}>`;
       else if (b.t === 'img') h += `<figure class="pmimg">${pic ? pic(b.src, b.alt) : `<span class="muted">${esc(b.alt || 'A picture')}</span>`}</figure>`;
-      else if (b.t === 'table') h += `<div class="tw"><table>${b.rows.map((r, k) => `<tr>${r.map(c => k === 0 ? `<th>${runsHtml(c)}</th>` : `<td>${runsHtml(c)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+      else if (b.t === 'table') h += `<div class="tw"><table>${b.rows.map((r, k) => `<tr>${r.map(c => k === 0 ? `<th>${runsHtml(c, o)}</th>` : `<td>${runsHtml(c, o)}</td>`).join('')}</tr>`).join('')}</table></div>`;
       else if (b.t === 'list') {
         let lv = -1; const open = [];
         for (const it of b.items) {
@@ -79,10 +81,10 @@
           if (lv === it.level && open[lv] !== (it.ordered ? 'ol' : 'ul')) { h += `</li></${open.pop()}>`; lv--; }
           if (lv === it.level) h += '</li>';
           while (lv < it.level) { const tag = it.ordered ? 'ol' : 'ul'; h += `<${tag}>`; open.push(tag); lv++; if (lv < it.level) h += '<li class="pmnest">'; }
-          h += `<li>${runsHtml(it.runs)}`;
+          h += `<li>${runsHtml(it.runs, o)}`;
         }
         while (open.length) h += `</li></${open.pop()}>`;
-      } else h += `<p>${runsHtml(b.runs)}</p>`;
+      } else h += `<p>${runsHtml(b.runs, o)}</p>`;
     }
     if (q) h += '</blockquote>';
     return `<div class="pmd">${h}</div>`;

@@ -252,6 +252,16 @@ table.grid2{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px
 .grid2 th,.grid2 td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .grid2 th{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
 .grid2 tr:last-child td{border-bottom:none}
+/* November 3, 2026. On a narrow phone a wide table reads as stacked cards, each row a card with each value under its
+   column's name. A wider screen keeps the table. */
+@media (max-width:520px){.tablewrap:has(> table.stackme){border:0;background:none;overflow:visible;border-radius:0}
+  table.grid2.stackme{min-width:0!important;display:block;table-layout:auto}table.stackme thead{display:none}table.stackme tbody{display:grid;gap:8px}
+  table.stackme tr{display:grid;gap:4px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--paper)}
+  table.stackme td{display:grid;grid-template-columns:minmax(6.5em,36%) minmax(0,1fr);gap:8px;padding:3px 0;border:0;align-items:baseline;min-width:0;overflow-wrap:anywhere}
+  table.stackme td::before{content:attr(data-label);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+  table.stackme td:first-child{grid-template-columns:minmax(0,1fr);font-size:15px}table.stackme td:first-child::before{display:none}table.stackme td:not([data-label]),table.stackme td[data-label=""]{grid-template-columns:minmax(0,1fr)}table.stackme td:not([data-label])::before,table.stackme td[data-label=""]::before{display:none}}
+/* a Print or download menu on a narrow phone opens in the page under its button, so it never runs past the screen */
+@media (max-width:520px){.pmenu[open]{display:block;flex-basis:100%}.pmenu-list{position:static;margin-top:6px;min-width:0}}
 /* slide design */
 .palrow{display:flex;flex-wrap:wrap;gap:6px}
 .palchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 10px 4px 6px;cursor:pointer;font-size:13px;color:var(--ink)}
@@ -550,8 +560,12 @@ body{margin:0}
   .fab svg{width:24px;height:24px}
   .prooftab{bottom:calc(76px + env(safe-area-inset-bottom,0px));left:14px;padding:10px 16px}
   .prooftab.up{bottom:calc(134px + env(safe-area-inset-bottom,0px))}
-  /* room under the last content, so the round button never covers it */
-  #main{padding-bottom:150px}
+  /* room under the last content, so the round button never covers it. The page around it adds no more room of its own,
+     so a page ends just below its last card (November 3, 2026). Proofread and The evidence stand higher, so a page with
+     them keeps more room. */
+  #main{padding-bottom:150px}.wrap{padding-bottom:0}
+  body:has(#tproof:not([hidden]):not(.tucked)) #main{padding-bottom:200px}
+  body:has(#evbtn:not([hidden])) #main{padding-bottom:250px}
   .ttop .who .savestate#conn{display:none}
   .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
   /* October 31, 2026. On a phone the floating buttons stand in one column at the right, the round plus lowest, then
@@ -562,6 +576,16 @@ body{margin:0}
   body:not(:has(.fab:not([hidden]):not(.away))) #evbtn{bottom:calc(130px + env(safe-area-inset-bottom,0px))!important}
   body:not(:has(.prooftab:not([hidden]):not(.tucked))) #evbtn{bottom:calc(138px + env(safe-area-inset-bottom,0px))!important}
   .toast,.sendask,.nextbar{z-index:150!important}
+  /* November 3, 2026. On an open plan the floating buttons stand in one row on a strip just above the bottom menu, The
+     evidence at the left, Proofread and the round plus at the right, so the plan's fields scroll clear of them and the
+     last field has room beneath it */
+  body.planopen::after{content:"";position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom,0px));height:58px;background:var(--paper);border-top:1px solid var(--line);z-index:29;pointer-events:none}
+  body.planopen .fab{bottom:calc(67px + env(safe-area-inset-bottom,0px));width:44px;height:44px}
+  body.planopen .prooftab,body.planopen .prooftab.up{right:68px;bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+  body.planopen:not(:has(.fab:not([hidden]):not(.away))) .prooftab{right:14px;bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+  body.planopen #evbtn,body.planopen:not(:has(.fab:not([hidden]):not(.away))) #evbtn,body.planopen:not(:has(.prooftab:not([hidden]):not(.tucked))) #evbtn{left:14px!important;right:auto!important;bottom:calc(68px + env(safe-area-inset-bottom,0px))!important}
+  body.planopen #main{padding-bottom:170px!important}
+  body.planopen.typing::after{display:none}body.planopen.typing #main{padding-bottom:24px!important}
   /* while typing, the bottom menu and the floating buttons step away, so the keyboard leaves room for the writing */
   body.typing .tabbar,body.typing .fab,body.typing .prooftab,body.typing #evbtn{display:none!important}
   body.typing #main{padding-bottom:24px}
@@ -657,6 +681,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   .subnav .subrow button.sub{white-space:nowrap;flex:none;padding:5px 12px;font-size:14px}
   .subnav .stgroups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:14px;width:100%}
   .subnav .stgroups button.sub{padding:9px 8px;font-size:14px;border-radius:11px;min-height:40px}
+  /* the Educators sections as one dropdown keep its label and arrow on one line */
+  .subnav details.tabdrop.stgroups{display:block;width:100%;border:0;border-radius:0;background:none;padding:0}.tabdrop>summary>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tabdrop>summary .cnt{white-space:nowrap}
   .subnav .stpages{margin-top:8px}
   /* header figures sit two to a row and smaller, so the page's content starts sooner */
   .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -734,6 +760,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .menutab td{padding:3px 4px;border-top:1px solid var(--line,#e4e2da)}.menutab input[type=text]{width:100%;min-width:140px}.menutab tr.closed td{opacity:.55}
 .gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0}.gstat{padding:10px 12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}.gstat b{display:block;font-size:19px}.gstat span{font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 .kitchen>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:32px}.kitchen>summary::-webkit-details-marker{display:none}
+/* a notice on Today folded to one closed line, its details and buttons inside (November 3, 2026) */
+.tfold>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:32px}.tfold>summary::-webkit-details-marker{display:none}.tfold>summary b::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.tfold[open]>summary b::before{transform:rotate(90deg)}.tfold>summary b{font-size:16px}
 .kitchen>summary h3{font-size:17px;margin:0}.kitchen>summary h3::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.kitchen[open]>summary h3::before{transform:rotate(90deg)}
 .klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}.knote.kset{color:var(--moss);font-weight:600}.kchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.kchips .chip-btn{font-size:12.5px;padding:4px 10px}
 /* on a touch screen a text link gets a taller area to tap, without moving anything around it */
@@ -746,7 +774,10 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kdish{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 10px;font-size:13px;cursor:pointer;text-align:left}.kdish .cnt{font-size:11px}.kly{display:grid;gap:4px;padding:6px 0;border-top:1px solid var(--line)}
 .nfmore>summary{cursor:pointer;padding:6px 0;font-weight:600;color:var(--moss)}.nfmore>*+*{margin-top:10px}
 .nfsave{position:sticky;bottom:8px;z-index:4;background:var(--paper);padding:8px 0 4px;margin-bottom:-4px}
-@media (max-width:760px){.nfsave{bottom:calc(64px + env(safe-area-inset-bottom,0px))}}
+/* November 3, 2026. On a phone Keep is a bar held at the bottom of the form, across its full width above the bottom
+   menu, and the children's names keep room beneath them, so the bar never sits on a name */
+@media (max-width:760px){.nfsave{bottom:calc(61px + env(safe-area-inset-bottom,0px));margin:0 -16px -14px;padding:10px 16px;border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r);box-shadow:0 -6px 14px rgba(34,51,42,.08)}
+  #nf-card #nf-kids{padding-bottom:56px}}
 .kdraftbar{background:var(--sun-soft);border:1px solid var(--marigold);border-radius:10px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin-bottom:10px}
 @media (max-width:1100px){.kwrap{grid-template-columns:1fr}.kaside{position:static}}
 @media (max-width:900px){.kweek{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
@@ -1157,7 +1188,7 @@ let MATERIALS={
   "Natural":["pinecones","seed pods","river stones","sticks","bark","leaves","shells","sand","soil","water","garden flowers"],
   "Loose parts":["wood rounds","cardboard tubes","spools","rings","corks","fabric scraps","baskets","small rolling objects"],
   "Building":["unit blocks","long wooden boards","planks","crates","connectors","string","tape"],
-  "Mark-making":["clipboards","paper","pencils","fine markers","charcoal","oil pastels","watercolor"],
+  "Mark-making":["clipboards","paper","pencils","charcoal","oil pastels","watercolor"],
   "Sculpture":["clay","wire","dough","recycled cardboard"],
   "Light":["light table","overhead projector","mirrors","colored acrylics","flashlights"],
   "Investigation":["magnifiers","measuring tapes","balance scale","timers","ramps","textured surfaces"],
@@ -1200,7 +1231,7 @@ const FORMS={
    starters:["One group is ","while another is ","Both are influencing "]},
   {k:"indoor",label:"Provocations and environmental changes, indoor",pdf:"Indoor",rows:5,min:15,materials:true,pair:"outdoor",
    hint:"What is being added, removed, adjusted, or restructured. Name specific materials with options for choice, and connect them to children's thinking.",
-   strong:"Expanded ramp area with long wooden boards, cardboard tubes, textured surfaces, and small rolling objects. Added clipboards, paper, and markers to support recording results. Adjusted space to allow multiple children to test simultaneously.",weak:"Set up ramp area",
+   strong:"Expanded ramp area with long wooden boards, cardboard tubes, textured surfaces, and small rolling objects. Added clipboards, paper and pencils to support recording results. Adjusted space to allow multiple children to test simultaneously.",weak:"Set up ramp area",
    starters:["Added ","Removed ","Adjusted ","Restructured ","to support children who are "]},
   {k:"outdoor",label:"Provocations and environmental changes, outdoor",pdf:"Outdoor",rows:5,min:12,materials:true,places:true,
    hint:"How learning extends across environments and continues the same investigations.",
@@ -1664,7 +1695,7 @@ function renderMain(){
   if(view==="walks"){renderWalks();return}
   if(view==="ideabank"){renderIdeaBank();return}
   // a materials guide's old address opens the Idea bank card it was folded into
-  if(view==="guide"){const id=IB_GUIDE.slug[guideSel];view="ideabank";LS.set("fps.view",view);if(id){ibSt.sel=id;ibSt.mode="card";ibSt.picked=true}renderNav();renderIdeaBank();return}
+  if(view==="guide"){const id=IB_GUIDE.slug[guideSel];view="ideabank";LS.set("fps.view",view);if(id){ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;ibSt.opened=true}renderNav();renderIdeaBank();return}
   if(view==="garden"){renderGarden();return}
   if(view==="recipes"){renderRecipes();return}
   if(view==="gatherings"){renderGatherings();return}
@@ -1709,10 +1740,12 @@ function renderMain(){
     <div class="head-row">
       <div><span class="tag ${p.type}">${F.short}</span><h2 style="margin-top:6px">${F.name}</h2></div>
       <div class="actions">
-        <button class="btn" id="dl">Download PDF</button>
-        <button class="btn ghost" id="dlw">Download Word</button>
-        <button class="btn ghost" id="carry">Carry forward to next week</button>
-        ${p.id!=="example"?`<button class="btn ghost" data-storyplan="${esc(p.id)}">Make a story</button>`:""}
+        <details class="pmenu planmore" data-keep="1"><summary class="btn small ghost">More</summary><div class="pmenu-list">
+        <button class="linkbtn" id="dl">Download PDF</button>
+        <button class="linkbtn" id="dlw">Download Word</button>
+        <button class="linkbtn" id="carry">Carry forward to next week</button>
+        ${p.id!=="example"?`<button class="linkbtn" data-storyplan="${esc(p.id)}">Make a story</button>`:""}
+        </div></details>
       </div>
     </div>
     <div id="carrymsg"></div>
@@ -2268,10 +2301,11 @@ function foldIntros(){const m=$("#main");if(!m)return;
     if(!long.length)continue;const d=document.createElement("details");d.className="pageabout";d.innerHTML="<summary>About this page</summary>";
     long[0].parentNode.insertBefore(d,long[0]);for(const el of long)d.appendChild(el)}}
 setInterval(()=>{if(view==="conferences")proofBtn()},1500);
-function proofBtn(){const b=$("#tproof");if(!b)return;const m=$("#main");
+function proofBtn(){try{document.body.classList.toggle("planopen",view==="plans"&&!!currentId)}catch(e){}const b=$("#tproof");if(!b)return;const m=$("#main");
   // on Conferences the boxes are inside its page, so Proofread shows only on a conference form, never on the list
   let cdoc=null;if(view==="conferences"){try{const f=$("#tembed-conferences");cdoc=f&&f.contentDocument}catch(er){}}
-  b.hidden=!m||isKitchenUser()||view==="moments"||![...(cdoc||m).querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]"));
+  // Today has no form to proofread, so Proofread never shows there (November 3, 2026)
+  b.hidden=!m||isKitchenUser()||view==="moments"||view==="today"||![...(cdoc||m).querySelectorAll("textarea")].some(t=>!t.closest(".proof,[data-noproof]"));
   // on a phone a plan's The evidence button takes the same corner, so Proofread sits just above it
   requestAnimationFrame(()=>{const ev=$("#evbtn");b.classList.toggle("up",!!ev&&!ev.hidden&&ev.getClientRects().length>0)})}
 function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
@@ -4737,7 +4771,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0e2d0fd000","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=59e181fb64","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4750,7 +4784,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=0e2d0fd000","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=59e181fb64","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4768,7 +4802,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="204075d32b6b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="6b73f732acd8";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -4832,6 +4866,13 @@ function subnavHtml(){
     return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}<div class="subrow stgroups" aria-label="Educators">${g.map(([n,ks])=>`<button class="sub grp" data-tview="${ks.includes(stGroupLast[n])?stGroupLast[n]:ks[0]}" ${n===cur[0]?'aria-current="true"':""}>${esc(n)}</button>`).join("")}</div>${cur[1].length>1?`<div class="subrow stpages">${cur[1].map(k=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${esc(lab(k))}</button>`).join("")}</div>`:""}</div>`}
   return `<div class="subnav" id="tsubnav">${back?`<div class="backrow">${back}</div>`:""}${(subs||[]).length?`<div class="subrow">${subs.map(([k,l])=>`<button class="sub" data-tview="${k}" ${curSub===k?'aria-current="page"':""}>${l}</button>`).join("")}</div>`:""}${res}</div>`;
 }
+// each cell of a table that stacks on a phone carries its column's name, read from the table's head
+function stackTables(root){for(const t of (root||document).querySelectorAll("table.stackme")){const hs=[...t.querySelectorAll("thead th")].map(th=>th.textContent.trim());if(!hs.length)continue;
+  for(const tr of t.querySelectorAll("tbody tr")){let i=0;for(const td of tr.children){if(!td.hasAttribute("data-label")&&td.colSpan<20)td.setAttribute("data-label",hs[i]||"");i+=td.colSpan||1}}}}
+{let stT=null;const stM=new MutationObserver(()=>{clearTimeout(stT);stT=setTimeout(()=>stackTables(document.getElementById("main")),30)});const go=()=>{const m=document.getElementById("main");if(m)stM.observe(m,{childList:true,subtree:true})};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go()}
+// a print menu that opens near the right edge of a phone opens leftward, so every choice stays on the screen
+document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("pmenu")||!d.open)return;const l=d.querySelector(".pmenu-list");if(!l)return;l.style.left="";l.style.right="";
+  requestAnimationFrame(()=>{const r=l.getBoundingClientRect();if(r.right>window.innerWidth-8){l.style.left="auto";l.style.right="0"}const r2=l.getBoundingClientRect();if(r2.left<8){l.style.left=(8-d.getBoundingClientRect().left)+"px";l.style.right="auto"}})},true);
 function placeSubnav(){
   const m=$("#main");if(!m)return;const want=subnavHtml();const have=$("#tsubnav");
   if(!want){if(have)have.remove();return}
@@ -4848,7 +4889,7 @@ function tabFit(root){if(!root||window.innerWidth>700)return;
     const cur=bs.find(b=>b.getAttribute("aria-current")==="page"||b.getAttribute("aria-current")==="true")||bs[0];
     const d=document.createElement("details");d.className="tabdrop "+[...row.classList].filter(c=>c!=="subrow").join(" ");
     const grp=row.classList.contains("stgroups");
-    d.innerHTML=`<summary><span>${grp?"Educators, ":""}${esc(cur.textContent.trim())}</span><span class="cnt">${bs.length} ${grp?"sections":"pages"}</span></summary>`;
+    d.innerHTML=`<summary><span>${esc(cur.textContent.trim())}</span><span class="cnt">${bs.length} ${grp?"sections":"pages"}</span></summary>`;
     const list=document.createElement("div");list.className="tabdrop-list";bs.forEach(b=>list.append(b));d.append(list);row.replaceWith(d)}}
 let tabFitW=window.innerWidth;window.addEventListener("resize",()=>{if(Math.abs(window.innerWidth-tabFitW)<40)return;tabFitW=window.innerWidth;const h=$("#tsubnav");if(h){h.__src=null;h.remove();placeSubnav()}});
 new MutationObserver(()=>{placeSubnav();phoneFoldSoon()}).observe(document.getElementById("main"),{childList:true});
@@ -4864,11 +4905,14 @@ function phoneFold(){const m=$("#main");if(!m||window.innerWidth>700||m.querySel
   const secs=[...m.querySelectorAll(":scope > section.card, :scope > section.review, :scope > section:not([class]), :scope > div.card")].filter(x=>!x.classList.contains("pfdone")&&head(x));
   if(secs.length>1){const want=PF_MAIN[view];const main=secs.find(x=>want&&head(x).startsWith(want))||secs[0];
     for(const x of secs){if(x===main||x.querySelector(":focus"))continue;const t=head(x),k=view+"|"+t;
-      const line=(()=>{const c=x.querySelector(".hint,.cnt,p,.sub");return c?sentFit(c.textContent,80):""})();
+      // the one line under the heading is words, never the names of buttons run together, such as Print and Word
+      const line=(()=>{const c=[...x.querySelectorAll(".hint,.cnt,p,.sub")].find(e=>!e.querySelector("button,a,input,select")&&e.textContent.trim());return c?sentFit(c.textContent,80):""})();
       const d=document.createElement("details");d.className="pfold autofold";d.dataset.pf=k;d.open=pfOpen.has(k);
       d.innerHTML=`<summary><b>${esc(t)}</b>${line&&line!==t?`<span class="cnt">${esc(line)}</span>`:""}</summary>`;const body=document.createElement("div");body.className="pfbody";
       const hd=x.querySelector(":scope > .lbl, :scope > h2, :scope > h3, :scope > .secthead");while(x.firstChild)body.append(x.firstChild);if(hd&&hd.parentNode===body&&!hd.querySelector("button,a,select,input"))hd.remove();
-      d.append(body);x.append(d);x.classList.add("pfdone")}}
+      d.append(body);x.append(d);x.classList.add("pfdone")}
+    // the page is shorter once folded, so the height kept while it redrew lets go
+    m.style.minHeight=""}
   // a long list shows its first eight, with Show all. All plans folds each week after the first two.
   const al=m.querySelector("#alist");
   if(al&&!al.dataset.pfl){al.dataset.pfl="1";[...al.children].slice(2).forEach(x=>{const t=head(x);if(!t)return;const k=view+"|"+t;const d=document.createElement("details");d.className="pfold autofold";d.dataset.pf=k;d.open=pfOpen.has(k);
@@ -5035,7 +5079,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
-// Waiting for you. Alike items share one row that opens, and the five most pressing rows show first.
+// Waiting for you. Alike items share one row that opens, and the five most pressing rows show first, with Show all.
 let todayAll=false;
 const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Who shared this from Kaymbu?"?["kby","Kaymbu emails with no educator named"]:w.t==="Just shared from Kaymbu"?["kmail","Kaymbu emails with photos filed in earlier weeks"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
 function waitingHtml(list){
@@ -5048,12 +5092,15 @@ function waitingHtml(list){
       const why=items.every(x=>x.why&&x.why===items[0].why)?items[0].why:"";
       const ps=[...new Set(items.map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):x.pv!=null?x.pv:(x.s||x.t),56).replace(/[.!?…]$/,"")).filter(Boolean))];
       const gist=ps.slice(0,2).join(". ")+(ps.length>2||items.length>2?", and more":"")+(why?". "+why:"");
-      rows.push(`<details class="tgroup" data-tg="${esc(k[0])}" ${tgOpen.has(k[0])?"open":""}><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(gist)}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${items.map(row).join("")}</div></details>`)}
+      rows.push(`<details class="tgroup" data-tg="${esc(k[0])}" ${tgOpen.has(k[0])?"open":""}><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(gist)}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${(tgAll.has(k[0])?items:items.slice(0,3)).map(row).join("")}${items.length>3&&!tgAll.has(k[0])?`<button class="linkbtn" data-tgall="${esc(k[0])}" style="justify-self:start">Show all ${items.length}</button>`:""}</div></details>`)}
     else rows.push(row(w))}
   const shown=todayAll?rows:rows.slice(0,5);
   return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":"Show everything waiting"}</button>`:""}`;
 }
+// each kind shows its first three when opened, and Show all opens the rest of that kind (November 3, 2026)
+const tgAll=new Set();
 document.addEventListener("click",e=>{const t=e.target.closest("[data-todayall]");if(!t)return;todayAll=!todayAll;renderMain()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-tgall]");if(!t)return;e.preventDefault();tgAll.add(t.dataset.tgall);redrawToday()});
 // the groups left open on Today stay open when Today is drawn again, so coming back lands in the same place
 const tgOpen=new Set();
 document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.dataset||!d.dataset.tg)return;if(d.open)tgOpen.add(d.dataset.tg);else tgOpen.delete(d.dataset.tg)},true);
@@ -5446,7 +5493,8 @@ function weeklyHtml(){if(!isDirector()||!weeklyRec||weeklyRec.week!==mondayOf(ne
   const parts=[n("threads","new thread","new threads"),w.joined?`more evidence for ${w.joined} thread${w.joined===1?"":"s"} you follow`:"",n("moments","lens moment","lens moments"),n("patterns","new pattern in observations","new patterns in observations"),w.projects?`observations that may belong to ${w.projects} project${w.projects===1?"":"s"}`:"",w.inquiries?`observations for ${w.inquiries} team inquir${w.inquiries===1?"y":"ies"}`:""].filter(Boolean);
   const any=parts.length;
   const btn=(go,label,show)=>show?`<button class="btn small${go==="threads"?"":" ghost"}" data-weeklygo="${go}">${label}</button>`:"";
-  return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>This week's reading is done.</b> <span class="cnt">${esc(any?parts.join(", ").replace(/^./,c=>c.toUpperCase())+".":"Nothing new this week.")}${any?" They wait for you. Each class has its own reading beside the one for the whole school.":""}</span></span><span class="actions">${[...reports.values()].some(r=>r.week===w.week)?`<button class="btn small" data-weeklygo="wreport">Read the report</button>`:""}${btn("threads","Threads",true)}${btn("lens","The lens",true)}${btn("moments","Observations",w.patterns)}${btn("projects","Projects",w.projects)}${btn("inquiries","Team inquiries",w.inquiries)}<button class="linkbtn" data-weeklyok="1">Close</button></span></div>`}
+  // one closed line, with what it found and its buttons inside (November 3, 2026)
+  return `<details class="card tfold" id="weeklydone" style="margin-top:14px"><summary><b>This week's reading is done</b><span class="cnt">${any?"Open it to see what it found":"Nothing new this week"}</span></summary><div class="cnt" style="margin-top:6px">${esc(any?parts.join(", ").replace(/^./,c=>c.toUpperCase())+".":"Nothing new this week.")}${any?" They wait for you. Each class has its own reading beside the one for the whole school.":""}</div><div class="actions">${[...reports.values()].some(r=>r.week===w.week)?`<button class="btn small" data-weeklygo="wreport">Read the report</button>`:""}${btn("threads","Threads",true)}${btn("lens","The lens",true)}${btn("moments","Observations",w.patterns)}${btn("projects","Projects",w.projects)}${btn("inquiries","Team inquiries",w.inquiries)}<button class="linkbtn" data-weeklyok="1">Close</button></div></details>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else renderMain()});
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
@@ -5631,7 +5679,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   const g=gdn,dir=isDirector()&&!VIEW_AS,kit=isKitchenUser(),day=iso(new Date()),mm=day.slice(5,7),room=myRoom();
   const plants=g.plants||[],beds=g.beds||[],foods=plants.filter(p=>(p.eat==="food"||p.eat==="partly")&&!p.planned);
   let h=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
-  if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<div class="cnt" style="margin-top:6px">${esc(g.note)}</div>`:""}</section>`;
+  if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div>${g.note?`<details class="gdraftnote" style="margin-top:6px"><summary class="linkbtn">About this draft</summary><div class="cnt" style="margin-top:4px">${esc(g.note)}</div></details>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
   // the director's job cards that fit this month, for the director and the office to post as slots or work day stations
   if(isOffice()&&!VIEW_AS){if(!volData)volLoad();const vj=((volData&&volData.jobs)||[]).filter(j=>!volFuture(j)&&(j.months||[]).includes(mm));
@@ -5708,28 +5756,32 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
     <details style="margin-top:6px"><summary class="linkbtn">${esc(D.months.join(", "))}, month by month</summary>${S.months.map(monthHtml).join("")}</details></details>`};
   h+=gdnFold("plan","The year plan",`${nowS.name} now. Four seasons of planting, tending, harvesting, preserving, seeds and compost`,`<div class="hint">Started from ${(g.sources||[]).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>, ${esc(s.by)}`).join(", and ")}. ${esc(g.nochemicals||"We use no herbicides or pesticides, and the plan never suggests one.")}</div>${SS.map(seasonHtml).join("")}
     ${dir?`<div class="actions"><button class="btn small ghost" data-gcarry="1">Carry this year into next year</button></div>`:""}${(g.years||[]).length?`<div class="cnt">Carried forward, ${g.years.map(y=>esc(y.year)).join(", ")}.</div>`:""}`);
+  // November 3, 2026. For the director, a part with nothing in it yet waits under one Not started yet, closed. Each opens
+  // there with its add button, and moves back among the rest once something is in it.
+  const notYet=[],ny=(empty,name,html)=>{if(dir&&empty){notYet.push([name,html]);return ""}return html};
   // who tends what
-  h+=gdnFold("tend","Who tends what",`${Object.keys(g.tending.home||{}).length} home beds, ${(g.tending.rotations||[]).length} shared rotations`,
-    `<div class="hint">Each class keeps its home beds all year, set on each bed under Beds and yards. Shared spaces take turns among the classes or their small groups.</div>${(g.tending.rotations||[]).map(r=>`<div class="strow"><b>${esc(r.beds.map(b=>(gdnBed(b)||{}).name||b).join(" and "))}</b><div class="cnt">Each ${r.every==="month"?"month":r.weeks>1?r.weeks+" weeks":"week"}, ${esc(r.who.map(w=>w.replace("|",", ")+" group").map(x=>x.replace(/^(\w+) group$/,"$1 class")).join(", then "))}.</div></div>`).join("")}`);
+  h+=ny(!Object.keys(g.tending.home||{}).length,"Who tends what",gdnFold("tend","Who tends what",`${Object.keys(g.tending.home||{}).length} home beds, ${(g.tending.rotations||[]).length} shared rotations`,
+    `<div class="hint">Each class keeps its home beds all year, set on each bed under Beds and yards. Shared spaces take turns among the classes or their small groups.</div>${(g.tending.rotations||[]).map(r=>`<div class="strow"><b>${esc(r.beds.map(b=>(gdnBed(b)||{}).name||b).join(" and "))}</b><div class="cnt">Each ${r.every==="month"?"month":r.weeks>1?r.weeks+" weeks":"week"}, ${esc(r.who.map(w=>w.replace("|",", ")+" group").map(x=>x.replace(/^(\w+) group$/,"$1 class")).join(", then "))}.</div></div>`).join("")}`));
   // harvests, and what we preserve from them
-  h+=gdnHarvestCard(foods,beds)+gdnPreserveCard();
+  h+=ny(!(g.harvests||[]).some(x=>String(x.date||"").slice(0,7)===day.slice(0,7)),"Harvests",gdnHarvestCard(foods,beds))+ny(!(g.preserves||[]).some(x=>String(x.date||"").slice(0,4)===day.slice(0,4)),"Preserving",gdnPreserveCard());
   // compost, seeds and the greenhouse
-  h+=gdnFold("compost","Compost",`${(g.compost||[]).length} entries`,`<div class="kfields"><label>What<input type="text" id="gc-what" placeholder="Ex. kitchen scraps, bedding from the goats"></label><label>Kind<select id="gc-kind"><option value="in">Went in</option><option value="turned">Turned</option><option value="used">Used on a bed</option></select></label></div><div class="actions"><button class="btn small ghost" data-gcomp="1">Add to the log</button></div>
-    <ul style="margin:4px 0;padding-left:18px">${(g.compost||[]).slice().reverse().slice(0,15).map(c=>`<li>${esc(longDate(c.date))}, ${esc({in:"in",turned:"turned",used:"used"}[c.kind]||"")}, ${esc(c.what)}</li>`).join("")}</ul>`);
+  h+=ny(!(g.compost||[]).length,"Compost",gdnFold("compost","Compost",`${(g.compost||[]).length} entries`,`<div class="kfields"><label>What<input type="text" id="gc-what" placeholder="Ex. kitchen scraps, bedding from the goats"></label><label>Kind<select id="gc-kind"><option value="in">Went in</option><option value="turned">Turned</option><option value="used">Used on a bed</option></select></label></div><div class="actions"><button class="btn small ghost" data-gcomp="1">Add to the log</button></div>
+    <ul style="margin:4px 0;padding-left:18px">${(g.compost||[]).slice().reverse().slice(0,15).map(c=>`<li>${esc(longDate(c.date))}, ${esc({in:"in",turned:"turned",used:"used"}[c.kind]||"")}, ${esc(c.what)}</li>`).join("")}</ul>`));
   // the family seed library, seeds families take from and give to, a fair share practice. A family offers seed through the
   // wish list, and the director adds a donation to the seed list once it arrives. Families never write to the garden.
   const seedGifts=dir&&typeof participation!=="undefined"?[...participation.values()].filter(x=>x&&x.kind==="item"&&x.seedLibrary&&!x.removed).flatMap(x=>(x.signups||[]).filter(e=>!e.seedAccepted).map(e=>({item:x.id,email:e.email,family:e.family||"",who:e.who||"",answer:e.answer||""}))):[];
-  h+=gdnFold("seeds","Seeds",`${(g.seeds||[]).length} kinds on hand, ${(g.seeds||[]).filter(x=>x.share).length} in the family seed library`,`${seedGifts.length?`<div class="lbl">Donations offered for the family seed library</div>${seedGifts.map(x=>`<div class="strow"><b>${esc(x.answer||"Seeds")}</b><div class="cnt">Offered by ${esc(x.who||x.family)}. Add them once they arrive.</div><div class="kfields"><label>Seed<input type="text" data-gsgname="${esc(x.item+"|"+x.email)}" value="${esc(x.answer)}"></label></div><div class="actions"><button class="btn small ghost" data-gseedaccept="${esc(x.item+"|"+x.email)}">Add to the seed list, shared with families</button></div></div>`).join("")}`:""}
+  h+=ny(!(g.seeds||[]).length,"Seeds",gdnFold("seeds","Seeds",`${(g.seeds||[]).length} kinds on hand, ${(g.seeds||[]).filter(x=>x.share).length} in the family seed library`,`${seedGifts.length?`<div class="lbl">Donations offered for the family seed library</div>${seedGifts.map(x=>`<div class="strow"><b>${esc(x.answer||"Seeds")}</b><div class="cnt">Offered by ${esc(x.who||x.family)}. Add them once they arrive.</div><div class="kfields"><label>Seed<input type="text" data-gsgname="${esc(x.item+"|"+x.email)}" value="${esc(x.answer)}"></label></div><div class="actions"><button class="btn small ghost" data-gseedaccept="${esc(x.item+"|"+x.email)}">Add to the seed list, shared with families</button></div></div>`).join("")}`:""}
     <ul style="margin:4px 0;padding-left:18px">${(g.seeds||[]).map(s=>`<li><b>${esc(s.name)}</b>${s.variety?", "+esc(s.variety):""}, ${s.from==="donated"?`donated${s.source?" by "+esc(s.source):""}`:s.from==="bought"?`bought${s.source?" from "+esc(s.source):""}${s.link?` <a href="${esc(s.link)}" target="_blank" rel="noopener">its page</a>`:""}`:`saved${s.plant?" from "+esc((gdnPlant(s.plant)||{}).common||""):""}${s.bed?", "+esc((gdnBed(s.bed)||{}).name||""):""}${s.savedOn?", "+esc(longDate(s.savedOn)):""}`}${s.left?". "+esc(s.left)+" left":""}${s.stored?", in "+esc(s.stored):""}${s.share?` <span class="gtag food">In the family seed library</span>`:""}${dir?` <button class="linkbtn" data-gseedgrow="${esc(s.id)}">${s.grow?"Not this year":"Grow this"}</button> <button class="linkbtn" data-gseedshare="${esc(s.id)}">${s.share?"Take out of the seed library":"Share with families"}</button>`:""}</li>`).join("")}</ul>
-    ${dir?`<div class="kfields"><label>Seed<input type="text" id="gs-name"></label><label>Variety<input type="text" id="gs-var"></label><label>From<select id="gs-from"><option value="saved">Saved here</option><option value="bought">Bought</option><option value="donated">Donated by a family</option></select></label><label>Where from, or the plant<input type="text" id="gs-source" placeholder="Ex. Baker Creek Heirloom Seeds"></label><label>Its page<input type="url" id="gs-link" placeholder="https://www.rareseeds.com/"></label><label>How much is left<input type="text" id="gs-left"></label><label>Stored in<input type="text" id="gs-stored"></label><label>Months to sow<input type="text" id="gs-months" placeholder="Ex. 02 03"></label></div><div class="actions"><button class="btn small ghost" data-gseed="1">Add the seed</button></div>`:""}`);
-  h+=gdnFold("trays","Greenhouse starts",`${(g.trays||[]).filter(t=>!t.plantedOn).length} trays growing`,`${(g.trays||[]).map(t=>`<div class="strow"><b>${esc(t.seedName||"A tray")}</b><div class="cnt">Sown ${esc(longDate(t.sown))}${t.up!=null?", "+t.up+" came up":""}${t.bed?", for "+esc((gdnBed(t.bed)||{}).name||""):""}${t.plantedOn?", planted out "+esc(longDate(t.plantedOn)):t.ready?", ready to plant out":""}.</div>
+    ${dir?`<div class="kfields"><label>Seed<input type="text" id="gs-name"></label><label>Variety<input type="text" id="gs-var"></label><label>From<select id="gs-from"><option value="saved">Saved here</option><option value="bought">Bought</option><option value="donated">Donated by a family</option></select></label><label>Where from, or the plant<input type="text" id="gs-source" placeholder="Ex. Baker Creek Heirloom Seeds"></label><label>Its page<input type="url" id="gs-link" placeholder="https://www.rareseeds.com/"></label><label>How much is left<input type="text" id="gs-left"></label><label>Stored in<input type="text" id="gs-stored"></label><label>Months to sow<input type="text" id="gs-months" placeholder="Ex. 02 03"></label></div><div class="actions"><button class="btn small ghost" data-gseed="1">Add the seed</button></div>`:""}`));
+  h+=ny(!(g.trays||[]).some(t=>!t.plantedOn),"Greenhouse starts",gdnFold("trays","Greenhouse starts",`${(g.trays||[]).filter(t=>!t.plantedOn).length} trays growing`,`${(g.trays||[]).map(t=>`<div class="strow"><b>${esc(t.seedName||"A tray")}</b><div class="cnt">Sown ${esc(longDate(t.sown))}${t.up!=null?", "+t.up+" came up":""}${t.bed?", for "+esc((gdnBed(t.bed)||{}).name||""):""}${t.plantedOn?", planted out "+esc(longDate(t.plantedOn)):t.ready?", ready to plant out":""}.</div>
       ${t.plantedOn?"":`<div class="kfields"><label>Came up<input type="number" min="0" data-gtrayup="${esc(t.id)}" value="${t.up||""}"></label><label>Plant out to<select data-gtraybed="${esc(t.id)}"><option value="">Choose</option>${beds.map(b=>`<option value="${esc(b.id)}" ${t.bed===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select></label></div><div class="actions"><button class="linkbtn" data-gtrayready="${esc(t.id)}">${t.ready?"Not ready yet":"Ready to plant out"}</button><button class="linkbtn" data-gtrayout="${esc(t.id)}">Planted out today</button></div>`}</div>`).join("")}
-    <div class="kfields"><label>Seed for a new tray<select id="gt-seed"><option value="">Choose a seed</option>${(g.seeds||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select></label></div><div class="actions"><button class="btn small ghost" data-gtray="1">Sow a tray today</button></div>`);
+    <div class="kfields"><label>Seed for a new tray<select id="gt-seed"><option value="">Choose a seed</option>${(g.seeds||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select></label></div><div class="actions"><button class="btn small ghost" data-gtray="1">Sow a tray today</button></div>`));
   // wildlife
   const wl=(g.wildlife||[]).slice().sort((a,b)=>(b.sightings.length-a.sightings.length)||a.common.localeCompare(b.common));
-  h+=gdnFold("wild","Wildlife seen",`${wl.length} species, ${wl.reduce((a,w)=>a+w.sightings.length,0)} sightings`,`<div class="hint">Identified with iNaturalist and Merlin Bird ID. iNaturalist records made at school use obscured location and never include children in photos.</div>
+  h+=ny(!wl.some(w=>(w.sightings||[]).length),"Wildlife seen",gdnFold("wild","Wildlife seen",`${wl.length} species, ${wl.reduce((a,w)=>a+w.sightings.length,0)} sightings`,`<div class="hint">Identified with iNaturalist and Merlin Bird ID. iNaturalist records made at school use obscured location and never include children in photos.</div>
     ${wl.map(w=>`<details class="gwild"><summary><b>${esc(w.common)}</b> <i class="cnt">${esc(w.botanical||"")}</i> <span class="cnt">${w.sightings.length} sighting${w.sightings.length===1?"":"s"}</span></summary>${(w.plants||[]).length?`<div class="cnt">Fed by ${esc(w.plants.map(p=>(gdnPlant(p)||{}).common||"").filter(Boolean).join(", "))}.</div>`:""}<ul style="margin:4px 0;padding-left:18px">${w.sightings.slice().reverse().map(s=>`<li>${esc(longDate(s.date))}${s.where?", "+esc(s.where):""}${s.room?", "+esc(s.room)+" class":""}${s.link?` <a href="${esc(s.link)}" target="_blank" rel="noopener">the record</a>`:""}</li>`).join("")}</ul></details>`).join("")}
-    <div class="kfields"><label>Common name<input type="text" id="gw-common" list="gw-list"></label><datalist id="gw-list">${wl.map(w=>`<option value="${esc(w.common)}">`).join("")}</datalist><label>Botanical name<input type="text" id="gw-bot"></label><label>Where on the site<input type="text" id="gw-where"></label><label>Link to the iNaturalist or Merlin record<input type="url" id="gw-link"></label></div><div class="actions"><button class="btn small ghost" data-gwild="1">Add the sighting</button></div>`);
+    <div class="kfields"><label>Common name<input type="text" id="gw-common" list="gw-list"></label><datalist id="gw-list">${wl.map(w=>`<option value="${esc(w.common)}">`).join("")}</datalist><label>Botanical name<input type="text" id="gw-bot"></label><label>Where on the site<input type="text" id="gw-where"></label><label>Link to the iNaturalist or Merlin record<input type="url" id="gw-link"></label></div><div class="actions"><button class="btn small ghost" data-gwild="1">Add the sighting</button></div>`));
+  if(notYet.length)h+=`<details class="card gfold gnotyet" data-gfold="notyet" ${gdnOpen.notyet?"open":""}><summary><b>Not started yet</b><span class="cnt">${esc(notYet.map(x=>x[0]).join(", "))}</span></summary><div style="display:grid;gap:10px;margin-top:8px">${notYet.map(x=>x[1]).join("")}</div></details>`;
   h+=gdnWildFolds();h+=gdnPrintFold();
   // animal care
   const aS=(g.seasons||[]).find(x=>x.key===(gdnASeason||g.season))||(g.seasons||[])[0];
@@ -6100,14 +6152,20 @@ function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="link
 function ibParas(t){const ss=String(t||"").split(/(?<=[.!?]["”']?)\s+(?=["“']?[A-Z0-9])/).filter(x=>x.trim());const out=[];
   for(let i=0;i<ss.length;i+=2)out.push(ss.slice(i,i+2).join(" "));return out.map(x=>`<p>${esc(x)}</p>`).join("")}
 function ibSectionHtml(s){return `<div class="ibsec"><h3>${esc(s.h)}</h3>${s.style==="text"?ibParas(s.text):s.style==="numbered"?`<ol>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`:s.style==="lines"?`<div class="iblines">${(s.items||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:`<ul>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`}</div>`}
+// a card's print and share choices gather under one Print and share menu, closed until opened (November 3, 2026).
+// Printing some or all cards stays in the list, with the boxes beside each card.
+function ibShareMenu(c,home,dir){const id=esc((home?"home":"edu")+"|"+c.id),full=esc((home?"home":"edu")+"-full|"+c.id);
+  return `<details class="pmenu"><summary class="btn small">Print and share</summary><div class="pmenu-list">
+    <button class="linkbtn" data-print="ibcards" data-id="${id}">Print this card</button><button class="linkbtn" data-print="ibcards" data-id="${id}" data-word="1">This card in Word</button>
+    <button class="linkbtn" data-print="ibcards" data-id="${full}">Print the whole card</button><button class="linkbtn" data-print="ibcards" data-id="${full}" data-word="1">The whole card in Word</button>
+    ${dir&&c.home?`<button class="linkbtn" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families, take it off":"Highlight for families"}</button><button class="linkbtn" data-ibshare="${esc(c.id)}">Share</button>`:""}</div></details>`}
 function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=ibSt.fromPlan&&plans.get(ibSt.fromPlan);
   const used=plan&&(plan.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id);const fl=ibFields(c);
   return `<section class="card ibcardv"><span class="eyebrow">${esc(IB_KIND[c.type]||"")} · ${esc(c.group)}</span><h2 style="margin:4px 0 6px">${esc(home?c.home.title:c.title)}</h2>
     <p>${esc(home?"For families to try at home.":c.summary||"")}</p>
     ${!home&&c.setting&&c.setting.level?`<div class="ibset"><b>${esc(c.setting.level)}</b>${has(c.setting.why)?` <span>${esc(c.setting.why)}</span>`:""}</div>`:""}
     ${c.home?`<div class="seg" role="group" aria-label="Card version"><button data-ibside="edu" aria-pressed="${!home}">For educators</button><button data-ibside="home" aria-pressed="${home}">At home</button></div>`:""}
-    <div class="actions">${printBtns("ibcards",esc((home?"home":"edu")+"|"+c.id),"Print this card",true)}${printBtns("ibcards",esc((home?"home":"edu")+"-full|"+c.id),"Print the whole card")}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
-      ${dir&&c.home?`<button class="btn small ghost" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families":"Highlight for families"}</button><button class="btn small ghost" data-ibshare="${esc(c.id)}">Share</button>`:""}
+    <div class="actions">${ibShareMenu(c,home,dir)}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
       ${dir?pageEditBtn("staff/library/ideabank/cards.json","Edit",c.id):""}</div>
     ${(home?c.home.sections:c.sections||[]).map(ibSectionHtml).join("")}
     ${home?"":`<h3>Feeds</h3><div class="chips">${(c.feeds||[]).map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
@@ -6171,11 +6229,12 @@ function renderIdeaBank(){const m=$("#main");if(!m)return;
   const nav=`<nav class="ibnav" aria-label="Idea bank groups">${IB_NAV.map(([h,gs])=>`<div><div class="ibh">${esc(h)}</div>${gs.filter(g=>counts[g]).map(g=>`<button class="ibg" type="button" data-ibgroup="${esc(g)}" aria-current="${!filt&&st.group===g}"><span>${esc(g)}</span><span class="cnt">${counts[g]}</span></button>`).join("")}</div>`).join("")}</nav>`;
   const top=`<div class="ibtop"><button class="btn small${st.mode==="stance"?"":" ghost"}" data-ibmode="stance">How We Offer Ideas</button><button class="btn small${st.mode==="seeing"?"":" ghost"}" data-ibmode="seeing">What are you seeing?</button></div>`
   const famSwitch=ib&&ib.director&&!VIEW_AS?`<section class="card"><div class="lbl">Ideas to try at home</div><div class="hint">${ib.familyOn?"Families see the At home side of every card on the Family page, with your highlights first.":"Families do not see these ideas yet. Turn them on when you are ready."}</div><div class="actions"><button class="btn small${ib.familyOn?" ghost":""}" data-ibfamily="${ib.familyOn?0:1}">${ib.familyOn?"Turn off for families":"Turn on for families"}</button></div></section>`:"";
-  const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c?ibCardHtml(c):"";
+  // a card opens only once it is chosen, so the page opens on the list (November 3, 2026)
+  const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c&&(st.opened||st.picked)?ibCardHtml(c):c?`<section class="card"><div class="cnt">Choose a card to open it.</div></section>`:"";
     m.innerHTML=head+top+famSwitch+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+((st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div><div id="ibright">${right}</div>`
     :`<div class="ibwrap"><div>${nav}</div><div>${ibListHtml()}</div><div id="ibright">${right}</div></div>`)}
 // a picked card, the stance or What are you seeing? shows on its own across the page, with Back to the cards
-function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
+function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;ibSt.opened=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
   if(view!=="ideabank")goView("ideabank");else{renderMain();jumpTop()}}
 window.TREE_IDEA_OPEN=ibOpen;
 document.addEventListener("input",e=>{const t=e.target;if(view!=="ideabank"||!t)return;
@@ -6189,9 +6248,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
   if(d.ibopen){e.preventDefault();if(libSheetOn){libSheetOn=null;libSheetPaint()}if(!ib)await ibLoad();ibOpen(d.ibopen);return}
   if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
   if(view!=="ideabank"&&!d.ibshare)return;
-  if(d.ibgroup){ibSt.group=d.ibgroup;ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.mode="card";ibSt.picked=false;ibSt.sel=(ibShown()[0]||{}).id||"";ibKeep();renderMain();return}
+  if(d.ibgroup){ibSt.opened=false;ibSt.group=d.ibgroup;ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.mode="card";ibSt.picked=false;ibSt.sel=(ibShown()[0]||{}).id||"";ibKeep();renderMain();return}
   // a card picked in the list shows in the column on the right, and on a narrow screen the page moves to it
-  if(d.ibsel){const c=ibCard(d.ibsel);if(!c)return;ibSt.sel=d.ibsel;ibSt.mode="card";ibSt.picked=false;if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();renderMain();
+  if(d.ibsel){const c=ibCard(d.ibsel);if(!c)return;ibSt.sel=d.ibsel;ibSt.mode="card";ibSt.picked=false;ibSt.opened=true;if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();renderMain();
     const r=$("#ibright");if(r&&window.innerWidth<900)r.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(d.ibmode){if(d.ibmode==="list"){ibSt.picked=false;ibSt.mode="card"}else{ibSt.mode=ibSt.mode===d.ibmode?"card":d.ibmode;ibSt.picked=ibSt.mode!=="card"}renderMain();jumpTop();return}
   if(d.ibchip){const k=d.ibchip,a=ibSt[k],i=a.indexOf(d.val);if(i>=0)a.splice(i,1);else a.push(d.val);ibSt.mode="card";renderMain();return}
@@ -7192,11 +7251,11 @@ function artShown(){const q=artQ.trim().toLowerCase();return artCards().filter(c
 function renderArtists(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML=`<section class="card"><div class="empty"><span class="spin"></span> Opening the Artists page</div></section>`;return}
   const a=libData.artists,dir=isDirector()&&!VIEW_AS,list=artShown();
   m.innerHTML=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Artists</h2><div class="sub">Artworks to set beside real materials, each with its wondering. Children look together and make their own work beside it.</div></div>
-    <section class="card"><div class="lbl">Leading a looking conversation</div>${a&&a.lead?guideMd(a.lead):`<div class="cnt">The Artists page is not in the records yet.</div>`}
-      ${dir||(libData.modules||{})["looking-together"]||(a&&dir)?`<div class="actions" style="flex-wrap:wrap">${dir||(libData.modules||{})["looking-together"]?`<button class="linkbtn" data-artmod="1">The PD module Looking Together</button>`:""}${dir&&a?pageEditBtn(a.path,"Edit the Artists page, with its history"):""}</div>`:""}</section>
+    <details class="card gfold artguide"><summary><b>Leading a looking conversation</b><span class="cnt">How we look together</span></summary><div style="margin-top:8px">${a&&a.lead?guideMd(a.lead):`<div class="cnt">The Artists page is not in the records yet.</div>`}
+      ${dir||(libData.modules||{})["looking-together"]||(a&&dir)?`<div class="actions" style="flex-wrap:wrap">${dir||(libData.modules||{})["looking-together"]?`<button class="linkbtn" data-artmod="1">The PD module Looking Together</button>`:""}${dir&&a?pageEditBtn(a.path,"Edit the Artists page, with its history"):""}</div>`:""}</div></details>
     <section class="card"><div class="tseg" role="group" aria-label="Which artists" style="margin-bottom:8px">${["All",...ART_SETS].map(s=>`<button data-artset="${esc(s)}" aria-pressed="${artSet===s}">${esc(s)}</button>`).join("")}</div>
       <label class="fld-label">Find an artist<input type="search" id="art-q" value="${esc(artQ)}" placeholder="An artist, a material or a place on our site" data-noproof="1"></label>
-      ${list.length?`<div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-artprint="some" ${artPick.size?"":"disabled"}>Print the cards I chose${artPick.size?" ("+artPick.size+")":""}</button><button class="linkbtn" data-artprint="all">Print every card shown</button><button class="linkbtn" data-artprint="all" data-word="1">Word, every card shown</button><button class="linkbtn" data-artprint="some" data-word="1" ${artPick.size?"":"disabled"}>Word, the cards I chose</button></div>`:""}
+      ${list.length?`<div class="actions" style="margin:6px 0;flex-wrap:wrap"><details class="pmenu"><summary class="btn small ghost">Print or download${artPick.size?", "+artPick.size+" chosen":""}</summary><div class="pmenu-list"><button class="linkbtn" data-artprint="some" ${artPick.size?"":"disabled"}>Print the cards I chose${artPick.size?" ("+artPick.size+")":""}</button><button class="linkbtn" data-artprint="some" data-word="1" ${artPick.size?"":"disabled"}>The cards I chose in Word</button><button class="linkbtn" data-artprint="all">Print every card shown</button><button class="linkbtn" data-artprint="all" data-word="1">Every card shown in Word</button></div></details><span class="cnt">Tick the cards to print some</span></div>`:""}
       ${list.map(artRow).join("")||`<div class="empty">${artCards().length?"No artist matches.":"No artists yet."}</div>`}</section>`}
 // an artist as a card for a table. A public domain work prints large with its name and our routine. Any other card names
 // where to see the work, what it sits beside and the wondering. The note for the educator never prints.
@@ -7652,6 +7711,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="blanksw"){makeDocx(["classroom","individual"].map(type=>({type,blank:true,fields:{},web:blankWeb(),setting:[],languages:[],docplan:[]})),"Fulton Community School blank planning forms.docx");return}
   if(t.id==="sample"){makePdf([EXAMPLE],"Fulton Community School sample classroom plan.pdf");return}
   if(!p)return;
+  {const pm=t.closest&&t.closest("details.planmore");if(pm)pm.open=false}
   if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);
     (async()=>{const att=(p.attached||[]).length?await attachDocs(p):{docs:[],recipes:[]};const list=[p,...(ev?[ev]:[]),...att.docs];const ph=[...(ev?[ev]:[]),...att.docs.filter(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))];if(ph.length)await loadPhotos(ph);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"));
       // a recipe attached to the plan prints its demonstration sheets beside it
@@ -8241,7 +8301,7 @@ async function makeDocx(list,filename,ret){
 /* A filled example built from the strong examples in the Policies and Procedures & Procedures */
 const EXAMPLE={id:"example",type:"classroom",weekOf:mondayOf(new Date()),classroom:"Example",educator:"Sample from the Policies and Procedures",status:"draft",setting:[],languages:[],docplan:[],
  fields:Object.fromEntries(FORMS.classroom.fields.map(f=>[f.k,f.strong])),
- web:{focus:"Movement, speed, and control",branches:[{name:"Speed, fast and slow",materials:"Balls, cars, rolling objects"},{name:"Ramp height and angle",materials:"Wood planks, cardboard tubes"},{name:"Materials and surface texture",materials:"Textured fabric, sandpaper strips, felt"},{name:"Structure and stability",materials:"Blocks, connectors, loose parts"},{name:"Social negotiation",materials:"Shared materials, a defined space for two builders"},{name:"Prediction and testing",materials:"Clipboards, paper, markers"}],
+ web:{focus:"Movement, speed, and control",branches:[{name:"Speed, fast and slow",materials:"Balls, cars, rolling objects"},{name:"Ramp height and angle",materials:"Wood planks, cardboard tubes"},{name:"Materials and surface texture",materials:"Textured fabric, sandpaper strips, felt"},{name:"Structure and stability",materials:"Blocks, connectors, loose parts"},{name:"Social negotiation",materials:"Shared materials, a defined space for two builders"},{name:"Prediction and testing",materials:"Clipboards, paper, pencils"}],
  connections:[[0,2],[3,4]],languages:["Drawing and mark-making","Building and construction","Movement and body","Dialogue and words","Recording and comparing"],questions:"What makes something go faster? How can we make it stay up? What happens if we change this? How do we work together?",environment:"Expand ramp area. Create space for ongoing structures. Add materials for comparison. Allow work to remain over multiple days."}};
 
 /* ---------- Notice and Wonder ----------
@@ -8625,20 +8685,31 @@ function photoStatusHtml(n){
   return `<div class="${cls}" id="nf-pstatus" role="status">${t}</div>`;
 }
 // children in the moment, from the classroom it happened in. A tagged child finds the moment on their page, in their portfolio and at conference time.
-let nfOtherOpen=false;
-document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("nfother"))nfOtherOpen=e.target.open},true);
+// November 3, 2026. The class chosen lists its children first, and the other classes fold under Other classes, closed.
+// With no class chosen, each class folds by itself, closed, and the director's most recent class opens.
+let nfOtherOpen=false;const nfRoomOpen=new Map();
+document.addEventListener("toggle",e=>{const d=e.target;if(!d.classList)return;if(d.classList.contains("nfother"))nfOtherOpen=d.open;if(d.dataset&&d.dataset.nfroomfold)nfRoomOpen.set(d.dataset.nfroomfold,d.open)},true);
+// the class of the last observation the director kept, for the one class fold that opens by itself
+function nfLastRoom(){if(!isDirector())return"";const by=whoAmI();let best=null;for(const x of notices.values())if(x&&x.by===by&&x.classroom&&(!best||(x.at||0)>(best.at||0)))best=x;return best?best.classroom:""}
 function nfKidsHtml(n,ph){
   const all=kidsAt().sort((a,b)=>a.first.localeCompare(b.first));const on=new Set(n.children||[]);
+  const room=n.classroom||(ph!=null&&noticeForm&&noticeForm.classroom)||"";
   // the classroom's own children come first. Children from other classrooms wait one tap away, and any already tagged stay in view.
-  const kids=all.filter(c=>!n.classroom||c.classroom===n.classroom||on.has(c.id));const others=n.classroom?all.filter(c=>c.classroom!==n.classroom&&!on.has(c.id)):[];
+  const kids=room?all.filter(c=>c.classroom===room||on.has(c.id)):all.filter(c=>on.has(c.id));const others=all.filter(c=>!kids.includes(c));
   const chip=c=>`<button class="chip ${on.has(c.id)?"on":""}" data-nfkid="${esc(c.id)}"${ph!=null?` data-nfph="${ph}"`:""} type="button">${esc(c.first)}${c.last?" "+esc(c.last[0])+".":""}</button>`;
   // photos that came from Kaymbu with one shared note offer the children it names, to keep only those in this photo
   const sug=n.kaymbu&&n.kaymbu.check&&(n.kaymbu.suggest||[]).length?n.kaymbu.suggest.map(id=>{const c=children.get(id);return c?Object.assign({},c,{id}):null}).filter(Boolean):[];
-  if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1)}
-  const named=new Set(kids.filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
+  if(sug.length){const ids=new Set(sug.map(c=>c.id));for(let i=kids.length-1;i>=0;i--)if(ids.has(kids[i].id))kids.splice(i,1);for(let i=others.length-1;i>=0;i--)if(ids.has(others[i].id))others.splice(i,1)}
+  const named=new Set((room?kids:all).filter(c=>new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(n.noticed||"")).map(c=>c.id));
   const sg=n.smallGroup||(noticeForm&&formPhotos(noticeForm).includes(n)&&noticeForm.smallGroup)||"";
-  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>${n.kaymbu.maybe?"Is this child in the observation?":"Who is in this photo?"}</b><div class="cnt">${n.kaymbu.maybe?"This name is in the title, or is also an everyday word, so TREE did not tag it. Tap the children in this observation, then save.":"These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save."}</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}${ph!=null?`Children in photo ${ph+1}`:"Children in this observation, optional"}${ph==null&&named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}${kids.length?groupFirstHtml(kids,sg,n.classroom,chip):`<div class="chips"><span class="cnt">${n.classroom?"No children on the roster for this class yet.":"Choose the class above to tag children."}</span></div>`}
-    ${others.length?`<details class="nfother" ${nfOtherOpen&&ph==null?"open":""}><summary class="cnt">Show all classes, ${others.length} more children</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`:""}`;
+  const fk=k=>(ph!=null?ph+"|":"")+k;
+  let rest="";
+  if(room&&others.length)rest=`<details class="nfother" ${nfOtherOpen&&ph==null?"open":""}><summary class="cnt">Other classes, ${others.length} children</summary><div class="chips" style="margin-top:6px">${others.map(chip).join("")}</div></details>`;
+  else if(!room&&others.length){const rooms=[...CLASSROOMS,...new Set(others.map(c=>c.classroom||"").filter(r=>!CLASSROOMS.includes(r)))];const last=nfLastRoom();
+    rest=rooms.map(r=>{const ks=others.filter(c=>(c.classroom||"")===r);if(!ks.length)return"";const k=fk(r||"none");const o=nfRoomOpen.has(k)?nfRoomOpen.get(k):(ph==null&&!!r&&r===last);
+      return `<details class="nfother" data-nfroomfold="${esc(k)}" ${o?"open":""}><summary class="cnt">${r?esc(r)+" class":"No class yet"}, ${ks.length} children</summary><div class="chips" style="margin-top:6px">${ks.map(chip).join("")}</div></details>`}).join("")}
+  return `${sug.length?`<div class="sugg" style="margin-bottom:8px"><b>${n.kaymbu.maybe?"Is this child in the observation?":"Who is in this photo?"}</b><div class="cnt">${n.kaymbu.maybe?"This name is in the title, or is also an everyday word, so TREE did not tag it. Tap the children in this observation, then save.":"These children are named in the note, which came with more than one photo. Tap the ones pictured here, then save."}</div><div class="chips">${sug.map(chip).join("")}</div></div>`:""}${ph!=null?`Children in photo ${ph+1}`:"Children in this observation, optional"}${ph==null&&named.size&&[...named].some(id=>!on.has(id))?` <button class="linkbtn" data-nfkidsnamed="1" type="button">Tag the children named</button>`:""}${kids.length?groupFirstHtml(kids,sg,room,chip):room?`<div class="chips"><span class="cnt">No children on the roster for this class yet.</span></div>`:""}
+    ${rest}`;
 }
 // with a small group chosen, its children come first, then the rest of the class
 function groupFirstHtml(kids,sg,room,chip){const mine=sg?kids.filter(c=>c.group===sg):[];
@@ -8652,8 +8723,7 @@ function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml
 function renderNoticeForm(){
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
     <div class="sub" style="max-width:72ch">An observation worth keeping, written now.</div></div></div>
-  ${noticeFormCard()}
-  ${noticeBrowseHtml()}`;
+  ${noticeFormCard()}`;
 }
 let nfMoreOpen=false;
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("nfmore"))nfMoreOpen=d.open},true);
@@ -8936,7 +9006,9 @@ function renderMoments(){
   const people=new Set(all.map(n=>n.by).filter(Boolean)).size;
   const open=all.filter(n=>!n.projectId&&!n.threadId).length;
   let shown=0;
-  let h=(noticeForm?`<div class="head" id="nf-top"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change an observation":"Keep an observation"}</h2></div></div>${noticeFormCard()}<div style="height:18px"></div>`:"")+`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
+  // the observations list waits while the form is open, and comes back when it closes (November 3, 2026)
+  if(noticeForm){$("#main").innerHTML=`<div class="head" id="nf-top"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change an observation":"Keep an observation"}</h2></div></div>${noticeFormCard()}`;return}
+  let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
     <div class="sub" style="max-width:74ch">Observations kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on an observation whenever it comes round to it.</div></div>
     <span class="actions">${noticeForm?"":photoPickHtml("nf-photo2","Upload a photo")}</span></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}${noClassPill()}</div>
@@ -9065,7 +9137,7 @@ function noticesClick(t){
     if(did&&!nQueue.length)serverDraftEnd(did);
     if(view==="moments")renderMain();else renderAll();return true}
   if(t.dataset.nfkid&&noticeForm){const tgt=t.dataset.nfph!=null?formPhotos(noticeForm)[+t.dataset.nfph]:noticeForm;if(!tgt)return true;const a=tgt.children||(tgt.children=[]);const i=a.indexOf(t.dataset.nfkid);i>=0?a.splice(i,1):a.push(t.dataset.nfkid);t.classList.toggle("on");return true}
-  if(t.dataset.nfkidsnamed&&noticeForm){noticeForm.noticed=$("#nf-noticed")?.value||noticeForm.noticed;const a=noticeForm.children||(noticeForm.children=[]);for(const c of kidsAt().filter(c=>c.classroom===noticeForm.classroom))if(new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(noticeForm.noticed||"")&&!a.includes(c.id))a.push(c.id);const el=$("#nf-kids");if(el)el.innerHTML=nfKidsHtml(noticeForm);return true}
+  if(t.dataset.nfkidsnamed&&noticeForm){noticeForm.noticed=$("#nf-noticed")?.value||noticeForm.noticed;const a=noticeForm.children||(noticeForm.children=[]);for(const c of kidsAt().filter(c=>!noticeForm.classroom||c.classroom===noticeForm.classroom))if(new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(noticeForm.noticed||"")&&!a.includes(c.id))a.push(c.id);const el=$("#nf-kids");if(el)el.innerHTML=nfKidsHtml(noticeForm);return true}
   if(t.dataset.nflang&&noticeForm){const v=t.dataset.nflang,a=noticeForm.languages||(noticeForm.languages=[]);const i=a.indexOf(v);i>=0?a.splice(i,1):a.push(v);t.classList.toggle("on");return true}
   if(t.dataset.nfretry){const all=[...formPhotos(noticeForm),...((noticeForm&&noticeForm.pick)||[]),...nQueue];const n=all.find(x=>x.id===t.dataset.nfretry);if(n)readMomentPhoto(n,t.dataset.nfcopy==="0"||(noticeForm&&noticeForm.pick)?{copy:false}:undefined);return true}
   if(t.id==="nf-save"){const n=noticeForm;n.noticed=($("#nf-noticed")?.value||"").trim();n.wonder=($("#nf-wonder")?.value||"").trim();
@@ -9497,7 +9569,7 @@ const K_STAPLE_FOOD=/yogurt|\bmilk\b|butter|tortilla|granola|\boats\b|rice cakes
 const kIsStaple=l=>{const e=kEntry(l.food,l.farm);return !!(e&&e.prod)||K_STAPLE_FOOD.test(l.food||"")||kStapleList().some(x=>has(x.maker)&&gKey(x.maker)===gKey(l.farm))};
 function kSaveStaples(){if(!db||VIEW_AS)return;db.doc("settings/staples").set({list:JSON.parse(JSON.stringify(kStapleList())),note:kNote(),updatedAt:Date.now()}).then(()=>setConn("Settings saved")).catch(()=>toast("Could not save the staples. Check your connection."))}
 function staplesHtml(){const L=kStapleList();return `<div class="binadd" id="staples-card"><b>Our staples</b><div class="hint">Foods used all month, listed once on the farm sheet for families rather than in every week. Staples in a month's orders are added on that month's sheet.</div>
-  <div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Food</th><th>Made by</th><th>Town</th><th></th></tr></thead><tbody>
+  <div class="tablewrap"><table class="grid2 stackme" style="min-width:420px"><thead><tr><th>Food</th><th>Made by</th><th>Town</th><th></th></tr></thead><tbody>
   ${L.map((x,i)=>`<tr><td><input type="text" data-stf="${i}|food" value="${esc(x.food)}" aria-label="Food"></td><td><input type="text" data-stf="${i}|maker" value="${esc(x.maker||"")}" aria-label="Made by"></td><td><input type="text" data-stf="${i}|town" value="${esc(x.town||"")}" aria-label="Town"></td><td><button class="linkbtn" data-stdel="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div>
   <div class="actions"><button class="btn small ghost" data-stadd="1">Add a staple</button></div>
   <label class="fld-label">A note under the staples on the farm sheet<textarea data-stnote="1" rows="2">${esc(kNote())}</textarea></label></div>`}
@@ -10927,7 +10999,7 @@ document.addEventListener("change",e=>{const id=e.target.id;if(id==="gkid")gs.ki
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gkind]");if(!t||view!=="search")return;gs.kind=t.dataset.gkind;document.querySelectorAll("[data-gkind].chip").forEach(b=>b.classList.toggle("on",b.dataset.gkind===gs.kind));gsResults();if(!t.classList.contains("chip"))window.scrollTo(0,0)});
 /* ---------- Family participation, for the director and the office ----------
    Ways to take part, each child's hours toward the year's goal, and the Family page's test mode. While test mode is on,
-   only the testers' emails sign in to the Family page, each linked to real children, nothing is emailed, and everything
+   only the testers' emails sign in to the Family page, each linked to children, nothing is emailed, and everything
    made is marked test, shown here with a Test label and cleared with one button before going live. */
 let participation=new Map(),ptForm=null,ptKidQ="",ptOpen="";
 const ptCfg=()=>Object.assign({test:true,goal:10,testers:[]},participation.get("config")||{});
@@ -10996,7 +11068,7 @@ function renderParticipation(){
   const testers=c.testers.map((t,i)=>`<div class="ptitem"><div style="min-width:0"><b>${esc(t.email)}</b><div class="cnt">${(t.children||[]).map(id=>children.get(id)).filter(Boolean).map(k=>esc(kidName(k))).join(", ")||"No children linked yet"}</div></div><span class="actions"><button class="btn small ghost" data-pttkids="${i}">Children</button><button class="linkbtn" data-pttdel="${i}">Remove</button></span></div>
     ${ptOpen==="t"+i?`<div class="ptkids"><input type="search" id="pt-kq" placeholder="Find a child" value="${esc(ptKidQ)}"><div class="chips">${kidsAt().filter(k=>!ptKidQ||kidName(k).toLowerCase().includes(ptKidQ.toLowerCase())).sort((a,b)=>kidName(a).localeCompare(kidName(b))).slice(0,40).map(k=>`<button class="chip ${(t.children||[]).includes(k.id)?"on":""}" data-pttkid="${i}|${esc(k.id)}" type="button">${esc(kidName(k))}</button>`).join("")}</div></div>`:""}`).join("");
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Family participation</h2><div class="sub">Each child's hours toward ${c.goal} this school year, and the ways families can take part. Families log their own hours on the Family page, and each entry rounds up to the next half hour.</div></div>
-    ${test?`<section class="card ptbanner"><b>Test mode is on.</b> Only the testers below can sign in to the Family page, each seeing the real children linked to them. No email goes to any family. Everything made now is marked Test. Educators do not see this page.
+    ${test?`<section class="card ptbanner"><b>Test mode is on.</b> Only the testers below can sign in to the Family page, each seeing the children linked to them. No email goes to any family. Everything made now is marked Test. Educators do not see this page.
       <div class="actions" style="margin-top:8px"><a class="btn small" href="${esc(FAMILY_URL)}" target="_blank" rel="noopener">Open the Family page</a>${isDirector()?`<button class="btn small ghost" data-ptclear="1">Clear test entries</button><button class="btn small ghost" data-pttest="off">Turn test mode off</button>`:""}</div></section>`
       :`<section class="card"><b>The Family page is open to families.</b><div class="actions" style="margin-top:8px"><a class="btn small ghost" href="${esc(FAMILY_URL)}" target="_blank" rel="noopener">Open the Family page</a>${isDirector()?`<button class="btn small ghost" data-pttest="on">Turn test mode back on</button>`:""}</div></section>`}
     ${(()=>{const miss=kidsAt().filter(k=>!(k.parents||[]).some(p=>p&&has(p.email)));return miss.length?`<section class="card"><b>${miss.length} ${miss.length===1?"family has":"families have"} no email on file</b>, so ${miss.length===1?"it":"they"} cannot sign in to the Family page. <div class="actions" style="margin-top:6px">${miss.map(k=>`<button class="btn small ghost" data-kid="${esc(k.id)}" data-ktab="details">${esc(kidName(k))}</button>`).join("")}</div></section>`:""})()}
@@ -11149,7 +11221,7 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
       const del={},put={};for(const k of u.keys){const w=(u.was||{})[k];del[k]={__delete__:true};if(w!=null)put[k]=w}
       if(!u.keys.length)return null;const ref=db.doc(u.target+"/"+u.tid);
       return ref.update(del).then(()=>Object.keys(put).length?ref.update(put):null).catch(()=>{})}).filter(Boolean);
-    Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared. What testers changed on real records is put back, and everything staff added since stays.`)});return}
+    Promise.all(undo).then(()=>Promise.all(tests.map(x=>{participation.delete(x.id);return db.doc("participation/"+x.id).delete()}))).then(()=>{renderMain();toast(`${tests.length} test entr${tests.length===1?"y":"ies"} cleared. What testers changed on the school's records is put back, and everything staff added since stays.`)});return}
 });
 document.addEventListener("input",e=>{if(e.target.id==="pt-kq"){ptKidQ=e.target.value;const p=e.target.selectionStart;renderMain();const q=$("#pt-kq");if(q){q.focus();q.setSelectionRange(p,p)}}});
 /* ---------- Specialty visits, family strengths and the January list ----------
@@ -13238,7 +13310,7 @@ function printBtns(kind,id,pdfLabel,primary,long){const d=`data-print="${kind}"$
 function printTwo(kind,id,primary){const d=long=>`data-print="${kind}"${id?` data-id="${id}"`:""}${long?' data-long="1"':""}`;
   return `<details class="pmenu"><summary class="btn small${primary?"":" ghost"}">Print or download</summary><div class="pmenu-list">
     <button class="linkbtn" ${d(false)}>Summary, PDF</button><button class="linkbtn" ${d(false)} data-word="1">Summary, Word</button><button class="linkbtn" ${d(true)}>Full set, PDF</button><button class="linkbtn" ${d(true)} data-word="1">Full set, Word</button></div></details>`}
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".pmenu-list [data-print]");if(b){const d=b.closest(".pmenu");if(d)setTimeout(()=>{d.open=false},0)}else document.querySelectorAll(".pmenu[open]").forEach(d=>{if(!d.contains(e.target))d.open=false})});
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest(".pmenu-list [data-print],.pmenu-list [data-artprint],.pmenu-list [data-ibshare],.pmenu-list [data-ibhigh]");if(b){const d=b.closest(".pmenu");if(d)setTimeout(()=>{d.open=false},0)}else document.querySelectorAll(".pmenu[open]").forEach(d=>{if(!d.contains(e.target))d.open=false})});
 
 /* ---------- Threads and overview ---------- */
 const STORY=[["inception","The inception of the project"],["thread","What was the thread that started the inquiry"],["decision","How we decided to follow it"],["evolution","The evolution of the project"],["investigations","Investigations offered to move knowledge forward"],["knew","What the children knew and what they wanted to know"],["inquiry","Following children's inquiry"],["now","Where the project is now"],["closure","Summary of closure"],["future","Continuation and ideas for the future"]];
@@ -13318,7 +13390,7 @@ function renderThreads(){
   // Planning grid
   const wks=[...weeks].reverse();
   h+=`<section style="display:grid;gap:10px"><div class="secthead"><h2>Planning at a glance</h2><span class="cnt"><span class="dot draft"></span> Draft &nbsp; <span class="dot ready"></span> Waiting for review &nbsp; <span class="dot reviewed"></span> Reviewed</span></div>
-   <div class="tablewrap"><table class="grid2"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
+   <div class="tablewrap"><table class="grid2 stackme"><thead><tr><th>Week of</th>${cols.map(r=>`<th>${r||"No class set"}</th>`).join("")}</tr></thead><tbody>
    ${wks.length?wks.map(w=>`<tr><td style="white-space:nowrap">${fmtDate(w)}</td>${cols.map(r=>{const rp=ps.filter(p=>p.weekOf===w&&(p.classroom||"")===r);const teams=rp.filter(p=>p.type==="classroom");const team=teams[0];const ns=rp.filter(isGroupPlan).length,ni=rp.filter(p=>p.type==="individual"&&!isGroupPlan(p)).length;const nd=rp.filter(p=>p.dupOf&&plans.has(p.dupOf)).length;
      return `<td><button class="cellbtn" data-cell="${w}|${r}" aria-label="Open ${r||"unassigned"} plans for week of ${fmtDate(w)}">${r?(team?`<span class="dot ${team.status}"></span><span class="cnt">${teams.length>1?teams.length+" team plans":"Team"}</span>`:`<span class="dot"></span><span class="cnt">No team plan</span>`):(teams.length?`<span class="cnt">${teams.length} team</span>`:"")}${ni||ns?`<span class="cnt">${r||teams.length?"· ":""}${[ni&&ni+" individual",ns&&ns+" small group"].filter(Boolean).join(" · ")}</span>`:""}</button></td>`}).join("")}</tr>`).join(""):`<tr><td colspan="${cols.length+1}" class="muted">No weeks in this range.</td></tr>`}
    </tbody></table></div></section>`;
@@ -15327,9 +15399,10 @@ let savesInfo=null;
 function hardSavesHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS||!savesInfo||!Array.isArray(savesInfo.hard))return"";
   const seen=LS.get("tree.hardseen",{})||{},day=iso(new Date());if(seen.day===day)return"";
   const L=savesInfo.hard.filter(h=>h&&h.at>(seen.at||0)).slice(-12).reverse();if(!L.length)return"";
-  return `<section class="card" id="hardsaves" style="margin-top:14px"><h3 style="font-size:17px">Saves that needed several tries</h3>
-    <div class="tlist">${L.map(h=>`<div class="prow"><b>${esc(h.label||h.path)}</b><span class="cnt">${esc(h.tries)} tries, ${esc(longDate(iso(new Date(h.at))))}, ${esc(clockTime(new Date(h.at).getHours()*60+new Date(h.at).getMinutes()))}</span></div>`).join("")}</div>
-    <div class="hint">Each one reached the records in the end. A save that needs many tries can mean GitHub is slow, so it is worth a look if this shows often.</div><div class="actions"><button class="btn small" data-hardseen>Seen</button></div></section>`}
+  // one closed line in plain words, with which saves and Seen inside
+  return `<details class="card tfold" id="hardsaves" style="margin-top:14px"><summary><b>${L.length===1?"A save took more than one try":"A few saves took more than one try"}</b><span class="cnt">Each one is kept</span></summary>
+    <div class="tlist" style="margin-top:6px">${L.map(h=>`<div class="prow"><b>${esc(h.label||h.path)}</b><span class="cnt">${esc(h.tries)} tries, ${esc(longDate(iso(new Date(h.at))))}, ${esc(clockTime(new Date(h.at).getHours()*60+new Date(h.at).getMinutes()))}</span></div>`).join("")}</div>
+    <div class="hint">Each one reached the records in the end. A save that needs many tries can mean GitHub is slow, so it is worth a look if this shows often.</div><div class="actions"><button class="btn small" data-hardseen>Seen</button></div></details>`}
 document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-hardseen]");if(!b)return;LS.set("tree.hardseen",{day:iso(new Date()),at:Date.now()});const c=$("#hardsaves");if(c)c.remove()});
 function viewAsHtml(){
   const list=(signins.list||[]).filter(a=>!a.director&&!a.former).map(a=>({name:a.name,room:a.room||"",kitchen:!!a.kitchen}));
@@ -15621,7 +15694,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0e2d0fd000","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=59e181fb64","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
@@ -15716,7 +15789,8 @@ $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentI
     if(!m)return;
     if(same()){m.querySelectorAll("details").forEach(d=>{const k=dkey(d);if(open.has(k))d.open=true;else if(shut.has(k))d.open=false});if(bg){const t0=lastScroll;const put=()=>{if(lastScroll===t0&&Math.abs(window.scrollY-y)>1)window.scrollTo(0,y)};queueMicrotask(()=>{put();requestAnimationFrame(()=>{put();setTimeout(put,120)})})}}
     else m.style.minHeight="";
-    const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete);const release=()=>{m.style.minHeight=""};
+    // a picture folded away, or one waiting to load lazily, never holds the page open below its content
+    const imgs=[...m.querySelectorAll("img")].filter(i=>!i.complete&&i.loading!=="lazy"&&i.getClientRects().length);const release=()=>{m.style.minHeight=""};
     if(!imgs.length){hold=setTimeout(release,60);return}
     let left=imgs.length;const one=()=>{if(--left<=0){clearTimeout(hold);hold=setTimeout(release,60)}};imgs.forEach(i=>{i.addEventListener("load",one,{once:true});i.addEventListener("error",one,{once:true})});hold=setTimeout(release,4000)}}
 boot();

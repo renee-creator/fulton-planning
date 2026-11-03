@@ -131,14 +131,20 @@ function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="link
 function ibParas(t){const ss=String(t||"").split(/(?<=[.!?]["”']?)\s+(?=["“']?[A-Z0-9])/).filter(x=>x.trim());const out=[];
   for(let i=0;i<ss.length;i+=2)out.push(ss.slice(i,i+2).join(" "));return out.map(x=>`<p>${esc(x)}</p>`).join("")}
 function ibSectionHtml(s){return `<div class="ibsec"><h3>${esc(s.h)}</h3>${s.style==="text"?ibParas(s.text):s.style==="numbered"?`<ol>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`:s.style==="lines"?`<div class="iblines">${(s.items||[]).map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:`<ul>${(s.items||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`}</div>`}
+// a card's print and share choices gather under one Print and share menu, closed until opened (November 3, 2026).
+// Printing some or all cards stays in the list, with the boxes beside each card.
+function ibShareMenu(c,home,dir){const id=esc((home?"home":"edu")+"|"+c.id),full=esc((home?"home":"edu")+"-full|"+c.id);
+  return `<details class="pmenu"><summary class="btn small">Print and share</summary><div class="pmenu-list">
+    <button class="linkbtn" data-print="ibcards" data-id="${id}">Print this card</button><button class="linkbtn" data-print="ibcards" data-id="${id}" data-word="1">This card in Word</button>
+    <button class="linkbtn" data-print="ibcards" data-id="${full}">Print the whole card</button><button class="linkbtn" data-print="ibcards" data-id="${full}" data-word="1">The whole card in Word</button>
+    ${dir&&c.home?`<button class="linkbtn" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families, take it off":"Highlight for families"}</button><button class="linkbtn" data-ibshare="${esc(c.id)}">Share</button>`:""}</div></details>`}
 function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=ibSt.fromPlan&&plans.get(ibSt.fromPlan);
   const used=plan&&(plan.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id);const fl=ibFields(c);
   return `<section class="card ibcardv"><span class="eyebrow">${esc(IB_KIND[c.type]||"")} · ${esc(c.group)}</span><h2 style="margin:4px 0 6px">${esc(home?c.home.title:c.title)}</h2>
     <p>${esc(home?"For families to try at home.":c.summary||"")}</p>
     ${!home&&c.setting&&c.setting.level?`<div class="ibset"><b>${esc(c.setting.level)}</b>${has(c.setting.why)?` <span>${esc(c.setting.why)}</span>`:""}</div>`:""}
     ${c.home?`<div class="seg" role="group" aria-label="Card version"><button data-ibside="edu" aria-pressed="${!home}">For educators</button><button data-ibside="home" aria-pressed="${home}">At home</button></div>`:""}
-    <div class="actions">${printBtns("ibcards",esc((home?"home":"edu")+"|"+c.id),"Print this card",true)}${printBtns("ibcards",esc((home?"home":"edu")+"-full|"+c.id),"Print the whole card")}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
-      ${dir&&c.home?`<button class="btn small ghost" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families":"Highlight for families"}</button><button class="btn small ghost" data-ibshare="${esc(c.id)}">Share</button>`:""}
+    <div class="actions">${ibShareMenu(c,home,dir)}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
       ${dir?pageEditBtn("staff/library/ideabank/cards.json","Edit",c.id):""}</div>
     ${(home?c.home.sections:c.sections||[]).map(ibSectionHtml).join("")}
     ${home?"":`<h3>Feeds</h3><div class="chips">${(c.feeds||[]).map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
@@ -202,11 +208,12 @@ function renderIdeaBank(){const m=$("#main");if(!m)return;
   const nav=`<nav class="ibnav" aria-label="Idea bank groups">${IB_NAV.map(([h,gs])=>`<div><div class="ibh">${esc(h)}</div>${gs.filter(g=>counts[g]).map(g=>`<button class="ibg" type="button" data-ibgroup="${esc(g)}" aria-current="${!filt&&st.group===g}"><span>${esc(g)}</span><span class="cnt">${counts[g]}</span></button>`).join("")}</div>`).join("")}</nav>`;
   const top=`<div class="ibtop"><button class="btn small${st.mode==="stance"?"":" ghost"}" data-ibmode="stance">How We Offer Ideas</button><button class="btn small${st.mode==="seeing"?"":" ghost"}" data-ibmode="seeing">What are you seeing?</button></div>`
   const famSwitch=ib&&ib.director&&!VIEW_AS?`<section class="card"><div class="lbl">Ideas to try at home</div><div class="hint">${ib.familyOn?"Families see the At home side of every card on the Family page, with your highlights first.":"Families do not see these ideas yet. Turn them on when you are ready."}</div><div class="actions"><button class="btn small${ib.familyOn?" ghost":""}" data-ibfamily="${ib.familyOn?0:1}">${ib.familyOn?"Turn off for families":"Turn on for families"}</button></div></section>`:"";
-  const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c?ibCardHtml(c):"";
+  // a card opens only once it is chosen, so the page opens on the list (November 3, 2026)
+  const right=st.mode==="stance"?ibStanceHtml():st.mode==="seeing"?ibSeeingHtml():c&&(st.opened||st.picked)?ibCardHtml(c):c?`<section class="card"><div class="cnt">Choose a card to open it.</div></section>`:"";
     m.innerHTML=head+top+famSwitch+ibSugHtml()+`<div class="actions" style="margin:0 0 8px">${ibToolsHtml()}</div>`+((st.mode!=="card"||st.picked)?`<div class="actions"><button class="linkbtn" data-ibmode="list">‹ Back to the cards</button></div><div id="ibright">${right}</div>`
     :`<div class="ibwrap"><div>${nav}</div><div>${ibListHtml()}</div><div id="ibright">${right}</div></div>`)}
 // a picked card, the stance or What are you seeing? shows on its own across the page, with Back to the cards
-function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
+function ibOpen(id,side){const c=ibCard(id);if(!c)return;ibSt.sel=id;ibSt.mode="card";ibSt.picked=true;ibSt.opened=true;if(side)ibSt.side=side;else if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();
   if(view!=="ideabank")goView("ideabank");else{renderMain();jumpTop()}}
 window.TREE_IDEA_OPEN=ibOpen;
 document.addEventListener("input",e=>{const t=e.target;if(view!=="ideabank"||!t)return;
@@ -220,9 +227,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
   if(d.ibopen){e.preventDefault();if(libSheetOn){libSheetOn=null;libSheetPaint()}if(!ib)await ibLoad();ibOpen(d.ibopen);return}
   if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
   if(view!=="ideabank"&&!d.ibshare)return;
-  if(d.ibgroup){ibSt.group=d.ibgroup;ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.mode="card";ibSt.picked=false;ibSt.sel=(ibShown()[0]||{}).id||"";ibKeep();renderMain();return}
+  if(d.ibgroup){ibSt.opened=false;ibSt.group=d.ibgroup;ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.mode="card";ibSt.picked=false;ibSt.sel=(ibShown()[0]||{}).id||"";ibKeep();renderMain();return}
   // a card picked in the list shows in the column on the right, and on a narrow screen the page moves to it
-  if(d.ibsel){const c=ibCard(d.ibsel);if(!c)return;ibSt.sel=d.ibsel;ibSt.mode="card";ibSt.picked=false;if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();renderMain();
+  if(d.ibsel){const c=ibCard(d.ibsel);if(!c)return;ibSt.sel=d.ibsel;ibSt.mode="card";ibSt.picked=false;ibSt.opened=true;if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();renderMain();
     const r=$("#ibright");if(r&&window.innerWidth<900)r.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(d.ibmode){if(d.ibmode==="list"){ibSt.picked=false;ibSt.mode="card"}else{ibSt.mode=ibSt.mode===d.ibmode?"card":d.ibmode;ibSt.picked=ibSt.mode!=="card"}renderMain();jumpTop();return}
   if(d.ibchip){const k=d.ibchip,a=ibSt[k],i=a.indexOf(d.val);if(i>=0)a.splice(i,1);else a.push(d.val);ibSt.mode="card";renderMain();return}

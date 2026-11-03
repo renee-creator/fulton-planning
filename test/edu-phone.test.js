@@ -63,7 +63,7 @@ test('educators on a phone', async t => {
     const s = await signedIn(fx, b, 'Ann', '1357', 390);
     await s.p.evaluate(() => goView('stjour')); await s.p.waitForSelector('#gj-pass', { timeout: 15000 });
     assert.strictEqual(await s.p.evaluate(() => !!document.querySelector('.subrow.stpages [data-tview="stjour"]')), true, 'Journal is a button');
-    assert.match(await s.p.evaluate(() => (document.querySelector('.tabdrop.stgroups summary') || {}).innerText || ''), /Educators, Growth/);
+    assert.match(await s.p.evaluate(() => (document.querySelector('.tabdrop.stgroups summary') || {}).innerText || ''), /^Growth/);
     await s.p.fill('#gj-pass', '1357'); await s.p.press('#gj-pass', 'Enter');
     await s.p.waitForFunction(() => !document.querySelector('#gj-pass'), null, { timeout: 10000 });
     assert.deepStrictEqual(s.errors, []); await s.close();

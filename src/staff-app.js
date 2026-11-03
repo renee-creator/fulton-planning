@@ -76,7 +76,9 @@ function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^
   .replace(/\[([^\]]+)\]\(tree:pd\/(?:\d+-)?([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-stmod="m:${u}">${t}</button>`)
   .replace(/\[([^\]]+)\]\(tree:ib\/([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-ibopen="${u}">${t}</button>`)
   // a section of the Policies and Procedures, such as tree:hb/daily-schedule, opens that section
-  .replace(/\[([^\]]+)\]\(tree:hb\/([a-z0-9-]+)\)/g,(m,t,u)=>`<button class="linkbtn" data-hbopen="${u}">${t}</button>`)}
+  .replace(/\[([^\]]+)\]\(tree:hb(?:\/([a-z0-9-]+))?\)/g,(m,t,u)=>`<button class="linkbtn" data-hbopen="${u||"__contents"}">${t}</button>`)
+  // the Family Handbook, tree:fh for its contents or tree:fh/air-quality-protocol for a section, opens inside TREE too
+  .replace(/\[([^\]]+)\]\(tree:fh(?:\/([a-z0-9-]+))?\)/g,(m,t,u)=>`<button class="linkbtn" data-fhopen="${u||"__contents"}">${t}</button>`)}
 function md(text){const L=String(text||"").replace(/\r/g,"").split("\n");let h="",i=0;
   while(i<L.length){const l=L[i];
     if(!l.trim()){i++;continue}
@@ -228,7 +230,7 @@ async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();co
       <td>${ok} of ${itemsFor(p).length} in place${due?` ${chip("soon",due+" due")}`:""}${soon?` ${chip("soon",soon+" to renew")}`:""}${outn?` ${chip("out",outn+" expired")}`:""}</td><td>${H(fluState(p).t)}</td></tr>`}).join("");
   const opened=Object.entries(B.open).filter(([,v])=>v).map(([k])=>({records:"records pages",pd:"the PD library",handbook:"the Policies and Procedures",newed:"the New Educator section",family:"the Family Handbook"}[k])).filter(Boolean);
   draw(my,head("Educators","Educators",`Each educator's records and certificates, dates only and never health details. ${opened.length?"Open to educators, "+H(kList(opened))+".":"Only you see these pages until you turn them on in Settings."}`)+
-    card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
+    card("Every educator",`${ps.length?`<div class="tablewrap"><table class="grid2 stackme" style="min-width:620px"><thead><tr><th>Educator</th><th>Role</th><th>Class</th><th>Records</th><th>Flu shot this season</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty">No educator has a sign-in yet.</div>`}
       <div class="hint" style="margin-top:6px">Tap an educator to open their records page.</div>`,printBar("team"))+
     addNewHtml()+groupHtml())}
 // the onboarding path a new educator receives, First weeks unless the director chooses another onboarding path
@@ -629,7 +631,7 @@ const PICURL=new Map();
 async function picUrl(p){if(!PICURL.has(p))PICURL.set(p,URL.createObjectURL(await picBlob(p)));return PICURL.get(p)}
 function fillPics(){document.querySelectorAll("#main img[data-pimg]").forEach(async im=>{try{im.src=await picUrl(im.dataset.pimg)}catch(e){im.replaceWith(Object.assign(document.createElement("span"),{className:"cnt",textContent:im.alt||"The picture could not be shown."}))}})}
 const pic=(src,alt)=>`<img data-pimg="${H(src)}" alt="${H(alt||"A picture from the policies")}" style="max-width:100%;height:auto;display:block;margin:8px auto">`;
-const polHtml=b=>String(b||"").trim()?PM().html(b,pic):`<div class="empty">This section has no words yet. Edit it to write what belongs here.</div>`;
+const polHtml=b=>String(b||"").trim()?PM().html(b,pic,{tree:true}):`<div class="empty">This section has no words yet. Edit it to write what belongs here.</div>`;
 const yearSpan=y=>y?y+" to "+(+y+1):"";
 
 /* proposed sections wait here for the director, and nothing changes in the document until she accepts one. Accepting
@@ -723,7 +725,7 @@ function fhDirCards(d){const draft=!d.live;const pb=d.public||{};const cur=d.cur
 const publicLink=()=>new URL("handbook.html",location.href.split("#")[0].replace(/[^/]*$/,"")).href.split("?")[0];
 async function polAcksCard(k,d,my){let r;try{r=st.polAcks||(st.polAcks=await api("policies/acks"))}catch(e){return}if(my!==RT)return;const el=$("#stpolacks");if(!el)return;
   if(k==="teacher"){const L=r.teacher||[];const n=L.filter(x=>!x.due).length;
-    el.innerHTML=card("Who has acknowledged it",L.length?`<div class="tablewrap"><table class="grid2" style="min-width:460px"><thead><tr><th>Educator</th><th>This school year</th><th>Changed sections</th></tr></thead><tbody>${L.map(x=>`<tr data-stperson="${H(x.name)}" style="cursor:pointer"><td><b>${H(x.name)}</b>${x.newHire?` ${chip("soonish","New")}`:""}</td><td>${x.yearAt?chip("ok",fms(x.yearAt)):chip("soon","Not yet")}</td><td>${x.changed.length?chip("soon",x.changed.length+" to read"):x.yearAt?chip("ok","Up to date"):""}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No educator reads it yet.</div>`,`${n} of ${L.length}`);return}
+    el.innerHTML=card("Who has acknowledged it",L.length?`<div class="tablewrap"><table class="grid2 stackme" style="min-width:460px"><thead><tr><th>Educator</th><th>This school year</th><th>Changed sections</th></tr></thead><tbody>${L.map(x=>`<tr data-stperson="${H(x.name)}" style="cursor:pointer"><td><b>${H(x.name)}</b>${x.newHire?` ${chip("soonish","New")}`:""}</td><td>${x.yearAt?chip("ok",fms(x.yearAt)):chip("soon","Not yet")}</td><td>${x.changed.length?chip("soon",x.changed.length+" to read"):x.yearAt?chip("ok","Up to date"):""}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No educator reads it yet.</div>`,`${n} of ${L.length}`);return}
   const F=r.family||{list:[]};const n=F.list.filter(x=>x.at).length;
   el.innerHTML=card("Families who have read it",`<div class="hint">Each family acknowledges the current edition, the ${H(F.edition)} edition, on the Family page. A new family does it at enrollment. When a new edition becomes current, a returning family sees one Read and acknowledge step at the top of the Family page.</div>${F.list.length?`<details><summary class="linkbtn">${n} of ${F.list.length} children's families</summary><div class="tablewrap"><table class="grid2" style="min-width:420px"><thead><tr><th>Child</th><th>Class</th><th>${H(F.edition)} edition</th></tr></thead><tbody>${F.list.map(x=>`<tr><td><b>${H(x.first)} ${H(x.last)}</b></td><td>${H(x.classroom)}</td><td>${x.at?chip("ok",fd(String(x.at).slice(0,10))):chip("missing",x.earlier?"Read "+x.earlier+", not yet "+F.edition:"Not yet")}</td></tr>`).join("")}</tbody></table></div></details>`:`<div class="empty">No children at our school yet.</div>`}`,`${n} of ${F.list.length}`)}
 
@@ -805,6 +807,8 @@ async function polChange(t,d){
 const PAGE={w:612,h:792,l:60,r:60,t:64,b:78};
 const INK=[34,51,42],MOSS=[47,90,67],MUTED=[93,110,99],RULE=[200,210,202];
 // a character Andika cannot draw becomes the nearest one it can, so no word is lost on paper
+// a link to a place in TREE prints as its words, since it opens only inside TREE
+const webLink=u=>u&&!/^tree:/.test(u)?u:"";
 const pdfText=s=>{s=String(s||"").replace(/→/g,"->").replace(/◊/g,"•");return (typeof PF!=="undefined"&&PF.b64)?s:clean(s)};
 async function picData(p){const b=await picBlob(p);const url=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(b)});
   const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});return {url,w:im.naturalWidth,h:im.naturalHeight,type:/png/.test(b.type)?"PNG":"JPEG",buf:await b.arrayBuffer()}}
@@ -823,8 +827,8 @@ function pdfWriter(doc,pics){let y=PAGE.t;const W=PAGE.w-PAGE.l-PAGE.r;const mar
       if(tw>w){let cur="";for(const ch of t.text){font(t.r,size);if(doc.getTextWidth(cur+ch)>w&&cur){lines.push([{text:cur,r:t.r,w:doc.getTextWidth(cur)}]);cur=""}cur+=ch}t.text=cur;font(t.r,size)}
       line.push({text:t.text,r:t.r,w:doc.getTextWidth(t.text)});lw+=line[line.length-1].w}
     if(line.length)lines.push(line);
-    for(const ln of lines){room(lh);let cx=x;for(const t of ln){font(t.r,size);doc.setTextColor(...(t.r.link?MOSS:color||INK));if(!t.sp){if(t.r.link)doc.textWithLink(t.text,cx,y,{url:t.r.link});else doc.text(t.text,cx,y);
-      if(t.r.u||t.r.link){doc.setDrawColor(...(t.r.link?MOSS:color||INK));doc.setLineWidth(.4);doc.line(cx,y+1.6,cx+t.w,y+1.6)}}cx+=t.w}y+=lh}
+    for(const ln of lines){room(lh);let cx=x;for(const t of ln){font(t.r,size);const lk=webLink(t.r.link);doc.setTextColor(...(lk?MOSS:color||INK));if(!t.sp){if(lk)doc.textWithLink(t.text,cx,y,{url:lk});else doc.text(t.text,cx,y);
+      if(t.r.u||lk){doc.setDrawColor(...(lk?MOSS:color||INK));doc.setLineWidth(.4);doc.line(cx,y+1.6,cx+t.w,y+1.6)}}cx+=t.w}y+=lh}
     if(!lines.length)y+=lh}
   function table(rows){if(!rows.length)return;const n=Math.max(...rows.map(r=>r.length));const cw=W/n,pad=4,size=9,lh=12;
     for(let ri=0;ri<rows.length;ri++){const row=rows[ri];
@@ -878,8 +882,8 @@ async function polWord(k,d,which){let X;try{X=await TREE_KIT.word()}catch(e){toa
   await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,ExternalHyperlink,Table,TableRow,TableCell,WidthType,ImageRun,Footer,PageNumber,HeadingLevel,AlignmentType,TableOfContents,PageBreak,BorderStyle}=X;
   const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;const parts=sec?[{title:sec.title,sections:[sec]}]:polBook(d);const pics=await polPictures(d,parts.flatMap(p=>p.sections));
   const F=PF.buf?PF.word.fr:"Arial";let listNo=0;
-  const run=(r,o)=>r.br?new TextRun({break:1}):new TextRun(Object.assign({text:r.text,bold:!!r.b,italics:!!r.i,underline:r.u||r.link?{}:undefined,font:F,color:r.link?"2F5A43":undefined},o||{}));
-  const inl=(rs,o)=>rs.map(r=>r.link&&!r.br?new ExternalHyperlink({link:r.link,children:[run(r,o)]}):run(r,o));
+  const run=(r,o)=>r.br?new TextRun({break:1}):new TextRun(Object.assign({text:r.text,bold:!!r.b,italics:!!r.i,underline:r.u||webLink(r.link)?{}:undefined,font:F,color:webLink(r.link)?"2F5A43":undefined},o||{}));
+  const inl=(rs,o)=>rs.map(r=>webLink(r.link)&&!r.br?new ExternalHyperlink({link:r.link,children:[run(r,o)]}):run(r,o));
   const img=(src,alt)=>{const p=pics[src];if(!p)return new Paragraph({children:[new TextRun({text:alt||"A picture",italics:true,font:F})]});let w=Math.min(600,p.w*.8),h=w*p.h/p.w;if(h>760){h=760;w=h*p.w/p.h}
     return new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:80,after:120},children:[new ImageRun({type:p.type==="PNG"?"png":"jpg",data:p.buf,transformation:{width:Math.round(w),height:Math.round(h)}})]})};
   const bodyOf=text=>{const out=[];for(const b of PM().blocks(text)){const ind=b.quote?{left:440}:undefined;
