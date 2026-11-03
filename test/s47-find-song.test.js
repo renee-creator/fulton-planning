@@ -9,7 +9,7 @@ const { start, browser, signedIn } = require('./fixture.js');
 async function setup(t) {
   const ai = http.createServer((q, r) => { const c = []; q.on('data', d => c.push(d)); q.on('end', () => { const body = Buffer.concat(c).toString();
     const trad = /A Made Up Round/.test(body);
-    if (/Give its usual words only/.test(body)) { const text = JSON.stringify(/Una Canción/.test(body) ? { words: 'Línea uno', english: 'Line one', free: true } : { words: '', english: '', free: false }); r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); return; }
+    if (/Give its usual words only/.test(body)) { const text = JSON.stringify(/Una Canción/.test(body) ? { words: 'Línea uno', english: 'Line one', language: 'Spanish', free: true } : { words: '', english: '', free: false }); r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); return; }
     const text = JSON.stringify(trad ? { title: 'A Made Up Round', songwriter: 'Traditional', copyright: false, words: 'Line one\nLine two', why: 'It is a round.', when: 'At meeting time.', movement: '', wonder: 'What do you hear?', connections: 'Birds' }
       : { title: 'A Newer Song', songwriter: 'A Writer', copyright: true, words: 'Should not appear', why: 'It moves.', when: 'After snack.', movement: 'March.', wonder: 'Where are we going?', connections: 'Wheels' });
     r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); }); });
@@ -53,6 +53,12 @@ test('Look up the words fills a traditional song for the director to check, with
   assert.strictEqual(await s.p.inputValue('#sl-w'), 'Línea uno'); assert.strictEqual(await s.p.inputValue('#sl-e'), 'Line one');
   await s.p.click('[data-songlooksave]'); await s.p.waitForFunction(() => { const x = libData.songs.find(x => x.title === 'Una Canción'); return x && songWords(x); }, null, { timeout: 15000 });
   const parts = await s.p.evaluate(() => libData.songs.find(x => x.title === 'Una Canción').parts.map(p => p.key)); assert.deepStrictEqual(parts, ['Words', 'In English']);
+  assert.strictEqual(await s.p.evaluate(() => libData.songs.find(x => x.title === 'Una Canción').meta.language), 'Spanish');
+  await s.p.waitForSelector('[data-songlang="Spanish"]', { timeout: 15000 }); await s.p.click('[data-songlang="Spanish"]');
+  const rows = await s.p.$$eval('[data-songrow]', xs => xs.length); assert.strictEqual(rows, 1, 'the Spanish filter shows the Spanish song');
+  const doc = await s.p.evaluate(() => songDoc(libData.songs.find(x => x.title === 'Una Canción')).blocks.map(b => b.label || ''));
+  assert.deepStrictEqual(doc.slice(0, 2), ['Spanish', 'In English']);
+  await s.p.click('[data-songlang="All"]');
   const id2 = await s.p.evaluate(() => libData.songs.find(x => x.title === 'A Later Song').id);
   await s.p.evaluate(id => { const d = document.querySelector(`[data-songrow="${id}"]`); d.open = true; d.querySelector('[data-songlook]').click(); }, id2);
   await s.p.waitForSelector('text=Search for the words', { timeout: 15000 });

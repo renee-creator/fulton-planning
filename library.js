@@ -84,7 +84,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     const draft = (kind === 'recipe' && !boss && !kit) || (kind === 'book' && !boss);
     const meta = [`library: ${kind}`];
     if (kind === 'recipe') meta.push(`kind: ${b.sensory ? 'sensory' : 'food'}`, `source: ${String(b.source || (from === 'family' ? 'A family' : 'Ours')).replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`);
-    if (kind === 'song') { meta.push(`copyright: ${b.copyright ? 'yes' : 'no'}`, `songwriter: ${String(b.songwriter || '').replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`); if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`); }
+    if (kind === 'song') { meta.push(`copyright: ${b.copyright ? 'yes' : 'no'}`, `songwriter: ${String(b.songwriter || '').replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`); if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`); const lang = String(b.language || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 40); if (lang && !/^english$/i.test(lang)) meta.push(`language: ${lang}`); }
     // a family's draft names no one, since every staff member reads the library. An educator's names the educator.
     if (draft) meta.push('status: draft', `by: ${from === 'family' ? 'a family' : String(me).replace(/[\n\r]|-->/g, ' ').slice(0, 120)}`);
     if (from === 'family') meta.push('from: family');
@@ -92,7 +92,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     let body = '';
     if (kind === 'recipe') body = sec('Ingredients', b.ingredients) + sec('Tools', b.tools) + sec('Steps', b.steps) + (b.dairyFree ? sec('Dairy free', b.dairyFree) : '') + (b.glutenFree ? sec('Gluten free', b.glutenFree) : '') + (b.notes ? sec('Notes', b.notes) : '');
     // a song found by Find the song keeps the parts it drafted, each only when it has words, then its words
-    if (kind === 'song') body = [['Why we sing it', b.why], ['When we sing it', b.when], ['Movement or game', b.movement], ['I wonder', b.wonder], ['Connections', b.connections]].filter(([, v]) => String(v || '').trim()).map(([k, v]) => sec(k, v)).join('') + sec('Words', b.words);
+    if (kind === 'song') body = [['Why we sing it', b.why], ['When we sing it', b.when], ['Movement or game', b.movement], ['I wonder', b.wonder], ['Connections', b.connections]].filter(([, v]) => String(v || '').trim()).map(([k, v]) => sec(k, v)).join('') + sec('Words', b.words) + (String(b.english || '').trim() ? sec('In English', b.english) : '');
     if (kind === 'readaloud') body = sec('About', b.about);
     if (kind === 'book') {
       const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);
@@ -159,7 +159,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       if (!words) { err(req, res, 400, 'Add the words first.'); return; }
       const r = S.files.get(x.path); let t = String(r.text || '').replace(/\n## (Words|In English)\s*\n[\s\S]*?(?=\n## |$)/g, '').trimEnd();
       t += '\n\n## Words\n\n' + words + '\n' + (english ? '\n## In English\n\n' + english + '\n' : '');
-      putText(x.path, t); json(req, res, 200, list(me)); return; }
+      putText(x.path, t); const lang = String(body.language || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 40); if (lang && !/^english$/i.test(lang)) setMeta(x.path, 'language', lang); json(req, res, 200, list(me)); return; }
     if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } if (!body.place) setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
       // a song has a place for its words, ready for the director to add them, with the mark or without it
       if (!body.on || body.place) { const r = S.files.get(x.path); if (r && !/^##\s+Words\s*$/m.test(r.text)) putText(x.path, r.text.trimEnd() + '\n\n## Words\n\n'); }
