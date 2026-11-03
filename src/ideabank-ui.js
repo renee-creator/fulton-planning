@@ -143,7 +143,7 @@ function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=
     ${(home?c.home.sections:c.sections||[]).map(ibSectionHtml).join("")}
     ${home?"":`<h3>Feeds</h3><div class="chips">${(c.feeds||[]).map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
       ${(c.supports||[]).length?`<h3>Supports</h3><div class="chips">${c.supports.map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>${has(c.seeks)?`<p class="ibtip">${esc(c.seeks)}</p>`:""}${has(c.avoids)?`<p class="ibtip">${esc(c.avoids)}</p>`:""}`:""}
-      <h3>Connected to</h3><ul>${(c.connected||[]).map(k=>`<li>${ibConnHtml(k)}</li>`).join("")}</ul>`}
+      <h3>Connected to</h3><ul>${(c.connected||[]).map(k=>`<li>${ibConnHtml(k)}</li>`).join("")}</ul>${typeof booksFor==="function"?booksFor(c.title):""}`}
     ${dir?`<div class="actions" style="margin-top:12px"><button class="linkbtn" data-ibremove="${esc(c.id)}">Remove this card</button></div>`
       :!VIEW_AS?`<details style="margin-top:12px" ${ibSt.sugOpen===c.id?"open":""}><summary class="linkbtn">Suggest a change</summary><div class="kfields">
         <label>The part to change<select id="ib-sgf" data-ibsgf="${esc(c.id)}">${fl.map(([k,l])=>`<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select></label>

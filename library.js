@@ -9,7 +9,7 @@
    A song marked copyright shows the mark beside its title, its songwriter, a link to a recording and the words the
    director adds from our own song books. Recipes come from the director and the kitchen, and drafts from educators and families wait for the director. */
 module.exports = function library(o) {
-  const { S, get, put, putText, log, isDirector, isKitchen } = o; const pdShown = typeof o.pdShown === 'function' ? o.pdShown : () => false;
+  const { S, get, put, putText, log, isDirector, isKitchen } = o; const isOffice = typeof o.isOffice === 'function' ? o.isOffice : () => false; const pdShown = typeof o.pdShown === 'function' ? o.pdShown : () => false;
   /* The picture library for the demonstration sheets, realistic pictures named by ingredient or tool, one consistent
      style on white, kept in the records under staff/library/images, such as banana.png or whole_wheat_flour.png. A
      photo from the piazza, kept once the face check on the device finds no face, stands for an item with no picture, or
@@ -99,7 +99,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     if (kind === 'readaloud') body = sec('About', b.about);
     if (kind === 'book') {
       const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);
-      for (const k of ['author', 'illustrator', 'year', 'languages']) if (one(b[k])) meta.push(`${k}: ${one(b[k])}`);
+      for (const k of ['author', 'illustrator', 'year', 'languages']) if (one(b[k])) meta.push(`${k}: ${one(b[k])}`); meta.push(`owned: ${b.owned === true ? 'yes' : 'no'}`);
       if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`);
       const KINDS = { story: 'Reading for the story', understand: 'Reading to understand', information: 'Reading for information', wordless: 'A wordless book', reference: 'A reference book', coffee: 'A coffee table book', childmade: 'A book children made' };
       body = sec('Why we chose it', b.why) + sec('Kind of reading', (Array.isArray(b.kinds) ? b.kinds : [b.kinds]).map(k => KINDS[k]).filter(Boolean).join('\n')) +
@@ -168,6 +168,15 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       const r = S.files.get(x.path); let t = String(r.text || '').replace(/\n## (Words|In English)\s*\n[\s\S]*?(?=\n## |$)/g, '').trimEnd();
       t += '\n\n## Words\n\n' + words + '\n' + (english ? '\n## In English\n\n' + english + '\n' : '');
       putText(x.path, t); const lang = String(body.language || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 40); if (lang && !/^english$/i.test(lang)) setMeta(x.path, 'language', lang); json(req, res, 200, list(me)); return; }
+    // the director's vetting notes on a book, drafted with the Book Vetting Tool and saved after she reads them through
+    if (P === 'library/vetting') { if (!dir || x.kind !== 'book') { err(req, res, 403, 'Only the director saves the vetting notes.'); return; }
+      const notes = String(body.text || '').replace(/\r/g, '').replace(/^##/gm, '').trim().slice(0, 8000);
+      const r = S.files.get(x.path); let t = String(r.text || '').replace(/\n## Vetting notes\s*\n[\s\S]*?(?=\n## |$)/g, '').trimEnd();
+      if (notes) t += '\n\n## Vetting notes\n\n' + notes + '\n';
+      putText(x.path, t); log('Book vetting notes saved', x.path, 'by', me); json(req, res, 200, list(me)); return; }
+    // whether we own a book, marked by the director or the office
+    if (P === 'library/owned') { if ((!dir && !isOffice(me)) || x.kind !== 'book') { err(req, res, 403, 'The director or the office marks the books we own.'); return; }
+      setMeta(x.path, 'owned', body.on ? 'yes' : 'no'); log('Book', body.on ? 'marked ours' : 'marked to find', x.path, 'by', me); json(req, res, 200, list(me)); return; }
     // the director removes a card from TREE, and it waits in her Removed list, or she puts it back
     if (P === 'library/remove') { if (!dir) { err(req, res, 403, 'Only the director removes a card.'); return; }
       setMeta(x.path, 'removed', body.on === false ? null : new Date().toISOString().slice(0, 10)); log('Library card', body.on === false ? 'put back' : 'removed', x.path, 'by', me); json(req, res, 200, list(me)); return; }

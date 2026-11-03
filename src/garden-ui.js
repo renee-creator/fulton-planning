@@ -142,7 +142,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
     ${p.taste?`<div class="gsafe"><b>${p.eat==="look"?"For looking.":"What is safe to taste."}</b> ${esc(p.taste)}</div>`:""}${p.opens?`<div style="margin-top:4px">${esc(p.opens)}</div>`:""}
     ${(p.wonder||[]).length?`<ul class="gwonder">${p.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}${(p.words||{}).adult?`<div style="margin-top:4px">${esc(p.words.adult)}</div>`:""}
     ${(p.care||[]).length?`<div class="cnt" style="margin-top:4px">Care through the year. ${gdnCareText(p).map(x=>esc(x.charAt(0).toUpperCase()+x.slice(1))).join(". ")}.</div>`:""}
-    ${(p.wildlife||[]).length?`<div class="cnt">Feeds ${esc(p.wildlife.join(", "))}.</div>`:""}
+    ${(p.wildlife||[]).length?`<div class="cnt">Feeds ${esc(p.wildlife.join(", "))}.</div>`:""}${typeof booksFor==="function"?booksFor(p.common):""}
     <div class="gphotos">${((g.photos||[]).filter(x=>x.plant===p.id)).map(x=>`<img src="${esc(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(x.id):"")}" alt="${esc(p.common)}${x.season?", "+esc(x.season):""}">`).join("")}</div>
     <div class="actions"><button class="btn small ghost" data-gphoto="${esc(p.id)}">Add our photo</button>${dir&&!p.filled&&(!p.opens||!(p.words||{}).child||!(p.care||[]).length)?`<button class="btn small ghost" data-gpfill="${esc(p.id)}">Look it up</button>`:""}${printBtns("gplant",p.id,"Full plant page, PDF")}${dir?`<button class="linkbtn" data-gpedit="${esc(p.id)}">Change</button>${gdnChange("plants|"+p.id,"Change its words")}`:""}${dir&&g.mapPhoto&&!p.planned?gdnPlaceBtn("plant:"+p.id,spots):""}</div>
     ${dir&&gdnEdit===p.id?gdnPlantForm(p,beds,g.uses):""}</details>`;
