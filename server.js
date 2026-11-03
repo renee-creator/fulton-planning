@@ -487,6 +487,8 @@ function sendNote(text, to, by) {
    twice, and until a step has run TREE reads the old values. A step that is not ready yet, because what it needs has not
    loaded, says so and is tried again at the next start of that part. */
 const ONCE = [];
+// the tests leave out a step that adds many pages at start, such as the starter books, unless a test asks for it
+const ONCE_SKIP = new Set(String(process.env.ONCE_SKIP || '').split(',').map(x => x.trim()).filter(Boolean));
 function onceDone(id) { const r = store.recs.settings.get('once'); return !!(r && !r.deleted && r.doc && r.doc.done && r.doc.done[id]); }
 // a step may finish later, such as one that takes away a page on GitHub. Steps still run one at a time and in order.
 let onceBusy = null;
@@ -500,7 +502,7 @@ function runOnce() {
     log('One-time step done,', id); };
   (async () => {
     for (const [id, fn] of ONCE) {
-      if (onceDone(id)) continue;
+      if (onceDone(id) || ONCE_SKIP.has(id)) continue;
       try { let out = fn(); if (out && typeof out.then === 'function') out = await out; if (out === false) continue; mark(id); }
       catch (e) { log('One-time step could not run,', id, e.message); }
     }
@@ -623,6 +625,8 @@ for (const name of ['schoolName', 'helpCurrent', 'regLinks', 'trainingVideos', '
 ONCE.push(['dutiesEmail', () => staff.once.edits('dutiesEmail', recsEdit)]);
 ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
 ONCE.push(['freeStories', () => staff.once.edits('freeStories', recsEdit)]);
+// November 3, 2026. A starter set of books for the book collection, from once/starter-books.json, each a draft for the director to vet
+ONCE.push(['starterBooks', () => staff.once.edits('starterBooks', recsEdit)]);
 ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);

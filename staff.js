@@ -1062,7 +1062,7 @@ module.exports = function staffModule(o) {
   const VOL = require('./volunteer.js')({ get, put, S, log, isDirector, isOffice, saveRecord }); RECORD_EDIT.push(...VOL.SPECS);
   // the Idea bank, its cards and behaviors kept as records in staff/library/ideabank and edited with the one editor
   const IB = require('./ideabank.js')({ S, get, put, log, isDirector, isKitchen, nameKey }); RECORD_EDIT.push(IB.SPEC);
-  const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, isOffice, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
+  const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, isOffice, keepOriginal, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ ask: o.ask, hasAsk: o.hasAsk, recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
   const G = require('./growth.js')({ edWords: () => edTexts(), get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
@@ -1174,6 +1174,8 @@ module.exports = function staffModule(o) {
     s12Help: ['staff/once/s12-help.json', 'Help answers for what Session 12 added and changed'],
     s12NoSlowCooker: ['staff/once/s12-no-slow-cooker.json', 'No slow cooker at the piazza, so quinoa porridge cooks on the kitchen stove'],
     freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
+    // November 3, 2026. A starter set of books for the collection, each a draft waiting for the director to vet it
+    starterBooks: ['code:once/starter-books.json', 'A starter set of books, each waiting for the director to vet it'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

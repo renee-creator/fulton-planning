@@ -39,6 +39,15 @@ module.exports = function library(o) {
       else if (v && v.url) out[k] = { from: 'web', url: v.url, credit: v.credit || '', link: v.link || '' };
     return out; };
   const WD = require('./wording.js');
+  // finding a book in Open Library and the Sonoma County Library catalog, and what the library holds (November 3, 2026)
+  const BF = require('./book-find.js')({ log });
+  const crypto = require('crypto');
+  // a copy of a book's cover, from the catalog it was found in, kept in TREE's Drive like our photos so it never breaks
+  async function saveCover(path, url) {
+    if (typeof o.keepOriginal !== 'function') throw new Error('Covers cannot be kept here.');
+    const c = await BF.coverBytes(url); const id = crypto.randomBytes(6).toString('hex') + '-book-cover.' + c.ext;
+    await o.keepOriginal(id, c.buf, c.type, 'Add a book cover'); setMeta(path, 'cover', id); return id;
+  }
   const DIRS = { recipes: 'recipe', songs: 'song', readalouds: 'readaloud', explorations: 'exploration', books: 'book' };
   const META = text => { const m = String(text || '').match(/^\s*<!--([\s\S]*?)-->/); const out = {}; if (m) for (const l of m[1].split('\n')) { const kv = l.match(/^\s*([a-z]+)\s*:\s*(.*?)\s*$/i); if (kv) out[kv[1].toLowerCase()] = kv[2]; } return out; };
   const slug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'item';
@@ -99,7 +108,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     if (kind === 'readaloud') body = sec('About', b.about);
     if (kind === 'book') {
       const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);
-      for (const k of ['author', 'illustrator', 'year', 'languages']) if (one(b[k])) meta.push(`${k}: ${one(b[k])}`); meta.push(`owned: ${b.owned === true ? 'yes' : 'no'}`);
+      for (const k of ['author', 'illustrator', 'year', 'languages', 'publisher', 'pages', 'isbn']) if (one(b[k])) meta.push(`${k}: ${one(b[k])}`); meta.push(`owned: ${b.owned === true ? 'yes' : 'no'}`);
       if (/^https:\/\//.test(b.link || '')) meta.push(`link: ${String(b.link).slice(0, 400)}`);
       const KINDS = { story: 'Reading for the story', understand: 'Reading to understand', information: 'Reading for information', wordless: 'A wordless book', reference: 'A reference book', coffee: 'A coffee table book', childmade: 'A book children made' };
       body = sec('Why we chose it', b.why) + sec('Kind of reading', (Array.isArray(b.kinds) ? b.kinds : [b.kinds]).map(k => KINDS[k]).filter(Boolean).join('\n')) +
@@ -156,7 +165,17 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
         const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 15e6) throw new Error('too large');
         send(req, res, 200, { 'Content-Type': type.split(';')[0], 'Cache-Control': 'private, max-age=86400' }, buf); }
       catch (e) { err(req, res, 502, 'The site did not hand over its image.'); } return; }
-    if (P === 'library/add') { const r = add(me, body || {}); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); return; }
+    // a book found in a catalog keeps a copy of its cover. A cover that cannot be copied leaves the book as it is.
+    if (P === 'library/add') { const r = add(me, body || {}); if (r.error) { err(req, res, 400, r.error); return; }
+      if (r.path && body.kind === 'book' && body.cover) { try { await saveCover(r.path, String(body.cover)); } catch (e) { log('Book cover not kept,', r.path, e.message); r.coverMissed = true; } }
+      json(req, res, 200, Object.assign(list(me), r)); return; }
+    // Find the book. Up to five matches from the catalogs, each with its cover and what the library holds
+    if (P === 'library/bookfind') { if (kit) { err(req, res, 403, 'The book collection is for educators.'); return; }
+      try { json(req, res, 200, await BF.find(body.title, body.author)); } catch (e) { log('Find the book failed,', e.message); err(req, res, 502, 'The library catalogs did not answer just now.'); } return; }
+    // what the Sonoma County Library holds of each book in the collection, checked at most once a day
+    if (P === 'library/bookavail') { if (kit) { json(req, res, 200, { list: {} }); return; }
+      const books = list(me).books.map(x => ({ path: x.path, title: x.title, author: String(x.meta.author || '') }));
+      try { json(req, res, 200, { list: await BF.availability(books) }); } catch (e) { json(req, res, 200, { list: {}, off: true }); } return; }
     const x = item(String(body.path || '')); if (!x) { err(req, res, 404, 'That is not in the library.'); return; }
     // the director marks a draft recipe ready, or takes it out
     if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); if (body.on && x.meta.by) setMeta(x.path, 'by', null); json(req, res, 200, list(me)); return; }
@@ -174,6 +193,16 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       const r = S.files.get(x.path); let t = String(r.text || '').replace(/\n## Vetting notes\s*\n[\s\S]*?(?=\n## |$)/g, '').trimEnd();
       if (notes) t += '\n\n## Vetting notes\n\n' + notes + '\n';
       putText(x.path, t); log('Book vetting notes saved', x.path, 'by', me); json(req, res, 200, list(me)); return; }
+    /* the facts from a catalog match, put on a book already in the collection by the director, from the review list or
+       Fix. The cover is copied and kept, and each fact replaces the one there. */
+    if (P === 'library/bookfacts') { if (!dir || x.kind !== 'book') { err(req, res, 403, 'The director puts the catalog facts on a book.'); return; }
+      const m = body.match || {}; const one = v => String(v || '').replace(/[\n\r]|-->/g, ' ').trim().slice(0, 160);
+      if (body.none) { setMeta(x.path, 'catalog', 'none'); json(req, res, 200, list(me)); return; }
+      for (const k of ['author', 'illustrator', 'year', 'languages', 'publisher', 'pages', 'isbn']) { const v = one(m[k]); setMeta(x.path, k, v || null); }
+      if (/^https:\/\//.test(m.link || '')) setMeta(x.path, 'link', String(m.link).slice(0, 400));
+      setMeta(x.path, 'catalog', 'yes');
+      let missed = false; if (m.cover) { try { await saveCover(x.path, String(m.cover)); } catch (e) { missed = true; log('Book cover not kept,', x.path, e.message); } }
+      log('Catalog facts put on', x.path, 'by', me); json(req, res, 200, Object.assign(list(me), { coverMissed: missed })); return; }
     // whether we own a book, marked by the director or the office
     if (P === 'library/owned') { if ((!dir && !isOffice(me)) || x.kind !== 'book') { err(req, res, 403, 'The director or the office marks the books we own.'); return; }
       setMeta(x.path, 'owned', body.on ? 'yes' : 'no'); log('Book', body.on ? 'marked ours' : 'marked to find', x.path, 'by', me); json(req, res, 200, list(me)); return; }

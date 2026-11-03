@@ -595,6 +595,18 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .ev.space{background:var(--moss-soft)}
 .ev.conf{background:var(--marigold-soft)}
 .mthumb{width:96px;height:110px;object-fit:cover;border-radius:9px;background:var(--bg);display:block}
+/* the book collection's covers, the library line and the catalog matches (November 3, 2026) */
+.bkhead{display:flex;gap:10px;align-items:flex-start;min-width:0}.bkhead>span{min-width:0;overflow-wrap:anywhere}
+.bkcov{width:44px;height:62px;object-fit:cover;border-radius:4px;background:var(--bg);flex:none;display:block;border:1px solid var(--line)}
+.bkcovl{width:120px;max-height:180px;object-fit:contain;border-radius:6px;background:var(--bg);display:block;margin:8px 0;flex:none}
+.bklib{font-size:13.5px;margin-top:2px}
+.bkmatches{display:grid;gap:8px;margin:6px 0}
+.bkmatch{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;cursor:pointer;font:inherit;color:var(--ink);min-width:0;width:100%}
+.bkmatch img,.bkmatch .bknocov{width:56px;height:80px;object-fit:cover;border-radius:4px;flex:none;background:var(--bg)}
+.bkmatch>span:last-child{min-width:0;overflow-wrap:anywhere}
+.bknocov{display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.bkrevrow{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:6px}
+.bksum{list-style:none;padding:6px 0}.bksum::-webkit-details-marker{display:none}
 .mrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start}
 .mrow.nophoto{grid-template-columns:minmax(0,1fr)}
 @media (max-width:520px){.mrow{grid-template-columns:72px minmax(0,1fr)}.mthumb{width:72px;height:86px}}
@@ -5590,6 +5602,30 @@ function renderSongs(){const m=$("#main");if(!libData){loadLibrary();m.innerHTML
    draft until the director approves it after vetting with the Book Vetting Tool. Each book prints as a card, one, some or all. */
 const BOOK_KINDS=[["story","For the story"],["understand","To understand"],["information","For information"],["wordless","Wordless"],["reference","Reference"],["coffee","Coffee table"],["childmade","Made by children"]];
 let bookPick=new Set(),bookQ="",bookFound=null,bookBusy=false,bookOwnF="all",bookSug=null,bookSugQ="",bookVet=null;
+/* November 3, 2026. A book's facts and cover come from a library catalog, Open Library and the Sonoma County Library,
+   chosen from up to five matches, and its cover is kept in TREE's Drive. Each book shows what the library holds,
+   checked at most once a day. bookMatches holds the matches for the book being added, bookAvail what the library holds,
+   and bookRev the director's list for putting covers and links on books already in the collection. */
+let bookMatches=null,bookAvail=null,bookAvailAsked=false,bookRev=null;
+const bookCover=x=>{const id=(x&&x.meta||{}).cover;return id&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(id):""};
+function bookAvailLoad(force){if(bookAvailAsked&&!force)return;bookAvailAsked=true;
+  Promise.resolve(window.FP_API("/api/staff/library/bookavail",{})).then(r=>{bookAvail=(r&&r.list)||{};if(view==="songs")bookRender()}).catch(()=>{bookAvail={}})}
+// what is typed in the book form, kept before the page is drawn again, so an answer arriving from the catalogs never wipes it
+const BOOK_FIELDS=[["bk-t","title"],["bk-a","author"],["bk-i","illustrator"],["bk-y","year"],["bk-l","languages"],["bk-u","link"],["bk-w","why"],["bk-wh","where"],["bk-g","guide"],["bk-c","connections"]];
+function bookKeepForm(){if(!document.getElementById("bk-t"))return;const f=Object.assign({},bookFound||{});for(const [id,k] of BOOK_FIELDS)f[k]=document.getElementById(id).value;
+  f.kinds=[...document.querySelectorAll("[data-bkkind]:checked")].map(x=>x.dataset.bkkind);f.owned=!!document.getElementById("bk-o")?.checked;bookFound=f}
+// the page drawn again for an answer that arrived on its own, keeping what is typed and where the cursor is
+function bookRender(kept){const a=document.activeElement,id=a&&a.id,c=a&&typeof a.selectionStart==="number"?a.selectionStart:null;if(!kept)bookKeepForm();renderMain();
+  if(id){const el=document.getElementById(id);if(el&&el!==document.activeElement){el.focus();if(c!=null)try{el.setSelectionRange(c,c)}catch(e){}}}}
+// the library line, such as Sonoma County Library · 6 of 17 in now · ebook
+function bookLibLine(L){if(!L)return "";if(!L.found)return `<div class="cnt bklib">Not at Sonoma County Library</div>`;
+  const bits=["Sonoma County Library",L.total?`${L.avail} of ${L.total} in now`:"No print copies",L.ebook?"ebook":"",L.audio?"audiobook":"",...(L.languages||[]).map(l=>"also in "+l)].filter(Boolean);
+  return `<div class="cnt bklib">${esc(bits.join(" · "))}</div>`}
+const bookLibOf=x=>bookAvail&&x?bookAvail[x.path]:null;
+const bookAtLib=x=>{const L=bookLibOf(x);return !!(L&&L.found&&L.total)};
+// up to five matches from the catalogs, read by the server
+async function bookCatalog(title,author){const r=await window.FP_API("/api/staff/library/bookfind",{title,author});return (r&&Array.isArray(r.matches))?r.matches:[]}
+const bookMatchHtml=(m,attr)=>`<button class="bkmatch" ${attr}>${m.cover?`<img src="${esc(m.cover)}" alt="" loading="lazy">`:`<span class="bknocov">No cover</span>`}<span><b>${esc(m.title)}</b><span class="cnt" style="display:block">${esc([m.author,m.illustrator&&"illustrated by "+m.illustrator,m.year].filter(Boolean).join(", "))}</span>${bookLibLine(m.library)}</span></button>`;
 const bookOwned=x=>/^yes$/i.test(String((x.meta||{}).owned||""));
 const bookNorm=t=>String(t||"").toLowerCase().replace(/^(the|a|an)\s+/,"").replace(/[^a-z0-9]+/g," ").trim();
 const bookOurs=t=>(libData&&libData.books||[]).find(x=>bookNorm(x.title)===bookNorm(t))||null;
@@ -5599,23 +5635,23 @@ function bookNames(){const cards=(typeof ibCards==="function"?ibCards():[]).map(
   const plants=((typeof gdn!=="undefined"&&gdn&&gdn.plants)||[]).map(p=>p.common).filter(Boolean);
   const th=[...threads.values()].filter(t=>!t.unfollowed&&t.status!=="closed").map(t=>t.name).filter(Boolean);
   return {cards:[...new Set(cards)],plants:[...new Set(plants)],threads:[...new Set(th)]}}
-// Find the book. The writing help fills in a book it is sure exists, and leaves everything but the title empty when it is not sure.
+// After a match is chosen, the writing help drafts only our own parts, the kinds of reading, why we would choose it,
+// where it would live, the reading guide and the connections. The facts about the book come from the catalog.
 async function bookFind(title,author){if(!sample)return null;
   try{if(typeof ibLoad==="function")await ibLoad()}catch(e){}try{if(typeof loadGarden==="function"&&!gdn)await loadGarden()}catch(e){}
   const N=bookNames();
   const prompt=`A preschool is adding the children's book "${title}"${author?" by "+author:""} to its book collection. ${STYLE}
-Only fill this in for a real, published book you are sure exists as titled. Never invent a book, an author, an illustrator or a year. When you are not sure the book exists, return {"found": false} and nothing else.
-Return JSON {"found": true, "title": the book's title as published, "author": the author, "illustrator": the illustrator, or "" when the author illustrated it or you do not know, "year": the year it was first published, or "" when you do not know, "languages": the languages it is written in, such as English or English and Spanish, "kinds": a list of the kinds of reading it suits, from these keys only: ${BOOK_KINDS.map(([k,l])=>k+" ("+l+")").join(", ")}, "why": two or three sentences on why we would choose it for young children, "where": a few words on where it would live, such as the reading corner or the garden basket, "guide": a short reading guide, lines that start with "I notice" and lines that start with "I wonder", one per line, "connections": a list of names copied exactly from the lists below that this book truly connects to, or an empty list}.
+Draft only what we write about the book. Never add facts about the book you are not sure of. When you do not know this book, return {"found": false} and nothing else.
+Return JSON {"found": true, "kinds": a list of the kinds of reading it suits, from these keys only: ${BOOK_KINDS.map(([k,l])=>k+" ("+l+")").join(", ")}, "why": two or three sentences on why we would choose it for young children, "where": a few words on where it would live, such as the reading corner or the garden basket, "guide": a short reading guide, lines that start with "I notice" and lines that start with "I wonder", one per line, "connections": a list of names copied exactly from the lists below that this book truly connects to, or an empty list}.
 Our Idea bank cards: ${N.cards.join("; ")||"none"}.
 Our garden plants: ${N.plants.join("; ")||"none"}.
 Our live threads: ${N.threads.join("; ")||"none"}.`;
   const o=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"book"})||{};
-  if(o.found!==true)return {title,none:true};
+  if(o.found!==true)return null;
   const c=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim(),all=new Set([...N.cards,...N.plants,...N.threads]);
   const conn=(Array.isArray(o.connections)?o.connections:String(o.connections||"").split(/[;\n]/)).map(v=>String(v).replace(/^[-•\s]+/,"").trim()).filter(v=>all.has(v));
-  const t2=c(o.title)||title,a2=c(o.author);
-  return {title:t2,author:a2,illustrator:c(o.illustrator),year:c(o.year).replace(/[^0-9]/g,"").slice(0,4),languages:c(o.languages),kinds:(Array.isArray(o.kinds)?o.kinds:[]).filter(k=>BOOK_KINDS.some(([b])=>b===k)),
-    why:c(o.why),where:c(o.where),guide:String(o.guide||"").split("\n").map(l=>l.replace(/^[-•\s]+/,"").trim()).filter(Boolean).map(l=>"- "+l).join("\n"),connections:[...new Set(conn)].map(v=>"- "+v).join("\n"),link:bookLink(t2,a2)}}
+  return {kinds:(Array.isArray(o.kinds)?o.kinds:[]).filter(k=>BOOK_KINDS.some(([b])=>b===k)),
+    why:c(o.why),where:c(o.where),guide:String(o.guide||"").split("\n").map(l=>l.replace(/^[-•\s]+/,"").trim()).filter(Boolean).map(l=>"- "+l).join("\n"),connections:[...new Set(conn)].map(v=>"- "+v).join("\n")}}
 // Vet this book. The writing help goes through the Book Vetting Tool's questions for the director to read through and change.
 async function bookVetDraft(x){const r=await window.FP_API("/api/staff/g/modules",{});const mods=(r&&r.modules)||{};
   const mod=mods["book-vetting-tool"]||Object.values(mods).find(m=>m&&/book vetting/i.test(m.title||""));
@@ -5650,27 +5686,34 @@ function booksFor(name){if(!name)return "";if(!libData){if(!bookForAsked&&typeof
 window.TREE_BOOKS_FOR=booksFor;
 const bookPart=(x,k)=>((x.parts||[]).find(p=>p.key.toLowerCase()===k.toLowerCase())||{}).text||"";
 function bookRow(x){const dir=isDirector()&&!VIEW_AS,m=x.meta||{};
-  return `<details class="strow" data-readrow="b-${esc(x.id)}" ${songOpen==="r:b-"+x.id?"open":""}><summary style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:6px" onclick="event.stopPropagation()"><input type="checkbox" data-bookpick="${esc(x.id)}" ${bookPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.title)} to print"></label><b>${esc(x.title)}</b> ${bookOwned(x)?`<span class="pill" style="pointer-events:none">Ours</span> `:""}${x.draft?`<span class="pill" style="pointer-events:none">Waiting for the director</span> `:""}<span class="cnt">${esc([m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", "))}</span></summary>
-    ${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
-    <div class="actions" style="flex-wrap:wrap">${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">Find the book</a>`:""}${printBtns("bookcard",esc(x.id),"Card")}${dir?pageEditBtn(x.path,"Edit"):""}${dir&&x.draft?`<button class="btn small" data-readready="${esc(x.path)}">Approve it after vetting</button>`:""}${dir&&sample?`<button class="btn small ghost" data-bookvetdraft="${esc(x.id)}" ${bookVet&&bookVet.busy===x.id?"disabled":""}>${bookVet&&bookVet.busy===x.id?"Vetting":"Vet this book"}</button>`:""}${libRemoveBtn(x)}<button class="linkbtn" data-bookvet="1">The Book Vetting Tool</button></div>
+  return `<details class="strow" data-readrow="b-${esc(x.id)}" ${songOpen==="r:b-"+x.id?"open":""}><summary class="bkhead bksum" style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:0;align-self:center" onclick="event.stopPropagation()"><input type="checkbox" data-bookpick="${esc(x.id)}" ${bookPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.title)} to print"></label><span class="bkhead">${bookCover(x)?`<img class="bkcov" src="${esc(bookCover(x))}" alt="" loading="lazy">`:`<span class="bkcov bknocov" aria-hidden="true"></span>`}<span><b>${esc(x.title)}</b> ${bookOwned(x)?`<span class="pill" style="pointer-events:none">Ours</span> `:""}${x.draft?`<span class="pill" style="pointer-events:none">Waiting for the director</span> `:""}<span class="cnt" style="display:block">${esc([m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", "))}</span>${bookLibLine(bookLibOf(x))}</span></span></summary>
+    ${bookCover(x)?`<img class="bkcovl" src="${esc(bookCover(x))}" alt="The cover of ${esc(x.title)}" loading="lazy">`:""}${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
+    <div class="actions" style="flex-wrap:wrap">${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">The book's page</a>`:""}${(()=>{const L=bookLibOf(x);return L&&L.found?`<a class="btn small ghost" href="${esc(L.record)}" target="_blank" rel="noopener">At Sonoma County Library</a>`:L&&L.search?`<a class="linkbtn" href="${esc(L.search)}" target="_blank" rel="noopener">Search the library</a>`:""})()}${dir?`<button class="linkbtn" data-bookfix="${esc(x.id)}">${bookCover(x)?"Change the cover and facts":"Find its cover and facts"}</button>`:""}${printBtns("bookcard",esc(x.id),"Card")}${dir?pageEditBtn(x.path,"Edit"):""}${dir&&x.draft?`<button class="btn small" data-readready="${esc(x.path)}">Approve it after vetting</button>`:""}${dir&&sample?`<button class="btn small ghost" data-bookvetdraft="${esc(x.id)}" ${bookVet&&bookVet.busy===x.id?"disabled":""}>${bookVet&&bookVet.busy===x.id?"Vetting":"Vet this book"}</button>`:""}${libRemoveBtn(x)}<button class="linkbtn" data-bookvet="1">The Book Vetting Tool</button></div>
     ${(dir||isOffice())&&!VIEW_AS?`<label class="radio"><input type="checkbox" data-bookowned="${esc(x.path)}" ${bookOwned(x)?"checked":""}><span>We own it</span></label>`:""}
     ${dir&&bookVet&&bookVet.id===x.id?`<div class="binadd"><div class="cnt">Each question from the Book Vetting Tool, drafted for you to read through. Check anything marked Check in the book against the book itself.</div><label class="fld-label">Vetting notes<textarea id="bv-t" rows="10">${esc(bookVet.text||"")}</textarea></label><div class="actions"><button class="btn small" data-bookvetsave="${esc(x.path)}">Save the vetting notes</button><button class="linkbtn" data-bookvetcancel="1">Cancel</button></div></div>`:""}</details>`}
-function bookCollectionHtml(){const all=(libData.books||[]),q=bookQ.trim().toLowerCase();
-  const list=all.filter(x=>bookOwnF==="all"||(bookOwnF==="ours")===bookOwned(x)).filter(x=>!q||[x.title,(x.meta||{}).author,x.lead,...(x.parts||[]).map(p=>p.text)].join(" ").toLowerCase().includes(q)).sort((a,b)=>(a.draft?0:1)-(b.draft?0:1)||a.title.replace(/^(The|A) /,"").localeCompare(b.title.replace(/^(The|A) /,"")));
+function bookCollectionHtml(){const all=(libData.books||[]),q=bookQ.trim().toLowerCase();bookAvailLoad();
+  const fOk=x=>bookOwnF==="all"||(bookOwnF==="lib"?!bookOwned(x)&&bookAtLib(x):(bookOwnF==="ours")===bookOwned(x));
+  const dirNow=isDirector()&&!VIEW_AS,missing=all.filter(x=>!(x.meta||{}).cover&&(x.meta||{}).catalog!=="none");
+  const list=all.filter(fOk).filter(x=>!q||[x.title,(x.meta||{}).author,x.lead,...(x.parts||[]).map(p=>p.text)].join(" ").toLowerCase().includes(q)).sort((a,b)=>(a.draft?0:1)-(b.draft?0:1)||a.title.replace(/^(The|A) /,"").localeCompare(b.title.replace(/^(The|A) /,"")));
   return `<section class="card"><div class="hint">Our book collection, each book vetted with the Book Vetting Tool. Anyone can suggest a book, and the director approves it after vetting.</div>
     <label class="fld-label">Find a book<input type="search" id="bk-q" value="${esc(bookQ)}" placeholder="A title, an author or a topic"></label>
-    <div class="tseg" role="group" aria-label="Books we own" style="margin:8px 0">${[["all","All"],["ours","Ours"],["find","To find"]].map(([k,l])=>`<button data-bookown="${k}" aria-pressed="${bookOwnF===k}">${l} ${k==="all"?all.length:all.filter(x=>(k==="ours")===bookOwned(x)).length}</button>`).join("")}</div>
+    <div class="tseg" role="group" aria-label="Books we own" style="margin:8px 0;flex-wrap:wrap">${[["all","All"],["ours","Ours"],["find","To find"],["lib","At our library"]].map(([k,l])=>`<button data-bookown="${k}" aria-pressed="${bookOwnF===k}">${l} ${k==="all"?all.length:k==="lib"?(bookAvail?all.filter(x=>!bookOwned(x)&&bookAtLib(x)).length:""):all.filter(x=>(k==="ours")===bookOwned(x)).length}</button>`).join("")}</div>
+    ${bookOwnF==="lib"&&!bookAvail?`<div class="cnt">Checking Sonoma County Library</div>`:""}
+    ${dirNow&&!bookRev&&missing.length?`<div class="actions" style="margin:6px 0"><button class="btn small ghost" data-bookrevopen="1">Find covers and links for ${missing.length} ${missing.length===1?"book":"books"}</button></div>`:""}
+    ${dirNow&&bookRev?bookRevHtml():""}
     ${list.length?`<div class="actions" style="margin:6px 0"><button class="btn small ghost" data-bookprint="some" ${bookPick.size?"":"disabled"}>Print the cards I chose${bookPick.size?" ("+bookPick.size+")":""}</button><button class="linkbtn" data-bookprint="all">Print every card</button><button class="linkbtn" data-bookprint="some" data-word="1" ${bookPick.size?"":"disabled"}>Word, the cards I chose</button></div>`:""}
     ${list.map(bookRow).join("")||`<div class="empty">${all.length?"No book matches.":"No books yet. Suggest the first one below."}</div>`}</section>
     ${sample&&!VIEW_AS?`<section class="card"><div class="lbl">Suggest books</div><div class="cnt">Type a topic, a season or what the children are wondering about, and TREE names a few well-known books to look at. Vet each one before it joins the collection.</div>
       <div class="actions" style="margin:6px 0"><input type="text" id="bk-sq" value="${esc(bookSugQ)}" placeholder="Ex. worms, rain, families, Spanish and English" style="flex:1;min-width:180px"><button class="btn small ghost" data-booksug="1" ${bookSug&&bookSug.busy?"disabled":""}>${bookSug&&bookSug.busy?"Looking":"Suggest books"}</button></div>
-      ${bookSug&&bookSug.list?(bookSug.list.length?bookSug.list.map((b,i)=>{const o=bookOurs(b.title);return `<div class="prow" style="display:block;margin:6px 0"><b>${esc(b.title)}</b> <span class="cnt">${esc([b.author,b.year].filter(Boolean).join(", "))}</span>${o?` <span class="pill" style="pointer-events:none">${o.draft?"Suggested already":"In our collection"}</span>${bookOwned(o)?` <span class="pill" style="pointer-events:none">Ours</span>`:""}`:""}<div>${esc(b.why)}</div>${o?"":`<div class="actions"><button class="btn small ghost" data-booksugfind="${i}">Find the book</button></div>`}</div>`}).join(""):`<div class="cnt">TREE was not sure of any books for that. Try other words.</div>`):""}</section>`:""}
-    <section class="card">${bookAdd?`<div class="lbl">Suggest a book</div><div class="cnt">Type the title, then Find the book fills in the rest for you to check. Nothing is saved until you ${isDirector()?"add":"suggest"} it.</div>${bookFound&&bookFound.none?`<div class="hint">TREE could not be sure this book exists as titled, so it filled in nothing. Check the title and the author, or fill it in yourself.</div>`:""}
+      ${bookSug&&bookSug.list?(bookSug.list.length?bookSug.list.map((b,i)=>{const o=bookOurs(b.title);return `<div class="prow bkhead" style="margin:6px 0">${b.m&&b.m.cover?`<img class="bkcov" src="${esc(b.m.cover)}" alt="" loading="lazy">`:`<span class="bkcov bknocov" aria-hidden="true"></span>`}<span style="min-width:0"><b>${esc(b.title)}</b> <span class="cnt">${esc([b.author,b.year].filter(Boolean).join(", "))}</span>${b.m?bookLibLine(b.m.library):""}${o?` <span class="pill" style="pointer-events:none">${o.draft?"Suggested already":"In our collection"}</span>${bookOwned(o)?` <span class="pill" style="pointer-events:none">Ours</span>`:""}`:""}<div>${esc(b.why)}</div>${o?"":`<div class="actions"><button class="btn small ghost" data-booksugfind="${i}">Find the book</button></div>`}</span></div>`}).join(""):`<div class="cnt">TREE was not sure of any books for that. Try other words.</div>`):""}</section>`:""}
+    <section class="card">${bookAdd?`<div class="lbl">Suggest a book</div><div class="cnt">Type the title, and the author if you know it, then Find the book. Tap the right book and its facts and cover fill in from the library catalog. Nothing is saved until you ${isDirector()?"add":"suggest"} it.</div>
+      ${bookMatches?(bookMatches.length?`<div class="cnt" style="margin-top:6px">Tap the right book.</div><div class="bkmatches">${bookMatches.map((m,i)=>bookMatchHtml(m,`data-bookpickm="${i}"`)).join("")}</div>`:`<div class="hint">No library catalog found this title. Check the spelling and the author, or fill it in yourself.</div>`):""}
+      ${bookFound&&bookFound.cover?`<div class="bkhead" style="margin:8px 0"><img class="bkcovl" src="${esc(bookFound.cover)}" alt="The cover"><span class="cnt">The cover from the catalog. A copy is kept in TREE when the book is ${isDirector()?"added":"suggested"}.${bookFound.library?bookLibLine(bookFound.library):""}</span></div>`:""}
       <div class="kfields"><label>Title<input type="text" id="bk-t" value="${esc(bookFound?bookFound.title:"")}"></label><label>Author<input type="text" id="bk-a" value="${esc((bookFound&&bookFound.author)||"")}"></label><label>Illustrator<input type="text" id="bk-i" value="${esc((bookFound&&bookFound.illustrator)||"")}"></label><label>Year<input type="text" id="bk-y" inputmode="numeric" value="${esc((bookFound&&bookFound.year)||"")}"></label><label>Languages<input type="text" id="bk-l" placeholder="Ex. English and Spanish" value="${esc((bookFound&&bookFound.languages)||"")}"></label><label>A link to the book<input type="url" id="bk-u" placeholder="https://" value="${esc((bookFound&&bookFound.link)||"")}"></label></div>
       <div class="cnt">Kind of reading</div><div class="chips">${BOOK_KINDS.map(([k,l])=>`<label class="chip"><input type="checkbox" data-bkkind="${k}" ${bookFound&&(bookFound.kinds||[]).includes(k)?"checked":""}> ${esc(l)}</label>`).join("")}</div>
-      <label class="fld-label">Why we would choose it<textarea rows="3" id="bk-w">${esc((bookFound&&bookFound.why)||"")}</textarea></label><label class="fld-label">Where it would live<input type="text" id="bk-wh" placeholder="Ex. North class, the garden basket" value="${esc((bookFound&&bookFound.where)||"")}"></label>
+      ${bookFound&&bookFound.drafting?`<div class="cnt">The writing help is drafting why we would choose it, the reading guide and the connections.</div>`:bookFound&&bookFound.drafted?`<div class="cnt">Why we would choose it, where it lives, the reading guide and the connections are a draft. Change anything.</div>`:""}<label class="fld-label">Why we would choose it<textarea rows="3" id="bk-w">${esc((bookFound&&bookFound.why)||"")}</textarea></label><label class="fld-label">Where it would live<input type="text" id="bk-wh" placeholder="Ex. North class, the garden basket" value="${esc((bookFound&&bookFound.where)||"")}"></label>
       <label class="fld-label">Reading guide, I notice and I wonder<textarea rows="4" id="bk-g">${esc((bookFound&&bookFound.guide)||"- I notice\n- I wonder")}</textarea></label><label class="fld-label">Connections, our Idea bank cards, garden plants and threads<textarea rows="3" id="bk-c">${esc((bookFound&&bookFound.connections)||"")}</textarea></label>
-      <label class="radio"><input type="checkbox" id="bk-o"><span>We own it</span></label>
+      <label class="radio"><input type="checkbox" id="bk-o" ${bookFound&&bookFound.owned?"checked":""}><span>We own it</span></label>
       <div class="actions">${sample?`<button class="btn small ghost" data-bookfind="1" ${bookBusy?"disabled":""}>${bookBusy?"Finding":"Find the book"}</button>`:""}<button class="btn small" data-booksave="1">${isDirector()?"Add the book":"Suggest the book"}</button><button class="linkbtn" data-bookadd="0">Cancel</button></div><div class="cnt">${isDirector()?"":"Your suggestion waits for the director, who vets it with the Book Vetting Tool before it joins the collection."}</div>`:`<button class="btn small ghost" data-bookadd="1">Suggest a book</button>`}</section>`}
 function bookCardDoc(x){const m=x.meta||{};return {display:true,type:"report",acc:"story",title:x.title,meta:[[m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", ")].filter(Boolean),
   blocks:[...(x.lead?[dText("",x.lead)]:[]),...["Why we chose it","Kind of reading","Reading guide","Where it lives"].map(k=>[k,bookPart(x,k)]).filter(([,t])=>String(t).trim()).map(([k,t])=>libLines(t).length>1?dList(k,libLines(t)):dText(k,t))]}}
@@ -5681,21 +5724,59 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-book
   if(d.bookown){bookOwnF=d.bookown;renderMain();return}
   if(d.bookvetcancel){bookVet=null;renderMain();return}
   if(d.bookfind||d.booksugfind!=null){let title,author="";if(d.booksugfind!=null){const b=bookSug&&bookSug.list&&bookSug.list[+d.booksugfind];if(!b)return;title=b.title;author=b.author;bookAdd=true}else{title=($("#bk-t")?.value||"").trim();author=($("#bk-a")?.value||"").trim()}
-    if(!title){toast("Type the book's title first.");return}if(!sample){toast("The writing help is not available here.");return}
-    bookBusy=true;bookFound={title,author};renderMain();if(d.booksugfind!=null)setTimeout(()=>$("#bk-t")?.scrollIntoView({block:"center"}),50);
-    try{bookFound=await bookFind(title,author)||{title,none:true}}catch(er){bookFound={title,author};toast("The book could not be found just now.")}bookBusy=false;renderMain();return}
+    if(!title){toast("Type the book's title first.");return}
+    bookKeepForm();bookBusy=true;bookFound=Object.assign({},bookFound||{},{title,author});bookMatches=null;renderMain();if(d.booksugfind!=null)setTimeout(()=>$("#bk-t")?.scrollIntoView({block:"center"}),50);
+    try{bookMatches=await bookCatalog(title,author)}catch(er){bookMatches=null;toast(er&&er.message||"The library catalogs did not answer just now.")}bookBusy=false;bookRender();return}
   if(d.booksug){const q=($("#bk-sq")?.value||"").trim();bookSugQ=q;if(!q){toast("Type what the books would be about.");return}
-    bookSug={busy:true};renderMain();try{bookSug={list:await bookSuggest(q)}}catch(er){bookSug=null;toast("Books could not be suggested just now.")}renderMain();return}
+    bookSug={busy:true};renderMain();try{const L=await bookSuggest(q);bookSug={list:L};renderMain();
+      // each suggestion shows its cover and what the library holds, from the catalog
+      await Promise.all(L.map(async b=>{try{const M=await bookCatalog(b.title,b.author);b.m=M[0]||null}catch(e){}}));if(bookSug&&bookSug.list===L)bookRender()}catch(er){bookSug=null;toast("Books could not be suggested just now.");renderMain()}return}
   if(d.bookvetopen){libSheetOn=null;if(typeof libSheetPaint==="function")libSheetPaint();songTab="collection";songOpen="r:b-"+d.bookvetopen;if(view!=="songs"&&typeof goView==="function")goView("songs");else renderMain();setTimeout(()=>{const b=document.querySelector(`[data-bookvetdraft="${CSS.escape(d.bookvetopen)}"]`);if(b)b.click()},300);return}
   if(d.bookvetdraft){const x=(libData.books||[]).find(y=>y.id===d.bookvetdraft);if(!x||!sample)return;songOpen="r:b-"+x.id;bookVet={busy:x.id};renderMain();
     try{const r=await bookVetDraft(x);if(r.error){bookVet=null;toast(r.error)}else bookVet={id:x.id,text:r.text}}catch(er){bookVet=null;toast("The vetting could not be drafted just now.")}renderMain();return}
   if(d.bookvet){if(typeof goView==="function"){goView("stpd");setTimeout(()=>{const b=document.querySelector('[data-stmod="m:book-vetting-tool"]');if(b)b.click()},800)}return}
-  if(d.bookadd!=null){bookAdd=d.bookadd==="1";bookFound=null;renderMain();return}
+  if(d.bookadd!=null){bookAdd=d.bookadd==="1";bookFound=null;bookMatches=null;renderMain();return}
   if(d.bookprint){const all=libData.books||[];const L=d.bookprint==="all"?all.filter(x=>!x.draft):all.filter(x=>bookPick.has(x.id));if(!L.length){toast("Choose a book first.");return}const docs=L.map(bookCardDoc),n=safeFile(L.length===1?L[0].title+" card":"Book cards");if(d.word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf");return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.bookvetsave){try{libData=await window.FP_API("/api/staff/library/vetting",{path:d.bookvetsave,text:($("#bv-t")?.value||"").trim()});bookVet=null;toast("The vetting notes are saved with the book.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
   if(d.booksave){const v=id=>($("#"+id)?.value||"").trim();const title=v("bk-t");if(!title){toast("Give the book its title.");return}
-    try{libData=await window.FP_API("/api/staff/library/add",{kind:"book",title,author:v("bk-a"),illustrator:v("bk-i"),year:v("bk-y"),languages:v("bk-l"),link:v("bk-u"),why:v("bk-w"),where:v("bk-wh"),guide:v("bk-g"),connections:v("bk-c"),owned:!!$("#bk-o")?.checked,kinds:[...document.querySelectorAll("[data-bkkind]:checked")].map(x=>x.dataset.bkkind)});bookAdd=false;bookFound=null;toast(isDirector()?"Added to the collection.":"Suggested. It waits for the director.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}});
+    const F=bookFound&&bookFound.catalog?bookFound:{};
+    try{const r=await window.FP_API("/api/staff/library/add",{kind:"book",title,author:v("bk-a"),illustrator:v("bk-i"),year:v("bk-y"),languages:v("bk-l"),link:v("bk-u"),why:v("bk-w"),where:v("bk-wh"),guide:v("bk-g"),connections:v("bk-c"),owned:!!$("#bk-o")?.checked,kinds:[...document.querySelectorAll("[data-bkkind]:checked")].map(x=>x.dataset.bkkind),cover:F.cover||"",isbn:F.isbn||"",pages:F.pages||"",publisher:F.publisher||""});
+      libData=r;bookAdd=false;bookFound=null;bookMatches=null;bookAvailLoad(true);toast((isDirector()?"Added to the collection.":"Suggested. It waits for the director.")+(r&&r.coverMissed?" The cover could not be copied.":""));renderMain()}catch(er){toast(er&&er.message||"That did not save.")}}});
+/* Choosing a match fills in the facts and the cover from the catalog, then the writing help drafts our own parts. */
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-bookpickm]");if(!t)return;const m=bookMatches&&bookMatches[+t.dataset.bookpickm];if(!m)return;
+  bookKeepForm();const keep=bookFound||{};bookFound={title:m.title,author:m.author,illustrator:m.illustrator,year:m.year,languages:m.languages,link:m.link,isbn:m.isbn,pages:m.pages,publisher:m.publisher,cover:m.cover,library:m.library,catalog:true,
+    kinds:keep.kinds,why:keep.why,where:keep.where,guide:keep.guide,connections:keep.connections,owned:keep.owned,drafting:!!sample};bookMatches=null;renderMain();setTimeout(()=>$("#bk-t")?.scrollIntoView({block:"center"}),50);
+  if(!sample)return;const mine=bookFound;
+  try{const dr=await bookFind(m.title,m.author);bookKeepForm();if(!bookFound||bookFound.cover!==mine.cover||bookFound.link!==mine.link)return;
+    const blank=v=>!String(v||"").trim()||/^- I notice\n- I wonder$/.test(String(v).trim());
+    for(const [k,v] of Object.entries(dr||{}))if(k==="kinds"?!(bookFound.kinds||[]).length:blank(bookFound[k]))bookFound[k]=v;bookFound.drafting=false;bookFound.drafted=!!dr}catch(er){if(bookFound)bookFound.drafting=false}bookRender(true)});
+/* Covers and links for books already in the collection. The director sees each book with its best match, accepts it,
+   chooses another match, or marks that none is right. Accept all puts on every best match in turn. */
+function bookRevHtml(){const R=bookRev,L=R.items;const ready=L.filter(i=>i.matches&&i.matches.length);
+  return `<div class="binadd bkrev"><div class="lbl">Covers and links</div><div class="cnt">Each book with its best match from the library catalog. Accept puts on its facts, its link and a copy of its cover. Choose another match when this one is wrong.</div>
+    <div class="actions" style="margin:6px 0">${ready.length?`<button class="btn small" data-bookrevall="1" ${R.busy?"disabled":""}>${R.busy?"Saving":"Accept all "+ready.length}</button>`:""}<button class="linkbtn" data-bookrevclose="1">Close</button></div>
+    ${L.length?L.map((it,i)=>`<div class="bkrevrow"><div><b>${esc(it.title)}</b>${it.author?` <span class="cnt">${esc(it.author)}</span>`:""}</div>
+      ${it.matches==null?`<div class="cnt">Looking in the catalogs</div>`:!it.matches.length?`<div class="cnt">No match in the catalogs.</div><div class="actions"><button class="linkbtn" data-bookrevnone="${i}">Keep it as it is</button></div>`:
+      `${it.more?`<div class="bkmatches">${it.matches.map((m,j)=>bookMatchHtml(m,`data-bookrevpick="${i}:${j}"`)).join("")}</div>`:bookMatchHtml(it.matches[it.pick||0],`data-bookrevpick="${i}:${it.pick||0}"`)}
+       <div class="actions"><button class="btn small" data-bookrevok="${i}" ${it.busy?"disabled":""}>${it.busy?"Saving":"Accept"}</button>${it.matches.length>1&&!it.more?`<button class="linkbtn" data-bookrevmore="${i}">Other matches</button>`:""}<button class="linkbtn" data-bookrevnone="${i}">None is right</button></div>`}</div>`).join(""):`<div class="cnt">Every book has its cover and link.</div>`}</div>`}
+async function bookRevStart(books){bookRev={items:books.map(x=>({id:x.id,path:x.path,title:x.title,author:String((x.meta||{}).author||""),matches:null,pick:0}))};renderMain();
+  const R=bookRev,Q=[...R.items];const work=async()=>{while(Q.length){const it=Q.shift();try{it.matches=await bookCatalog(it.title,it.author)}catch(e){it.matches=[]}if(bookRev===R)renderMain()}};
+  await Promise.all([work(),work(),work()])}
+async function bookRevAccept(it){const m=it.matches&&it.matches[it.pick||0];if(!m)return false;it.busy=true;renderMain();
+  try{const r=await window.FP_API("/api/staff/library/bookfacts",{path:it.path,match:m});libData=r;if(bookRev)bookRev.items=bookRev.items.filter(x=>x!==it);if(r&&r.coverMissed)toast("The facts are on "+it.title+". Its cover could not be copied.");return true}
+  catch(er){it.busy=false;toast(er&&er.message||"That did not save.");return false}finally{renderMain()}}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-bookrevopen],[data-bookrevclose],[data-bookrevall],[data-bookrevok],[data-bookrevmore],[data-bookrevpick],[data-bookrevnone],[data-bookfix]");if(!t)return;const d=t.dataset;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.bookrevopen){bookRevStart((libData.books||[]).filter(x=>!(x.meta||{}).cover&&(x.meta||{}).catalog!=="none"));return}
+  if(d.bookfix){const x=(libData.books||[]).find(y=>y.id===d.bookfix);if(x){bookRevStart([x]).then(()=>{if(bookRev&&bookRev.items[0])bookRev.items[0].more=true;renderMain()});setTimeout(()=>document.querySelector(".bkrev")?.scrollIntoView({block:"start"}),60)}return}
+  if(d.bookrevclose){bookRev=null;renderMain();return}
+  if(!bookRev)return;const L=bookRev.items;
+  if(d.bookrevpick!=null){const [i,j]=d.bookrevpick.split(":").map(Number);if(L[i]){L[i].pick=j;L[i].more=false;renderMain()}return}
+  if(d.bookrevmore!=null){if(L[+d.bookrevmore]){L[+d.bookrevmore].more=true;renderMain()}return}
+  if(d.bookrevok!=null){const it=L[+d.bookrevok];if(it&&await bookRevAccept(it))toast("Saved with its cover and link.");bookAvailLoad(true);return}
+  if(d.bookrevnone!=null){const it=L[+d.bookrevnone];if(!it)return;try{libData=await window.FP_API("/api/staff/library/bookfacts",{path:it.path,none:true});bookRev.items=L.filter(x=>x!==it);renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
+  if(d.bookrevall){const R=bookRev;R.busy=true;renderMain();let n=0;for(const it of [...R.items])if(it.matches&&it.matches.length&&await bookRevAccept(it))n++;R.busy=false;if(bookRev===R&&!R.items.length)bookRev=null;renderMain();bookAvailLoad(true);toast(n===1?"One book has its cover and link.":n+" books have their covers and links.");return}});
 const readText=x=>((x.parts||[]).find(p=>/^text$/i.test(p.key))||{}).text||"";
 // a story's pages, from its Page headings, each page's lines kept as written
 const readPages=t=>{const out=[];let cur=null;for(const l of String(t||"").split("\n")){const m=l.match(/^#{1,6}\s*(.+)$/);if(m){const h=m[1].trim(),pg=/^page\s*\d+\s*$/i.test(h);cur={h:pg?"":h,page:pg,lines:[]};out.push(cur);continue}if(!cur){cur={h:"",lines:[]};out.push(cur)}cur.lines.push(l)}
