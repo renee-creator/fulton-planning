@@ -31,17 +31,17 @@ module.exports = function ideabank(o) {
     ['A calm adult to borrow from (co-regulation)', 'A child\'s nervous system settles alongside a steady adult before it can settle alone. Come close, slow your breath and your voice, lower your body and use few words. Stay until the child\'s body tells you they are ready. Your calm comes first, the talking comes later.'],
     ['Acknowledgment of effort (encouragement)', 'Describe what the child did and how hard they worked. "You kept turning the lid until it opened." Specific words about effort take the place of good job and great, which judge the result and end the conversation.'],
     ['To be heard (child voice)', 'Ask for the child\'s idea and take it seriously. Write it down, try it, bring it to meeting time. A child whose ideas count has less to push against.'],
-    ['Choices and a say (autonomy)', 'Offer two real choices the child can live with. Let the child decide what can be theirs to decide, such as which cup, which path or who carries the basket. Sharing power often settles a power struggle.'],
+    ['Choices and a say (autonomy)', 'Offer two choices the child can live with. Let the child decide what can be theirs to decide, such as which cup, which path or who carries the basket. Sharing power often settles a power struggle.'],
     ['Doing it myself (independence)', 'Slow down and let the child do the zipper, the pouring or the carrying. Set things where the child can reach them. Step in only when the child asks.'],
-    ['A real job that matters (contribution)', 'Give the child work the group truly needs, such as feeding the chickens, carrying the water or setting the table. Real responsibility tells a child they are capable.'],
+    ['A job that matters (contribution)', 'Give the child work the group truly needs, such as feeding the chickens, carrying the water or setting the table. Responsibility like this tells a child they are capable.'],
     ['Knowing what comes next (predictability)', 'Keep the rhythm of the day steady and show it. A picture schedule, a word about what comes next, the same song before cleanup. Tell the child early when something will be different.'],
     ['Help with transitions (transition supports)', 'Give a short warning before a change and a job to carry through it. The child can bring something along, carry the basket or ring the bell. Walk beside the child through it.'],
     ['More time (slower pacing)', 'Let the work go on longer. Save it on a shelf to return to tomorrow. Some children need a long stretch before they can go deep.'],
     ['A faster pace (quicker pacing)', 'Keep waiting short. Move to the next part sooner, offer the next step as soon as the child is ready and keep meeting time brief. Long waits are hard for a quick mind and a busy body.'],
-    ['More to think about (cognitive challenge)', 'Offer real complexity. A harder problem, a new tool, a question with no easy answer, a book with more to it, a project that lasts. A child who is bored may be asking to be stretched.'],
+    ['More to think about (cognitive challenge)', 'Offer more complexity. A harder problem, a new tool, a question with no easy answer, a book with more to it, a project that lasts. A child who is bored may be asking to be stretched.'],
     ['Simpler steps (scaffolding)', 'Make it smaller. Fewer materials, one step at a time, a picture of what comes first. Simplify the words too, with short sentences and time to answer.'],
     ['Words for big feelings (emotion coaching)', 'Name the feeling simply and calmly. "You are so angry the tower fell." Stay close while it passes. Talking about it comes later, once the body is calm.'],
-    ['A skill to practice (social and emotional skills)', 'Teach the words or the move the child is missing, such as asking for a turn, saying stop or joining a game. Practice in calm moments, in play and with puppets, then help in the real moment.'],
+    ['A skill to practice (social and emotional skills)', 'Teach the words or the move the child is missing, such as asking for a turn, saying stop or joining a game. Practice in calm moments, in play and with puppets, then help when the moment comes.'],
     ['A way into play with friends (peer entry)', 'Help the child find a role in play that is already happening. Join in together, offer a job inside the game, then step back as friends take over.'],
     ['A smaller group', 'Offer time with one or two friends in place of the whole class. A small group is easier to read and easier to join.'],
     ['Space to be alone', 'Keep a cozy corner, a tent or a sitting spot where a child can be apart and still be seen. Time alone is a choice, offered with warmth.'],
@@ -54,6 +54,8 @@ module.exports = function ideabank(o) {
     ['Home and family in the room (cultural belonging)', 'Bring the child\'s home in, such as a family photo, words from the home language or a song from home. Belonging grows when a child sees their family here.'],
     ['Time to settle after a change (adjustment)', 'A new sibling, a move, a new class or a change at home can unsettle a child for weeks. Talk with the family, keep routines steady and stay close. Patience is part of the plan.']];
   const US = FROM_US.map(x => x[0]);
+  // a need renamed on November 3, 2026, read by its new name wherever a record or the seed still holds the old one
+  const RENAMED = { 'A real job that matters (contribution)': 'A job that matters (contribution)' };
   const LEVELS = ['Open to all', 'Educator nearby', 'Adult at the table', 'Small group only', 'One adult with one or two children'];
   // each kind of card, the groups it can belong to, and the sections a blank card of that kind starts with, in order
   const TYPES = {
@@ -65,7 +67,7 @@ module.exports = function ideabank(o) {
       sections: [['What it might look like', 'text'], ['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
     year: { groups: ['Across the year on our site'],
       sections: [['Through the year', 'bullets'], ['Invitations', 'bullets'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
-    // everyday learning, the letters, numbers, time and community of care children meet in real moments of our day
+    // everyday learning, the letters, numbers, time and community of care children meet in the everyday moments of our day
     everyday: { groups: ['Letters and sounds', 'Numbers and shapes', 'Time', 'Community of care'],
       sections: [['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
     ready: { groups: ['Ready for today'],
@@ -78,7 +80,7 @@ module.exports = function ideabank(o) {
   /* ---------- the records ---------- */
   const doc = () => get(CARDS) || { cards: [] };
   const cards = () => (doc().cards || []).filter(c => c && c.id);
-  const behaviors = () => ((get(BEH) || {}).behaviors || []).filter(b => b && b.id);
+  const behaviors = () => ((get(BEH) || {}).behaviors || []).filter(b => b && b.id).map(b => Array.isArray(b.from_us) && b.from_us.some(n => RENAMED[n]) ? Object.assign({}, b, { from_us: b.from_us.map(n => RENAMED[n] || n) }) : b);
   const settings = () => Object.assign({ highlights: {}, familyOn: false }, get(SET) || {});
   const sugs = () => Object.assign({ list: [] }, get(SUG) || {});
   const triedAll = () => ((get(TRIED) || {}).list || []).filter(t => t && t.behavior);

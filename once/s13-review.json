@@ -1,0 +1,1507 @@
+{
+ "note": "Fixes from the director's review of November 3, 2026, toilet learning, the land, bug viewers, clock times, crayons, dead links, children under three, real as emphasis, Beyond Discipline and Jabutí",
+ "changes": [
+  {
+   "path": "staff/familypieces/potty.md",
+   "from": "Your child moves to underwear once they are reliably toilet trained, with fewer than three accidents a week, and daily soiling means a diaper or pull-up again.",
+   "to": "Your child wears underwear once they are fully independent in the bathroom and tell an educator when they need to go. Until then, they wear pull-ups or diapers."
+  },
+  {
+   "path": "staff/familypieces/potty.md",
+   "from": "When they are reliably using the toilet, with fewer than three accidents a week, they are ready to come to school in underwear.",
+   "to": "When they are fully independent in the bathroom and tell an educator when they need to go, they are ready to come to school in underwear."
+  },
+  {
+   "path": "staff/pd/printables/development.md",
+   "from": "Underwear once reliably independent, with fewer than three accidents a week.",
+   "to": "Underwear once fully independent in the bathroom and telling an educator when they need to go. Until then, pull-ups or diapers."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "A child moves to underwear once reliably independent in the bathroom, with fewer than three accidents a week. Daily soiling means a diaper or pull-up.",
+   "to": "A child wears underwear once fully independent in the bathroom and telling an educator when they need to go. Until then, they wear pull-ups or diapers."
+  },
+  {
+   "path": "staff/pd/restored/development.md",
+   "from": "A child moves to underwear once reliably independent in the bathroom, with fewer than three accidents a week. Daily soiling means a diaper or pull-up.",
+   "to": "A child wears underwear once fully independent in the bathroom and telling an educator when they need to go. Until then, they wear pull-ups or diapers."
+  },
+  {
+   "path": "staff/familypieces/together-garden-as-teacher.md",
+   "from": "The Wappo people first tended the land around our school.",
+   "to": "Our school sits on the ancestral land of the Southern Pomo and Coast Miwok peoples."
+  },
+  {
+   "path": "staff/pd/modules/27-garden-as-teacher.md",
+   "from": "alongside the Wappo people who first tended the land around us",
+   "to": "alongside the Southern Pomo and Coast Miwok peoples, who first tended the land around us"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "with hand lenses, bug viewers and simple microscopes",
+   "to": "with hand lenses and simple microscopes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Two-way bug viewers for gently watching roly polys, ladybugs and worms before returning them.",
+   "to": "Hand lenses for watching roly polys, ladybugs and worms where they live."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "a magnifying sheet, bug viewers, binoculars",
+   "to": "a magnifying sheet, binoculars"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Offer bug viewers on walks and in the garden.",
+   "to": "Offer hand lenses on walks and in the garden."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Clear bug viewers for short visits from small creatures.",
+   "to": "Photos of the creatures children found, shared at meeting time."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Magnifiers and bug viewers for close looking, with each creature returned where it was found.",
+   "to": "Magnifiers for close looking where each creature lives."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "They rinse bug viewers and magnifiers",
+   "to": "They rinse magnifiers"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Offer magnifiers and bug viewers and go on a bug hunt.",
+   "to": "Offer magnifiers and go on a bug hunt, leaving each creature where it lives."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "For a child who finds it too much, offer a clear bug viewer to look into, with the creature inside and their hands outside. They can watch from a set distance, use a magnifier or printed photos, and come closer when they are ready.",
+   "to": "For a child who finds it too much, offer a magnifier or photos from a set distance, and let them come closer when they are ready."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": " Any creature looked at in a viewer goes back where we found it the same day.",
+   "to": ""
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Kneel or sit low and very still beside the log or viewer,",
+   "to": "Kneel or sit low and very still beside the log,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "a small net, a clear bucket or viewer",
+   "to": "a clear bucket or viewer"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "pack the clipboards, magnifiers, net and viewer back into the field bag",
+   "to": "pack the clipboards, magnifiers and viewer back into the field bag"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "they rinse the net and viewer in the wash bucket",
+   "to": "they rinse the viewer in the wash bucket"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "rinse a bucket or net at the hose",
+   "to": "rinse a bucket at the hose"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "## The daily schedule\nkind: sheet\n| Time | What happens |",
+   "to": "## The daily schedule\nkind: sheet\nThe times are in the [Daily Schedule](tree:hb/daily-schedule) in Policies and Procedures.\n\n| Part of the day | What happens |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 8:00 to 8:10 | Class teams meet to talk through the day |",
+   "to": "| Early morning | Class teams meet to talk through the day |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 8:10 to 8:30 | Educators set up environments |",
+   "to": "| Early morning | Educators set up environments |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 8:30 to 8:45 | Welcome for all children |",
+   "to": "| Morning | Welcome for all children |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 8:45 | Morning small groups |",
+   "to": "| Morning | Morning small groups |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 9:30 to 10:00 | Snack together on the outdoor piazza |",
+   "to": "| Morning | Snack together on the outdoor piazza |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 10:45 | Outdoor, garden and nature exploration |",
+   "to": "| Before lunch | Outdoor, garden and nature exploration |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 11:45 | Group gathering and wash up |",
+   "to": "| Before lunch | Group gathering and wash up |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 12:00 | Lunch |",
+   "to": "| Lunch | Lunch |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 12:30 | The morning program ends |",
+   "to": "| After lunch | The morning program ends |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 12:45 | Outdoor, quiet rest and nap |",
+   "to": "| After lunch | Outdoor, quiet rest and nap |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 2:00 | Afternoon meeting |",
+   "to": "| Afternoon | Afternoon meeting |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 2:30 | Activities, snack and projects |",
+   "to": "| Afternoon | Activities, snack and projects |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 3:30 | Indoor and outdoor choices |",
+   "to": "| Late afternoon | Indoor and outdoor choices |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 4:00 | Afternoon pickup |",
+   "to": "| Late afternoon | Afternoon pickup |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 4:05 to 5:00 | Late care |",
+   "to": "| Late care | Late care |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "| 4:20 to 4:30 | Class teams meet to debrief the day |",
+   "to": "| End of the day | Class teams meet to debrief the day |"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "How might the 2:00 meeting make room",
+   "to": "How might the afternoon meeting make room"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] Arrive around 7:10 to 7:15 am.",
+   "to": "- [ ] Arrive at the start of early care."
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] Doors open around 7:25. Families sign in on the piazza iPad.",
+   "to": "- [ ] Doors open. Families sign in on the piazza iPad."
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] 8:05. Clean up early care and go to the bathroom together.",
+   "to": "- [ ] As early care ends, clean up and go to the bathroom together."
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] By 8:15, hand every child to their educator",
+   "to": "- [ ] Before the morning welcome, hand every child to their educator"
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] 3:50. Get the late care snack the chef saved and prepare the space.",
+   "to": "- [ ] Before late care, get the late care snack the chef saved and prepare the space."
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] 4:05. Children arrive after the bathroom, with water bottle and jacket.",
+   "to": "- [ ] As late care begins, children arrive after the bathroom, with water bottle and jacket."
+  },
+  {
+   "path": "staff/pd/printables/rhythms.md",
+   "from": "- [ ] 5:00 to about 5:15. Straighten the space,",
+   "to": "- [ ] At the end of the day, straighten the space,"
+  },
+  {
+   "path": "staff/pd/printables/table.md",
+   "from": "AM snack is 9:30 to 10:00 on the outdoor piazza. PM snack is 2:30 to 3:00.",
+   "to": "The times are in the [Daily Schedule](tree:hb/daily-schedule) in Policies and Procedures.\n\nAM snack is in the morning on the outdoor piazza. PM snack is in the afternoon."
+  },
+  {
+   "path": "staff/pd/printables/table.md",
+   "from": "At 11:30, invite a small group to help,",
+   "to": "Before lunch, invite a small group to help,"
+  },
+  {
+   "path": "staff/pd/printables/table.md",
+   "from": "**8:10 to 8:30 am.** Check the lunch schedule and the roster.",
+   "to": "**Early morning.** Check the lunch schedule and the roster."
+  },
+  {
+   "path": "staff/pd/printables/meeting.md",
+   "from": "**At the team meeting, 8:00 to 8:10.**",
+   "to": "**At the early morning team meeting.**"
+  },
+  {
+   "path": "staff/pd/printables/writer.md",
+   "from": "- **Tools.** Large, chunky crayons and large outdoor chalk.",
+   "to": "- **Tools.** Regular crayons, with short or broken pieces, and outdoor chalk."
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "- **Tools.** Large, chunky crayons, and large pieces of chalk for outdoor use.",
+   "to": "- **Tools.** Regular crayons, with short or broken pieces that invite a fingertip grip (tripod grasp), and large pieces of chalk for outdoor use."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://aese.psu.edu/programs/betterkidcare/early-care/tip-pages/all/make-your-own-mixtures",
+   "to": "https://extension.psu.edu/programs/betterkidcare/early-care/tip-pages/all/make-your-own-mixtures"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://aese.psu.edu/programs/betterkidcare/early-care/tip-pages/all/mix-it-clever-pouring-stirring-dumping-and-concocting",
+   "to": "https://extension.psu.edu/programs/betterkidcare/early-care/tip-pages/all/mix-it-clever-pouring-stirring-dumping-and-concocting"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://ece.fcoe.org/sites/ece/files/2025-07/Light%20and%20Shadow%20Play%20Interactive%20Exhibit%20Guide.pdf",
+   "to": "https://ece.fcoe.org/light-and-shadow-play-interactive-exhibit"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://ece.fcoe.org/sites/ece/files/2025-07/Wind%20Tube%20Interactive%20Exhibit%20Guide.pdf",
+   "to": "https://ece.fcoe.org/vertical-wind-tube-interactive-exhibit"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://harrybertoia.org/gallery/sculpture-selects",
+   "to": "https://harrybertoia.org/sculptures/"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://textiledyegarden.pratt.edu/projects/paper-making-workshop",
+   "to": "https://textiledyegarden.pratt.edu/learn/past-workshops/paper-making-workshop"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://wildpigmentproject.org/sasha-duerr",
+   "to": "https://www.sashaduerr.com/about"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://bayareadiscoverymuseum.org/?p=23416",
+   "to": "",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://tamalpa.org/?p=935",
+   "to": "",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "https://www.biotopia.net/en/9-english/306-natural-colors",
+   "to": "",
+   "all": true
+  },
+  {
+   "path": "staff/library/places/museums.md",
+   "from": "[Marin Museum of Contemporary Art](https://marinmoca.org/visit), Novato. A contemporary art museum with artist studios in a former air base building. *Art.*",
+   "to": "[Marin Museum of Contemporary Art](https://www.marinmoca.org/see-and-experience), San Rafael. A contemporary art museum at 1210 Fifth Ave in downtown San Rafael. *Art.*"
+  },
+  {
+   "path": "staff/library/places/museums.md",
+   "from": "[Napa Valley Museum Yountville](https://napavalleymuseum.org/visit/hours-admission), Yountville. An art and history museum for the valley, free for children 5 and under and open Thursday through Sunday.",
+   "to": "[Napa Valley Museum Yountville](https://napavalleymuseum.org/pages/plan-your-visit-to-napa-valley-museum-of-yountville), Yountville. An art and history museum for the valley, free for children 5 and under."
+  },
+  {
+   "path": "staff/library/places/museums.md",
+   "from": "https://marinhistory.org/BoydGateHouse",
+   "to": "https://www.marinhistory.org/visit/boydgatehouse/"
+  },
+  {
+   "path": "staff/library/prompts/artists.md",
+   "from": "[Jason Logan's inks at Colossal](https://www.thisiscolossal.com/2023/03/jason-logan-ink/), and [Inks from Urban Wilds at the Wild Pigment Project](https://wildpigmentproject.org/jason-logan-inks-from-urban-wilds-2)",
+   "to": "[Jason Logan's inks at Colossal](https://www.thisiscolossal.com/2023/03/jason-logan-ink/)"
+  },
+  {
+   "path": "staff/library/prompts/artists.md",
+   "from": "https://arts.gov/honors/heritage/julia-parker",
+   "to": "https://www.arts.gov/honors/heritage/julia-parker"
+  },
+  {
+   "path": "staff/familypieces/together-table.md",
+   "from": "https://www.ellynsatterinstitute.org/how-to-feed/the-division-of-responsibility-in-feeding/",
+   "to": "https://www.ellynsatterinstitute.org/how-to-feed/division-of-responsibility/"
+  },
+  {
+   "path": "staff/pd/restored/atelier.md",
+   "from": "https://www.tcpress.com/in-the-spirit-of-the-studio-second-edition-9780807756324",
+   "to": "https://www.tcpress.com/products/in-the-spirit-of-the-studio_9780807756324"
+  },
+  {
+   "path": "staff/pd/restored/clay.md",
+   "from": "https://www.tcpress.com/in-the-spirit-of-the-studio-second-edition-9780807756324",
+   "to": "https://www.tcpress.com/products/in-the-spirit-of-the-studio_9780807756324"
+  },
+  {
+   "path": "staff/pd/restored/play.md",
+   "from": "https://www.routledge.com/products/9780203883389",
+   "to": "https://www.routledge.com/Learning-and-Teaching-Early-Math-The-Learning-Trajectories-Approach/Clements-Sarama/p/book/9781032949758"
+  },
+  {
+   "path": "staff/pd/restored/risk.md",
+   "from": "https://nrckids.org/CFOC/Database/2.2.0.1",
+   "to": "https://nrckids.org/files/CFOC4%20pdf-%20FINAL.pdf#page=131"
+  },
+  {
+   "path": "staff/pd/restored/mentor.md",
+   "from": "[Community of Practice Institute](https://ecepts.org/community-of-practice-institute/).",
+   "to": "Community of Practice Institute."
+  },
+  {
+   "path": "staff/pd/restored/professional.md",
+   "from": "https://cdss.ca.gov/cdssweb/entres/forms/English/LIC9052.pdf",
+   "to": "https://www.cdss.ca.gov/Portals/9/Additional-Resources/Forms-and-Brochures/2020/I-L/LIC9052.pdf"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Hitting is common in toddlers and often peaks",
+   "to": "Hitting is common in children under three and often peaks"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Biting is common in toddlers and twos, often",
+   "to": "Biting is common in children under three, often"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Toddlers are still learning to judge distance and danger",
+   "to": "Children under three are still learning to judge distance and danger"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Filling and dumping is how toddlers learn",
+   "to": "Filling and dumping is how children under three learn"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Toddlers grow more aware of separations",
+   "to": "Children under three grow more aware of separations"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Picky eating is also a normal stage for toddlers,",
+   "to": "Picky eating is also a normal stage for children under three,"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Babies and toddlers are at the highest risk of choking",
+   "to": "Babies and children under three are at the highest risk of choking"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Toddlers are just beginning to develop empathy",
+   "to": "Children under three are just beginning to develop empathy"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Toddlers often say no even when they do not mean it",
+   "to": "Children under three often say no even when they do not mean it"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "the educator can discern the reason for a behavior and respond in the way that fits that child",
+   "to": "the educator can look for the need behind a behavior, without claiming to know it for certain, and respond in the way that fits that child"
+  },
+  {
+   "path": "staff/pd/restored/beyond.md",
+   "from": "the educator can discern the reason for a behavior and respond in the way that fits that child",
+   "to": "the educator can look for the need behind a behavior, without claiming to know it for certain, and respond in the way that fits that child"
+  },
+  {
+   "path": "staff/library/books/jabuti-the-tortoise.md",
+   "from": "- I wonder how Sheldon's shell looks up close.",
+   "to": "- I wonder what Jabutí's cracked shell tells us."
+  },
+  {
+   "path": "staff/library/books/jabuti-the-tortoise.md",
+   "from": ", and our reading guide names Sheldon, which looks like a different book and needs correcting",
+   "to": ""
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "A real job that matters (contribution)",
+   "to": "A job that matters (contribution)"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "offer real places to climb.",
+   "to": "offer places to climb."
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "many children avoid real danger,",
+   "to": "many children avoid danger,"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "If play turns into real hurting often,",
+   "to": "If play turns into hurting often,"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Offer real jobs and choices.",
+   "to": "Offer meaningful jobs and choices."
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Offer real care jobs, such as feeding.",
+   "to": "Offer care jobs, such as feeding."
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "Offering two or three real choices gives",
+   "to": "Offering two or three choices gives"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the woodchip piles with real places that need woodchips.",
+   "to": "the woodchip piles with places on our site that need woodchips."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Scribbles and invented letters are real early writing,",
+   "to": "Scribbles and invented letters are early writing,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Make meeting time about the group's real life,",
+   "to": "Make meeting time about the group's everyday life,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "How our mud kitchen offers a real place to mix,",
+   "to": "How our mud kitchen offers a place to mix,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "so the kitchen feels serious and real.",
+   "to": "so the kitchen feels serious."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Heavy work (proprioceptive input) as real power, such as",
+   "to": "Heavy work (proprioceptive input) that gives a feeling of power, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Treat every scribble as a real message and narrate it,",
+   "to": "Treat every scribble as a message and narrate it,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Some children feel real fear about volcanoes",
+   "to": "Some children feel fear about volcanoes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A dollhouse with real tiny furniture made by children",
+   "to": "A dollhouse with tiny furniture made by children"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "ready for real washing.",
+   "to": "ready for washing."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Caring for animals is real and needed work.",
+   "to": "Caring for animals is needed work."
+  },
+  {
+   "path": "staff/familypieces/together-development-and-anti-bias.md",
+   "from": "Connect to real people.",
+   "to": "Connect to people you know."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "Connect to real people.",
+   "to": "Connect to people you know."
+  },
+  {
+   "path": "staff/familypieces/together-many-ways-to-read.md",
+   "from": "Children rise to being trusted with real, beautiful things.",
+   "to": "Children rise to being trusted with beautiful things."
+  },
+  {
+   "path": "staff/pd/modules/33-many-ways-to-read.md",
+   "from": "When we trust children with real, beautiful things,",
+   "to": "When we trust children with beautiful things,"
+  },
+  {
+   "path": "staff/familypieces/together-risk.md",
+   "from": "clear away real hazards,",
+   "to": "clear away hazards,"
+  },
+  {
+   "path": "staff/guides/writing.md",
+   "from": "beautiful, resistive tools and real reasons to write,",
+   "to": "beautiful, resistive tools and reasons to write that matter to children,"
+  },
+  {
+   "path": "staff/guides/writing.md",
+   "from": "children find real reasons to make marks,",
+   "to": "children find reasons to make marks that matter to them,"
+  },
+  {
+   "path": "staff/pd/template.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/pd/template.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/pr1b95856224.json",
+   "from": "A case study with real documentation.",
+   "to": "A case study with our own documentation."
+  },
+  {
+   "path": "staff/presenting/pr2694329672.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/pr2694329672.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/pr47f1cb35b2.json",
+   "from": "A case study with real documentation.",
+   "to": "A case study with our own documentation."
+  },
+  {
+   "path": "staff/presenting/pr78943827fb.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/pr78943827fb.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/pr94fe3d39ea.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/pr94fe3d39ea.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/prac020d0a57.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/prac020d0a57.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/pradaf160bb2.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/pradaf160bb2.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/prcee106dc32.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/prcee106dc32.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/prec509fd562.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/prec509fd562.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/presenting/prf4b5f02cf8.json",
+   "from": "A case study with real documentation.",
+   "to": "A case study with our own documentation."
+  },
+  {
+   "path": "staff/presenting/prf83476babe.json",
+   "from": "with real documentation of our own from TREE",
+   "to": "with documentation of our own from TREE"
+  },
+  {
+   "path": "staff/presenting/prf83476babe.json",
+   "from": "read real observations, plans or a project from TREE",
+   "to": "read observations, plans or a project from TREE"
+  },
+  {
+   "path": "staff/readings.json",
+   "from": "turn quick exchanges into real back and forth conversations",
+   "to": "turn quick exchanges into back and forth conversations"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "practice in pairs with real children's work (20)",
+   "to": "practice in pairs with our children's work (20)"
+  },
+  {
+   "path": "staff/pd/restored/atelier.md",
+   "from": "practice in pairs with real children's work (20)",
+   "to": "practice in pairs with our children's work (20)"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "Always alert a supervisor or colleague in real time,",
+   "to": "Always alert a supervisor or colleague right away,"
+  },
+  {
+   "path": "staff/pd/restored/beyond.md",
+   "from": "Always alert a supervisor or colleague in real time,",
+   "to": "Always alert a supervisor or colleague right away,"
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "Tap out to a colleague in real time.",
+   "to": "Tap out to a colleague right away."
+  },
+  {
+   "path": "staff/pd/depth/collaboration.md",
+   "from": "co-planning with a real plan,",
+   "to": "co-planning with one of our own plans,"
+  },
+  {
+   "path": "staff/pd/restored/collaboration.md",
+   "from": "co-planning with a real plan,",
+   "to": "co-planning with one of our own plans,"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "Real-world work such as washing, pouring and scooping.",
+   "to": "Everyday work such as washing, pouring and scooping."
+  },
+  {
+   "path": "staff/pd/restored/development.md",
+   "from": "Real-world work such as washing, pouring and scooping.",
+   "to": "Everyday work such as washing, pouring and scooping."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "children watch their own ideas become print in real time.",
+   "to": "children watch their own ideas become print as they speak."
+  },
+  {
+   "path": "staff/pd/modules/02-documentation.md",
+   "from": "children watch their own ideas become print in real time.",
+   "to": "children watch their own ideas become print as they speak."
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "or shows real distress around numbers.",
+   "to": "or shows distress around numbers."
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "and how we support it in real moments of our day.",
+   "to": "and how we support it in the everyday moments of our day."
+  },
+  {
+   "path": "staff/pd/modules/47-emergent-reader.md",
+   "from": "and how we support it in real moments of our day.",
+   "to": "and how we support it in the everyday moments of our day."
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "lets the whole group watch talk become print in real time (concepts of print).",
+   "to": "lets the whole group watch talk become print (concepts of print)."
+  },
+  {
+   "path": "staff/pd/modules/47-emergent-reader.md",
+   "from": "children watch talk become print in real time (concepts of print).",
+   "to": "children watch talk become print as it happens (concepts of print)."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "Practice a conference using a real Family Summary draft from TREE,",
+   "to": "Practice a conference using a Family Summary draft from TREE,"
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "- **Real examples.** Anecdotes and observations",
+   "to": "- **Our own examples.** Anecdotes and observations"
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "conference practice with real TREE drafts (45)",
+   "to": "conference practice with TREE drafts (45)"
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "One material, what it builds, a real example, the invitation to families.",
+   "to": "One material, what it builds, an example from our classes, the invitation to families."
+  },
+  {
+   "path": "staff/pd/restored/families.md",
+   "from": "Practice a conference using a real Family Summary draft from TREE,",
+   "to": "Practice a conference using a Family Summary draft from TREE,"
+  },
+  {
+   "path": "staff/pd/restored/families.md",
+   "from": "- **Real examples.** Anecdotes and observations",
+   "to": "- **Our own examples.** Anecdotes and observations"
+  },
+  {
+   "path": "staff/pd/restored/families.md",
+   "from": "conference practice with real TREE drafts (45)",
+   "to": "conference practice with TREE drafts (45)"
+  },
+  {
+   "path": "staff/pd/restored/families.md",
+   "from": "One material, what it builds, a real example, the invitation to families.",
+   "to": "One material, what it builds, an example from our classes, the invitation to families."
+  },
+  {
+   "path": "staff/pd/modules/05-families.md",
+   "from": "practice a conference with a real Family Summary draft from TREE,",
+   "to": "practice a conference with a Family Summary draft from TREE,"
+  },
+  {
+   "path": "staff/pd/printables/families.md",
+   "from": "**A real example from our children.**",
+   "to": "**An example from our children.**"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "practice specific feedback with real observations,",
+   "to": "practice specific feedback with observations from our classes,"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "as they gain real world experience while",
+   "to": "as they gain hands-on experience while"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "specific feedback practice with real observations (30)",
+   "to": "specific feedback practice with observations from our classes (30)"
+  },
+  {
+   "path": "staff/pd/restored/mentor.md",
+   "from": "practice specific feedback with real observations,",
+   "to": "practice specific feedback with observations from our classes,"
+  },
+  {
+   "path": "staff/pd/restored/mentor.md",
+   "from": "as they gain real world experience while",
+   "to": "as they gain hands-on experience while"
+  },
+  {
+   "path": "staff/pd/restored/mentor.md",
+   "from": "specific feedback practice with real observations (30)",
+   "to": "specific feedback practice with observations from our classes (30)"
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "practice specific feedback with real observations,",
+   "to": "practice specific feedback with observations from our classes,"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "authentic materials that behave as they do in the real world,",
+   "to": "authentic materials that behave as they do in everyday life,"
+  },
+  {
+   "path": "staff/pd/restored/principles.md",
+   "from": "authentic materials that behave as they do in the real world,",
+   "to": "authentic materials that behave as they do in everyday life,"
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "They behave as they do in the real world.",
+   "to": "They behave as they do in everyday life."
+  },
+  {
+   "path": "staff/pd/printables/principles.md",
+   "from": "behave as they do in the real world.",
+   "to": "behave as they do in everyday life."
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "read the ethics code together with real dilemmas,",
+   "to": "read the ethics code together with dilemmas from our work,"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "with real-time support in hard moments",
+   "to": "with support in hard moments as they happen"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "Ethics with real dilemmas (25)",
+   "to": "Ethics with dilemmas from our work (25)"
+  },
+  {
+   "path": "staff/pd/restored/professional.md",
+   "from": "read the ethics code together with real dilemmas,",
+   "to": "read the ethics code together with dilemmas from our work,"
+  },
+  {
+   "path": "staff/pd/restored/professional.md",
+   "from": "with real-time support in hard moments",
+   "to": "with support in hard moments as they happen"
+  },
+  {
+   "path": "staff/pd/restored/professional.md",
+   "from": "Ethics with real dilemmas (25)",
+   "to": "Ethics with dilemmas from our work (25)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "read the ethics code together with real dilemmas",
+   "to": "read the ethics code together with dilemmas from our work"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "ongoing observation in real settings,",
+   "to": "ongoing observation in everyday settings,"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "authentic observation in real settings,",
+   "to": "authentic observation in everyday settings,"
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "ongoing observation in real settings,",
+   "to": "ongoing observation in everyday settings,"
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "authentic observation in real settings,",
+   "to": "authentic observation in everyday settings,"
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "practice active supervision positions in a real yard,",
+   "to": "practice active supervision positions in one of our yards,"
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "active supervision positions in a real yard (30)",
+   "to": "active supervision positions in one of our yards (30)"
+  },
+  {
+   "path": "staff/pd/restored/risk.md",
+   "from": "practice active supervision positions in a real yard,",
+   "to": "practice active supervision positions in one of our yards,"
+  },
+  {
+   "path": "staff/pd/restored/risk.md",
+   "from": "active supervision positions in a real yard (30)",
+   "to": "active supervision positions in one of our yards (30)"
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "practice supervision positions in a real yard",
+   "to": "practice supervision positions in one of our yards"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "carry a group into a real investigation that follows its thread.",
+   "to": "carry a group into an investigation that follows its thread."
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "carry a group into a real investigation that follows its thread.",
+   "to": "carry a group into an investigation that follows its thread."
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "carry a group into a real investigation that follows its thread.",
+   "to": "carry a group into an investigation that follows its thread."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "How writing grows with real samples and the chart (30).",
+   "to": "How writing grows with children's own samples and the chart (30)."
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "How writing grows with real samples and the chart (30).",
+   "to": "How writing grows with children's own samples and the chart (30)."
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "set up an artwork beside materials in a real space,",
+   "to": "set up an artwork beside materials in one of our spaces,"
+  },
+  {
+   "path": "staff/pd/modules/40-questions-worth-asking.md",
+   "from": "write wonderings from real observations in the educators' voice",
+   "to": "write wonderings from observations in TREE in the educators' voice"
+  },
+  {
+   "path": "staff/pd/modules/40-questions-worth-asking.md",
+   "from": "writing wonderings from real observations |",
+   "to": "writing wonderings from observations in TREE |"
+  },
+  {
+   "path": "staff/pd/modules/40-questions-worth-asking.md",
+   "from": "TREE's suggested questions tried on real plans,",
+   "to": "TREE's suggested questions tried on our own plans,"
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "keep one real observation,",
+   "to": "keep one observation,"
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "open a real plan and find its evidence",
+   "to": "open a plan and find its evidence"
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "Open a real plan before writing a new one.",
+   "to": "Open a plan before writing a new one."
+  },
+  {
+   "path": "staff/pd/modules/45-making-learning-visible-in-tree.md",
+   "from": "make a slide together from a real observation,",
+   "to": "make a slide together from an observation,"
+  },
+  {
+   "path": "staff/pd/printables/many-ways-to-read.md",
+   "from": "Real feelings, real questions and open endings.",
+   "to": "Honest feelings, genuine questions and open endings."
+  },
+  {
+   "path": "staff/pd/printables/questions-worth-asking.md",
+   "from": "**Ask one real question.**",
+   "to": "**Ask one question you wonder about.**"
+  },
+  {
+   "path": "staff/pd/restored/atelier.md",
+   "from": "emotional relief are all real purposes.",
+   "to": "emotional relief are all worthy purposes."
+  },
+  {
+   "path": "staff/pd/restored/atelier.md",
+   "from": "natural and of real quality.",
+   "to": "natural and of high quality."
+  },
+  {
+   "path": "staff/pd/restored/beyond.md",
+   "from": "Save questions for real choices.",
+   "to": "Save questions for times when there is a choice."
+  },
+  {
+   "path": "staff/pd/restored/beyond.md",
+   "from": "They are building real skills.",
+   "to": "They are building skills."
+  },
+  {
+   "path": "staff/pd/restored/beyond.md",
+   "from": "can be given a real job.",
+   "to": "can be given a job."
+  },
+  {
+   "path": "staff/pd/restored/collaboration.md",
+   "from": "has had a real hand in shaping them.",
+   "to": "has had a hand in shaping them."
+  },
+  {
+   "path": "staff/pd/restored/development.md",
+   "from": "we offer limited, real choices.",
+   "to": "we offer limited choices."
+  },
+  {
+   "path": "staff/pd/restored/development.md",
+   "from": "Real leadership opportunities.",
+   "to": "Leadership opportunities."
+  },
+  {
+   "path": "staff/pd/restored/language.md",
+   "from": "such as a real curiosity about whether a tower will hold.",
+   "to": "such as wondering whether a tower will hold."
+  },
+  {
+   "path": "staff/pd/restored/language.md",
+   "from": "hard a real job to do.",
+   "to": "hard a job to do."
+  },
+  {
+   "path": "staff/pd/restored/narrative.md",
+   "from": "turn a set of real stories from TREE into a thread.",
+   "to": "turn a set of stories from TREE into a thread."
+  },
+  {
+   "path": "staff/pd/restored/narrative.md",
+   "from": "**A child's work is real research.**",
+   "to": "**A child's work is research.**"
+  },
+  {
+   "path": "staff/pd/restored/narrative.md",
+   "from": "write social stories from real moments,",
+   "to": "write social stories from moments in our day,"
+  },
+  {
+   "path": "staff/pd/restored/narrative.md",
+   "from": "Social stories made from real moments,",
+   "to": "Social stories made from moments in our day,"
+  },
+  {
+   "path": "staff/pd/restored/narrative.md",
+   "from": "turning real stories into a thread in TREE (45)",
+   "to": "turning stories into a thread in TREE (45)"
+  },
+  {
+   "path": "staff/pd/restored/play.md",
+   "from": "solitary and parallel play are real intellectual work.",
+   "to": "solitary and parallel play are intellectual work."
+  },
+  {
+   "path": "staff/pd/restored/play.md",
+   "from": "The real interest is bravery,",
+   "to": "The deeper interest is bravery,"
+  },
+  {
+   "path": "staff/pd/restored/play.md",
+   "from": "whether a power struggle is really a response to sensory overload?",
+   "to": "whether a power struggle is a response to sensory overload?"
+  },
+  {
+   "path": "staff/pd/restored/play.md",
+   "from": "whether a struggle over power is really a response to sensory overload or stress?",
+   "to": "whether a struggle over power is a response to sensory overload or stress?"
+  },
+  {
+   "path": "staff/pd/restored/principles.md",
+   "from": "take on real challenges with confidence.",
+   "to": "take on challenges with confidence."
+  },
+  {
+   "path": "staff/pd/restored/principles.md",
+   "from": "Curriculum grows from children's real interests and questions.",
+   "to": "Curriculum grows from children's own interests and questions."
+  },
+  {
+   "path": "staff/pd/restored/principles.md",
+   "from": "Real learning needs unhurried time",
+   "to": "Learning needs unhurried time"
+  },
+  {
+   "path": "staff/pd/restored/principles.md",
+   "from": "the sensory needs and real goals of children.",
+   "to": "the sensory needs and goals of children."
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "Curriculum grows from children's real interests and questions.",
+   "to": "Curriculum grows from children's own interests and questions."
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "Real learning needs unhurried time",
+   "to": "Learning needs unhurried time"
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "Is this a real project?",
+   "to": "Is this a project?"
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "learning through real experience (1938).** Real learning comes from real questions.",
+   "to": "learning through experience (1938).** Learning comes from children's own questions."
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "taken seriously as real intellectual work.",
+   "to": "taken seriously as intellectual work."
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "Dewey showed that real inquiry requires real uncertainty.",
+   "to": "Dewey showed that inquiry requires uncertainty."
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "until you find the real question underneath.",
+   "to": "until you find the question underneath."
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "Real documentation points forward",
+   "to": "Documentation points forward"
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "A real project at our school traced",
+   "to": "A project at our school traced"
+  },
+  {
+   "path": "staff/pd/restored/researcher.md",
+   "from": "A real democratic process followed.",
+   "to": "A democratic process followed."
+  },
+  {
+   "path": "staff/pd/restored/table.md",
+   "from": "A real democratic process followed.",
+   "to": "A democratic process followed."
+  },
+  {
+   "path": "staff/pd/restored/rhythms.md",
+   "from": "teamwork to real work.",
+   "to": "teamwork to meaningful work."
+  },
+  {
+   "path": "staff/pd/restored/rhythms.md",
+   "from": "can be given a real job to do with pride.",
+   "to": "can be given a job to do with pride."
+  },
+  {
+   "path": "staff/pd/restored/rhythms.md",
+   "from": "when you handed them a real job?",
+   "to": "when you handed them a job?"
+  },
+  {
+   "path": "staff/pd/restored/risk.md",
+   "from": "grow from real challenge.",
+   "to": "grow from challenge."
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "An educator spends real time with a small, known group",
+   "to": "An educator spends unhurried time with a small, known group"
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "the real work of small group time,",
+   "to": "the heart of small group time,"
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "Covering a table is a real handoff,",
+   "to": "Covering a table is a full handoff,"
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "small enough to really watch,",
+   "to": "small enough to watch closely,"
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "builds a real baseline for each child.",
+   "to": "builds a baseline for each child."
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "what carries real emotional investment for a child.",
+   "to": "what carries emotional investment for a child."
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "telling us something real about how they think.",
+   "to": "telling us something true about how they think."
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "notice a real thread of interest.",
+   "to": "notice a thread of interest."
+  },
+  {
+   "path": "staff/pd/restored/smallgroup.md",
+   "from": "carries real weight for the children,",
+   "to": "carries weight for the children,"
+  },
+  {
+   "path": "staff/pd/restored/spaces.md",
+   "from": "gives children real responsibility and real teamwork,",
+   "to": "gives children responsibility and teamwork,"
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "are all real writing,",
+   "to": "are all writing,"
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "The key idea is real reasons to write.",
+   "to": "The key idea is reasons to write that matter to children."
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "one resistive tool and one real reason this week.",
+   "to": "one resistive tool and one reason to write that matters to children this week."
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "fingers do real work each time.",
+   "to": "fingers do work each time."
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "add one resistive tool and one real reason to write, such as",
+   "to": "add one resistive tool and one reason to write that matters to children, such as"
+  },
+  {
+   "path": "staff/pd/restored/writer.md",
+   "from": "Which real reason to write drew children in most,",
+   "to": "Which reason to write drew children in most,"
+  },
+  {
+   "path": "staff/proposals/rewrite-s13-toilet-learning-underwear.json",
+   "doc": {
+    "id": "rewrite-s13-toilet-learning-underwear",
+    "kind": "replace",
+    "doc": "teacher",
+    "section": "toilet-learning-diapering",
+    "sectionTitle": "Toilet Learning & Diapering",
+    "title": "Underwear once a child is fully independent in the bathroom",
+    "status": "proposed",
+    "at": "2026-11-03",
+    "note": "The director's rule. A child is fully independent in the bathroom and tells an educator when they need to go before coming to school in underwear. Until then, a pull-up or diaper. The count of accidents a week comes out.",
+    "from": "Children may wear underwear when they are reliably toilet trained and have fewer than 3 accidents per week. Daily soiling requires a diaper or pullup.",
+    "to": "Children wear underwear once they are fully independent in the bathroom and tell an educator when they need to go. Until then, they wear pull-ups or diapers."
+   }
+  },
+  {
+   "path": "staff/proposals/rewrite-s13-licensing-15-underwear.json",
+   "doc": {
+    "id": "rewrite-s13-licensing-15-underwear",
+    "kind": "replace",
+    "doc": "teacher",
+    "section": "toileting-and-diapering",
+    "sectionTitle": "Toileting and diapering",
+    "title": "Underwear once a child is fully independent in the bathroom",
+    "status": "proposed",
+    "at": "2026-11-03",
+    "note": "The director's rule, the same as in Toilet Learning & Diapering. The count of accidents a week comes out.",
+    "from": "During toilet learning a child wears a diaper or pull-up, a child moves to underwear once reliably toilet trained with fewer than three accidents a week, and daily soiling means a diaper or pull-up.",
+    "to": "A child comes to school in underwear once they are fully independent in the bathroom and tell an educator when they need to go. Until then, they wear a pull-up or diaper."
+   }
+  },
+  {
+   "path": "staff/proposals/rewrite-s13-2026-lic-613a-link.json",
+   "doc": {
+    "id": "rewrite-s13-2026-lic-613a-link",
+    "kind": "replace",
+    "doc": "family",
+    "edition": "2026",
+    "section": "enrollment-forms",
+    "sectionTitle": "Enrollment Forms",
+    "title": "The LIC 613A link opens the current CDSS form",
+    "status": "proposed",
+    "at": "2026-11-03",
+    "note": "The old CDSS address for the Acknowledgment of Personal Rights no longer opens. The link goes to the current LIC 613A on the CDSS site. Accepting it changes the 2026 edition families read now, and the 2027 draft reads this section from it.",
+    "from": "[LIC 613A](https://cdss.ca.gov/cdssweb/entres/forms/English/LIC613A.PDF)",
+    "to": "[LIC 613A](https://www.cdss.ca.gov/Portals/9/Additional-Resources/Forms-and-Brochures/2020/I-L/LIC613A.pdf)"
+   }
+  },
+  {
+   "path": "staff/proposals/rewrite-s13-2026-behavior-need.json",
+   "doc": {
+    "id": "rewrite-s13-2026-behavior-need",
+    "kind": "replace",
+    "doc": "family",
+    "edition": "2026",
+    "section": "behavior-and-discipline",
+    "sectionTitle": "Behavior and Discipline",
+    "title": "The educator looks for the need behind a behavior",
+    "status": "proposed",
+    "at": "2026-11-03",
+    "note": "The educator looks for the need behind a behavior and does not claim to know it for certain. Accepting it changes the 2026 edition families read now. The 2027 draft has its own copy of this section, with its own proposal.",
+    "from": "The child’s educator will be able to discern the reason for the behaviors the child exhibits, and how to respond to that behavior, in the manner that is most appropriate for the individual child.",
+    "to": "The child’s educator looks for the need behind a behavior, without claiming to know it for certain, and responds in the way that fits that child."
+   }
+  },
+  {
+   "path": "staff/proposals/rewrite-s13-2027-behavior-need.json",
+   "doc": {
+    "id": "rewrite-s13-2027-behavior-need",
+    "kind": "replace",
+    "doc": "family",
+    "edition": "2027",
+    "section": "behavior-and-discipline",
+    "sectionTitle": "Behavior and Discipline",
+    "title": "The educator looks for the need behind a behavior",
+    "status": "proposed",
+    "at": "2026-11-03",
+    "note": "The educator looks for the need behind a behavior and does not claim to know it for certain. The 2027 draft keeps its own copy of this section, so this matches the proposal for the 2026 edition. It sits apart from the other waiting rewrite in this section.",
+    "from": "The child’s educator will be able to discern the reason for the behaviors the child exhibits, and how to respond to that behavior, in the manner that is most appropriate for the individual child.",
+    "to": "The child’s educator looks for the need behind a behavior, without claiming to know it for certain, and responds in the way that fits that child."
+   }
+  },
+  {
+   "path": "staff/proposals/rewrite-s13-2026-no-nuts.json",
+   "doc": {
+    "id": "rewrite-s13-2026-no-nuts",
+    "kind": "replace",
+    "doc": "family",
+    "edition": "2026",
+    "section": "food-nutrition",
+    "sectionTitle": "Food & Nutrition",
+    "title": "No peanuts or any other nuts",
+    "status": "proposed",
+    "at": "2026-11-03",
+    "note": "We are nut free, so the line names every nut. Accepting it changes the 2026 edition families read now, and the 2027 draft reads this section from it.",
+    "from": "please do not bring food containing peanuts.",
+    "to": "please do not bring food containing peanuts or any other nuts."
+   }
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.atelier.stamp",
+   "value": "27631528b1ab6021",
+   "expect": "06a4dad9b4ca134b"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.beyond.stamp",
+   "value": "188c81c0308dd768",
+   "expect": "c3d1e716c2d44f50"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.clay.stamp",
+   "value": "dd3d5526ee24add5",
+   "expect": "f4fa85bf5f5356c5"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.collaboration.stamp",
+   "value": "39227231d64529e1",
+   "expect": "3eb6516cedb5d7e5"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.development.stamp",
+   "value": "4be0bf3051b16070",
+   "expect": "df1e96d920f3a734"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.families.stamp",
+   "value": "680c2e33cf977ae2",
+   "expect": "51cb6116af4b26d5"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.language.stamp",
+   "value": "6dc15fe11c390c7d",
+   "expect": "40b1dddbc0e0712f"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.mentor.stamp",
+   "value": "996f378538381ef0",
+   "expect": "97b283be65d8539c"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.narrative.stamp",
+   "value": "a89b215c0a1bed2c",
+   "expect": "4e04f26b2a751cf7"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.play.stamp",
+   "value": "1dc1556e3f405e20",
+   "expect": "972793543b7c830d"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.principles.stamp",
+   "value": "50b9c051abd9a0ae",
+   "expect": "cecf207201e2a90d"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.professional.stamp",
+   "value": "19b15c2da9e6bf00",
+   "expect": "dc6b0e9236104a50"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.researcher.stamp",
+   "value": "212a8486cadbd8b4",
+   "expect": "0fff4e6b5fb6e2ec"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.rhythms.stamp",
+   "value": "5e548d618b883701",
+   "expect": "87e0bd15822943cb"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.risk.stamp",
+   "value": "779ef20739b1fda9",
+   "expect": "1db7be1ba3e7db32"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.smallgroup.stamp",
+   "value": "5e535c96a4790771",
+   "expect": "d6ac4372e4b48cc7"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.spaces.stamp",
+   "value": "59a889ac9f225586",
+   "expect": "f26291d78dca09fa"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.table.stamp",
+   "value": "8cf195d1907d31b2",
+   "expect": "6ffe1274ca371b61"
+  },
+  {
+   "path": "staff/pd/restored.json",
+   "set": "accepted.writer.stamp",
+   "value": "b20209823a3195a9",
+   "expect": "9f8fb1b3fc9d7a8f"
+  }
+ ]
+}

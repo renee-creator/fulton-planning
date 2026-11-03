@@ -627,6 +627,8 @@ ONCE.push(['lovejoyBooks', () => staff.once.edits('lovejoyBooks', recsEdit)]);
 ONCE.push(['freeStories', () => staff.once.edits('freeStories', recsEdit)]);
 // November 3, 2026. A starter set of books for the book collection, from once/starter-books.json, each a draft for the director to vet
 ONCE.push(['starterBooks', () => staff.once.edits('starterBooks', recsEdit)]);
+// November 3, 2026. Fixes from the director's review, from once/s13-review.json, with proposals for what changes a policy or the Family Handbook
+ONCE.push(['s13Review', () => staff.once.edits('s13Review', recsEdit)]);
 ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);

@@ -122,7 +122,7 @@ test('every card closes with the children, and educators write what they tried b
   const h = await loaded(PEOPLE);
   let r = await call(h.staff, 'Bo', 'ideabank');
   assert.strictEqual(r.body.fromUs.length, 27); assert.ok(r.body.fromUs.some(u => u.name === 'Acknowledgment of effort (encouragement)' && /good job/.test(u.look)));
-  assert.ok(SEED.behaviors.every(b => b.from_us.every(n => r.body.fromUs.some(u => u.name === n))), 'behaviors use only names TREE knows');
+  assert.ok(r.body.behaviors.every(b => b.from_us.every(n => r.body.fromUs.some(u => u.name === n))), 'behaviors use only names TREE knows, a renamed need read by its new name');
   assert.strictEqual(h.staff.ideabank.canOpen('biting', 'North'), false, 'nothing tried yet');
   assert.strictEqual((await call(h.staff, 'Bo', 'ideabank/tried', { behavior: 'biting', room: 'North', step: 'Offered a chewy tube.' })).status, 400, 'what happened is written too');
   r = await call(h.staff, 'Bo', 'ideabank/tried', { behavior: 'biting', room: 'North', step: 'Offered a chewy tube.', happened: 'Calmer for the morning, then it happened again at lunch.' });

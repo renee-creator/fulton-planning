@@ -1176,6 +1176,8 @@ module.exports = function staffModule(o) {
     freeStories: ['code:once/free-stories.json', 'Free classic stories in their own words that pass our values check'],
     // November 3, 2026. A starter set of books for the collection, each a draft waiting for the director to vet it
     starterBooks: ['code:once/starter-books.json', 'A starter set of books, each waiting for the director to vet it'],
+    // November 3, 2026. The director's review, with proposals for the Policies and Procedures and the Family Handbook
+    s13Review: ['code:once/s13-review.json', 'Fixes from the director\'s review of November 3, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
