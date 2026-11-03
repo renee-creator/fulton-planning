@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="cbea55eaa8c7";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="4a974a2d1b3f";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6926,17 +6926,18 @@ const mqTagOf=t=>{const m=String(t).trim().match(/^([^(]+?)\s*(?:\((.+)\))?$/);r
 window.TREE_PLACES_OPEN=async()=>{await loadLibrary();return !!(libData&&libData.places)};
 let mqWhich="parks";const mqCount=P=>((P&&P.parts)||[]).reduce((n,x)=>n+(String(x.text||"").match(/^- \[/gm)||[]).length,0);const mqList=()=>libData?(mqWhich==="parks"&&libData.parks?libData.parks:libData.places):null;
 function mqPlaces(){const p=libData&&mqList();if(!p)return [];const out=[];
-  for(const part of p.parts||[]){let kind="";
-    for(const l of String(part.text||"").split("\n")){const h=l.match(/^###\s+(.+)$/);if(h){kind=h[1].trim();continue}
-      const m=l.match(MQ_LINE);if(!m)continue;
-      out.push({id:artSlug(part.key+" "+m[1]),area:part.key,kind,name:m[1],url:m[2],town:m[3],about:m[4],tags:m[5].split(/,\s*(?![^()]*\))/).map(mqTagOf).filter(x=>x.tag)})}}
+  for(const part of p.parts||[]){if(/^about this list/i.test(part.key||""))continue;let kind="",last=null;
+    for(const l of String(part.text||"").split("\n")){const h=l.match(/^###\s+(.+)$/);if(h){kind=h[1].trim();last=null;continue}
+      const s=last&&l.match(/^\s{2,}-\s+\*\*(.+?)\.\*\*\s*(.*)$/);if(s){if(/^photo$/i.test(s[1].trim())){const [src,credit,link]=s[2].split("|").map(x=>x.trim());if(/^https:\/\//.test(src||""))last.photo={src,credit:credit||"",link:/^https:\/\//.test(link||"")?link:""}}else if(s[2].trim())last.details.push({label:s[1].trim(),text:s[2].trim()});continue}
+      const m=l.match(MQ_LINE);if(!m){if(l.trim())last=null;continue}
+      last={id:artSlug(part.key+" "+m[1]),area:part.key,kind,name:m[1],url:m[2],town:m[3],about:m[4],tags:m[5].split(/,\s*(?![^()]*\))/).map(mqTagOf).filter(x=>x.tag),details:[],photo:null};out.push(last)}}
   return out}
-const mqAreas=()=>((mqList()&&mqList().parts)||[]).map(p=>p.key);
+const mqAreas=()=>((mqList()&&mqList().parts)||[]).map(p=>p.key).filter(k=>!/^about this list/i.test(k||""));
 function mqTags(){const n=new Map();for(const x of mqPlaces())for(const t of x.tags)n.set(t.tag,(n.get(t.tag)||0)+1);return [...n.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).map(e=>e[0])}
 const mqTagText=x=>x.tags.map(t=>t.note?`${t.tag} (${t.note})`:t.tag).join(", ");
 function mqShown(){const q=mqQ.trim().toLowerCase();return mqPlaces().filter(x=>(mqArea==="All"||x.area===mqArea)&&(mqTag==="All"||x.tags.some(t=>t.tag===mqTag))&&(!q||[x.name,x.town,x.about,mqTagText(x)].join(" ").toLowerCase().includes(q)))}
 function mqRow(x){return `<div class="strow" style="display:grid;gap:3px"><div><label class="radio" style="display:inline-flex;margin-right:6px"><input type="checkbox" data-mqpick="${esc(x.id)}" ${mqPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.name)} to print"></label><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="cnt">${esc(x.town)}</span></div>
-  <div>${esc(x.about)}</div><div class="cnt">${esc(mqTagText(x))}</div><div class="actions" style="margin:2px 0 0">${printBtns("mqplace",esc(x.id),"Print this place")}</div></div>`}
+  <div>${esc(x.about)}</div><div class="cnt">${esc(mqTagText(x))}</div>${(x.details||[]).length||x.photo?`<details><summary class="linkbtn" style="cursor:pointer">More about it${x.photo?", with a photo":""}</summary>${x.photo?`<img src="${esc(x.photo.src)}" alt="${esc(x.name)}" loading="lazy" style="width:100%;max-width:420px;border-radius:10px;display:block;margin:6px 0">${x.photo.credit?`<div class="cnt">${x.photo.link?`<a href="${esc(x.photo.link)}" target="_blank" rel="noopener">${esc(x.photo.credit)}</a>`:esc(x.photo.credit)}</div>`:""}`:""}${x.details.map(d=>`<div style="margin:4px 0"><b>${esc(d.label)}.</b> ${esc(d.text)}</div>`).join("")}</details>`:""}<div class="actions" style="margin:2px 0 0">${printBtns("mqplace",esc(x.id),"Print this place")}</div></div>`}
 function renderMuseums(){const m=$("#main");if(!m)return;
   const head=`<div class="head"><span class="eyebrow">PD library, for families</span><h2 style="margin-top:4px">Places to explore</h2><div class="sub">Parks, museums and cultural places to visit with children and families. Families find the same list on the Family page under Learning.</div></div><div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="stpd">‹ PD library</button></div>${(libData&&libData.parks)?`<div class="tseg" role="group" aria-label="Which places" style="margin:0 0 10px"><button data-mqwhich="parks" aria-pressed="${mqWhich==="parks"}">Parks</button><button data-mqwhich="places" aria-pressed="${mqWhich!=="parks"}">Museums and cultural places</button></div>`:""}`;
   if(!libData){loadLibrary();m.innerHTML=head+`<section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;return}
@@ -6959,7 +6960,7 @@ function renderMuseums(){const m=$("#main");if(!m)return;
       <div class="actions" style="margin:4px 0 6px">${printBtns("mqarea",esc(a),"Print this area")}</div>${rows}</details>`}).join("");
   m.innerHTML=head+director+tools+(groups||`<section class="card"><div class="empty">No place matches.</div></section>`)}
 // one place as a centred card, with its area above the name and its town beneath
-function mqPlaceDoc(x){const card=asCard({display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[dText("",x.about),dText("What it holds",mqTagText(x)),dText("Its own site",x.url)]},{sub:x.town});if(card)card.over=x.area;return card}
+function mqPlaceDoc(x){const card=asCard({display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[dText("",x.about),...(x.details||[]).map(d=>dText(d.label,d.text)),dText(mqWhich==="parks"&&libData.parks?"What it has":"What it holds",mqTagText(x)),dText("Its own site",x.url)]},{sub:x.town});if(card)card.over=x.area;return card}
 // places as a list, a sheet for each area, left aligned with room between places
 function mqListDocs(xs){const out=[];for(const a of mqAreas()){const ps=xs.filter(x=>x.area===a);if(!ps.length)continue;let kind="";const blocks=[];
     for(const x of ps){if(x.kind&&x.kind!==kind){blocks.push(dSub(x.kind));kind=x.kind}blocks.push(dItem(x.name,x.about+"\n"+x.url,mqTagText(x),[x.town]))}

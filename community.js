@@ -8,15 +8,37 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LINE = /^- \[(.+?)\]\((https?:\/\/[^)\s]+)\),\s*(.+?)(?<!\bSt)\.\s+(.*?)\s*\*([^*]+?)\.\*\s*$/;
   const tagOf = t => { const m = String(t).trim().match(/^([^(]+?)\s*(?:\((.+)\))?$/); return m ? { tag: m[1].trim(), note: (m[2] || '').trim() } : { tag: String(t).trim(), note: '' }; };
+  // under a place, indented lines add to it, each a label and its words, such as "  - **What to look for.** ...", and
+  // one photo line, "  - **Photo.** <image address> | <credit> | <its page>". A part named About this list holds the
+  // list's own opening sections, each a ### heading, and is no area.
+  const SUB = /^\s{2,}-\s+\*\*(.+?)\.\*\*\s*(.*)$/;
+  const isIntro = k => /^about this list/i.test(String(k || ''));
+  const photoOf = v => { const [src, credit, link] = String(v).split('|').map(s => s.trim()); return /^https:\/\//.test(src || '') ? { src, credit: credit || '', link: /^https:\/\//.test(link || '') ? link : '' } : null; };
   function places(P) {
     const out = [];
-    for (const part of (P && P.parts) || []) { let kind = '';
-      for (const l of String(part.text || '').split('\n')) { const h = l.match(/^###\s+(.+)$/); if (h) { kind = h[1].trim(); continue; }
-        const m = l.match(LINE); if (m) out.push({ area: part.key, kind, name: m[1], url: m[2], town: m[3], about: m[4], tags: m[5].split(/,\s*(?![^()]*\))/).map(tagOf).filter(x => x.tag) }); } }
+    for (const part of (P && P.parts) || []) { if (isIntro(part.key)) continue; let kind = ''; let last = null;
+      for (const l of String(part.text || '').split('\n')) { const h = l.match(/^###\s+(.+)$/); if (h) { kind = h[1].trim(); last = null; continue; }
+        const s = last && l.match(SUB); if (s) { if (/^photo$/i.test(s[1].trim())) last.photo = photoOf(s[2]); else if (s[2].trim()) last.details.push({ label: s[1].trim(), text: s[2].trim() }); continue; }
+        const m = l.match(LINE); if (m) { last = { area: part.key, kind, name: m[1], url: m[2], town: m[3], about: m[4], tags: m[5].split(/,\s*(?![^()]*\))/).map(tagOf).filter(x => x.tag), details: [], photo: null }; out.push(last); } else if (l.trim()) last = null; } }
     return out;
   }
+  // the list's own opening sections, each a title and its words
+  function intro(P) { const part = ((P && P.parts) || []).find(p => isIntro(p.key)); if (!part) return []; const out = []; let cur = null;
+    for (const l of String(part.text || '').split('\n')) { const h = l.match(/^###\s+(.+)$/); if (h) { cur = { title: h[1].trim(), text: '' }; out.push(cur); continue; } if (cur) cur.text += l + '\n'; else if (l.trim()) { cur = { title: '', text: l + '\n' }; out.push(cur); } }
+    return out.map(x => ({ title: x.title, text: x.text.trim() })).filter(x => x.text); }
+  // a few words of Markdown, bold and links, safely
+  const inl = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const block = t => String(t).split(/\n{2,}/).map(p => /^\s*- /.test(p) ? `<ul>${p.split('\n').filter(x => x.trim()).map(x => `<li>${inl(x.replace(/^\s*-\s+/, ''))}</li>`).join('')}</ul>` : `<p>${inl(p.replace(/\n/g, ' '))}</p>`).join('');
   const tagText = x => x.tags.map(t => t.note ? t.tag + ' (' + t.note + ')' : t.tag).join(', ');
   const src = (base, p) => !p || !p.src ? '' : /^https?:/.test(p.src) ? p.src : base + p.src;
+  // one place, folded to its name and few words, opening to its photo, everything the list holds about it and its own site
+  function placeRow(x) {
+    if (!x.details.length && !x.photo) return `<div class="cm-place"><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="small muted">${esc(x.town)}</span><div class="small">${esc(x.about)}</div><div class="small muted">${esc(tagText(x))}</div></div>`;
+    return `<details class="cm-place cm-open"><summary><b>${esc(x.name)}</b> <span class="small muted">${esc(x.town)}</span><div class="small">${esc(x.about)}</div><div class="small muted">${esc(tagText(x))}</div></summary>
+      ${x.photo ? `<img src="${esc(x.photo.src)}" alt="${esc(x.name)}" loading="lazy" class="cm-img">${x.photo.credit ? `<div class="small muted">${x.photo.link ? `<a href="${esc(x.photo.link)}" target="_blank" rel="noopener">${esc(x.photo.credit)}</a>` : esc(x.photo.credit)}</div>` : ''}` : ''}
+      ${x.details.map(d => `<p class="small"><b>${esc(d.label)}.</b> ${inl(d.text)}</p>`).join('')}
+      <p class="small"><a href="${esc(x.url)}" target="_blank" rel="noopener">Its own site</a></p></details>`;
+  }
   // st holds what the reader chose, the area, the tag and the words searched for
   function html(c, st, base) {
     let h = '';
@@ -25,7 +47,7 @@
     const lists = [['parks', 'Parks', c && c.parks], ['places', 'Museums and cultural places', c && c.places]].filter(x => x[2] && (x[2].parts || []).length);
     if (lists.length) {
       const which = lists.some(x => x[0] === st.which) ? st.which : lists[0][0]; const P = lists.find(x => x[0] === which)[2];
-      const all = places(P), areas = (P.parts || []).map(p => p.key);
+      const all = places(P), areas = (P.parts || []).map(p => p.key).filter(k => !isIntro(k)); const opening = intro(P);
       const n = new Map(); for (const x of all) for (const t of x.tags) n.set(t.tag, (n.get(t.tag) || 0) + 1);
       const tags = [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
       const area = areas.includes(st.area) ? st.area : 'All', tag = tags.includes(st.tag) ? st.tag : 'All';
@@ -36,13 +58,14 @@
       h += `<section class="card cm"><details ${st.placesOpen ? 'open' : ''} data-cmfold="places"><summary><h2 style="display:inline">Places to explore</h2></summary>
         ${lists.length > 1 ? `<div class="cm-chips" role="group" aria-label="Which places">${lists.map(x => chip('which', x[0], which, x[1])).join('')}</div>` : ''}
         ${P.lead ? `<p class="small muted">${esc(P.lead)}</p>` : ''}
-        <div class="small" style="font-weight:700">Area</div><div class="cm-chips">${['All', ...areas].map(a => chip('area', a, area)).join('')}</div>
+        ${opening.map(x => `<details class="cm-area"><summary><b>${esc(x.title || 'Before you go')}</b></summary><div class="small">${block(x.text)}</div></details>`).join('')}
+        <div class="small" style="font-weight:700;margin-top:8px">Area</div><div class="cm-chips">${['All', ...areas].map(a => chip('area', a, area)).join('')}</div>
         <div class="small" style="font-weight:700">${which === 'parks' ? 'What it has' : 'What it holds'}</div><div class="cm-chips">${['All', ...tags].map(t => chip('tag', t, tag)).join('')}</div>
         <label class="small">${which === 'parks' ? 'Find a park' : 'Find a place'}<input type="search" id="cm-q" value="${esc(st.q || '')}" placeholder="${which === 'parks' ? 'A park, a town or what it has' : 'A place, a town or what it holds'}"></label>
         <p class="small muted">${shown.length} of ${all.length} ${word}.</p>
         ${areas.map(a => { const xs = shown.filter(x => x.area === a); if (!xs.length) return ''; let kind = '';
           return `<details class="cm-area" ${filtered ? 'open' : ''}><summary><b>${esc(a)}</b> <span class="small muted">${xs.length}</span></summary>${xs.map(x => { const k = x.kind && x.kind !== kind ? `<div class="small" style="font-weight:700;margin-top:8px">${esc(x.kind)}</div>` : ''; kind = x.kind;
-            return k + `<div class="cm-place"><a href="${esc(x.url)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b></a> <span class="small muted">${esc(x.town)}</span><div class="small">${esc(x.about)}</div><div class="small muted">${esc(tagText(x))}</div></div>`; }).join('')}</details>`; }).join('') || `<p class="small muted">No ${which === 'parks' ? 'park' : 'place'} matches.</p>`}
+            return k + placeRow(x); }).join('')}</details>`; }).join('') || `<p class="small muted">No ${which === 'parks' ? 'park' : 'place'} matches.</p>`}
       </details></section>`;
     }
     if (c && c.plants && ((c.plants.plants || []).length || (c.plants.fieldGuides || []).length)) {
@@ -73,6 +96,7 @@
     + '.cm-area{border-top:1px solid #e3dccb;padding:6px 0}.cm-area>summary{cursor:pointer}.cm-place{padding:6px 0;border-bottom:1px dashed #e3dccb}.cm-img{width:100%;max-width:420px;border-radius:10px;display:block;margin:6px 0}'
     + '.cm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:6px}.cm-tile{min-width:0}.cm-tile img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}.cm-soft{width:100%;aspect-ratio:4/3;border-radius:10px;background:#efe9da}'
     + '.cm-names{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}.cm-name{display:flex;align-items:center;gap:8px;min-width:0}.cm-name img,.cm-name-none{width:56px;height:56px;border-radius:50%;object-fit:cover;flex:none}.cm-name-none{background:#efe9da}'
+    + '.cm-open>summary{cursor:pointer;list-style:none}.cm-open>summary::-webkit-details-marker{display:none}.cm-open[open]>summary{margin-bottom:6px}'
     + '.cm input[type=search]{display:block;width:100%;box-sizing:border-box;margin:4px 0;padding:8px;border:1px solid #c9c1ad;border-radius:8px;font:inherit}';
   // the chips, the search and the folds, with draw to draw again after a choice
   function bind(el, st, draw) {
@@ -80,5 +104,5 @@
     el.addEventListener('input', e => { if (e.target.id !== 'cm-q') return; st.q = e.target.value; const at = e.target.selectionStart; draw(); const i = el.querySelector('#cm-q'); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (er) {} } });
     el.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.cmfold) st[d.dataset.cmfold + 'Open'] = d.open; }, true);
   }
-  root.TREE_COMMUNITY = { html, bind, places, CSS, state: () => ({ which: '', area: 'All', tag: 'All', q: '', placesOpen: false, plantsOpen: false, animalsOpen: false }) };
+  root.TREE_COMMUNITY = { html, bind, places, intro, CSS, state: () => ({ which: '', area: 'All', tag: 'All', q: '', placesOpen: false, plantsOpen: false, animalsOpen: false }) };
 })(typeof window !== 'undefined' ? window : this);
