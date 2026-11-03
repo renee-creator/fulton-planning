@@ -86,3 +86,17 @@ test('a family version sits on its PD module page for the director, and stays of
   assert.doesNotMatch(await sd.p.innerText('#main'), /[—–]|\bClaude\b/);
   assert.deepStrictEqual(errors, []);
 });
+
+test('Good to know pieces are managed on the PD library page, and the Family Handbook page keeps only the handbook', async t => {
+  const fx = await start({ more: put => { put('staff/familypieces/info.md', '<!--\nstatus: draft\naudience: all\n-->\n# Good to Know Piece\n\nWords.\n'); } });
+  t.after(() => fx.stop());
+  const chromium = await browser(); if (!chromium) return;
+  const { signedIn } = require('./fixture.js');
+  const b = await chromium.launch(); t.after(() => b.close());
+  const sd = await signedIn(fx, b, 'Dee', 'director-pass-1', 1280); const errors = []; sd.p.on('pageerror', e => errors.push(e.message));
+  await sd.p.evaluate(() => goView('stpd')); await sd.p.waitForSelector('text=Good to know, for families', { timeout: 15000 });
+  assert.match(await sd.p.innerText('#main'), /Good to know, for families[\s\S]*Good to Know Piece[\s\S]*Draft/);
+  await sd.p.evaluate(() => goView('stfh')); await sd.p.waitForFunction(() => /Family Handbook/.test(document.getElementById('main').innerText) && !/Good to know, for families/.test(document.getElementById('main').innerText), null, { timeout: 15000 }).catch(async () => { throw new Error('stfh page: ' + (await sd.p.innerText('#main')).slice(0, 400)); }); await new Promise(r => setTimeout(r, 1500));
+  assert.doesNotMatch(await sd.p.innerText('#main'), /Good to know, for families|Good to Know Piece/);
+  assert.deepStrictEqual(errors, []);
+});

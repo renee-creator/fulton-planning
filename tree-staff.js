@@ -604,7 +604,7 @@ async function pagePd(my){if(window.TreeGrowth)await TreeGrowth.ready().catch(()
   let paths="";if(D()){try{const r=await loadPaths(!T._keep);paths=pathsDirCard(r)+assignedDirCard(r)}catch(e){paths=""}}else paths=await assignedCard();
   draw(my,head("PD library","PD library","Each module holds a short reading, examples from our own documentation, a practice to try in your own class that week, and one reflection on what happened when you tried it. You choose the order. Finishing a module logs its hours on your records page.")+
     paths+(await neWelcome())+(sec?card("The New Educator sequence",seqHtml(B.me.newEd&&B.me.profile&&B.me.profile.startDate?Math.max(1,Math.floor(daysTo(B.me.profile.startDate,today())/7)+1):0,pcs,p),B.me.newEd?"Your first two months":"For new educators, their first two months"):"")+
-    (window.TreeGrowth?await TreeGrowth.libraryHtml(pcs,dn):card("Modules",`<div class="stgrid">${MODULES.filter(m=>m[2]).map(([t,d,k])=>`<div class="stmod"><b>${H(t)}</b><div class="cnt">${H(d)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${k}">Open</button></div></div>`).join("")}</div>`))+(window.TreeGrowth&&TreeGrowth.readingsHtml?await TreeGrowth.readingsHtml():""))}
+    (window.TreeGrowth?await TreeGrowth.libraryHtml(pcs,dn):card("Modules",`<div class="stgrid">${MODULES.filter(m=>m[2]).map(([t,d,k])=>`<div class="stmod"><b>${H(t)}</b><div class="cnt">${H(d)}</div><div class="actions" style="margin:4px 0 0"><button class="btn small ghost" data-stmod="${k}">Open</button></div></div>`).join("")}</div>`))+(D()?await fpiecesCard():"")+(window.TreeGrowth&&TreeGrowth.readingsHtml?await TreeGrowth.readingsHtml():""))}
 function pieceHtml(my,x,dn){const d=dn[x.id];const list=st.pd[x.dir]||[];const i=list.indexOf(x),nx=list[i+1];
   const sec=h=>x.sections.find(s=>s.heading.toLowerCase().startsWith(h));const q=sec("one question");
   const hbs=x.handbook||[];
@@ -729,7 +729,7 @@ const yearSpan=y=>y?y+" to "+(+y+1):"";
    adds it as a new section, which keeps its own earlier versions from then on like every other section. */
 /* pieces for the Family page, each a draft only the director sees until she marks it ready */
 async function fpiecesCard(){let r;try{r=await api("familypieces")}catch(e){return ""}const L=(r.list||[]).filter(x=>x.audience!=="learning");if(!L.length)return "";
-  return card("Family page pieces",`<div class="hint">Pieces for families, read on the Family page under For families. The TK and kindergarten guide shows only to families of children going to TK or kindergarten next year, beside the transition summary. A draft reaches no family until you mark it ready.</div>
+  return card("Good to know, for families",`<div class="hint">Short practical pieces for families, read on the Family page under Learning, in Good to know, after Learning together. Reading them does not count toward participation hours. Each module's family version is on that module's page, under For families. The TK and kindergarten guide shows only to families of children going to TK or kindergarten next year, beside the transition summary. A draft reaches no family until you mark it ready.</div>
     ${L.map(x=>`<details class="strow"><summary style="cursor:pointer"><b>${H(x.title)}</b> ${x.waiting?chip("soonish","Draft"):chip("ok","On the Family page")}${x.audience==="tk"?` <span class="cnt">For TK and kindergarten families</span>`:x.audience==="learning"?` <span class="cnt">Learning together, about ${x.minutes||30} minutes</span>`:""}</summary>
       <div class="stmd" style="margin-top:6px">${md(x.body)}</div><div class="actions">${x.draft?`<button class="btn small${x.waiting?"":" ghost"}" data-fpready="${H(x.slug)}|${x.waiting?1:0}">${x.waiting?"Mark it ready":"Take it off the Family page"}</button>`:""}${peBtn("staff/familypieces/"+x.slug+".md")}</div>
       ${x.source?`<div class="cnt">Source, seen only by you. ${H(x.source)}</div>`:""}</details>`).join("")}`,`${L.filter(x=>x.waiting).length} waiting`)}
@@ -787,7 +787,7 @@ async function pagePol(my,k){const dir=D();const want=LS.get(k==="family"?"tree.
     (k==="teacher"&&(B.me.newHire||B.me.newEd)&&!dir?mustReadCard(d):"")+
     card("Contents",`${list}${dir?`<div class="actions"><button class="btn small ghost" data-stpol="__new">Add a section</button></div>`:""}`,printBar("pol:"+k))+
     (dir&&k==="family"?fhDirCards(d):"")+
-    (dir?await proposalsCard(k,ed):"")+(dir&&k==="family"?await fpiecesCard():"")+
+    (dir?await proposalsCard(k,ed):"")+
     (dir?`<div id="stpolacks">${card(k==="family"?"Families who have read it":"Who has acknowledged it",`<div class="empty"><span class="spin"></span> Opening</div>`)}</div>`:""));
   if(dir)polAcksCard(k,d,my)}
 // what a section shows beside its title in the contents
