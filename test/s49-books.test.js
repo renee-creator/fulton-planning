@@ -138,3 +138,24 @@ test('Covers and links go on books already in the collection, by the director', 
   const a = await fx.as(ann, '/api/staff/library/bookavail', {}); assert.strictEqual(a.status, 200);
   assert.strictEqual(a.body.list[g.path].avail, 2); assert.strictEqual(a.body.list[n.path].found, false);
 });
+
+test('Vet the books I chose vets each one, saves its notes and approves a group with one tap', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await setup(t);
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 390); t.after(() => s.close());
+  await s.p.evaluate(() => { songTab = 'collection'; goView('songs'); }); await s.p.waitForSelector('[data-bookpickdrafts]', { timeout: 15000 });
+  // each book shows the first sentence of why we chose it
+  assert.match(await s.p.textContent('[data-readrow="b-owl-moon"] .bkwhy'), /^A child and a parent walk quietly into the winter woods to look for an owl\.$/);
+  // a checkbox draws the list again, so each is clicked once and read back from what TREE holds
+  for (const id of ['owl-moon', 'wave']) await s.p.$eval(`[data-bookpick="${id}"]`, e => e.click());
+  assert.deepStrictEqual(await s.p.evaluate(() => [...bookPick].sort()), ['owl-moon', 'wave']);
+  await s.p.click('[data-bookbatch]');
+  await s.p.waitForSelector('[data-bookbatchok="check"]', { timeout: 30000 });
+  assert.match(await s.p.textContent('.bkrev'), /Check in the book 2/);
+  const notes = await s.p.evaluate(() => bookPart(libData.books.find(x => x.id === 'wave'), 'Vetting notes')); assert.match(notes, /Check in the book/);
+  await s.p.click('[data-bookbatchok="check"]');
+  await s.p.waitForFunction(() => ['owl-moon', 'wave'].every(id => !libData.books.find(x => x.id === id).draft), null, { timeout: 15000 });
+  assert.ok(await s.p.evaluate(() => libData.books.filter(x => x.draft).length > 60), 'the other drafts still wait');
+  assert.deepStrictEqual(s.errors, []);
+});

@@ -624,7 +624,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .bkmatch>span:last-child{min-width:0;overflow-wrap:anywhere}
 .bknocov{display:grid;place-items:center;font-size:12px;color:var(--muted)}
 .bkrevrow{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:6px}
-.bksum{list-style:none;padding:6px 0}.bksum::-webkit-details-marker{display:none}
+.bksum{list-style:none;padding:6px 0}.bkwhy{display:block;font-size:14.5px;margin-top:2px;color:var(--ink)}.bksum .pill{white-space:nowrap}.bksum::-webkit-details-marker{display:none}
 .mrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start}
 .mrow.nophoto{grid-template-columns:minmax(0,1fr)}
 @media (max-width:520px){.mrow{grid-template-columns:72px minmax(0,1fr)}.mthumb{width:72px;height:86px}}
@@ -4768,7 +4768,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="1d43b737311e";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="204075d32b6b";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6952,8 +6952,44 @@ function booksFor(name){if(!name)return "";if(!libData){if(!bookForAsked&&typeof
   return L.length?`<div class="booksfor" style="margin-top:10px"><div class="lbl">Books from our collection</div><div class="chips">${libChips(L.map(x=>({kind:"book",id:x.id,title:x.title+(bookOwned(x)?", ours":"")})))}</div></div>`:""}
 window.TREE_BOOKS_FOR=booksFor;
 const bookPart=(x,k)=>((x.parts||[]).find(p=>p.key.toLowerCase()===k.toLowerCase())||{}).text||"";
+// the first sentence of Why we chose it, shown under the title so the list reads without opening each book
+const bookFirst=x=>{const t=String(bookPart(x,"Why we chose it")||"").replace(/\s+/g," ").trim();const m=t.match(/^.*?[.!?](?=\s|$)/);return (m?m[0]:t).slice(0,220)};
+/* Vet the books I chose. Each checked book is vetted with the Book Vetting Tool, two at a time, and its notes are saved
+   with it. The books then wait in three groups, nothing flagged, check in the book and a concern, and the director
+   approves a group with one tap or opens a book to read it first. bookBatch holds the run. */
+let bookBatch=null;
+const bookGroup=t=>/A concern/i.test(t)?"concern":/Check in the book/i.test(t)?"check":"clear";
+async function bookBatchRun(ids){const R=bookBatch={busy:true,total:ids.length,done:0,clear:[],check:[],concern:[],failed:[]};renderMain();
+  const Q=[...ids];const work=async()=>{while(Q.length&&bookBatch===R){const id=Q.shift();const x=(libData.books||[]).find(y=>y.id===id);if(!x){R.done++;continue}
+    try{const v=await bookVetDraft(x);if(v.error){R.failed.push({id,title:x.title,why:v.error});Q.length=0;toast(v.error)}
+      else{libData=await window.FP_API("/api/staff/library/vetting",{path:x.path,text:v.text});R[bookGroup(v.text)].push({id,path:x.path,title:x.title,draft:x.draft,note:libLines(v.text).filter(l=>/A concern|Check in the book/i.test(l)).map(l=>l.replace(/^[-•\s]+/,"")).slice(0,3)})}}
+    catch(er){R.failed.push({id,title:x.title,why:er&&er.message||"It could not be vetted just now."})}
+    R.done++;if(bookBatch===R)renderMain()}};
+  await Promise.all([work(),work()]);R.busy=false;bookPick.clear();if(bookBatch===R)renderMain()}
+function bookBatchHtml(){const R=bookBatch;if(!R)return "";
+  const grp=(k,title,lead,btn)=>{const L=R[k];if(!L.length)return "";const drafts=L.filter(b=>b.draft);
+    return `<div class="bkrevrow"><div class="lbl">${title} ${L.length}</div><div class="cnt">${lead}</div>
+      ${L.map(b=>`<div><button class="linkbtn" data-bookbatchopen="${esc(b.id)}">${esc(b.title)}</button>${b.draft?"":` <span class="cnt">already in the collection</span>`}${b.note.length?`<div class="cnt">${b.note.map(esc).join("<br>")}</div>`:""}</div>`).join("")}
+      ${btn&&drafts.length?`<div class="actions"><button class="btn small" data-bookbatchok="${k}">${btn} ${drafts.length}</button></div>`:""}</div>`};
+  return `<div class="binadd bkrev"><div class="lbl">Vetting the books you chose</div>
+    ${R.busy?`<div class="cnt">Vetted ${R.done} of ${R.total}. Keep TREE open until it finishes.</div>`:`<div class="cnt">Every book's notes are saved with it. Open a book to read its notes in full.</div>`}
+    ${grp("clear","Nothing flagged","The vetting found nothing to check.","Approve all")}
+    ${grp("check","Check in the book","Some questions can only be answered by reading the book itself.","Approve these too")}
+    ${grp("concern","A concern","Each waits for you. Open it to read the concern.","")}
+    ${R.failed.length?`<div class="bkrevrow"><div class="lbl">Not vetted ${R.failed.length}</div>${R.failed.map(b=>`<div class="cnt">${esc(b.title)}. ${esc(b.why)}</div>`).join("")}</div>`:""}
+    <div class="actions">${R.busy?`<button class="linkbtn" data-bookbatchstop="1">Stop</button>`:`<button class="linkbtn" data-bookbatchclose="1">Close</button>`}</div></div>`}
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-bookbatch],[data-bookpickdrafts],[data-bookbatchok],[data-bookbatchopen],[data-bookbatchstop],[data-bookbatchclose]");if(!t)return;const d=t.dataset;
+  if(d.bookbatchopen){songOpen="r:b-"+d.bookbatchopen;renderMain();setTimeout(()=>document.querySelector(`[data-readrow="b-${CSS.escape(d.bookbatchopen)}"]`)?.scrollIntoView({block:"start"}),60);return}
+  if(d.bookbatchclose){bookBatch=null;renderMain();return}
+  if(d.bookbatchstop){if(bookBatch)bookBatch.busy=false;bookBatch=Object.assign({},bookBatch);renderMain();return}
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.bookpickdrafts){const D=(libData.books||[]).filter(x=>x.draft);const all=D.every(x=>bookPick.has(x.id));D.forEach(x=>all?bookPick.delete(x.id):bookPick.add(x.id));renderMain();return}
+  if(d.bookbatch){if(!sample){toast("The writing help is not available here.");return}const ids=[...bookPick];if(!ids.length){toast("Check the books to vet first.");return}bookBatchRun(ids);return}
+  if(d.bookbatchok){const R=bookBatch;if(!R)return;const L=R[d.bookbatchok].filter(b=>b.draft);t.disabled=true;let n=0;
+    for(const b of L){try{libData=await window.FP_API("/api/staff/library/ready",{path:b.path,on:true});b.draft=false;n++}catch(er){toast(er&&er.message||"That did not save.");break}}
+    R[d.bookbatchok]=R[d.bookbatchok].filter(b=>b.draft);toast(n===1?"One book approved. Educators see it now.":n+" books approved. Educators see them now.");renderMain()}});
 function bookRow(x){const dir=isDirector()&&!VIEW_AS,m=x.meta||{};
-  return `<details class="strow" data-readrow="b-${esc(x.id)}" ${songOpen==="r:b-"+x.id?"open":""}><summary class="bkhead bksum" style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:0;align-self:center" onclick="event.stopPropagation()"><input type="checkbox" data-bookpick="${esc(x.id)}" ${bookPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.title)} to print"></label><span class="bkhead">${bookCover(x)?`<img class="bkcov" src="${esc(bookCover(x))}" alt="" loading="lazy">`:`<span class="bkcov bknocov" aria-hidden="true"></span>`}<span><b>${esc(x.title)}</b> ${bookOwned(x)?`<span class="pill" style="pointer-events:none">Ours</span> `:""}${x.draft?`<span class="pill" style="pointer-events:none">Waiting for the director</span> `:""}<span class="cnt" style="display:block">${esc([m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", "))}</span>${bookLibLine(bookLibOf(x))}</span></span></summary>
+  return `<details class="strow" data-readrow="b-${esc(x.id)}" ${songOpen==="r:b-"+x.id?"open":""}><summary class="bkhead bksum" style="cursor:pointer"><label class="radio" style="display:inline-flex;margin-right:0;align-self:center" onclick="event.stopPropagation()"><input type="checkbox" data-bookpick="${esc(x.id)}" ${bookPick.has(x.id)?"checked":""} aria-label="Choose ${esc(x.title)} to print"></label><span class="bkhead">${bookCover(x)?`<img class="bkcov" src="${esc(bookCover(x))}" alt="" loading="lazy">`:`<span class="bkcov bknocov" aria-hidden="true"></span>`}<span><b>${esc(x.title)}</b> ${bookOwned(x)?`<span class="pill" style="pointer-events:none">Ours</span> `:""}${x.draft?`<span class="pill" style="pointer-events:none">Waiting for the director</span> `:""}<span class="cnt" style="display:block">${esc([m.author,m.illustrator&&m.illustrator!==m.author?"illustrated by "+m.illustrator:"",m.year].filter(Boolean).join(", "))}</span>${bookFirst(x)?`<span class="bkwhy">${esc(bookFirst(x))}</span>`:""}${bookLibLine(bookLibOf(x))}</span></span></summary>
     ${bookCover(x)?`<img class="bkcovl" src="${esc(bookCover(x))}" alt="The cover of ${esc(x.title)}" loading="lazy">`:""}${x.lead?`<p>${esc(x.lead)}</p>`:""}${(x.parts||[]).filter(p=>String(p.text||"").trim()).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
     <div class="actions" style="flex-wrap:wrap">${m.link?`<a class="btn small ghost" href="${esc(m.link)}" target="_blank" rel="noopener">The book's page</a>`:""}${(()=>{const L=bookLibOf(x);return L&&L.found?`<a class="btn small ghost" href="${esc(L.record)}" target="_blank" rel="noopener">At Sonoma County Library</a>`:L&&L.search?`<a class="linkbtn" href="${esc(L.search)}" target="_blank" rel="noopener">Search the library</a>`:""})()}${dir?`<button class="linkbtn" data-bookfix="${esc(x.id)}">${bookCover(x)?"Change the cover and facts":"Find its cover and facts"}</button>`:""}${printBtns("bookcard",esc(x.id),"Card")}${dir?pageEditBtn(x.path,"Edit"):""}${dir&&x.draft?`<button class="btn small" data-readready="${esc(x.path)}">Approve it after vetting</button>`:""}${dir&&sample?`<button class="btn small ghost" data-bookvetdraft="${esc(x.id)}" ${bookVet&&bookVet.busy===x.id?"disabled":""}>${bookVet&&bookVet.busy===x.id?"Vetting":"Vet this book"}</button>`:""}${libRemoveBtn(x)}<button class="linkbtn" data-bookvet="1">The Book Vetting Tool</button></div>
     ${(dir||isOffice())&&!VIEW_AS?`<label class="radio"><input type="checkbox" data-bookowned="${esc(x.path)}" ${bookOwned(x)?"checked":""}><span>We own it</span></label>`:""}
@@ -6968,6 +7004,8 @@ function bookCollectionHtml(){const all=(libData.books||[]),q=bookQ.trim().toLow
     ${bookOwnF==="lib"&&!bookAvail?`<div class="cnt">Checking Sonoma County Library</div>`:""}
     ${dirNow&&!bookRev&&missing.length?`<div class="actions" style="margin:6px 0"><button class="btn small ghost" data-bookrevopen="1">Find covers and links for ${missing.length} ${missing.length===1?"book":"books"}</button></div>`:""}
     ${dirNow&&bookRev?bookRevHtml():""}
+    ${dirNow&&all.some(x=>x.draft)?`<div class="actions" style="margin:6px 0;flex-wrap:wrap"><button class="btn small ghost" data-bookbatch="1" ${bookPick.size&&!(bookBatch&&bookBatch.busy)?"":"disabled"}>Vet the books I chose${bookPick.size?" ("+bookPick.size+")":""}</button><button class="linkbtn" data-bookpickdrafts="1">${all.filter(x=>x.draft).every(x=>bookPick.has(x.id))?"Clear the drafts":"Choose every draft"} ${all.filter(x=>x.draft).length}</button></div>`:""}
+    ${dirNow?bookBatchHtml():""}
     ${list.length?`<div class="actions" style="margin:6px 0"><button class="btn small ghost" data-bookprint="some" ${bookPick.size?"":"disabled"}>Print the cards I chose${bookPick.size?" ("+bookPick.size+")":""}</button><button class="linkbtn" data-bookprint="all">Print every card</button><button class="linkbtn" data-bookprint="some" data-word="1" ${bookPick.size?"":"disabled"}>Word, the cards I chose</button></div>`:""}
     ${list.map(bookRow).join("")||`<div class="empty">${all.length?"No book matches.":"No books yet. Suggest the first one below."}</div>`}</section>
     ${sample&&!VIEW_AS?`<section class="card"><div class="lbl">Suggest books</div><div class="cnt">Type a topic, a season or what the children are wondering about, and TREE names a few well-known books to look at. Vet each one before it joins the collection.</div>
