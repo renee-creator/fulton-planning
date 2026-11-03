@@ -97,6 +97,16 @@ test('the Idea bank in TREE', async t => {
     await s.close();
   });
 
+  await t.test('a card picked in the list shows on the right, with the three columns kept', async () => {
+    const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1280);
+    await s.p.evaluate(() => goView('ideabank')); await s.p.waitForFunction(() => ib && ib.cards, null, { timeout: 15000 }); await wait(300);
+    const ids = await s.p.$$eval('[data-ibsel]', xs => xs.map(x => x.dataset.ibsel)); assert.ok(ids.length >= 2);
+    await s.p.click(`[data-ibsel="${ids[1]}"]`); await wait(300);
+    assert.ok(await s.p.$('.ibwrap'), 'the three columns stay'); assert.strictEqual(await s.p.$('[data-ibmode="list"]'), null, 'no Back to the cards');
+    assert.strictEqual(await s.p.evaluate(() => ibSt.sel), ids[1]);
+    assert.deepStrictEqual(s.errors, []); await s.close();
+  });
+
   await t.test('What are you seeing? and Start a team inquiry with this', async () => {
     const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1280);
     await s.p.evaluate(() => goView('ideabank')); await s.p.waitForFunction(() => ib && ib.cards, null, { timeout: 15000 });

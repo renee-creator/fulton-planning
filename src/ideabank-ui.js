@@ -221,7 +221,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
   if(d.ibfind){const p=plans.get(d.ibfind);if(!p)return;ibSt.fromPlan=p.id;ibSt.mode="card";ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.picked=false;if(!ib)ibLoad();const f=ib?ibForPlan(p)[0]:null;if(f)ibSt.sel=f.id;goView("ideabank",{keepPlan:true});return}
   if(view!=="ideabank"&&!d.ibshare)return;
   if(d.ibgroup){ibSt.group=d.ibgroup;ibSt.q="";ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];ibSt.mode="card";ibSt.picked=false;ibSt.sel=(ibShown()[0]||{}).id||"";ibKeep();renderMain();return}
-  if(d.ibsel){ibOpen(d.ibsel);return}
+  // a card picked in the list shows in the column on the right, and on a narrow screen the page moves to it
+  if(d.ibsel){const c=ibCard(d.ibsel);if(!c)return;ibSt.sel=d.ibsel;ibSt.mode="card";ibSt.picked=false;if(ibSt.side==="home"&&!c.home)ibSt.side="edu";ibKeep();renderMain();
+    const r=$("#ibright");if(r&&window.innerWidth<900)r.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(d.ibmode){if(d.ibmode==="list"){ibSt.picked=false;ibSt.mode="card"}else{ibSt.mode=ibSt.mode===d.ibmode?"card":d.ibmode;ibSt.picked=ibSt.mode!=="card"}renderMain();jumpTop();return}
   if(d.ibchip){const k=d.ibchip,a=ibSt[k],i=a.indexOf(d.val);if(i>=0)a.splice(i,1);else a.push(d.val);ibSt.mode="card";renderMain();return}
   if(d.ibclearf){ibSt.needs=[];ibSt.sups=[];ibSt.levels=[];renderMain();return}
