@@ -5105,7 +5105,7 @@ function weeklyHtml(){if(!isDirector()||!weeklyRec||weeklyRec.week!==mondayOf(ne
 document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else renderMain()});
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
-document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
+document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")&&!e.target.dataset.kfixed){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
 // which of the week's dishes a food is cooked in, chosen by the kitchen or the director, so families read the true dish
 function kDishPick(it,monday){const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
   const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"short"});const opts=[];
@@ -5114,10 +5114,10 @@ function kDishPick(it,monday){const days=[0,1,2,3,4].map(i=>addDays(monday,i)).m
   return `<label class="cnt" style="display:block;margin-top:4px">Which dish<select data-kdish="1" data-kname="${esc(it.name)}" data-kfarm="${esc(it.farm)}" data-kmon="${esc(monday)}" style="width:auto;margin-left:6px"><option value="">Not named</option>${[...new Set(opts)].map(o=>`<option ${o===cur?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`}
 document.addEventListener("change",async e=>{const t=e.target.closest&&e.target.closest("[data-kdish]");if(!t||!window.FP_API||VIEW_AS)return;const d=t.dataset;
   try{await window.FP_API("/api/kitchen-serve",{monday:d.kmon,name:d.kname,farm:d.kfarm,field:"dish",value:t.value});kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y);toast(t.value?"Saved. Families read that dish.":"The dish is not named.")}catch(err){toast((err&&err.message)||"Could not save that.")}});
-function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w||!(w.items||[]).length)return"";
+function kitchenCardHtml(monday,today,extra,o){o=o||{};kitchenLoad();const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w||!(w.items||[]).length)return"";
   const farms=new Set(w.items.map(i=>i.farm)).size,foods=new Set(w.items.map(i=>i.food||i.name)).size;const first=w.items.map(i=>i.day).filter(Boolean).sort()[0];
   const when=first?parseIso(first).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
-  return `<details class="card kitchen" style="margin-top:14px" ${kOpen?"open":""}><summary><h3>Produce coming</h3><span class="cnt">${foods} food${foods===1?"":"s"} from ${farms} farm${farms===1?"":"s"}${when?", "+esc(when):""}</span></summary>
+  return `<details class="card kitchen" style="margin-top:14px" ${kOpen&&!o.closed?"open":""} ${o.closed?'data-kfixed="1"':""}><summary><h3>${esc(o.title||"Produce coming")}</h3><span class="cnt">${foods} food${foods===1?"":"s"} from ${farms} farm${farms===1?"":"s"}${when?", "+esc(when):""}</span></summary>${o.note?`<div class="cnt" style="margin:6px 0">${esc(o.note)}</div>`:""}
     <div class="klist">${w.items.map(it=>{const town=farmTown(it.farm),sv=it.serve,ask=kCanServe();
       // once someone has said how it is served, that replaces TREE's guess for everyone
       const n=sv&&(sv.side||sv.cooked)?kServeText(it,monday):kitchenNotes(it,monday)[0];
@@ -9567,6 +9567,13 @@ async function binLoad(fresh){
   binFeed.at=Date.now();binFeed.busy=false;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderBin();
 }
 
+// where the week stands for this class, the steps of a bin week in order
+function binStepsHtml(b,room){const held=binHeld(b,room);const ideas=binIdeas().filter(i=>held[i.id]);
+  const q=ideas.filter(i=>binKind(i)==="question").length,p=ideas.filter(i=>binKind(i)==="prep").length,kept=binMoments(room,b.id).length;
+  const coming=b.date>=iso(new Date());const step=(done,t,s)=>`<li style="margin:4px 0"><b>${done===null?"Then.":done?"Done.":"Next."}</b> ${t}${s?` <span class="cnt">${s}</span>`:""}</li>`;
+  const steps=[step(true,"See what is coming in the bin"),step(q>0,"Choose a question or two to hold",q?q+" chosen":"None chosen yet"),step(p>0,"Choose a way to prepare it",p?p+" chosen":"None chosen yet"),
+    step(null,"Print the bin sheet for the table",q||p?"Ready to print with what you chose":"Once something is chosen"),step(kept>0,"Keep what the children noticed",kept?kept+" kept":coming?"After the bin is opened":"Nothing kept yet")];
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px;margin:0">${esc(room)} class this week</h3></div><ol style="margin:4px 0 0;padding-left:20px;list-style:none">${steps.join("")}</ol></section>`}
 function renderBin(){
   const b=binCurrent(),room=binRoomNow(),list=binAll();
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
@@ -9581,7 +9588,8 @@ function renderBin(){
   const days=b.date?parseIso(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
   const keys=new Set((b.items||[]).map(it=>binKey(it.name)));
   const depth=list.filter(x=>x.date<b.date).length;
-  h+=`<section class="card"><div class="secthead"><div><h3 style="font-size:19px;margin:0">${esc(days)}</h3>
+  h+=binStepsHtml(b,room);
+  h+=`<section class="card"><div class="secthead"><div><h3 style="font-size:19px;margin:0">In our bin, ${esc(days)}</h3>
       <div class="cnt">${b.source==="hand"?"Added by hand":"As FEED listed it"}${b.date>=iso(new Date())?". FEED may still swap an item on packing day.":""}</div></div>
       <div class="actions">${older?`<button class="linkbtn" data-binweek="${esc(older.id)}">‹ ${esc(fmtDate(older.date).replace(/, \d{4}$/,""))}</button>`:""}${newer?`<button class="linkbtn" data-binweek="${esc(newer.id)}">${esc(fmtDate(newer.date).replace(/, \d{4}$/,""))} ›</button>`:""}</div></div>
     <div class="binlist">${(b.items||[]).map(it=>{const prev=binBefore(b,it);const last=prev[0];
@@ -9592,7 +9600,7 @@ function renderBin(){
 
   // the questions this class is bringing to the table this week
   const held=binHeld(b,room);
-  {const km=mondayOf(parseIso(b.date));h+=kitchenCardHtml(km,false,`<div class="actions" style="margin-top:8px">${printBtns("farmweek",km,"This week our food came from")}</div>`)}
+  {const km=mondayOf(parseIso(b.date));h+=kitchenCardHtml(km,false,`<div class="actions" style="margin-top:8px">${printBtns("farmweek",km,"This week our food came from")}</div>`,{title:"From the kitchen this week",note:"What the kitchen cooks with at snack and lunch. It is a separate order from our bin.",closed:true})}
   h+=binIdeaCard(b,room,"question",keys,held)+binIdeaCard(b,room,"prep",keys,held)+binExplHtml(b);
   // the ideas the class is using this week print for the table on the bin sheet
   {const n=binIdeas().filter(i=>held[i.id]).length;if(n)h+=`<div class="actions" style="margin:-4px 0 14px">${printBtns("bin",b.id,`Print for the table, ${n} idea${n===1?"":"s"}`,true)}</div>`}
@@ -9634,6 +9642,7 @@ function binIdeaCard(b,room,kind,keys,held){const K=BIN_KIND[kind];
     ${rest.length?`<details${fits.length?"":" open"}><summary class="lbl" style="cursor:pointer;margin-top:8px">${fits.length?"More of "+esc(room)+"'s ideas, "+rest.length:esc(room)+"'s ideas, "+rest.length}</summary>${rest.map(i=>ideaRow(i)).join("")}</details>`:""}
     ${others.length?`<details><summary class="lbl" style="cursor:pointer;margin-top:8px">From other classes, ${others.length}</summary>${others.map(i=>ideaRow(i,true)).join("")}</details>`:""}
     ${!all.length?`<div class="empty">${K.empty}</div>`:""}
+    ${kind==="question"&&!(binAdd&&binAdd.kind===kind)?binNewHtml(b):""}
     ${binAdd&&binAdd.kind===kind?binAddHtml(b):`<div class="actions" style="margin-top:10px"><button class="btn small ghost" data-binact="add" data-kind="${kind}">${K.add}</button><button class="btn small ghost" data-binact="suggest" ${binBusy?"disabled":""}>${binBusy?"Thinking":"Suggest some"}</button></div>`}
     ${sug&&(sug.length||binSugg.none)?binSuggHtml(kind,sug):""}</section>`}
 /* the food explorations for this week's produce, our guided tastings, each opening in one tap with its recipe */
@@ -9657,11 +9666,15 @@ function foodMilesSvg(towns){const pts=towns.map(t=>Object.assign({},t,gTownInfo
     <rect x="${sx-6}" y="${sy-6}" width="12" height="12" fill="#2f3b2f"/><text x="${sx}" y="${sy+19}" text-anchor="middle" font-size="11" font-weight="700" fill="#2f3b2f">Our school</text></svg>`}
 function binFarmsHtml(b){const farms=[...new Set((b.items||[]).flatMap(it=>it.farms||[]))];const local=(libData&&libData.farms)||[];if(!libData)loadLibrary();if(!farms.length&&!local.length)return"";
   const towns=new Map();for(const f of farms){const t=farmTown(f);if(t)towns.set(t,{town:t,bin:true})}for(const f of local)if(f.town&&!towns.has(f.town))towns.set(f.town,{town:f.town,bin:false});
-  return `<details class="card" style="margin-top:14px"><summary class="cnt" style="cursor:pointer">Where the farms are</summary>
-    ${farms.length?`<div class="cnt" style="margin:8px 0">Change a town here and it changes everywhere the farm appears.</div>
+  return `<details class="card" style="margin-top:14px"><summary style="cursor:pointer"><h3 style="font-size:17px;margin:0;display:inline">Our farms</h3> <span class="cnt">Where this week's food grew, how far it traveled and the farms we know</span></summary>
+    ${farms.length?`<div class="lbl" style="margin-top:10px">Where the farms are</div><div class="cnt" style="margin:4px 0 8px">Change a town here and it changes everywhere the farm appears.</div>
     ${farms.map(f=>`<label class="cnt" style="display:flex;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap"><span style="min-width:180px">${esc(f)}${gTownMiles(farmTown(f))!=null?`, ${gTownMiles(farmTown(f))} miles`:""}</span><input type="text" data-farmtown="${esc(farmKey(f))}" value="${esc(farmTown(f))}" placeholder="Town" style="max-width:220px"></label>`).join("")}`:""}
     <div class="lbl" style="margin-top:10px">Food miles</div><div class="cnt">How far our food travels, in a straight line from each farm's town to our school. ${farms.length?"This week's farms are the larger dots.":""}</div>${foodMilesSvg([...towns.values()])}
     ${local.length?`<div class="lbl" style="margin-top:10px">Sonoma County farms we know, ${local.length}</div>${local.map(f=>`<div class="strow"><b>${f.link?`<a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.name)}</a>`:esc(f.name)}</b> <span class="cnt">${esc(f.town)}${gTownMiles(f.town)!=null?", "+gTownMiles(f.town)+" miles":""}</span><div class="cnt">${esc(f.products||"")}${f.csa?". CSA, "+esc(f.csa.charAt(0).toLowerCase()+f.csa.slice(1)):""}${f.note?". "+esc(f.note):""}</div></div>`).join("")}`:""}</details>`}
+// the foods new in the bin this year, each a place to start wondering
+function binNewHtml(b){const list=binAll();const depth=list.filter(x=>x.date<b.date).length;if(depth<3)return "";
+  const fresh=(b.items||[]).filter(it=>!binBefore(b,it).length);if(!fresh.length)return "";
+  return `<div class="lbl" style="margin-top:8px">New in the bin this year</div><div class="cnt">A food the children have not met in the bin may be a good place to start wondering.</div><div class="chiprow" style="margin-top:4px">${fresh.map(it=>`<button class="chip-btn" data-binact="wonder" data-key="${esc(binKey(it.name))}">Wonder about ${esc(binName(it))}</button>`).join("")}</div>`}
 function binAddHtml(b){const f=binAdd;
   return `<div class="binadd"><label class="fld-label">${BIN_KIND[f.kind||"question"].say}<textarea id="bin-idea" rows="2" placeholder="${BIN_KIND[f.kind||"question"].ph}">${esc(f.text||"")}</textarea></label>
     <div class="cnt" style="margin:6px 0 4px">It goes with (optional)</div><div class="chiprow">${(b.items||[]).map(it=>{const k=binKey(it.name);return `<button class="chip-btn" data-binpk="${esc(k)}" aria-pressed="${(f.produce||[]).includes(k)}">${esc(binName(it))}</button>`}).join("")}</div>
@@ -9736,6 +9749,8 @@ document.addEventListener("click",async e=>{
   const a=d.binact;
   if(a==="fresh"){binLoad(true);renderBin();return}
   if(a==="add"){binAdd={text:"",produce:[],kind:d.kind==="prep"?"prep":"question"};renderBin();$("#bin-idea")?.focus();return}
+  // a new food in the bin starts a question, with the food already chosen, and the educator writes the wondering
+  if(a==="wonder"){binAdd={text:"I wonder ",produce:[d.key],kind:"question"};renderBin();const x=$("#bin-idea");if(x){x.focus();x.setSelectionRange(x.value.length,x.value.length)}return}
   if(a==="addcancel"){binAdd=null;renderBin();return}
   if(a==="addsave"){const text=($("#bin-idea")?.value||"").trim();if(!text){toast("Write the question first.");return}
     if(!me()){needName();return}
