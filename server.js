@@ -1182,10 +1182,10 @@ function kitchenItemsFor(mon) {
       const k = kitchenName(x.item); if (!k.name) continue;
       const farm = String(x.producer || '').trim();
       // how the kitchen serves it, a side dish, cooked into a dish, or both, once the director has said
-      const serve = x.serve && typeof x.serve === 'object' ? { side: !!x.serve.side, cooked: !!x.serve.cooked } : null;
+      const serve = x.serve && typeof x.serve === 'object' ? Object.assign({ side: !!x.serve.side, cooked: !!x.serve.cooked }, typeof x.serve.dish === 'string' && x.serve.dish ? { dish: x.serve.dish } : {}) : null;
       const have = items.find(y => y.food === k.food && y.farm === farm);
       if (!have) items.push(Object.assign({ name: k.name, names: [k.name], food: k.food, farm, day }, serve ? { serve } : {}));
-      else { if (!have.names.includes(k.name)) have.names.push(k.name); if (serve) have.serve = { side: !!(have.serve && have.serve.side) || serve.side, cooked: !!(have.serve && have.serve.cooked) || serve.cooked }; }
+      else { if (!have.names.includes(k.name)) have.names.push(k.name); if (serve) have.serve = Object.assign({ side: !!(have.serve && have.serve.side) || serve.side, cooked: !!(have.serve && have.serve.cooked) || serve.cooked }, (have.serve && have.serve.dish) || serve.dish ? { dish: (have.serve && have.serve.dish) || serve.dish } : {}); }
     }
   }
   for (const it of items) if (it.names.length > 1) {
@@ -2634,13 +2634,13 @@ async function handle(req, res) {
   if (path === '/api/kitchen-serve') {
     if (!isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen answer this.'); return; }
     // the food is named the way Produce coming names it, its farm and its week, so no order number is ever sent to a page
-    const mon = String(body.monday || ''), name = String(body.name || ''), farm = String(body.farm || '').trim(), field = body.field === 'side' ? 'side' : body.field === 'cooked' ? 'cooked' : '';
+    const mon = String(body.monday || ''), name = String(body.name || ''), farm = String(body.farm || '').trim(), field = body.field === 'side' ? 'side' : body.field === 'cooked' ? 'cooked' : body.field === 'dish' ? 'dish' : '';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(mon) || !name || !farm || !field) { err(req, res, 400, 'That answer could not be read.'); return; }
     let n = 0;
     // a line that joins two kinds of one food answers for both
     const line = kitchenItemsFor(mon).find(it => it.farm === farm && (it.name === name || it.names.includes(name))); const names = line ? line.names : [name];
     for (const [id, r] of store.recs.grant) { const o = r && !r.deleted && r.doc; if (!o || o.kind !== 'order') continue; const day = o.fulfilled || ''; if (day < mon || day > addDay(mon, 6)) continue;
-      (o.items || []).forEach(x => { if (String(x.producer || '').trim() !== farm || !names.includes(kitchenName(x.item).name)) return; x.serve = Object.assign({ side: false, cooked: false }, x.serve || {}, { [field]: !!body.value }); n++; });
+      (o.items || []).forEach(x => { if (String(x.producer || '').trim() !== farm || !names.includes(kitchenName(x.item).name)) return; x.serve = Object.assign({ side: false, cooked: false }, x.serve || {}, { [field]: field === 'dish' ? String(body.value || '').replace(/[\u0000-\u001f<>]/g, '').slice(0, 160) : !!body.value }); n++; });
       if (n) { o.updatedByName = me.name; r.local = true; noteChange('grant', id); scheduleSave('grant', id); } }
     if (!n) { err(req, res, 404, 'That food was not found on this week\'s orders.'); return; }
     log('Served as', field, !!body.value, name, 'by', me.name); json(req, res, 200, { ok: true }); return;

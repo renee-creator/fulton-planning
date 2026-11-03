@@ -4756,7 +4756,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4a974a2d1b3f";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="22e55469c509";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5257,7 +5257,8 @@ function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[]
   // where it goes this week, from the menus
   const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
   const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"short"});
-  let use="";const u=kUses(it.food||it.name,days,it.farm)[0];
+  // a dish is named only when the menu names the food, since a guess can put lemon in apple muffins
+  let use="";const u=kUses(it.food||it.name,days,it.farm).filter(x=>!x.cooked)[0];
   if(u)use=u.meal==="lunch"?`${wd(u.d)} lunch, ${kDish(u.dish)}`:`${wd(u.d)} snack`;
   if(!use)use=kSideUse(food,kNotesFor([...new Set(days.map(o=>o.d.slice(0,7)).concat(monday.slice(0,7)))]));
   if(use)out.push(use);
@@ -5273,7 +5274,10 @@ function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[]
 // who answers how a food is served, the director, or a kitchen account once there is one
 const kCanServe=()=>isDirector()||!!(window.FP_KITCHEN&&window.FP_KITCHEN());
 function kServeText(it,monday){const sv=it.serve||{};const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
-  const how=sv.side&&sv.cooked?"Side dish and cooked in":sv.side?"Side dish":"Cooked in";const u=sv.cooked?kUses(it.food||it.name,days,it.farm).find(x=>x.meal==="lunch")||kUses(it.food||it.name,days,it.farm)[0]:null;
+  const how=sv.side&&sv.cooked?"Side dish and cooked in":sv.side?"Side dish":"Cooked in";
+  // the dish the kitchen named, or one the menu names the food in, and never a guess
+  if(sv.cooked&&sv.dish)return `${how}, ${sv.dish}`;
+  const named=sv.cooked?kUses(it.food||it.name,days,it.farm).filter(x=>!x.cooked):[];const u=named.find(x=>x.meal==="lunch")||named[0]||null;
   return u?`${how}, ${parseIso(u.d).toLocaleDateString("en-US",{weekday:"short"})} ${u.meal} ${kDish(u.dish)}`:how}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-kserve]");if(!t)return;e.stopImmediatePropagation();if(!window.FP_API||VIEW_AS)return;
   const d=t.dataset,now=!(t.getAttribute("aria-pressed")==="true");t.setAttribute("aria-pressed",String(now));
@@ -5435,6 +5439,14 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
 document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
+// which of the week's dishes a food is cooked in, chosen by the kitchen or the director, so families read the true dish
+function kDishPick(it,monday){const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
+  const wd=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"short"});const opts=[];
+  for(const {d,x} of days){if(has(x.lunch))opts.push(`${wd(d)} lunch ${kDish(x.lunch)}`);for(const s of [x.am,x.pm])if(has(s))opts.push(`${wd(d)} snack ${kDish(s)}`)}
+  const cur=(it.serve||{}).dish||"";if(!opts.length)return "";
+  return `<label class="cnt" style="display:block;margin-top:4px">Which dish<select data-kdish="1" data-kname="${esc(it.name)}" data-kfarm="${esc(it.farm)}" data-kmon="${esc(monday)}" style="width:auto;margin-left:6px"><option value="">Not named</option>${[...new Set(opts)].map(o=>`<option ${o===cur?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`}
+document.addEventListener("change",async e=>{const t=e.target.closest&&e.target.closest("[data-kdish]");if(!t||!window.FP_API||VIEW_AS)return;const d=t.dataset;
+  try{await window.FP_API("/api/kitchen-serve",{monday:d.kmon,name:d.kname,farm:d.kfarm,field:"dish",value:t.value});kitchen.at=0;await kitchenLoad();const y=window.scrollY;if(view==="grant")renderGrant();else renderMain();window.scrollTo(0,y);toast(t.value?"Saved. Families read that dish.":"The dish is not named.")}catch(err){toast((err&&err.message)||"Could not save that.")}});
 function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.weeks||[]).find(x=>x.monday===monday);if(!w||!(w.items||[]).length)return"";
   const farms=new Set(w.items.map(i=>i.farm)).size,foods=new Set(w.items.map(i=>i.food||i.name)).size;const first=w.items.map(i=>i.day).filter(Boolean).sort()[0];
   const when=first?parseIso(first).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"";
@@ -5443,7 +5455,7 @@ function kitchenCardHtml(monday,today,extra){kitchenLoad();const w=(kitchen.week
       // once someone has said how it is served, that replaces TREE's guess for everyone
       const n=sv&&(sv.side||sv.cooked)?kServeText(it,monday):kitchenNotes(it,monday)[0];
       return `<div class="kitem"><b>${esc(it.name)}</b> <span class="cnt">${esc(it.farm)}${town?", "+esc(town):""}</span>${n?` <span class="knote${sv&&(sv.side||sv.cooked)?" kset":""}">${esc(n)}</span>`:""}
-        ${ask?`<span class="kchips">${[["side","Side dish"],["cooked","Cooked in"]].map(([k,l])=>`<button class="chip-btn" type="button" data-kserve="${k}" data-kname="${esc(it.name)}" data-kfarm="${esc(it.farm)}" data-kfood="${esc(it.food||"")}" data-kmon="${esc(monday)}" aria-pressed="${!!(sv&&sv[k])}">${l}</button>`).join("")}</span>`:""}</div>`}).join("")}</div>
+        ${ask?`<span class="kchips">${[["side","Side dish"],["cooked","Cooked in"]].map(([k,l])=>`<button class="chip-btn" type="button" data-kserve="${k}" data-kname="${esc(it.name)}" data-kfarm="${esc(it.farm)}" data-kfood="${esc(it.food||"")}" data-kmon="${esc(monday)}" aria-pressed="${!!(sv&&sv[k])}">${l}</button>`).join("")}</span>${sv&&sv.cooked?kDishPick(it,monday):""}`:""}</div>`}).join("")}</div>
     ${today?`<div class="actions" style="margin-top:6px"><button class="linkbtn" data-tview="bin">See the weekly bin</button></div>`:""}${extra||""}</details>`}
 function todayBinHtml(){const dw=new Date().getDay();if(dw<1||dw>3)return"";const b=binAll().find(x=>mondayOf(parseIso(x.date))===mondayOf(new Date()));if(!b)return"";
   const n=(b.items||[]).length,held=Object.keys(binHeld(b,binRoomNow())).length;
@@ -7526,7 +7538,7 @@ new MutationObserver(()=>{clearTimeout(window.__talkT);window.__talkT=setTimeout
    Products, and Tom Drummond's Enterprise Talk. Every prompt that writes a question, an invitation or a suggestion for
    children or families carries it, and the closed-question note below checks drafts against it. */
 const FULTON_TALK="How we talk with children and families. Favor statements over questions. Describe what is there to see, the lines, colors, shapes, textures, patterns and materials. Name what the child did, like You carried the bowl all the way to the table. Share the adult's own noticing or memory with I, like I notice the yellow is brighter next to the gray, or I remember making a boat like that. Acknowledge effort and feelings with specific feeling words offered gently, like You worked a long time on that, or You look proud of your collage. Recognize progress and what the child keeps returning to, like This is your third drawing of the goats. Invite in ways only the child can answer, like Tell me about this, Show me a part you like, Tell me how you made it, or Tell me the story that goes with it. When a question is right, ask an open one the child is the expert on, with no single right answer. Never ask What is it, and never guess what something is. Never quiz on colors, counting, names or facts, like What color is it or How many are there. Never ask children yes or no questions, like Can you, Do you want, Would you like or Did you. Never ask a question that is really a direction or a test of what a child should say or do, like What do you say, What could you say to your friend, or Where does your coat go. No praise or judgment words, like good job, beautiful, pretty, nice, great, amazing or I like the way. For families, suggest noticing, describing, joining in, telling stories, and displaying and keeping children's work, never giving children jobs, directions or tests.";
-const STYLE=PROGRAM+" Write in plain, warm, professional language an early childhood educator would use. Refer to adults as educators, never teachers. Never use em dashes. Never use colons except in clock times. Never use analogies or 'not X but Y' framing. Never mention DRDP measures or domains. Do not use theme language, activity-based language, or evaluative words like enjoyed or had fun. Outside exact quotes from the plans, avoid these words and phrases and reword around them while keeping every fact, theme, activity, enjoyed, had fun, learn about, talk about, set up, all children, worksheet, craft, and holiday names. When you write a question, an invitation or a suggestion for children or families yourself, follow this. "+FULTON_TALK+" When you strengthen or tidy an educator's own words, keep each question the educator wrote as their question, in its meaning and its kind.";
+const STYLE=PROGRAM+" Write in plain, warm, professional language an early childhood educator would use. Refer to adults as educators, never teachers. Write a class name with a lowercase class, such as West class. Use the word real only for a true object set apart from a toy or a picture, never for emphasis. Never use em dashes. Never use colons except in clock times. Never use analogies or 'not X but Y' framing. Never mention DRDP measures or domains. Do not use theme language, activity-based language, or evaluative words like enjoyed or had fun. Outside exact quotes from the plans, avoid these words and phrases and reword around them while keeping every fact, theme, activity, enjoyed, had fun, learn about, talk about, set up, all children, worksheet, craft, and holiday names. When you write a question, an invitation or a suggestion for children or families yourself, follow this. "+FULTON_TALK+" When you strengthen or tidy an educator's own words, keep each question the educator wrote as their question, in its meaning and its kind.";
 // the plan's other sections, given for understanding. The section being worked on is left out so it is not read twice.
 function planContext(p,skip){const F=FORMS[p.type];return F.fields.filter(f=>f.k!==skip&&p.fields[f.k]).map(f=>`${f.label}. ${p.fields[f.k]}`).join("\n")}
 const suggest={};
