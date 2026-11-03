@@ -9,6 +9,7 @@ const { start, browser, signedIn } = require('./fixture.js');
 async function setup(t) {
   const ai = http.createServer((q, r) => { const c = []; q.on('data', d => c.push(d)); q.on('end', () => { const body = Buffer.concat(c).toString();
     const trad = /A Made Up Round/.test(body);
+    if (/Give its usual words only/.test(body)) { const text = JSON.stringify(/Una Canción/.test(body) ? { words: 'Línea uno', english: 'Line one', free: true } : { words: '', english: '', free: false }); r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); return; }
     const text = JSON.stringify(trad ? { title: 'A Made Up Round', songwriter: 'Traditional', copyright: false, words: 'Line one\nLine two', why: 'It is a round.', when: 'At meeting time.', movement: '', wonder: 'What do you hear?', connections: 'Birds' }
       : { title: 'A Newer Song', songwriter: 'A Writer', copyright: true, words: 'Should not appear', why: 'It moves.', when: 'After snack.', movement: 'March.', wonder: 'Where are we going?', connections: 'Wheels' });
     r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); }); });
@@ -34,5 +35,27 @@ test('Find the song fills in a new song, with words only for a traditional one',
   const song = await s.p.evaluate(() => { const x = libData.songs.find(x => x.title === 'A Made Up Round'); return { parts: x.parts.map(p => p.key), words: songWords(x), meta: x.meta }; });
   assert.deepStrictEqual(song.parts, ['Why we sing it', 'When we sing it', 'I wonder', 'Connections', 'Words']);
   assert.strictEqual(song.words.trim(), 'Line one\nLine two'); assert.strictEqual(song.meta.copyright, 'no'); assert.strictEqual(song.meta.songwriter, 'Traditional');
+  assert.deepStrictEqual(s.errors, []);
+});
+
+test('Look up the words fills a traditional song for the director to check, with its English, and offers a search for any other', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await setup(t);
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  await fx.as(dee, '/api/staff/library/add', { kind: 'song', title: 'Una Canción', songwriter: 'Traditional', copyright: false });
+  await fx.as(dee, '/api/staff/library/add', { kind: 'song', title: 'A Later Song', songwriter: 'Traditional', copyright: false });
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => goView('songs')); await s.p.waitForSelector('[data-songlook]', { timeout: 15000, state: 'attached' });
+  const id = await s.p.evaluate(() => libData.songs.find(x => x.title === 'Una Canción').id);
+  await s.p.evaluate(id => { const d = document.querySelector(`[data-songrow="${id}"]`); d.open = true; d.querySelector('[data-songlook]').click(); }, id);
+  await s.p.waitForSelector('#sl-w', { timeout: 15000 });
+  assert.strictEqual(await s.p.inputValue('#sl-w'), 'Línea uno'); assert.strictEqual(await s.p.inputValue('#sl-e'), 'Line one');
+  await s.p.click('[data-songlooksave]'); await s.p.waitForFunction(() => { const x = libData.songs.find(x => x.title === 'Una Canción'); return x && songWords(x); }, null, { timeout: 15000 });
+  const parts = await s.p.evaluate(() => libData.songs.find(x => x.title === 'Una Canción').parts.map(p => p.key)); assert.deepStrictEqual(parts, ['Words', 'In English']);
+  const id2 = await s.p.evaluate(() => libData.songs.find(x => x.title === 'A Later Song').id);
+  await s.p.evaluate(id => { const d = document.querySelector(`[data-songrow="${id}"]`); d.open = true; d.querySelector('[data-songlook]').click(); }, id2);
+  await s.p.waitForSelector('text=Search for the words', { timeout: 15000 });
+  assert.match(await s.p.getAttribute('a:has-text("Search for the words")', 'href'), /google\.com\/search\?q=A%20Later%20Song%20song%20lyrics/);
   assert.deepStrictEqual(s.errors, []);
 });

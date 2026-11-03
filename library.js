@@ -153,6 +153,13 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     // the director marks a draft recipe ready, or takes it out
     if (P === 'library/ready') { if (!dir && !(kit && x.kind === 'recipe')) { err(req, res, 403, 'The director decides on a draft.'); return; } setMeta(x.path, 'status', body.on ? null : 'draft'); if (body.on && x.meta.by) setMeta(x.path, 'by', null); json(req, res, 200, list(me)); return; }
     // marking a song copyright removes its words, and taking the mark off lets words be added
+    // a song's words, and its words in English when it is sung in another language, saved by the director after she checks them
+    if (P === 'library/words') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director adds the words.'); return; }
+      const clean = v => String(v || '').replace(/\r/g, '').replace(/^##/gm, '').trim().slice(0, 8000); const words = clean(body.words), english = clean(body.english);
+      if (!words) { err(req, res, 400, 'Add the words first.'); return; }
+      const r = S.files.get(x.path); let t = String(r.text || '').replace(/\n## (Words|In English)\s*\n[\s\S]*?(?=\n## |$)/g, '').trimEnd();
+      t += '\n\n## Words\n\n' + words + '\n' + (english ? '\n## In English\n\n' + english + '\n' : '');
+      putText(x.path, t); json(req, res, 200, list(me)); return; }
     if (P === 'library/copyright') { if (!dir || x.kind !== 'song') { err(req, res, 403, 'Only the director marks a song.'); return; } if (!body.place) setMeta(x.path, 'copyright', body.on ? 'yes' : 'no');
       // a song has a place for its words, ready for the director to add them, with the mark or without it
       if (!body.on || body.place) { const r = S.files.get(x.path); if (r && !/^##\s+Words\s*$/m.test(r.text)) putText(x.path, r.text.trimEnd() + '\n\n## Words\n\n'); }

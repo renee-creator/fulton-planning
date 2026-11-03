@@ -5555,9 +5555,20 @@ Never invent a songwriter. Write "Source unknown" when you do not know it.`;
 const songCopy=x=>/^(yes|true|©)$/i.test((x.meta||{}).copyright||"");
 const songWords=x=>recPart(x,"Words");
 const songParts=x=>(x.parts||[]).filter(p=>!/^words$/i.test(p.key)&&String(p.text||"").trim());
+// Look up the words. A song free to share gets its words from the writing help for the director to check, with an
+// English translation when it is sung in another language. Any other song opens a web search for its words in a new tab
+// and its Add the words, so she copies them from there or from our own song books.
+let songLook=null;
+async function songLookUp(x){const m=x.meta||{};
+  const prompt=`A preschool song book has the song "${x.title}"${m.songwriter?" by "+m.songwriter:""}. Give its usual words only if it is a traditional song whose words are older than 1929 and you are sure of them. Otherwise give "". When the words are in a language other than English, also give an English translation, line by line, written plainly for families. Return JSON {"words": text, "english": text or "", "free": true or false}.`;
+  return await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"song"})}
+const songSearch=x=>"https://www.google.com/search?q="+encodeURIComponent(`${x.title} ${(x.meta||{}).songwriter&&!/traditional|unknown/i.test(x.meta.songwriter)?x.meta.songwriter:""} song lyrics`.replace(/\s+/g," ").trim());
 function songRow(x){const c=songCopy(x),w=songWords(x),dir=isDirector()&&!VIEW_AS;
   return `<details class="strow" data-songrow="${esc(x.id)}" ${songOpen===x.id?"open":""}><summary style="cursor:pointer"><b>${c?"© ":""}${esc(x.title)}</b> <span class="cnt">${esc((x.meta||{}).songwriter||"")}</span></summary>
     ${w?`<div style="white-space:pre-line;margin:6px 0">${esc(w)}</div>`:c?`<div class="cnt">${dir?"Add its words from our own song books, and they show and print with the © mark beside the title.":"The director has not added its words yet."}</div>`:`<div class="cnt">Our song books do not hold its words yet.</div>`}
+    ${dir&&!w&&songLook&&songLook.id===x.id&&songLook.none?`<div class="cnt" style="margin:4px 0">TREE could not confirm words free to share. Search for them, then add them from there or from our own song books.</div><div class="actions"><a class="btn small ghost" href="${esc(songSearch(x))}" target="_blank" rel="noopener">Search for the words</a><button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button></div>`
+    :dir&&!w?(songLook&&songLook.id===x.id?`<div class="binadd"><label class="fld-label">Words, check them before saving<textarea id="sl-w" rows="8">${esc(songLook.words||"")}</textarea></label><label class="fld-label">In English, when it is sung in another language<textarea id="sl-e" rows="6">${esc(songLook.english||"")}</textarea></label><div class="actions"><button class="btn small" data-songlooksave="${esc(x.path)}">Save the words</button><button class="linkbtn" data-songlookcancel="1">Cancel</button></div></div>`
+      :`<div class="actions" style="margin:4px 0"><button class="btn small ghost" data-songlook="${esc(x.id)}" ${songLook&&songLook.busy===x.id?"disabled":""}>${songLook&&songLook.busy===x.id?"Looking":"Look up the words"}</button></div>`):""}
     ${songParts(x).map(p=>`<div class="lbl">${esc(p.key)}</div>${guideMd(p.text)}`).join("")}
     <div class="actions" style="flex-wrap:wrap">${(x.meta||{}).link?`<a class="btn small ghost" href="${esc(x.meta.link)}" target="_blank" rel="noopener">A recording</a>`:""}${printBtns("song",esc(x.id),w?"Words":"Title card")}
       ${dir?`${w?pageEditBtn(x.path,"Edit the words"):`<button class="linkbtn" data-songwords="${esc(x.path)}">Add the words</button>`}<button class="linkbtn" data-songcopy="${esc(x.path)}|${c?0:1}">${c?"Take off the © mark":"Mark it ©"}</button>`:""}</div></details>`}
@@ -5624,9 +5635,17 @@ function readTextDoc(x){const text=readPages(readText(x)).map(p=>p.text).filter(
   const card=asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:[dText("",text)]},{sub:"A read-aloud"});
   try{if(card&&card.centered&&window.jspdf){const doc=planDoc({unit:"pt",format:"letter"});const F=cFlow(doc,cReady(card),accOf(card.acc)||ACC.story);if(!F.over&&F.pages.length===1&&!(F.pages[0].s<.72))return card}}catch(e){}
   return {display:true,type:"report",acc:"story",title:x.title,meta:["A read-aloud"],blocks:[dText("",text)]}}
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords],[data-songfind]");if(!t||view!=="songs")return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-songtab],[data-songadd],[data-songsave],[data-songcopy],[data-songwords],[data-songfind],[data-songlook],[data-songlooksave],[data-songlookcancel]");if(!t||view!=="songs")return;const d=t.dataset;
   if(d.songtab){songTab=d.songtab;renderMain();return}
   if(d.songadd!=null){songAdd=d.songadd==="1";songFound=null;renderMain();return}
+  if(d.songlookcancel){songLook=null;renderMain();return}
+  if(d.songlooksave){try{libData=await window.FP_API("/api/staff/library/words",{path:d.songlooksave,words:($("#sl-w")?.value||"").trim(),english:($("#sl-e")?.value||"").trim()});songLook=null;toast("Saved. The words show and print with the song.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
+  if(d.songlook){const x=(libData.songs||[]).find(y=>y.id===d.songlook);if(!x)return;
+    const search=()=>{window.open(songSearch(x),"_blank","noopener");libData&&window.FP_API("/api/staff/library/copyright",{path:x.path,place:true}).then(r=>{libData=r;window.TREE_EDIT_PAGE({path:x.path},()=>loadLibrary(true))}).catch(()=>{})};
+    if(songCopy(x)||!sample){search();return}
+    songLook={busy:x.id};renderMain();let o=null;try{o=await songLookUp(x)}catch(er){o=null}
+    if(o&&o.free!==false&&String(o.words||"").trim()){songLook={id:x.id,words:String(o.words).trim(),english:String(o.english||"").trim()};renderMain()}
+    else{songLook={id:x.id,none:true};renderMain()}return}
   if(d.songfind){const title=($("#sg-t")?.value||"").trim();if(!title){toast("Type the song's title first.");return}if(!sample){toast("The writing help is not available here.");return}
     songBusy=true;renderMain();try{const o=await songFind(title)||{};const c=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();
       songFound={title:c(o.title)||title,songwriter:c(o.songwriter),copyright:o.copyright!==false,words:o.copyright===false?String(o.words||"").trim():"",why:c(o.why),when:c(o.when),movement:c(o.movement),wonder:String(o.wonder||"").trim(),connections:c(o.connections),
