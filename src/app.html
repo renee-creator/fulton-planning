@@ -7598,7 +7598,7 @@ function patchNotice(id,patch){const n=notices.get(id);if(!n||VIEW_AS)return;pap
   if(!db){LS.set("fps.notices",[...notices.values()]);return}
   db.doc("notices/"+id).update(Object.assign(jclone(patch),{updatedAt:n.updatedAt})).catch(e=>{if(e&&e.status===404)return;toast(e&&e.message||"Could not save. Check your connection.")})}
 function saveNoticeSoon(n){notices.set(n.id,n);clearTimeout(nTimers[n.id]);nTimers[n.id]=setTimeout(()=>saveNotice(n),700)}
-function removeNotice(id){notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.notices",[...notices.values()])}
+function removeNotice(id){const was=notices.get(id);notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(e=>{if(was)notices.set(id,was);renderMain();toast(e&&e.message||"Could not remove it. Check your connection.")});else LS.set("fps.notices",[...notices.values()])}
 /* ---------- Combine two observations ----------
    Any educator can make two observations one. Every photo stays at full size with its own children, both sets of words
    are kept, and what pointed at the second one, plans, threads, projects, slides, stories, team inquiries, DRDP evidence
@@ -8011,6 +8011,8 @@ function noticeFormCard(){
   </section>`;
 }
 // any signed-in educator can change who kept an observation. One from a Kaymbu email changes on every photo from that email.
+// an observation is removed by the educator who kept it or by the director
+function canRemoveObs(n){if(isDirector())return true;const m=String(me()||"").trim().toLowerCase();return !!m&&[n.by,n.keptBy].some(x=>String(x||"").trim().toLowerCase()===m)}
 function keptByHtml(n){const when=" on "+shortDate(n.at);if(!me()||VIEW_AS)return `<span class="cnt">Kept by ${esc(n.by||"an educator")}${when}</span>`;
   const names=rosterNames(),cur=String(n.by||"").trim();
   return `<label class="cnt">Kept by <select id="nf-by" style="width:auto">${cur?"":`<option value="" selected>Not named yet</option>`}${[...names,...(cur&&!names.includes(cur)?[cur]:[])].map(x=>`<option ${x===cur?"selected":""}>${esc(x)}</option>`).join("")}</select>${when}</label>`}
@@ -8097,7 +8099,7 @@ function noticeCard(n){
     ${momentDrdpHtml(n)}${noticeAttachHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
     <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
-      ${moreMenu(`${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button><span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`)}</div></article>`;
+      ${moreMenu(`${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button>${canRemoveObs(n)?`<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`:""}`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */

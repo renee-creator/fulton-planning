@@ -20,7 +20,7 @@ module.exports = function staffModule(o) {
   // the classes, from Program settings, the one list
   const classrooms = () => (o.classrooms ? o.classrooms() : []);
   const { gh, repo, store, log, accounts, accountFor, saveAccounts, isDirector, isKitchen, isOffice, nameKey, keepOriginal, readOriginal, reminders, lensNow, rosterNames, checkPasscode, nameBlocked, calendarEvents, setSetting } = o;
-  const S = { files: new Map(), timers: new Map(), saving: new Map(), imgs: new Map(), imgCache: new Map(), ready: false, loading: null };
+  const S = { files: new Map(), timers: new Map(), retries: new Map(), saving: new Map(), imgs: new Map(), imgCache: new Map(), ready: false, loading: null };
   const DAY = 864e5;
 
   /* ---------- what a record holds ---------- */
@@ -104,12 +104,16 @@ module.exports = function staffModule(o) {
         const res = await gh('PUT', `/repos/${repo}/contents/${p}`, { message: 'Update ' + p.replace(/^staff\//, 'educator records ').replace(/\.json$/, ''), content, branch: store.branch, ...(r.sha ? { sha: r.sha } : {}) });
         if (res.status === 200 || res.status === 201) { r.sha = res.json.content.sha; if ((r.doc !== undefined ? r.doc : r.text) === doc) r.local = false; return true; }
         if (res.status === 409 || res.status === 422) { const g = await gh('GET', `/repos/${repo}/contents/${p}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); r.sha = g.status === 200 ? g.json.sha : undefined; continue; }
-        if (res.status < 500 && res.status !== 429) break;
+        // a 403 while GitHub's hourly allowance is spent is tried again like a 429, any other answer below 500 ends the tries
+        if (res.status < 500 && res.status !== 429 && !(res.status === 403 && spentAnswer(res))) break;
       }
-      log('Educator record could not be saved', p); return false;
+      // the record stays marked as still to save, and is sent again in two minutes until it is written
+      log('Educator record could not be saved, trying again in 2 minutes', p); later(p); return false;
     });
     S.saving.set(p, job.catch(() => false)); return job;
   }
+  const spentAnswer = res => /rate limit|abuse/i.test((res.json && res.json.message) || '') || !!(res.headers && (res.headers['retry-after'] || res.headers['x-ratelimit-remaining'] === '0'));
+  function later(p) { if (S.retries.has(p)) return; const t = setTimeout(() => { S.retries.delete(p); const r = S.files.get(p); if (r && r.local) soon(p); }, 2 * 60000); if (t.unref) t.unref(); S.retries.set(p, t); }
   async function flushAll() { for (const [p, t] of S.timers) { clearTimeout(t); S.timers.delete(p); } const ps = [...S.files].filter(([, r]) => r.local).map(([p]) => p); return (await Promise.all(ps.map(p => flush(p).catch(() => false)))).every(Boolean); }
 
   // after a failed load TREE waits before reading every record again, 2 then 5 then 10 minutes, so a spent GitHub

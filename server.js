@@ -39,7 +39,17 @@ const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', '
 // reading report is the director's, and each class team reads its own class's through /api/reports/mine.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports'];
 // a project's wall is the director's. Educators receive the project without it, and their saves keep it as it is.
-const forViewer = (kind, doc, director) => (kind === 'projects' && !director && doc && doc.wall !== undefined) ? Object.fromEntries(Object.entries(doc).filter(([k]) => k !== 'wall')) : doc;
+// a child's enrollment health and contact details and the signed agreement are for the director and the office, so
+// an educator receives the child without them. The parts a family writes on the Family page are kept through any
+// whole-record save of the child, so a stale copy on a phone can never erase them.
+const OFFICE_CHILD_FIELDS = ['enrollForm', 'familyAgreement', 'familyAgreementHistory'];
+const FAMILY_CHILD_FIELDS = [...OFFICE_CHILD_FIELDS, 'familyQuestionnaire', 'familyStrengths', 'aboutMe', 'familyChecks', 'handbookAck', 'visit', 'onboarding'];
+const forViewer = (kind, doc, director, office) => {
+  if (!doc) return doc;
+  if (kind === 'projects' && !director && doc.wall !== undefined) return Object.fromEntries(Object.entries(doc).filter(([k]) => k !== 'wall'));
+  if (kind === 'children' && !director && !office && OFFICE_CHILD_FIELDS.some(k => doc[k] !== undefined)) return Object.fromEntries(Object.entries(doc).filter(([k]) => !OFFICE_CHILD_FIELDS.includes(k)));
+  return doc;
+};
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
 const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
@@ -315,7 +325,8 @@ async function gqlDeepOne(branch, dir, files, depth) {
   const lvl = n => n ? `entries{name oid type object{...on Tree{${lvl(n - 1)}}}}` : 'entries{name oid type}';
   const ask = n => gql(`query{${gqlRepo()}{d:object(expression:${JSON.stringify(branch + ':' + dir)}){...on Tree{${lvl(n)}}}}}`);
   const walk = (base, t) => { for (const e of (t && t.entries) || []) { const pth = base + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') walk(pth, e.object); } };
-  const gone = e => /answered (502|504)/.test(String(e && e.message));
+  // GitHub also gives up on a large query with a 200 that carries an error, a timeout, a node limit or "something went wrong"
+  const gone = e => /answered (502|504)|timeout|timed out|NODE_LIMIT|went wrong/i.test(String(e && e.message));
   try { const d = await ask(depth); walk(dir, (d.repository || {}).d); return; }
   catch (e) { if (!gone(e) || depth < 1) throw e; log('GitHub could not list', dir, 'in one go, reading its folders one by one'); }
   const d = await ask(0); const subs = [];
@@ -1653,7 +1664,7 @@ function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCach
 // change of phone, signing out or closing TREE, and only the educator who started it and the director see it.
 const draftSeen = (kind, doc, name, director) => kind !== 'drafts' || director || (!!doc && nameKey(doc.by) === nameKey(name));
 function snapshot(director, kitchen, office, name) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id)) && draftSeen(k, r.doc, name, director)) out[k][id] = forViewer(k, r.doc, director); }
+  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id)) && draftSeen(k, r.doc, name, director)) out[k][id] = forViewer(k, r.doc, director, office); }
   return out;
 }
 // the server's status, in full for the director in Settings, and without any counts on the page anyone can open
@@ -2162,7 +2173,7 @@ async function handle(req, res) {
   if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) }); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll) : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -2251,6 +2262,13 @@ async function handle(req, res) {
     if (((kind === 'settings' && id !== 'educators' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
     // the monthly snack and lunch menus are the director's to add and change
     if (kind === 'menus' && !isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen add the monthly menus.'); return; }
+    // an observation is removed by the educator who kept it or by the director, or by anyone who has just combined it into another
+    if (kind === 'notices' && op === 'delete' && !isDirector(me.name)) {
+      const cur0 = store.recs.notices.get(id); const d0 = cur0 && !cur0.deleted && cur0.doc;
+      const mine = d0 && [d0.by, d0.keptBy].some(n => n && nameKey(n) === nameKey(me.name));
+      const combined = !!d0 && [...store.recs.notices.values()].some(r => r && !r.deleted && r.doc && Array.isArray(r.doc.combinedFrom) && r.doc.combinedFrom.includes(id));
+      if (d0 && !mine && !combined) { log('Observation removal refused for', me.name, id); err(req, res, 403, 'Only the educator who kept this observation or the director can remove it.'); return; }
+    }
     if ((kind === 'plans' || kind === 'notices') && op === 'delete') log(kind.slice(0, -1) + ' deleted by', me.name, id);
     // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
     // a team inquiry is the director's. Educators add observations and threads to it and write what happened when they tried something.
@@ -2340,13 +2358,13 @@ async function handle(req, res) {
     const recent = (op === 'set' || op === 'update') && cur && !cur.deleted ? recentOf(fpath, cur) : null;
     const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
-      if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: forViewer(kind, cur.doc, isDirector(me.name)), existed: true, ...sidNow() }); return; }
+      if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: forViewer(kind, cur.doc, isDirector(me.name), isOffice(me.name)), existed: true, ...sidNow() }); return; }
       if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
       map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name }), sha: cur && cur.sha, path: `${kind}/${id}.json` });
     }
     else if (op === 'set') { if (!body.data || typeof body.data !== 'object') { err(req, res, 400, 'Missing data'); return; }
       if (recent && cur && !cur.deleted) { body.data = JSON.parse(JSON.stringify(body.data)); const held = guardSet(recent, cur.doc, body.data, dev); if (held.length) log('Newer words kept on', fpath, held.join(', '), 'from an older copy sent by', me.name); }
-      if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio', 'transitionSummary']) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
+      if (kind === 'children' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of ['drdp', 'portfolio', 'transitionSummary', ...FAMILY_CHILD_FIELDS]) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } map.set(id, { doc: Object.assign({}, body.data, ('id' in body.data) ? { id } : {}, { updatedByName: me.name, savedAt: Date.now() }), sha: cur && cur.sha, path: `${kind}/${id}.json` }); }
     else if (op === 'update') { if (!cur || cur.deleted) { err(req, res, 404, 'That record no longer exists. It may have been deleted by someone else.'); return; }
       if (recent && body.patch && typeof body.patch === 'object') { body.patch = JSON.parse(JSON.stringify(body.patch)); const held = guardPatch(recent, cur.doc, body.patch, dev); if (held.length) log('Newer words kept on', fpath, held.join(', '), 'from an older copy sent by', me.name); }
       deepMerge(cur.doc, body.patch || {}); if ('id' in cur.doc) cur.doc.id = id; cur.doc.updatedByName = me.name; }
@@ -2361,7 +2379,7 @@ async function handle(req, res) {
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id); }
     const r = map.get(id);
-    json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? forViewer(kind, r.doc, isDirector(me.name)) : null, ...(sid ? { sid, written: false } : {}) }); return;
+    json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? forViewer(kind, r.doc, isDirector(me.name), isOffice(me.name)) : null, ...(sid ? { sid, written: false } : {}) }); return;
   }
   // a device asks which of the saves it still holds are written to the records. A save this server does not know, such
   // as one sent before an update, is looked for in the records' own history by its save id. One found nowhere is
