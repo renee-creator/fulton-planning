@@ -1191,6 +1191,7 @@ module.exports = function staffModule(o) {
     s14Wording: ['code:once/s14-wording.json', 'Wording brought in line with our writing rules, November 4, 2026'],
     // November 4, 2026. About this material, first on both sides of every material card and the areas that are a material
     s15Materials: ['code:once/s15-materials.json', 'About this material on the Idea bank cards, November 4, 2026'],
+    s17Ages: ['code:once/s17-ages.json', 'Idea bank cards name children by age rather than by class, November 4, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

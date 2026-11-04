@@ -699,6 +699,7 @@ ONCE.push(['s13Review', () => staff.once.edits('s13Review', recsEdit)]);
 ONCE.push(['s14Wording', () => staff.once.edits('s14Wording', recsEdit)]);
 // November 4, 2026. About this material inserted first on both sides of the material cards, from once/s15-materials.json
 ONCE.push(['s15Materials', () => staff.once.edits('s15Materials', recsEdit)]);
+ONCE.push(['s17Ages', () => staff.once.edits('s17Ages', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */

@@ -223,3 +223,31 @@ test('the one-time step s15Materials puts About this material first on both side
   assert.strictEqual(clay.sections[0].h, H); assert.strictEqual(clay.sections[0].text, list.changes.find(x => x.insert === 'cards[id=clay].sections').value.text);
   function id(c) { return c.insert.match(/^cards\[id=([^\]]+)\]/)[1]; }
 });
+
+// November 4, 2026. Idea bank cards name children by age rather than by class, on both sides of a card and in the seed.
+test('the one-time step s17Ages names children by age rather than by class, once', async () => {
+  const fs = require('fs'), path = require('path');
+  const list = require('../once/s17-ages.json');
+  assert.ok(list.changes.every(c => c.path === 'staff/library/ideabank/cards.json' && c.from && c.to && !/(West|North|South) class/.test(c.to)));
+  assert.doesNotMatch(JSON.stringify(SEED), /(West|North|South) class/, 'the seed names no class');
+  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'once', 's14-wording.json'), 'utf8'), /(West|North|South) class/);
+  // records kept before the step still name the classes, in the shapes the live cards used
+  const cards = JSON.parse(JSON.stringify(SEED.cards));
+  const clay = cards.find(c => c.id === 'clay');
+  clay.sections.push({ h: 'By age', style: 'bullets', items: ['For the West class, a fist-sized ball for each child.', 'For the North class, short coils on boards.', 'For the South class, plan a piece in a drawing.', 'Varnishing is adult work, and the West class paints one rock with an adult beside them.', 'For TK-age children in South class who show readiness, carve a name.', 'Keep small beads to the South class and any South class child who reaches for them.', 'Anything in the Studio can also live in the West, North or South class.'] });
+  clay.home.sections.push({ h: 'At home', style: 'text', text: 'Keep small pieces away from the West class.' });
+  const h = make(PEOPLE);
+  h.files.set('staff/library/ideabank/cards.json', { doc: { id: 'ideabank-cards', cards, removed: [], sources: [], history: [{ note: 'Before', cards: [{ id: 'clay', sections: [{ h: 'By age', style: 'text', text: 'For the West class, clay.' }] }] }] }, sha: 'c' });
+  h.files.set('staff/library/ideabank/behaviors.json', { doc: { id: 'ideabank-behaviors', behaviors: [] }, sha: 'b' });
+  await h.staff.load();
+  assert.notStrictEqual(await h.staff.once.edits('s17Ages', () => false), false);
+  const d = h.staff.dump()['staff/library/ideabank/cards.json'];
+  const c = d.cards.find(x => x.id === 'clay');
+  assert.deepStrictEqual(c.sections[c.sections.length - 1].items, ['For twos and threes, a fist-sized ball for each child.', 'For threes and fours, short coils on boards.', 'For fours, fives and TK, plan a piece in a drawing.', 'Varnishing is adult work, and twos and threes paint one rock with an adult beside them.', 'For TK-age children who show readiness, carve a name.', 'Keep small beads to fours, fives and TK and any of the fours, fives and TK who reach for them.', 'Anything in the Studio can also live in any class.']);
+  assert.strictEqual(c.home.sections[c.home.sections.length - 1].text, 'Keep small pieces away from twos and threes.');
+  assert.doesNotMatch(JSON.stringify(d.cards), /(West|North|South) class/, 'no card names a class');
+  assert.match(JSON.stringify(d.history), /West class/, 'a record\'s own history keeps its words');
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s17Ages', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.ok(src.indexOf("ONCE.push(['s17Ages'") > src.indexOf("ONCE.push(['s15Materials'"), 's17Ages runs after s15Materials');
+});

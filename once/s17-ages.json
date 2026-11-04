@@ -1,0 +1,105 @@
+{
+ "note": "Idea bank cards name children by age rather than by class, November 4, 2026. West class reads twos and threes, North class threes and fours, South class fours, fives and TK",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the West class paints one rock",
+   "to": "twos and threes paint one rock"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "can also live in the West, North or South class",
+   "to": "can also live in any class"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "For TK-age children in South class who show readiness",
+   "to": "For TK-age children who show readiness"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "for TK-age children in South class who show readiness",
+   "to": "for TK-age children who show readiness"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "offered to TK-age children in South class who show readiness",
+   "to": "offered to TK-age children who show readiness"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "For TK-age children in South class,",
+   "to": "For TK-age children,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "any South class child who reaches for them",
+   "to": "any of the fours, fives and TK who reach for them"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "other South class children welcome",
+   "to": "other fours, fives and TK welcome"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "to children in the West class",
+   "to": "to the twos and threes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Invite children to build a course for the West class and watch how the younger children use it",
+   "to": "Invite children to build a course for the twos and threes and watch how the younger children use it"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Invite children to teach the calm routine to the West class",
+   "to": "Invite children to teach the calm routine to the twos and threes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the West class",
+   "to": "twos and threes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "in West class",
+   "to": "in twos and threes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "West class",
+   "to": "twos and threes"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the North class",
+   "to": "threes and fours"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "in North class",
+   "to": "in threes and fours"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "North class",
+   "to": "threes and fours"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the South class",
+   "to": "fours, fives and TK"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "in South class",
+   "to": "in fours, fives and TK"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "South class",
+   "to": "fours, fives and TK"
+  }
+ ]
+}
