@@ -1,0 +1,21 @@
+'use strict';
+const test = require('node:test'); const assert = require('node:assert');
+const { start, browser, signedIn } = require('/home/claude/fulton-planning/.claude/worktrees/agent-a9a99338ad6f189cb/test/fixture.js');
+test('reading width follows the card on a wide screen only', async t => {
+  const b = await browser(); const fx = await start(); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1400); t.after(() => s.close());
+  const mw = sel => s.p.$eval(sel, e => [getComputedStyle(e).maxWidth, e.getBoundingClientRect().width, e.parentElement.getBoundingClientRect().width]);
+  await s.p.evaluate(() => goView('threads')); await s.p.waitForSelector('.hint.prose');
+  const wide = await mw('.hint.prose'); console.log('threads hint wide', wide);
+  await s.p.evaluate(() => goView('lens')); await s.p.waitForSelector('.sub.prose', { state: 'attached' });
+  console.log('lens sub wide', await mw('.sub.prose'));
+  await s.p.evaluate(() => goView('stpd')); await s.p.waitForSelector('.stmd', { timeout: 15000 }).catch(() => {});
+  if (await s.p.$('.stmd')) console.log('stmd wide', await mw('.stmd'));
+  await s.p.setViewportSize({ width: 1000, height: 800 }); await s.p.evaluate(() => goView('threads')); await s.p.waitForSelector('.hint.prose');
+  const tab = await mw('.hint.prose'); console.log('threads hint tablet', tab);
+  await s.p.setViewportSize({ width: 390, height: 800 }); await s.p.waitForTimeout(100);
+  const ph = await mw('.hint.prose'); console.log('threads hint phone', ph);
+  assert.ok(parseFloat(wide[0]) > 800 && parseFloat(tab[0]) < 800, 'wide follows the card, tablet keeps 72ch');
+  assert.deepStrictEqual(s.errors, []);
+});
