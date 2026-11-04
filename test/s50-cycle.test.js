@@ -134,7 +134,7 @@ test('the director sees what grew, Before Monday, the readings all week, the pro
   assert.ok(await s.p.$('#th-t1 [data-print="threadkids"]'), 'Print for the classroom on the thread');
   assert.ok(await s.p.evaluate(() => DOC_PLAN.includes('Revisit')));
   // the resized photo route is used only when the server offers it, and falls back otherwise
-  const thumb = await s.p.evaluate(() => { window.FP_PHOTO_SIZES = [1200, 1920]; const u = photoThumb(notices.get('w0')); window.FP_PHOTO_SIZES = []; return [u, photoThumb(notices.get('w0'))]; });
+  const thumb = await s.p.evaluate(() => { window.FP_PHOTO_SIZES = [1200, 1920]; photoBad.clear(); const u = photoThumb(notices.get('w0')); window.FP_PHOTO_SIZES = []; return [u, photoThumb(notices.get('w0'))]; });
   assert.match(thumb[0], /\/photo\/ph-w0\?w=1200/); assert.match(thumb[1], /\/original\/ph-w0/);
   assert.deepStrictEqual(s.errors, []);
 });
