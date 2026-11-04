@@ -510,7 +510,7 @@ async function mailText(to, subject, body) {
 }
 const familyPage = require('./family.js')({ mailText, community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
-const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => queueThreadSuggest(id) });
+const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => { queueThreadSuggest(id); placeSoon(id); } });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -735,6 +735,19 @@ ONCE.push(['s13Drdp', () => staff.once.edits('s13Drdp', recsEdit)]);
 ONCE.push(['s13New', () => staff.once.edits('s13New', recsEdit)]);
 ONCE.push(['s14Artists', () => staff.once.edits('s14Artists', recsEdit)]);
 for (const k of ['s14Garden', 's14Chart', 's14Library', 's14Images']) ONCE.push([k, () => staff.once.edits(k, recsEdit)]);
+/* November 4, 2026. A Kaymbu moment the director sent over with no small group and no educator named kept her name as the
+   one who kept it. Each is credited to its class team instead, North class team and so on, and the name it had stays in
+   creditWas. A moment with no class keeps its name. Run once, and a moment already changed is left as it is. */
+ONCE.push(['s16Credit', () => {
+  let n = 0;
+  for (const [id, r] of store.recs.notices) {
+    const d = r && !r.deleted && r.doc; if (!d || !d.kaymbu || !d.kaymbu.sentBy || d.smallGroup || d.creditWas !== undefined) continue;
+    const room = d.classroom || (Array.isArray(d.classrooms) && d.classrooms[0]) || '';
+    if (!isDirector(d.by) || !room) continue;
+    d.creditWas = d.by; d.by = room + ' class team'; r.local = true; noteChange('notices', id); scheduleSave('notices', id); n++;
+  }
+  log('Kaymbu moments credited to their class team,', n);
+}]);
 function rosterNames() { const r = store.recs.settings.get('educators'); return ((r && !r.deleted && r.doc && r.doc.names) || []).filter(x => x && x.name).map(x => String(x.name)); }
 // the journal opens with the reader's own passcode each time, checked here as at sign-in
 function checkPasscode(name, given) {
@@ -1591,16 +1604,10 @@ async function runSuggestQueue() {
   try { while (suggestQueue.length) { const id = suggestQueue.shift(); try { await suggestThreadFor(id); } catch (e) { log('Thread suggestion skipped,', e.message); } } }
   finally { suggestRunning = false; }
 }
-async function suggestThreadFor(id) {
-  const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
-  const docs = noticeGroupDocs(r.doc); const lead = docs[0] || r.doc;
-  const words = [...new Set(docs.map(d => [d.noticed, d.wonder].filter(Boolean).join('\n').trim()).filter(Boolean))].join('\n').trim();
-  if (words.split(/\s+/).filter(Boolean).length < 6) return;   // never from a photo alone, nor from a word or two
-  // what the educator's photo shows, from the DRDP reading or TREE's note on it, helps read the words and is never a reason alone
-  const shows = (docs.map(d => (d.drdp && d.drdp.photo) || d.photoNote).find(t => t && String(t).trim()) || '').toString().slice(0, 500);
+// the threads open for suggesting, each with its question, the team's notes, its last eight quotes and what the team
+// already decided after earlier suggestions. One observation's own declines and memberships are left out for it.
+function suggestThreadsFor(docs) {
   const ids = new Set(docs.map(d => d.id));
-  // an observation a team inquiry holds stays with the inquiry
-  for (const [, q] of store.recs.inquiries) if (!q.deleted && q.doc && (q.doc.obs || []).some(x => ids.has(x))) return;
   const declined = new Set(docs.flatMap(d => d.threadNo || []));
   const inThread = t => docs.some(d => d.threadId === t.id) || (t.evidence || []).some(e => e && ids.has(e.planId || e.id));
   const live = [];
@@ -1609,27 +1616,411 @@ async function suggestThreadFor(id) {
     const added = (t.evidence || []).filter(e => e && e.via === 'suggest' && e.why).slice(-3).map(e => ({ words: String(e.text || '').slice(0, 140), why: String(e.why).slice(0, 140) }));
     const no = []; for (const [, nr] of store.recs.notices) { const nd = nr.doc; if (nr.deleted || !nd) continue; for (const w of nd.threadNoWhy || []) if (w && w.id === tid) no.push({ words: [nd.noticed, nd.wonder].filter(Boolean).join(' ').slice(0, 140), why: String(w.why || '').slice(0, 140), at: w.at || 0 }); }
     const turnedDown = no.sort((a, b) => b.at - a.at).slice(0, 3).map(({ words, why }) => ({ words, why }));
-    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), team_notes: String(t.notes || '').trim().slice(0, 600), seen: (t.evidence || []).slice(-3).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
+    live.push(Object.assign({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), team_notes: String(t.notes || '').trim().slice(0, 600), seen: (t.evidence || []).slice(-8).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }, added.length ? { added } : {}, turnedDown.length ? { turnedDown } : {})); }
+  return live;
+}
+// the words of one observation, with every photo of its post, and whether they are enough to ask about
+function suggestWordsOf(docs) {
+  const words = [...new Set(docs.map(d => [d.noticed, d.wonder].filter(Boolean).join('\n').trim()).filter(Boolean))].join('\n').trim();
+  const shows = (docs.map(d => (d.drdp && d.drdp.photo) || d.photoNote).find(t => t && String(t).trim()) || '').toString().slice(0, 500);
+  const ids = new Set(docs.map(d => d.id)); let held = false;
+  for (const [, q] of store.recs.inquiries) if (!q.deleted && q.doc && (q.doc.obs || []).some(x => ids.has(x))) held = true;
+  return { words, shows, enough: !held && words.split(/\s+/).filter(Boolean).length >= 6 };
+}
+const SUGGEST_FIT = 'Name a fit when the children in the observation are pursuing the thread\'s question, and otherwise none. A shared topic or place alone is not enough. Where a thread lists added, those are observations the team placed in it after a suggestion like this one, with the reason given. Where it lists turnedDown, the team said those observations do not belong, so do not suggest that thread for an observation like them.';
+const suggestClean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 160);
+function writeThreadSuggest(docs, keyNow, picks) {
+  for (const d of docs) { const rr = store.recs.notices.get(d.id); if (!rr || rr.deleted) continue;
+    rr.doc.threadSuggestKey = keyNow; if (picks.length) rr.doc.threadSuggest = picks; else delete rr.doc.threadSuggest;
+    noteChange('notices', d.id); scheduleSave('notices', d.id); }
+}
+async function suggestThreadFor(id) {
+  const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
+  const docs = noticeGroupDocs(r.doc); const lead = docs[0] || r.doc;
+  const { words, shows, enough } = suggestWordsOf(docs);
+  if (!enough) return;   // never from a photo alone, nor from a word or two, and an observation a team inquiry holds stays with the inquiry
+  // what the educator's photo shows, from the DRDP reading or TREE's note on it, helps read the words and is never a reason alone
+  const live = suggestThreadsFor(docs);
   if (!live.length) return;
   const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
   if (docs.some(d => d.threadSuggestKey === keyNow)) return;
   if (!anthropicKey()) return;
   const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return; suggestTimes.push(now);
-  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\n${shows ? `What the educator's photo shows, as TREE described it, to help read the words only.\n<<<\n${shows}\n>>>\n` : ''}These are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation clearly belongs to one or two of these threads, because the children in it are pursuing that same idea. Only when it clearly fits. A shared topic or place alone is not enough. Most observations fit none. Where a thread lists added, those are observations the team placed in it after a suggestion like this one, with the reason given. Where it lists turnedDown, the team said those observations do not belong, so do not suggest that thread for an observation like them.\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
+  const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\n${shows ? `What the educator's photo shows, as TREE described it, to help read the words only.\n<<<\n${shows}\n>>>\n` : ''}These are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation belongs to one or two of these threads. ${SUGGEST_FIT}\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
   let out = null;
   try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 400 });
     if (res.status !== 200) return;
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     const j = txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1); out = JSON.parse(j); } catch (e) { return; }
   const okIds = new Set(live.map(t => t.id));
-  const clean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 160);
-  const picks = (Array.isArray(out && out.threads) ? out.threads : []).filter(x => x && okIds.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: clean(x.why), at: now }));
-  for (const d of docs) { const rr = store.recs.notices.get(d.id); if (!rr || rr.deleted) continue;
-    rr.doc.threadSuggestKey = keyNow; if (picks.length) rr.doc.threadSuggest = picks; else delete rr.doc.threadSuggest;
-    noteChange('notices', d.id); scheduleSave('notices', d.id); }
+  const picks = (Array.isArray(out && out.threads) ? out.threads : []).filter(x => x && okIds.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: suggestClean(x.why), at: now }));
+  writeThreadSuggest(docs, keyNow, picks);
   log(picks.length ? `Thread suggested for ${lead.id}${docs.length > 1 ? ' and ' + (docs.length - 1) + ' more photos' : ''}, ${picks.map(p => (store.recs.threads.get(p.id) || {}).doc.name).join(' and ')}` : `No thread fits ${lead.id}`);
 }
+/* The nightly pass. Every observation that is in no thread, has not declined every open thread and has not been asked
+   against the threads as they stand now is read, ten to a request, against the same threads with the same wording.
+   It runs once a night in a quiet hour, Pacific, and whenever the records say it has not run today, and it also fills
+   in each observation's place. The counts go to the log. */
+const NIGHTLY_HOUR = Number(process.env.NIGHTLY_HOUR) || 3;
+let nightlyBusy = false;
+function laHourNow() { return +new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', hour12: false }) % 24; }
+async function nightlyThreadPass(force) {
+  if (nightlyBusy || !store.ready || store.partial) return null;
+  nightlyBusy = true;
+  const counts = { looked: 0, asked: 0, batches: 0, suggested: 0, none: 0, placed: 0 };
+  try {
+    const seen = new Set(), groups = [];
+    for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d) continue;
+      // the place is read from the words and the settings, no model needed, for every observation with none yet
+      if (!Array.isArray(d.place)) { const pl = placeOf(d); d.place = pl; noteChange('notices', id); scheduleSave('notices', id); counts.placed++; }
+      const docs = noticeGroupDocs(d); const lead = docs[0] || d; if (seen.has(lead.id)) continue; seen.add(lead.id);
+      if (docs.some(x => x.threadId)) continue;
+      counts.looked++;
+      const { words, shows, enough } = suggestWordsOf(docs); if (!enough) continue;
+      const live = suggestThreadsFor(docs); if (!live.length) continue;
+      const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
+      if (docs.some(x => x.threadSuggestKey === keyNow)) continue;
+      groups.push({ docs, lead, words, shows, live, keyNow });
+    }
+    counts.asked = groups.length;
+    if (groups.length && anthropicKey()) {
+      // the threads are the same for every observation that is in none and has declined none, so a batch shares one list
+      for (let i = 0; i < groups.length; i += 10) {
+        const batch = groups.slice(i, i + 10);
+        const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+        if (suggestTimes.length >= SUGGEST_PER_HOUR) { log('Nightly thread pass stopped at the hourly allowance'); break; } suggestTimes.push(now);
+        const threadsById = new Map(); for (const g of batch) for (const t of g.live) threadsById.set(t.id, t);
+        const obs = batch.map(g => ({ id: g.lead.id, words: g.words.slice(0, 1200), photo: g.shows || undefined, threads: g.live.map(t => t.id) }));
+        const prompt = `Educators at a preschool kept these observations.\n${JSON.stringify(obs)}\nThese are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis. Each observation lists the thread ids it may be read against, and photo is what the educator's photo shows, as TREE described it, to help read the words only.\n${JSON.stringify([...threadsById.values()])}\nFor each observation say whether it belongs to one or two of its threads. ${SUGGEST_FIT}\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"observations":[{"id":"","threads":[{"id":"","why":""}]}]}, one entry for each observation, with an empty threads list when none fits.`;
+        let out = null;
+        try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 2500 });
+          if (res.status !== 200) { log('Nightly thread pass, a batch was not answered,', res.status); continue; }
+          const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+          out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('Nightly thread pass, a batch could not be read,', e.message); continue; }
+        counts.batches++;
+        const answers = new Map((Array.isArray(out && out.observations) ? out.observations : []).filter(x => x && x.id).map(x => [x.id, x]));
+        for (const g of batch) {
+          const a = answers.get(g.lead.id); if (!a) continue;   // an observation the answer left out is asked again another night
+          const ok = new Set(g.live.map(t => t.id));
+          const picks = (Array.isArray(a.threads) ? a.threads : []).filter(x => x && ok.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: suggestClean(x.why), at: now }));
+          writeThreadSuggest(g.docs, g.keyNow, picks); if (picks.length) counts.suggested++; else counts.none++;
+        }
+      }
+    }
+    log(`Nightly thread pass, ${counts.looked} observations in no thread, ${counts.asked} read in ${counts.batches} batches, ${counts.suggested} with a thread suggested, ${counts.none} fit none, ${counts.placed} given a place`);
+    const cur = store.recs.settings.get('nightly'); const doc = cur && !cur.deleted && cur.doc ? cur.doc : {};
+    setSetting('nightly', Object.assign({}, doc, { lastDay: laDayOf(Date.now()), lastAt: Date.now(), counts }));
+  } finally { nightlyBusy = false; }
+  return counts;
+}
+function nightlyDue() {
+  if (!store.ready || store.partial) return false;
+  const cur = store.recs.settings.get('nightly'); const last = cur && !cur.deleted && cur.doc ? cur.doc.lastDay : '';
+  return laHourNow() === NIGHTLY_HOUR && last !== laDayOf(Date.now());
+}
+setInterval(() => { if (nightlyDue()) nightlyThreadPass().catch(e => log('Nightly thread pass could not run', e.message)); }, 10 * 60e3).unref();
+
+/* ---------- where an observation happened ----------
+   A place is read, never typed. The site's places are Program settings' Where it happens list and the calendar's spaces,
+   with the garden's beds and animal yards from the Garden, the creek, and a few plain names for the rest. An observation's
+   place is read from its words, its Kaymbu subject, its small group's signed-up space on the plan it was kept for, the
+   weekly bin it came with, and the calendar sign-up of its class that day. A thread's place is the places of its
+   observations and a project's the places of its threads, worked out when asked and never stored. */
+function sitePlaces() {
+  const out = new Map(); const add = (name, words) => { const n = String(name || '').trim(); if (!n) return; const k = n.toLowerCase(); if (!out.has(k)) out.set(k, { name: n, words: new Set() }); for (const w of words || []) { const x = String(w || '').toLowerCase().trim(); if (x.length >= 3) out.get(k).words.add(x); } };
+  const prog = (store.recs.settings.get('program') || {}).doc || {};
+  for (const p of Array.isArray(prog.places) ? prog.places : []) add(p, [p]);
+  try { for (const s of calendar.spaces()) add(s.name, [s.name]); } catch (e) {}
+  let gs = null; try { gs = staff.garden && staff.garden.setupFor ? staff.garden.setupFor() : null; } catch (e) {}
+  for (const b of (gs && gs.beds) || []) add(b.name, [b.name]);
+  // the goats' yard is Goat yard, the same name Program settings uses, and the animals' own names point there too
+  for (const a of (gs && gs.animals) || []) { const n = String(a.name || '').replace(/,.*$/, '').trim(); if (!n) continue; add(n.replace(/s$/, '') + ' yard', [n, n.replace(/s$/, ''), ...(a.names || []).map(x => x && x.name)]); }
+  add('Creek', ['creek']); add('Kitchen', ['kitchen', 'culinary']); add('Studio', ['studio', 'atelier']); add('Classroom', ['classroom', 'class room']);
+  add('Piazza', ['piazza']); add('Library', ['library']); add('Sandbox', ['sandbox', 'sand box', 'sand table']);
+  for (const r of oneLists().classrooms) add(r + ' classroom', [r + ' classroom', r + ' class room', r + ' room']);
+  // the plain names inside a longer one, so Goat yard also answers to goat and goats, and Tire swing yard to tire swing
+  for (const p of out.values()) { const base = p.name.toLowerCase().replace(/\b(yard|studio|atelier|classroom|beds?|plantings|trees|area)\b/g, '').replace(/^large group,?\s*/, '').replace(/\s+/g, ' ').trim(); if (base.length >= 4 && !/^(the|our|long|north|south|west|indoor|outdoor|front|around|fence)$/.test(base)) { p.words.add(base); if (/s$/.test(base)) p.words.add(base.replace(/s$/, '')); else p.words.add(base + 's'); } }
+  return [...out.values()];
+}
+const placeWordRe = w => new RegExp('(^|[^a-z])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z]|$)', 'i');
+function placesIn(text, places) { const t = String(text || '').toLowerCase(); if (!t.trim()) return []; const out = []; for (const p of places) if ([...p.words].some(w => placeWordRe(w).test(t)) && !out.includes(p.name)) out.push(p.name); return out; }
+function placeOf(obs) {
+  if (!obs) return []; const places = sitePlaces(); const found = [];
+  const take = (text) => { for (const n of placesIn(text, places)) if (!found.includes(n)) found.push(n); };
+  take([obs.noticed, obs.wonder].filter(Boolean).join('\n'));
+  if (obs.kaymbu && obs.kaymbu.subject) take(obs.kaymbu.subject);
+  // the plan the observation was kept for names the small group's signed-up space, or where it happens
+  const pr = obs.planId && store.recs.plans.get(obs.planId); const p = pr && !pr.deleted && pr.doc;
+  if (p) { if (p.space && p.space.spaceName) take(p.space.spaceName); if (p.where) take(p.where); }
+  else if (obs.smallGroup) {
+    // the group's Individual plan of that week, when the observation names none, gives its signed-up space
+    const wk = obs.week || (obs.at ? mondayFor(laDayOf(obs.at)) : '');
+    for (const [, r] of store.recs.plans) { const q = r && !r.deleted && r.doc; if (!q || q.type !== 'individual' || q.weekOf !== wk || !(q.groups || [q.group]).includes(obs.smallGroup)) continue; if (q.space && q.space.spaceName) take(q.space.spaceName); if (q.where) take(q.where); }
+  }
+  // the Individual plan's sign-up is the calendar space for the group, booked on the calendar from the plan, so the
+  // calendar space is read through the plan above. An observation kept with the weekly bin happened where the bin is opened.
+  if (obs.bin) take('kitchen');
+  return found.slice(0, 4);
+}
+// the same, with the educator's own calendar sign-up that day added, which takes a read of the calendar
+async function placeOfWithCalendar(obs) {
+  const found = placeOf(obs);
+  try { if (obs && obs.at && obs.by && calendar.ready) { const day = laDayOf(obs.at); const c = await Promise.race([calendar.today({ director: false, name: obs.by }, day, day), new Promise(r => setTimeout(() => r(null), 4000))]);
+    const sp = new Map(calendar.spaces().map(s => [s.id, s.name])); const who = nameKey(obs.by);
+    for (const b of (c && c.bookings) || []) if (b && nameKey(b.by) === who) { const n = sp.get(b.spaceId); if (n && !found.includes(n)) found.push(n); } } } catch (e) {}
+  return found.slice(0, 4);
+}
+// an observation's place is written the moment it is kept, once its words have settled, and never typed by anyone
+function placeSoon(id) { setTimeout(async () => { const r = store.recs.notices.get(id); const d = r && !r.deleted && r.doc; if (!d) return;
+  try { const pl = await placeOfWithCalendar(d); if (JSON.stringify(pl) === JSON.stringify(d.place || [])) return; d.place = pl; noteChange('notices', id); scheduleSave('notices', id); } catch (e) { log('Place not read for', id, e.message); } }, 1500).unref(); }
+function threadPlace(t) { const out = []; const ids = new Set((t && t.evidence || []).map(e => e && (e.planId || e.id)).filter(Boolean));
+  for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || !(d.threadId === t.id || ids.has(id))) continue; for (const pl of Array.isArray(d.place) ? d.place : placeOf(d)) if (!out.includes(pl)) out.push(pl); }
+  return out; }
+function projectPlace(x) { const out = []; for (const l of (x && x.threads) || []) { const tr = l && store.recs.threads.get(l.id); if (!tr || tr.deleted || !tr.doc) continue; for (const pl of threadPlace(tr.doc)) if (!out.includes(pl)) out.push(pl); }
+  for (const n of projectNotices(x)) for (const pl of Array.isArray(n.place) ? n.place : []) if (!out.includes(pl)) out.push(pl); return out; }
+/* The observations a project holds. Those kept for it, those the director added to its evidence, and every observation
+   of each of its threads, since a project is read through its threads. Set aside ones are left out. The client's
+   projNotices should follow this same rule. */
+function projectNotices(x) {
+  if (!x) return []; const out = new Map();
+  const tids = new Set((x.threads || []).map(t => t && t.id).filter(Boolean));
+  const fromEv = new Set((x.evidence || []).map(e => e && (e.planId || e.id)).filter(Boolean));
+  for (const id of tids) { const d = store.recs.threads.get(id); if (d && !d.deleted && d.doc) for (const e of d.doc.evidence || []) if (e && (e.planId || e.id)) fromEv.add(e.planId || e.id); }
+  const aside = new Set((x.setAside || []).map(a => a && a.id).filter(Boolean));
+  for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || aside.has(id)) continue;
+    if (d.projectId === x.id || fromEv.has(id) || (d.threadId && tids.has(d.threadId))) out.set(id, d); }
+  return [...out.values()].sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+// the weekly place sheet, what is alive on site this week, for the printer. The garden's calendar for the week, each
+// plant ready this month with its bed, the animals with their names and the week's care, and the weekly bin with its farms.
+function placeSheet(me, mon) {
+  mon = /^\d{4}-\d{2}-\d{2}$/.test(mon || '') ? mon : mondayFor(laDayOf(Date.now()));
+  const mm = mon.slice(5, 7); let gs = null, tasks = [];
+  try { gs = staff.garden && staff.garden.setupFor ? staff.garden.setupFor() : null; } catch (e) {}
+  try { for (let i = 0; i < 5; i++) { const d = addDay(mon, i); for (const t of staff.garden.tasksFor(d)) tasks.push({ day: d, text: t.text, bed: t.bedName || '', room: t.room || '', kind: t.kind, done: !!t.done }); } } catch (e) {}
+  const beds = new Map(((gs && gs.beds) || []).map(b => [b.id, b]));
+  const plants = ((gs && gs.plants) || []).filter(p => p && !p.planned && !p.hidden && (p.ready || []).includes(mm)).map(p => ({ name: p.common, where: p.where || (beds.get(p.bed) || {}).name || '', eat: p.eat || '' }));
+  const animals = ((gs && gs.animals) || []).map(a => ({ name: a.name, names: (a.names || []).map(n => n && n.name).filter(Boolean), care: (a.care || []).map(c => c.text).filter(Boolean).slice(0, 4) }));
+  let bin = null; for (const [, r] of store.recs.bins) { const b = r && !r.deleted && r.doc; if (!b || !b.date) continue; if (mondayFor(b.date) === mon) bin = { date: b.date, items: (b.items || []).map(i => ({ name: i.name, farms: i.farms || [] })) }; }
+  const places = sitePlaces().map(p => p.name);
+  return { week: mon, places, garden: { tasks, plants }, animals, bin };
+}
+
+/* ---------- a plan's reflection flows into the threads it follows ----------
+   The page brings Final remarks to the threads a plan carries. Here the same words also reach a thread when the plan's
+   Observation rationale quotes or links an observation that is in that thread, so a reflection on a thread's own
+   observation joins the thread's evidence. One entry a plan, marked via reflection, replaced when the words change and
+   taken out when the plan no longer touches the thread. A thread the page already wrote the reflection to is left alone. */
+const AFTER_KEY = { individual: ['remarks', 'Final remarks'], smallgroup: ['reflection', 'After the week'] };
+function sentFit(v, n) { const t = String(v || '').replace(/\s+/g, ' ').trim(); if (!n || t.length <= n) return t; const ss = t.match(/[^.!?]+(?:[.!?]+["'”’)]*|$)/g) || [t]; let out = ''; for (const x of ss) { const nx = (out + x).trim(); if (out && nx.length > n) break; out = nx; } return out || t; }
+// the observations a plan quotes or links, by id, and by the first words of its What I noticed written into the plan
+function planObservationIds(p) {
+  const ids = new Set([...(p.noticeAdded || []), ...(p.noticeUsed || []), ...((p.source && p.source.ids) || []), ...(p.evidenceRefs || []).filter(r => r && r.kind === 'obs').map(r => r.id)].filter(Boolean));
+  const text = String((p.fields || {}).observation || '').replace(/\s+/g, ' ');
+  if (text.trim().length >= 20) for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || ids.has(id)) continue; const bit = String(d.noticed || '').replace(/\s+/g, ' ').trim().slice(0, 50); if (bit.length >= 20 && text.includes(bit)) ids.add(id); }
+  return ids;
+}
+function flowReflection(pid) {
+  const pr = store.recs.plans.get(pid); const p = pr && !pr.deleted && pr.doc; if (!p || p.id === 'example' || !AFTER_KEY[p.type]) return 0;
+  const [key, label] = AFTER_KEY[p.type]; const text = String((p.fields || {})[key] || '').trim();
+  const off = new Set(p.threadOff || []); const obsIds = planObservationIds(p);
+  const e = { planId: p.id, week: p.weekOf, room: p.classroom || '', section: label, obs: true, text: sentFit(text, 300), via: 'reflection' };
+  let n = 0;
+  for (const [tid, tr] of store.recs.threads) { const t = tr && !tr.deleted && tr.doc; if (!t) continue;
+    const ev = Array.isArray(t.evidence) ? t.evidence : [];
+    const own = p.threadId === tid || (p.threadLinks || []).some(l => l && l.id === tid);
+    const inThread = id => { const nr = store.recs.notices.get(id); const d = nr && !nr.deleted && nr.doc; return !!d && (d.threadId === tid || ev.some(x => x && (x.planId || x.id) === id)); };
+    const on = !off.has(tid) && !!text && (own || [...obsIds].some(inThread));
+    const pageWrote = ev.some(x => x && x.planId === p.id && x.auto === 'reflection');
+    const i = ev.findIndex(x => x && x.planId === p.id && x.via === 'reflection');
+    if (on && !pageWrote) { if (i < 0) t.evidence = [...ev, e]; else if (ev[i].text !== e.text || ev[i].week !== e.week) t.evidence = ev.map((x, j) => j === i ? e : x); else continue; }
+    else if (i >= 0) t.evidence = ev.filter((x, j) => j !== i);
+    else continue;
+    tr.local = true; noteChange('threads', tid); scheduleSave('threads', tid); n++;
+  }
+  if (n) log('Reflection of plan', pid, 'reached', n, 'thread' + (n === 1 ? '' : 's'));
+  return n;
+}
+
+/* ---------- a lens's picks, written back on the observations ----------
+   When a lens reading is kept, each observation it quotes takes the lens's id in lensIds, added once, so threads, plans
+   and PD can read which lens found it without opening the scan. A plan the lens quotes is left as it is. */
+function writeLensIds(scanId) {
+  const sr = store.recs.scans.get(scanId); const s = sr && !sr.deleted && sr.doc; if (!s || s.kind !== 'lens' || !Array.isArray(s.moments)) return 0;
+  const prog = (store.recs.settings.get('program') || {}).doc || {};
+  const lensId = String(s.lensId || (Array.isArray(prog.lenses) && prog.lenses[0] && prog.lenses[0].id) || 'lens1');
+  let n = 0;
+  for (const m of s.moments) { const id = m && m.planId; const nr = id && store.recs.notices.get(id); const d = nr && !nr.deleted && nr.doc; if (!d) continue;
+    const have = Array.isArray(d.lensIds) ? d.lensIds : []; if (have.includes(lensId)) continue;
+    d.lensIds = [...have, lensId]; nr.local = true; noteChange('notices', id); scheduleSave('notices', id); n++; }
+  if (n) log('Lens', lensId, 'written on', n, 'observation' + (n === 1 ? '' : 's'));
+  return n;
+}
+
+/* ---------- followed threads a project may take in ----------
+   The week's project reading also reads each active project against the threads the team follows that it does not
+   hold yet. Each thread's question and last eight quotes are set beside the project's experience, reading, intent and
+   classes, and the quick model names the ones whose children are pursuing what the project is about. They wait on the
+   project as threadSuggest for the director, and leave it when the thread is added or turned down. */
+async function suggestThreadsForProject(pid) {
+  const pr = store.recs.projects.get(pid); const x = pr && !pr.deleted && pr.doc; if (!x || (x.status || 'active') !== 'active') return { none: true };
+  const have = new Set((x.threads || []).map(t => t && t.id).filter(Boolean)); const no = new Set(x.threadSuggestNo || []);
+  const rooms = [...new Set([x.home, ...(x.classrooms || []).map(c => c && c.room)].filter(Boolean))];
+  const cands = [];
+  for (const [tid, tr] of store.recs.threads) { const t = tr && !tr.deleted && tr.doc; if (!t || t.status === 'closed' || t.unfollowed || have.has(tid) || no.has(tid)) continue;
+    cands.push({ id: tid, name: String(t.name || '').slice(0, 80), question: String(t.question || '').slice(0, 200), classroom: t.classroom || '', team_notes: String(t.notes || '').trim().slice(0, 400), quotes: (t.evidence || []).slice(-8).map(e => String(e && e.text || '').slice(0, 160)).filter(Boolean) }); }
+  const clear = () => { if (x.threadSuggest && x.threadSuggest.length) { delete x.threadSuggest; pr.local = true; noteChange('projects', pid); scheduleSave('projects', pid); } };
+  if (!cands.length) { clear(); return { suggest: [], key: 'none' }; }
+  const about = { name: String(x.name || '').slice(0, 120), experience: String(x.experience || '').slice(0, 600), underneath: String(x.underneath || '').slice(0, 500), intent: String(x.intent != null ? x.intent : (x.decision && x.decision.why) || '').slice(0, 500), classes: rooms.length ? rooms : 'the whole school',
+    evidence: projectNotices(x).slice(0, 12).map(n => String(n.noticed || '').slice(0, 200)) };
+  const keyNow = sha(JSON.stringify(about) + '|' + cands.map(c => c.id + ':' + c.quotes.length).join(',')).toString('hex').slice(0, 16);
+  if (x.threadSuggestKey === keyNow) return { same: true, key: keyNow, suggest: x.threadSuggest || [] };
+  if (!anthropicKey()) return { off: true };
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
+  const prompt = `Educators at a preschool are following this project. A project is the team's reading of a deeper question children are working on.\n${JSON.stringify(about)}\nThese are threads the team follows that the project does not hold. A thread is a question children keep returning to, with the last words that joined it.\n${JSON.stringify(cands)}\nName only the threads whose children are pursuing what this project is about, so the project would read the thread as part of its question. A shared place or material alone is not enough, and a thread in another class can fit when the question is the same. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence, no colons and no dashes"}]}, and {"fits":[]} when none fit.`;
+  let out = null;
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1200 });
+    if (res.status !== 200) return { busy: true };
+    const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { return { busy: true }; }
+  const ok = new Set(cands.map(c => c.id));
+  const suggest = (Array.isArray(out && out.fits) ? out.fits : []).filter(f => f && ok.has(f.id)).map(f => ({ id: f.id, why: suggestClean(f.why), at: now }));
+  x.threadSuggestKey = keyNow; if (suggest.length) x.threadSuggest = suggest; else delete x.threadSuggest;
+  pr.local = true; noteChange('projects', pid); scheduleSave('projects', pid);
+  log(`Project ${pid} read against the followed threads, ${suggest.length} of ${cands.length} fit`);
+  return { suggest, key: keyNow };
+}
+// a thread added to the project, or turned down, leaves the waiting list on the project's next save
+function tidyThreadSuggest(pid) {
+  const pr = store.recs.projects.get(pid); const x = pr && !pr.deleted && pr.doc; if (!x || !Array.isArray(x.threadSuggest)) return;
+  const have = new Set((x.threads || []).map(t => t && t.id)); const no = new Set(x.threadSuggestNo || []);
+  const keep = x.threadSuggest.filter(s => s && !have.has(s.id) && !no.has(s.id));
+  if (keep.length === x.threadSuggest.length) return;
+  if (keep.length) x.threadSuggest = keep; else delete x.threadSuggest;
+}
+
+/* ---------- a team inquiry gathers observations by the need it names ----------
+   An open inquiry names what the child might be trying to get, the needs of the Idea bank, and may have begun from one of
+   its behaviors. Each observation of the last eight weeks whose words carry a need's or the behavior's words is matched
+   first by those words and then read in one batch by the quick model, which keeps only the ones that show the need.
+   They wait with the week's finds on the inquiry, as candidates the director accepts or sets aside, and nobody tags
+   anything for it. */
+const NEED_WORDS = {
+  'Moving things through the air (trajectory schema)': ['throw', 'threw', 'thrown', 'throwing', 'toss', 'tossed', 'tossing', 'drop', 'dropped', 'dropping', 'launch', 'flinging', 'flung', 'kick', 'kicked', 'kicking'],
+  'Knocking down and changing things (transformation schema)': ['knock', 'knocked', 'knocking', 'crash', 'crashed', 'smash', 'smashed', 'topple', 'toppled', 'destroy', 'destroyed', 'mix', 'mixed', 'mixing', 'melt', 'melted', 'transform'],
+  'Heavy work and strong force (proprioceptive input)': ['push', 'pushed', 'pushing', 'pull', 'pulled', 'pulling', 'carry', 'carried', 'carrying', 'lift', 'lifted', 'lifting', 'drag', 'dragged', 'dragging', 'heavy', 'dig', 'digging', 'dug', 'squeeze', 'squeezed'],
+  'Enclosing and hiding (enclosure and enveloping schemas)': ['hide', 'hid', 'hiding', 'hidden', 'cover', 'covered', 'covering', 'wrap', 'wrapped', 'wrapping', 'inside', 'fence', 'fort', 'tent', 'blanket', 'enclose', 'enclosed', 'box'],
+  'Carrying and moving things (transporting schema)': ['carry', 'carried', 'carrying', 'wagon', 'bucket', 'buckets', 'basket', 'wheelbarrow', 'transport', 'transported', 'hauled', 'hauling', 'moved', 'moving', 'load', 'loaded', 'loading'],
+  'Joining and separating (connecting schema)': ['connect', 'connected', 'connecting', 'join', 'joined', 'joining', 'tie', 'tied', 'tying', 'tape', 'taped', 'glue', 'glued', 'attach', 'attached', 'link', 'linked', 'track', 'tracks', 'chain', 'apart', 'separate', 'separated'],
+  'Spinning and rolling (rotation schema)': ['spin', 'spun', 'spinning', 'roll', 'rolled', 'rolling', 'twirl', 'twirled', 'twirling', 'wheel', 'wheels', 'turn', 'turned', 'turning', 'round', 'circle', 'circles'],
+  'Height and risk (risky play)': ['climb', 'climbed', 'climbing', 'jump', 'jumped', 'jumping', 'high', 'higher', 'tall', 'ladder', 'balance', 'balanced', 'balancing', 'edge', 'swing', 'swung', 'swinging', 'leap', 'leaped', 'risk'],
+  'Power and being capable (competence)': ['myself', 'by myself', 'i can', 'i did it', 'strong', 'big kid', 'help', 'helped', 'helping', 'job', 'jobs', 'capable', 'proud', 'try again', 'tried again'],
+  'Belonging and having a place (attachment and belonging)': ['friend', 'friends', 'together', 'join', 'belong', 'belongs', 'my turn', 'left out', 'alone', 'lonely', 'miss', 'missed', 'mama', 'mommy', 'daddy', 'papa', 'family', 'welcome', 'included'],
+  'Seeking sensation (sensory seeking)': ['loud', 'louder', 'bang', 'banged', 'banging', 'crash', 'spin', 'squish', 'squished', 'squishy', 'mud', 'messy', 'water', 'splash', 'splashed', 'splashing', 'crawl', 'crawled', 'crawling', 'bump', 'bumped', 'bumping'],
+  'Avoiding sensation (sensory sensitivity)': ['cover', 'covered', 'ears', 'too loud', 'noisy', 'noise', 'hands over', 'sticky', 'wet', 'itchy', 'scratchy', 'bright', 'quiet', 'quieter', 'away', 'backed', 'flinch', 'flinched', 'overwhelm', 'overwhelmed'],
+  'Steadying the body and feelings (self-regulation)': ['calm', 'calmed', 'calming', 'breath', 'breathe', 'breathing', 'cried', 'crying', 'tears', 'upset', 'frustrated', 'frustration', 'angry', 'mad', 'melt', 'meltdown', 'settle', 'settled', 'rock', 'rocked', 'rocking', 'hug', 'hugged', 'cuddle', 'cuddled', 'waited', 'waiting']
+};
+function inquiryNotices(x) {
+  const own = new Set(x.obs || []), ts = new Set(x.threads || []);
+  for (const tid of ts) { const t = store.recs.threads.get(tid); for (const e of (t && !t.deleted && t.doc.evidence) || []) if (e && e.planId) own.add(e.planId); }
+  const out = []; for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (d && (own.has(id) || (d.threadId && ts.has(d.threadId)))) out.push(d); }
+  return out;
+}
+async function gatherForInquiry(qid) {
+  const qr = store.recs.inquiries.get(qid); const x = qr && !qr.deleted && qr.doc; if (!x || (x.status || 'open') !== 'open') return { none: true };
+  const needs = (Array.isArray(x.ibNeeds) ? x.ibNeeds : []).filter(n => NEED_WORDS[n]);
+  let beh = null; try { beh = x.ibFrom && staff.ideabank.behaviorFor ? staff.ideabank.behaviorFor(x.ibFrom) : null; } catch (e) {}
+  const words = new Map(); for (const n of needs) for (const w of NEED_WORDS[n]) words.set(w, n);
+  for (const w of (beh && beh.keywords) || []) words.set(String(w).toLowerCase(), beh.label || 'the behavior');
+  if (!words.size) return { suggest: [], key: 'none' };
+  const have = new Set(inquiryNotices(x).map(n => n.id)); const no = new Set(x.foundNo || []); const waiting = new Set(((x.found && x.found.items) || []).map(i => i && i.id));
+  const since = Date.now() - 56 * 864e5, seen = new Set(), cands = [];
+  for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || (d.at || 0) < since || have.has(id) || no.has(id) || waiting.has(id)) continue;
+    if (x.room && d.classroom !== x.room && !(d.classrooms || []).includes(x.room)) continue;
+    const key = d.group || id; if (seen.has(key)) continue; seen.add(key);
+    const text = [d.noticed, d.wonder].filter(Boolean).join(' '); if (text.split(/\s+/).length < 6) continue;
+    const hits = []; for (const [w, n] of words) if (placeWordRe(w).test(text) && !hits.includes(n)) hits.push(n);
+    if (hits.length) cands.push({ id, at: d.at || 0, words: text.slice(0, 500), matched: hits }); }
+  cands.sort((a, b) => b.at - a.at); const ask = cands.slice(0, 30);
+  if (!ask.length) return { suggest: [], key: 'none' };
+  const about = { question: String(x.name || '').slice(0, 200), what_the_team_sees: String(x.see || '').slice(0, 600), hypotheses: (x.hyps || []).filter(h => h && !h.setAside).map(h => String(h.text || '').slice(0, 300)), what_to_watch_for: String(x.watch || '').slice(0, 400), needs, behavior: beh ? beh.label : undefined };
+  const keyNow = sha(JSON.stringify(about) + '|' + ask.map(c => c.id).join(',')).toString('hex').slice(0, 16);
+  if (x.needKey === keyNow) return { same: true, key: keyNow };
+  if (!anthropicKey()) return { off: true };
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
+  const prompt = `Educators at a preschool are thinking through this team inquiry about a child's development and their own practice.\n${JSON.stringify(about)}\nThese observations carry words that may belong to one of the needs or the behavior the inquiry names. Each lists what matched.\n${JSON.stringify(ask.map(c => ({ id: c.id, words: c.words, matched: c.matched })))}\nName only the observations that show a child pursuing one of those needs, or the behavior, or a time it went well. A matching word used another way is not enough. Phrase any reading of a child's idea or behavior as a hypothesis, beginning with words such as Perhaps or It may be. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence, no colons and no dashes"}]}, and {"fits":[]} when none fit.`;
+  let out = null;
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 });
+    if (res.status !== 200) return { busy: true };
+    const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { return { busy: true }; }
+  const byId = new Map(ask.map(c => [c.id, c]));
+  const items = (Array.isArray(out && out.fits) ? out.fits : []).filter(f => f && byId.has(f.id)).map(f => ({ id: f.id, why: suggestClean(f.why), from: 'need', need: byId.get(f.id).matched[0] }));
+  x.needKey = keyNow;
+  if (items.length) { const cur = (x.found && Array.isArray(x.found.items)) ? x.found.items : []; x.found = { at: Math.max(now, (x.found && x.found.at) || 0), items: [...cur, ...items] }; }
+  qr.local = true; noteChange('inquiries', qid); scheduleSave('inquiries', qid);
+  log(`Inquiry ${qid} gathered by need, ${items.length} of ${ask.length} fit`);
+  return { suggest: items, key: keyNow };
+}
+
+/* ---------- the week's findings, kept by week ----------
+   What the week's reading found is written over each week on the scans and the projects. A copy of each week's findings
+   is kept as reports/<week>-findings.json, the threads found and joined, the patterns, the lens moments, and the
+   observations waiting on each project and inquiry, so a Readings page can show this week beside earlier ones. It is
+   written again whenever a scan or a waiting list of the current week changes. */
+function weekFindings(wk) {
+  const inWeek = t => t && mondayFor(laDayOf(t)) === wk;
+  const out = { id: wk + '-findings', kind: 'findings', week: wk, threads: [], joined: [], patterns: [], lens: [], projects: [], inquiries: [], updatedAt: Date.now() };
+  for (const [sid, r] of store.recs.scans) { const s = r && !r.deleted && r.doc; if (!s || !inWeek(s.createdAt)) continue;
+    const room = String(s.room || sid).replace(/^(lens|moments)-/, '').replace(/^[^-]+-/, '') || 'All';
+    if (s.kind === 'lens') { for (const m of s.moments || []) if (m && m.planId) out.lens.push({ lens: s.lensName || '', lensId: s.lensId || '', room: s.room, id: m.planId, quote: String(m.quote || '').slice(0, 300), language: m.language || '' }); }
+    else if (s.kind === 'moments') { for (const p of s.patterns || []) if (p && p.name) out.patterns.push({ room: String(s.room || '').replace(/^moments-/, ''), name: p.name, why: String(p.why || '').slice(0, 400), ids: p.ids || [], matchId: p.matchId || '' }); }
+    else if (Array.isArray(s.threads)) { for (const t of s.threads) if (t && t.name) out.threads.push({ room, name: t.name, question: String(t.question || '').slice(0, 300), trackedId: t.trackedId || '', ids: (t.evidence || []).map(e => e && e.planId).filter(Boolean) });
+      for (const j of s.joined || []) if (j && j.id) out.joined.push({ room, id: j.id, name: j.name || '', n: j.n || 0 }); }
+  }
+  for (const [id, r] of store.recs.projects) { const x = r && !r.deleted && r.doc; if (!x) continue; const items = (x.found && inWeek(x.found.at) ? x.found.items : []) || [];
+    if (items.length || (x.threadSuggest || []).length) out.projects.push({ id, name: x.name || '', found: items.map(i => ({ id: i.id, why: i.why || '' })), threads: (x.threadSuggest || []).map(s => ({ id: s.id, why: s.why || '' })) }); }
+  for (const [id, r] of store.recs.inquiries) { const x = r && !r.deleted && r.doc; if (!x) continue; const items = (x.found && inWeek(x.found.at) ? x.found.items : []) || [];
+    if (items.length) out.inquiries.push({ id, name: x.name || '', found: items.map(i => ({ id: i.id, why: i.why || '', from: i.from || 'reading' })) }); }
+  return out;
+}
+let findingsTimer = null;
+function keepFindingsSoon() { clearTimeout(findingsTimer); findingsTimer = setTimeout(() => { try { keepFindings(); } catch (e) { log('The week\'s findings could not be kept', e.message); } }, 2000); findingsTimer.unref(); }
+function keepFindings() {
+  if (!store.ready) return; const wk = mondayFor(laDayOf(Date.now())); const doc = weekFindings(wk); const id = doc.id;
+  const cur = store.recs.reports.get(id); const was = cur && !cur.deleted && cur.doc ? cur.doc : null;
+  const same = was && JSON.stringify(Object.assign({}, was, { updatedAt: 0 })) === JSON.stringify(Object.assign({}, doc, { updatedAt: 0 })); if (same) return;
+  if (!was && !doc.threads.length && !doc.joined.length && !doc.patterns.length && !doc.lens.length && !doc.projects.length && !doc.inquiries.length) return;
+  store.recs.reports.set(id, { doc: Object.assign(doc, { updatedByName: 'TREE' }), sha: cur && cur.sha, path: `reports/${id}.json`, local: true });
+  noteChange('reports', id); scheduleSave('reports', id);
+}
+
+/* ---------- cycle health, for the director's Today ----------
+   The current week's gaps in the planning cycle, counted from the records. Educators with no observation that wonders
+   this week, followed threads with no plan this week, plans whose reflection is still unwritten after their week, and
+   plans with writing that were never sent. Names go with each count. */
+function cycleHealth() {
+  const mon = mondayFor(laDayOf(Date.now())), sun = addDay(mon, 6), since = addDay(mon, -28);
+  const plans = []; for (const [, r] of store.recs.plans) { const p = r && !r.deleted && r.doc; if (p && p.id !== 'example' && !p.blank && PLAN_KINDS.includes(p.type) && /^\d{4}-\d{2}-\d{2}$/.test(p.weekOf || '')) plans.push(p); }
+  const names = rosterNames().filter(n => !isFormerEducator(n));
+  const wondered = new Set(); for (const [, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || !d.at) continue; const day = laDayOf(d.at); if (day >= mon && day <= sun && String(d.wonder || '').trim()) wondered.add(nameKey(d.by)); }
+  const noWonder = names.filter(n => !wondered.has(nameKey(n)));
+  const noPlan = []; for (const [tid, tr] of store.recs.threads) { const t = tr && !tr.deleted && tr.doc; if (!t || t.status === 'closed' || t.unfollowed) continue;
+    const ev = new Set((t.evidence || []).map(e => e && e.planId).filter(Boolean));
+    const has = plans.some(p => p.weekOf === mon && !(p.threadOff || []).includes(tid) && (p.threadId === tid || (p.threadLinks || []).some(l => l && l.id === tid) || ev.has(p.id)));
+    if (!has) noPlan.push({ id: tid, name: String(t.name || '').slice(0, 80), room: t.classroom || '' }); }
+  const label = p => `${p.classroom ? p.classroom + ' ' : ''}${p.type === 'classroom' ? 'Classroom plan' : p.type === 'smallgroup' ? 'Small Group plan' : 'Individual plan'}, week of ${p.weekOf}`;
+  const hasWords = p => Object.values(p.fields || {}).some(v => String(v || '').trim());
+  const remarks = plans.filter(p => AFTER_KEY[p.type] && p.weekOf < mon && p.weekOf >= since && hasWords(p) && !String((p.fields || {})[AFTER_KEY[p.type][0]] || '').trim()).map(p => ({ id: p.id, label: label(p), by: p.educator || '', week: p.weekOf }));
+  const drafts = plans.filter(p => (p.status || 'draft') === 'draft' && !p.byDirector && p.weekOf <= mon && p.weekOf >= since && hasWords(p)).map(p => ({ id: p.id, label: label(p), by: p.educator || '', week: p.weekOf }));
+  return { week: mon, noWonder: { count: noWonder.length, names: noWonder }, threadsNoPlan: { count: noPlan.length, threads: noPlan }, remarksDue: { count: remarks.length, plans: remarks }, draftsNotSent: { count: drafts.length, plans: drafts } };
+}
+// counted once a minute at most, since every open of TREE asks for it
+let cycleCache = null;
+function cycleHealthCached() { if (!store.ready) return null; if (!cycleCache || cycleCache.rev !== rev || Date.now() - cycleCache.at > 60000) { try { cycleCache = { rev, at: Date.now(), out: cycleHealth() }; } catch (e) { log('Cycle health could not be counted', e.message); return null; } } return cycleCache.out; }
 
 /* ---------- observations from a project's threads that fit the project ----------
    A thread can follow more than one project, so its observations join a project only when the director adds them. When the
@@ -1722,6 +2113,26 @@ function readBody(req, limit) {
 let readTimes = []; let readsRunning = 0; let stopping = false;
 const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
+/* A photo at a display size. The staff room screen and the lists ask for 1920 or 1200 pixels on the long side, so the
+   original, often 4000 pixels across, is made smaller once with sharp, kept on disk under the sizes folder and sent with
+   a long cache life. The original is never changed. Without sharp the original is sent as it is. */
+const PHOTO_WIDTHS = [1920, 1200];
+const SIZES_DIR = process.env.PHOTO_SIZES_DIR || require('path').join(require('os').tmpdir(), 'tree-photo-sizes');
+let sharpLib; try { sharpLib = require('sharp'); } catch (e) { sharpLib = null; }
+const sizing = new Map();
+async function sizedPhoto(id, buf, w) {
+  const fs = require('fs'), pathLib = require('path');
+  const file = pathLib.join(SIZES_DIR, w + '-' + id.replace(/[^A-Za-z0-9._-]/g, '_') + '.jpg');
+  try { return await fs.promises.readFile(file); } catch (e) {}
+  if (!sharpLib) throw new Error('sharp is not installed');
+  const key = w + '|' + id; if (sizing.has(key)) return sizing.get(key);
+  const work = (async () => {
+    const out = await sharpLib(buf, { failOn: 'none' }).rotate().resize({ width: w, height: w, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 84, mozjpeg: true }).toBuffer();
+    try { await fs.promises.mkdir(SIZES_DIR, { recursive: true }); await fs.promises.writeFile(file + '.part', out); await fs.promises.rename(file + '.part', file); } catch (e) { log('Resized photo not kept on disk', e.message); }
+    return out;
+  })().finally(() => sizing.delete(key));
+  sizing.set(key, work); return work;
+}
 // an observation still being written is a draft. It is kept in the records as the educator types, so it survives a
 // change of phone, signing out or closing TREE, and only the educator who started it and the director see it.
 const draftSeen = (kind, doc, name, director) => kind !== 'drafts' || director || (!!doc && nameKey(doc.by) === nameKey(name));
@@ -1983,10 +2394,12 @@ async function handle(req, res) {
   if (req.method === 'GET' && path === '/health') { json(req, res, 200, { ok: true, ready: store.ready, error: store.error || undefined, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, bootId: BOOT_ID }); return; }
 
   // original form files are opened in an img or a new tab, which cannot send a header, so the session rides in the address
-  if (req.method === 'GET' && path.startsWith('/original/')) {
+  // a photo at a display size, /photo/<id>?w=1920 or ?w=1200, is the same photo made smaller once and kept on disk
+  const sized = req.method === 'GET' && path.startsWith('/photo/') ? PHOTO_WIDTHS.includes(Number(url.searchParams.get('w'))) ? Number(url.searchParams.get('w')) : 1920 : 0;
+  if (req.method === 'GET' && (path.startsWith('/original/') || sized)) {
     // the key in the address is the permission, so any page of TREE may read the picture, and the answer never depends on who asked
     const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin' };
-    let id = ''; try { id = decodeURIComponent(path.slice(10)); } catch (e) {}
+    let id = ''; try { id = decodeURIComponent(path.slice(sized ? 7 : 10)); } catch (e) {}
     if (!checkPhotoKey(url.searchParams.get('t') || '', id)) { log('Photo refused, the key has expired or is for another photo'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     // an educator's certificates and forms open only through their records, for them and the director
     // original PD materials open only through the PD library, for the director and the module's presenters
@@ -2011,6 +2424,10 @@ async function handle(req, res) {
     } else { fileCache.delete(id); fileCache.set(id, buf); }
     const ext = id.split('.').pop().toLowerCase();
     const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
+    if (sized && /^image\/(jpeg|png|webp)$/.test(type)) {
+      try { const small = await sizedPhoto(id, buf, sized); send(req, res, 200, Object.assign({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' }, open), small); return; }
+      catch (e) { log('Photo could not be resized, the original is sent', id.slice(0, 60), e.message); }
+    }
     send(req, res, 200, Object.assign({ 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' }, open), buf);
     return;
   }
@@ -2249,7 +2666,7 @@ async function handle(req, res) {
   if (path === '/api/drdp-levels') { await ensureDrdp(); const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
-  if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
+  if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, cycleHealth: isDirector(me.name) ? cycleHealthCached() : undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
@@ -2456,7 +2873,16 @@ async function handle(req, res) {
     if (kind === 'settings' && (id === 'educators' || id === 'main') && onceDone('educatorList')) syncEducators();
     // an observation's words, new or changed, are checked against the threads a little later
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
-    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id); }
+    if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id);
+      // the place is read from the words and what the observation was kept with, whenever those change
+      if (op !== 'update' || ['noticed', 'wonder', 'planId', 'smallGroup', 'bin', 'kaymbu', 'classroom'].some(k => k in p0)) placeSoon(id); }
+    // a plan's reflection flows into each thread the plan follows or quotes from, through its observations too
+    if (kind === 'plans' && op !== 'delete') { try { flowReflection(id); } catch (e) { log('The reflection could not reach its threads', id, e.message); } }
+    // a lens's picks are written back on each observation it found, so threads, plans and PD can read them
+    if (kind === 'scans' && op !== 'delete') { try { writeLensIds(id); } catch (e) { log('Lens picks could not be written back', id, e.message); } }
+    // a thread added to a project or turned down leaves its waiting list, and the week's findings are kept by week
+    if (kind === 'projects' && op !== 'delete') tidyThreadSuggest(id);
+    if (kind === 'scans' || kind === 'projects' || kind === 'inquiries') keepFindingsSoon();
     const r = map.get(id);
     json(req, res, 200, { ok: true, rev, doc: r && !r.deleted ? forViewer(kind, r.doc, isDirector(me.name), isOffice(me.name)) : null, ...(sid ? { sid, written: false } : {}) }); return;
   }
@@ -2505,6 +2931,33 @@ async function handle(req, res) {
     list.sort((a, b) => String(b.week || '').localeCompare(String(a.week || ''))); json(req, res, 200, { room, reports: list.slice(0, 26) }); return; }
   if (path === '/api/projects/suggest') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the threads for a project.'); return; }
     json(req, res, 200, await suggestForProject(String(body.id || ''), String(body.key || ''))); return; }
+  // the week's project reading also offers followed threads the project may take in, kept on the project as threadSuggest
+  if (path === '/api/projects/threads') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the week\'s reading.'); return; }
+    const out = await suggestThreadsForProject(String(body.id || '')); keepFindingsSoon(); json(req, res, 200, out); return; }
+  // the week's inquiry reading also gathers observations by the needs and behavior the inquiry names
+  if (path === '/api/inquiries/gather') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the week\'s reading.'); return; }
+    const out = await gatherForInquiry(String(body.id || '')); keepFindingsSoon(); json(req, res, 200, out); return; }
+  // the observations a project holds, its own and its threads', the rule every reading and page follows
+  if (path === '/api/projects/observations') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const pr = store.recs.projects.get(String(body.id || '')); const x = pr && !pr.deleted && pr.doc; if (!x) { err(req, res, 404, 'That project is not here.'); return; }
+    json(req, res, 200, { id: x.id, ids: projectNotices(x).map(n => n.id), place: projectPlace(x) }); return; }
+  // where a thread or a project happens, read from its observations
+  if (path === '/api/place') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const kind = String(body.kind || ''), id = String(body.id || ''); const r = (kind === 'threads' || kind === 'projects' || kind === 'notices') && store.recs[kind].get(id); const d = r && !r.deleted && r.doc;
+    if (!d) { err(req, res, 404, 'That record is not here.'); return; }
+    json(req, res, 200, { kind, id, place: kind === 'threads' ? threadPlace(d) : kind === 'projects' ? projectPlace(d) : (Array.isArray(d.place) ? d.place : placeOf(d)) }); return; }
+  // the weekly place sheet, what is alive on site this week, as data for the printer
+  if (path === '/api/place-sheet') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; } json(req, res, 200, placeSheet(me.name, String(body.week || ''))); return; }
+  // the week's findings kept by week, this week's and earlier, for a Readings page
+  if (path === '/api/findings') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const room = isDirector(me.name) ? '' : String((accountFor(me.name) || {}).room || '');
+    const list = []; for (const [, r] of store.recs.reports) { const d = r && !r.deleted && r.doc; if (d && d.kind === 'findings') list.push(d); }
+    list.sort((a, b) => String(b.week || '').localeCompare(String(a.week || '')));
+    const forRoom = d => room ? Object.assign({}, d, { threads: d.threads.filter(t => t.room === room || t.room === 'All'), joined: d.joined.filter(t => t.room === room || t.room === 'All'), patterns: d.patterns.filter(p => p.room === room || p.room === 'All'), lens: d.lens.filter(m => new RegExp('(^|-)' + room + '$').test(String(m.room || '')) || /(^|-)All$/.test(String(m.room || ''))), projects: [], inquiries: [] }) : d;
+    json(req, res, 200, { room, findings: list.slice(0, 26).map(forRoom) }); return; }
+  // the director runs the nightly pass now, for a check, and reads the cycle's health
+  if (path === '/api/nightly') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the nightly pass.'); return; } const counts = await nightlyThreadPass(true); json(req, res, 200, counts ? { ok: true, counts } : { busy: true }); return; }
+  if (path === '/api/cycle-health') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the cycle\'s health.'); return; } json(req, res, 200, cycleHealth()); return; }
   // the family's copy of a transition summary, shown to the director before she shares it, with each name taken out listed
   if (path === '/api/transition/familycopy') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director shares a transition summary.'); return; }

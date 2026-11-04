@@ -147,3 +147,20 @@ test('the presenting details live only in the records, with no copy in the publi
   assert.doesNotMatch(src, /eventbrite\.com|dateNote: 'To be|meetingsNote = \[/i);
   assert.doesNotMatch(src, /Fulton Road/);
 });
+
+test('an observation the lens already found, by its lensIds, is evidence first, before any word match', async () => {
+  const { h, trace } = await school();
+  h.store.recs.settings.set('program', { doc: { lenses: [{ id: 'l1', name: 'Graphic Languages', year: true, words: ['mark'], languages: ['drawing'] }] } });
+  const day = ms => Date.now() - ms * 864e5;
+  // n3 names no word the entry looks for and no lens word, but the lens reading placed it under Graphic Languages
+  h.store.recs.notices.set('n3', { doc: { noticed: 'Three children lay on the warm path and looked up at the fence for a long while.', wonder: '', classroom: 'North', by: 'Bea', at: day(3), children: ['k2'], lensIds: ['l1'] } });
+  const ev = (await call(h.staff, 'Dir', 'pres/evidence', { id: trace.id })).body;
+  assert.deepStrictEqual(ev.items.map(x => x.key), ['obs:n3', 'obs:n1']);
+  assert.match(ev.items[0].lens, /Through the lens Graphic Languages, where it already belongs\./);
+  assert.match(ev.items[0].why, /Read through the lens Graphic Languages\./);
+  assert.doesNotMatch(JSON.stringify(ev), /[—–]/);
+  // an entry with no lens reads lensIds as nothing
+  await call(h.staff, 'Dir', 'pres/save', { id: trace.id, fields: { lens: '' } });
+  const ev2 = (await call(h.staff, 'Dir', 'pres/evidence', { id: trace.id })).body;
+  assert.deepStrictEqual(ev2.items.map(x => x.key), ['obs:n1']);
+});

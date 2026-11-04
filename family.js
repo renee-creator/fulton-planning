@@ -377,6 +377,20 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
 
   // ---------- conferences, visits, sharing, strengths and the questionnaire ----------
   const slots = () => listOf(d => d.kind === 'slot');
+  /* What the child's class is following, read straight from the threads in the store. Each followed thread of that class
+     gives its name, its question and its status word, nothing else. No observation, no evidence and no educator's words
+     reach a family, and any other child's name in a name or question reads as a friend. */
+  const THREAD_STATUS = { emerging: 'Emerging', growing: 'Growing', deepening: 'Deepening', resting: 'Resting' };
+  function classThreads(k) {
+    const room = k && k.classroom; if (!room || !store.recs.threads) return [];
+    const kids = [...store.recs.children.entries()].filter(([, r]) => r && !r.deleted && r.doc).map(([id, r]) => Object.assign({ id }, r.doc));
+    const clean = t => withoutOthers(String(t || '').replace(/\s+/g, ' ').trim(), Object.assign({ id: k.id }, k), kids);
+    const out = [];
+    for (const [id, r] of store.recs.threads) { const t = r && !r.deleted && r.doc; if (!t || t.unfollowed || !t.name) continue;
+      const status = t.status || 'emerging'; if (!THREAD_STATUS[status] || (t.classroom || t.room) !== room) continue;
+      out.push({ id, name: clean(t.name).slice(0, 120), question: clean(t.question).slice(0, 300), status: THREAD_STATUS[status], week: String(t.lastWeek || '') }); }
+    return out.sort((a, b) => b.week.localeCompare(a.week) || a.name.localeCompare(b.name)).map(({ id, name, question, status }) => ({ id, name, question, status }));
+  }
   function childExtras(f, k, c, today) {
     const p = season(); const cf = getRec('conferences', confIdOf(k.id, p));
     const conference = cf && cf.confDate ? { date: cf.confDate, time: cf.confTime || '', with: cf.teacher || '', format: cf.format || '', season: p.term + ' ' + p.year, complete: cf.status === 'complete' } : null;
@@ -395,6 +409,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     const nextPlan = ((k.transition || {})[nyKey] || {}).plan || '';
     let tkGuide = null; if (nextPlan === 'k' || nextPlan === 'tk') { try { tkGuide = (pieces ? pieces() || [] : []).find(p => p.audience === 'tk') || null; } catch (e) { tkGuide = null; } }
     const visit = k.visit && k.visit.date ? k.visit : null;
+    const following = classThreads(k);
     const purpose = isNew(k) ? 'visit' : (c.confOpen && treeBooking() ? 'conference' : '');
     const open = purpose ? slots().filter(s => s.purpose === purpose && !!s.test === f.test && s.date >= today && (!s.classroom || s.classroom === k.classroom) && (!s.booked || s.booked.childId === k.id)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map(s => ({ id: s.id, date: s.date, time: s.time, minutes: s.minutes, with: s.with || '', mine: !!(s.booked && s.booked.childId === k.id) })) : [];
     const q = k.familyQuestionnaire || null;
@@ -403,7 +418,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     const split = n => { const w = String(n || '').trim().split(/\s+/); return { first: w[0] || '', last: w.length > 1 ? w[w.length - 1] : '' }; };
     const pa = (k.parents || []).filter(Boolean); const p1 = split(pa[0] && pa[0].name), p2 = split(pa[1] && pa[1].name);
     const prefill = { c_first: k.first || '', c_last: k.last || '', c_dob: String(k.dob || '').slice(0, 10), p1_first: p1.first, p1_last: p1.last, p1_home: (pa[0] && pa[0].cell) || '', p2_first: p2.first, p2_last: p2.last, p2_home: (pa[1] && pa[1].cell) || '' };
-    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, transition, tkGuide, visit, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
+    return { enroll: isNew(k) ? { prefill, data: ef ? ef.data : null, done: !!(ef && ef.done), at: ef ? ef.at : '' } : null, isNew: isNew(k), conference, reflections, shared, files, transition, tkGuide, visit, following, slotPurpose: purpose, slots: open, strengths: (k.familyStrengths && k.familyStrengths.text) || '', strengthsAt: (k.familyStrengths && k.familyStrengths.at) || '', reflectedAt: cf && cf.status !== 'complete' ? cf.familyReflectedAt || '' : '', questionnaire: q ? { answers: q.answers || [], at: q.at || '' } : null,
       aboutMe: (() => { const am = k.aboutMe || {}; const ph = p => (p.photos || []).map(id => ({ id, src: photoSrc(id) }));
         const fixed = AAM_PAGES().map(([t, pr], i) => { const p = (am.pages || [])[i] || {}; return { title: t.replace(/\{first\}/g, firstOf(k)), prompt: pr.replace(/\{first\}/g, firstOf(k)), text: p.text || '', photos: ph(p) }; });
         return { done: !!am.done, at: am.at || '', pages: fixed.concat((am.pages || []).slice(AAM_PAGES().length).map(p => ({ title: p.title || 'More about me', custom: true, text: p.text || '', photos: ph(p) }))) }; })(),

@@ -92,7 +92,7 @@ module.exports = function presentingModule(c) {
       // the photos of one post share their words, so the post is read once
       const same = String(n.noticed || '').replace(/\s+/g, ' ').trim().toLowerCase();
       if ((n.group && seenGroup.has(n.group)) || (same.length > 30 && seenGroup.has(same))) continue; if (n.group) seenGroup.add(n.group); if (same.length > 30) seenGroup.add(same);
-      add('obs', 'Observation', n, [['noticed', n.noticed], ['wonder', n.wonder], ['languages', (n.languages || []).join(', ')]], dayOf(n.at), n.classroom, n.by, { children: n.children || [], photo: n.photo && n.photo.id ? { id: n.photo.id, thumb: n.photo.thumb || '', w: n.photo.w || 0, h: n.photo.h || 0 } : null, languages: n.languages || [] });
+      add('obs', 'Observation', n, [['noticed', n.noticed], ['wonder', n.wonder], ['languages', (n.languages || []).join(', ')]], dayOf(n.at), n.classroom, n.by, { children: n.children || [], photo: n.photo && n.photo.id ? { id: n.photo.id, thumb: n.photo.thumb || '', w: n.photo.w || 0, h: n.photo.h || 0 } : null, languages: n.languages || [], lensIds: Array.isArray(n.lensIds) ? n.lensIds.map(String) : [] });
     }
     for (const p of live('plans')) if (!p.blank && p.id !== 'example') add('plan', 'Plan', p, Object.entries(p.fields || {}).filter(([, v]) => typeof v === 'string'), p.weekOf || dayOf(p.updatedAt), p.classroom, p.educator);
     for (const t of live('threads')) add('thread', 'Thread', t, [['question', t.question], ['name', t.name], ...(t.evidence || []).map((x, i) => ['evidence' + i, x && x.text]), ...(t.next || []).map((x, i) => ['next' + i, x])], t.lastWeek || dayOf(t.updatedAt), t.classroom || t.room, t.followedBy);
@@ -126,15 +126,20 @@ module.exports = function presentingModule(c) {
         if (small) { groups.push('youngest'); score += 2; why.push('With our youngest children. A child in it was under three that day.'); }
         else if (young && r.room === young && ['obs', 'plan', 'thread'].includes(r.kind)) { groups.push('youngest'); score += 1; why.push(`With our youngest children. Kept in ${young} class, where our two-year-olds are.`); }
       }
+      // an observation the lens already found, by its lensIds, is evidence first, before any word match
+      const inLens = !!lens && r.kind === 'obs' && (r.lensIds || []).some(id => id === String(lens.id || '') || id === lens.name);
+      if (inLens && !groups.length) { groups.push('lens'); why.push(`Read through the lens ${lens.name}.`); }
       if (!groups.length) continue;
       let lensLine = '';
       if (lens) { const lh = []; for (const w of lensWords) for (const [, v] of r.fields) { const m = String(v).match(wordRe(w)); if (m) { const said = m[0].toLowerCase(); if (!lh.includes(said)) lh.push(said); break; } }
-        if (lh.length) { lensLine = `Through the lens ${lens.name}, it names ${join(lh.slice(0, 3))}.`; score += 1; } }
+        if (inLens) { lensLine = `Through the lens ${lens.name}, where it already belongs${lh.length ? ', naming ' + join(lh.slice(0, 3)) : ''}.`; score += 4; }
+        else if (lh.length) { lensLine = `Through the lens ${lens.name}, it names ${join(lh.slice(0, 3))}.`; score += 1; } }
       const f = r.fields.find(x => x[0] === field) || r.fields[0] || ['', ''];
       items.push({ key: r.key, kind: r.kind, label: r.label, id: r.id, text: txt(f[1], 900), wonder: r.kind === 'obs' && field !== 'wonder' ? txt((r.fields.find(x => x[0] === 'wonder') || [])[1], 600) : '', date: r.date, room: r.room, by: r.by, photo: r.photo || null,
-        groups, why: why.join(' '), lens: lensLine, score: score + (r.photo ? 1 : 0), state: kept[r.key] ? 'kept' : aside[r.key] ? 'aside' : '' });
+        groups, why: why.join(' '), lens: lensLine, inLens, score: score + (r.photo ? 1 : 0), state: kept[r.key] ? 'kept' : aside[r.key] ? 'aside' : '' });
     }
-    items.sort((a, b) => b.score - a.score || String(b.date).localeCompare(String(a.date)));
+    // what the lens already holds comes first, then the strongest word matches, newest first among equals
+    items.sort((a, b) => (b.inLens ? 1 : 0) - (a.inLens ? 1 : 0) || b.score - a.score || String(b.date).localeCompare(String(a.date)));
     const show = items.filter(x => x.state !== 'aside').slice(0, 60);
     return { look, youngest: !!e.youngest, youngClass: young, lens: lens ? lens.name : '', lenses: ls.map(l => l.name), items: [...show, ...items.filter(x => x.state === 'aside')], more: Math.max(0, items.filter(x => x.state !== 'aside').length - show.length) };
   }

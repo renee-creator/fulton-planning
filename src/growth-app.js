@@ -72,22 +72,61 @@ const exSlide=x=>({kind:"slide",id:x.id,label:"Documentation slide, "+clip(x.tit
 const exStory=x=>({kind:"story",id:x.id,label:"Story, "+clip(x.title,110),when:x.at?fms(x.at):""});
 const exThread=t=>({kind:"thread",id:t.id,label:"Thread, "+clip(t.name,110),when:""});
 const exInq=x=>({kind:"inquiry",id:x.id,label:"Team inquiry, "+clip(x.name,110),when:""});
-function examplesFor(name,area,since){const w=workOf(name,since);const d=st.docs[name]||{};const pr=d.profile||{};const L=[];const add=(xs,f,n)=>xs.slice(0,n).forEach(x=>L.push(f(x)));
+/* Each growth area has its key words, in a short reading of its own, so an educator's own work this year can be read
+   against it the way a module's examples are, through exRank. The eight areas stand in for the modules, so a word only
+   one area uses weighs most. Each area shows the educator's own most relevant observations, plans, slides and stories,
+   newest first among those that fit, with their Proud Moments and Kudos for the area as before. */
+const AREA_READING={
+  img:["Image of the child","Competent and capable","Children's theories and ideas","Listening and trust","Agency and choice"],
+  env:["Environment and space","Materials and provocations","Aesthetics and beauty","Natural materials and light","Arrangement and order"],
+  lang:["Language and tone","Describing and narrating","Encouragement in place of praise","Calm and regulation","Feelings and conflict"],
+  obs:["Observation and noticing","Wondering","Documentation and photos","Slides, stories and panels","Children's words and quotes"],
+  cur:["Planning and curriculum","Inquiry and investigation","Projects and threads","Intent and hypothesis","Extending and next steps"],
+  fam:["Families and parents","Conferences","Home and school partnership","Communication and sharing","Welcome and trust"],
+  team:["Team and colleagues","Collaboration","Planning together","Community and support","Agreement and alignment"],
+  refl:["Reflection and reflecting","Feedback","Growth and learning","Journal and practice","Trying and changing"]};
+const AREA_DESC={img:"competent capable theory theories idea ideas thinking listen listening trust rights protagonist agency choice decide",
+  env:"environment space material materials provocation invitation aesthetic beauty beautiful arrangement arranged light natural atelier studio garden outdoor wall display order loose parts",
+  lang:"language words tone describe described narrate praise encouragement calm regulate regulation conflict feelings voice affect warmth responsive behavior",
+  obs:"observation observe noticed notice wonder wondering document documentation photo photos slide story panel portfolio record quote quotes evidence trace",
+  cur:"plan planning curriculum inquiry investigate investigation project thread intent hypothesis follow following group question extend emergent",
+  fam:"family families parent parents conference conferences home partnership communication share sharing newsletter welcome pick-up drop-off",
+  team:"team teammate colleague colleagues together collaborate collaboration co-educator meeting community support agree agreement staff",
+  refl:"reflect reflection reflecting feedback grow growth learn learning journal training course professional module practice try tried change changed"};
+const areaModule=k=>({title:areaName(k),desc:AREA_DESC[k]||"",serves:[k],sections:[{heading:"Reading",body:(AREA_READING[k]||[]).map(h=>"### "+h).join("\n\n")}]});
+const areaModules=()=>AK().map(areaModule);
+// the plan fields read, so the example quotes the field that holds the match
+const PLAN_FIELDS=["remarks","intent","observation","provocation","materials","questions","environment"];
+function ownPool(name,since){const w=workOf(name,since);const out=[];
+  w.obs.forEach(n=>out.push({kind:"obs",id:n.id,raw:[n.noticed,n.wonder].filter(Boolean).join(" "),at:n.at||0,rec:n}));
+  w.pl.forEach(p=>{const f=p.fields||{};const t=PLAN_FIELDS.map(k=>f[k]).filter(Boolean).join(" ");if(t.trim())out.push({kind:"plan",id:p.id,raw:t,at:tsOf(p),rec:p})});
+  w.sl.forEach(x=>out.push({kind:"slide",id:x.id,raw:[x.title,x.text].filter(Boolean).join(". "),at:x.at||0,rec:x}));
+  w.sto.forEach(x=>out.push({kind:"story",id:x.id,raw:[x.title,...((x.pages||[]).map(p=>(p.lines||[]).join(" ")))].filter(Boolean).join(". "),at:x.at||0,rec:x}));
+  return out}
+// a word of the match as it stands in the record, so the example quotes the part that fits
+const hitIn=(x,t)=>(x.hits||[]).find(h=>new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*","i").test(String(t||"")));
+function ownExample(x){const r=x.rec;
+  if(x.kind==="obs")return !hitIn(x,r.noticed)&&hitIn(x,r.wonder)?Object.assign(exObs(r),{label:"Wondering. "+clip(r.wonder,130)}):exObs(r);
+  if(x.kind==="plan"){const f=r.fields||{};const k=PLAN_FIELDS.find(k=>hitIn(x,f[k]))||PLAN_FIELDS.find(k=>f[k]);return exPlan(r,k)}
+  if(x.kind==="slide")return exSlide(r);return exStory(r)}
+function examplesFor(name,area,since){const y0=since||Date.parse((typeof schoolYearStart==="function"?schoolYearStart():new Date().getFullYear()+"-08-01")+"T00:00:00")||0;
   const moments=(st.moments||[]).filter(m=>(byIs(m.by,name)&&m.kind==="moment"&&m.area===area)||(m.kind==="kudos"&&byIs(m.to,name)&&area==="team")).slice(0,2).map(m=>({kind:"moment",id:m.id,label:(m.kind==="kudos"?"Kudos from "+m.by+", ":"Proud moment, ")+clip(m.text,110),when:fms(m.at)}));
-  if(area==="img"){add(w.obs.filter(n=>String(n.wonder||"").trim()),n=>Object.assign(exObs(n),{label:"Wondering. "+clip(n.wonder,130)}),2);add(w.pl.filter(p=>(p.fields||{}).remarks),p=>exPlan(p,"remarks"),1);add(w.inq,exInq,1)}
-  if(area==="env"){add(w.pl.filter(p=>(p.fields||{}).materials||(p.fields||{}).provocation),p=>exPlan(p,(p.fields||{}).provocation?"provocation":"materials"),2);add(w.obs.filter(n=>n.photo),exObs,1);add(w.sl,exSlide,1)}
-  if(area==="lang"){add(w.obs,exObs,2);add(w.inq,exInq,1);(d.checkins||[]).filter(c=>c.focus&&c.focus.area==="lang").slice(0,1).forEach(c=>L.push({kind:"focus",id:c.id,label:"Focus Until Next Time, "+clip(c.focus.settled,110),when:fd(c.date)}))}
-  if(area==="obs"){add(w.obs,exObs,2);add(w.sl,exSlide,1);add(w.sto,exStory,1)}
-  if(area==="cur"){const sg=pr.curriculumFrom==="smallgroup";const own=sg?w.pl.filter(p=>p.focus==="smallgroup"||p.type==="smallgroup"||(p.groups||[]).length):w.pl;
-    if(own.length)add(own,p=>exPlan(p,p.fields&&p.fields.intent?"intent":"remarks"),3);
-    // for roles that do not write plans, this area reads from contributions to the team's plans and threads
-    else{add(w.roomPlans,p=>Object.assign(exPlan(p),{label:"The team's "+exPlan(p).label}),2);add(w.roomThreads,exThread,1)}}
-  if(area==="fam"){add(w.conf,c=>({kind:"conf",id:c.id||"",label:`Family conference, ${c.term||""} ${c.schoolYear||""}`.trim(),when:c.confDate?fd(c.confDate):""}),2);add(w.inq,exInq,1)}
-  if(area==="team"){add(w.roomPlans,p=>Object.assign(exPlan(p),{label:"The team's "+exPlan(p).label}),1);add(w.inq,exInq,1)}
-  if(area==="refl"){(d.checkins||[]).filter(c=>c.focus&&c.focus.settled).slice(0,2).forEach(c=>L.push({kind:"focus",id:c.id,label:"Focus Until Next Time, "+clip(c.focus.settled,110)+(c.followed?". Tried":""),when:fd(c.date)}));
-    Object.entries(d.modules||{}).filter(([,m])=>m&&m.reflection).slice(0,2).forEach(([k,m])=>L.push({kind:"module",id:k,label:modTitle(k)+", reflection. "+clip(m.reflection,100),when:m.done?fms(m.done):""}))}
-  return [...L,...moments].slice(0,5)}
+  const pool=ownPool(name,y0);if(!pool.length)return moments.slice(0,5);
+  const mods=areaModules(),m=mods.find(x=>x.serves[0]===area)||areaModule(area);const areaRes=AREA_WORDS[area]?[AREA_WORDS[area]]:[];
+  // the pieces that clearly fit, or when few do, any piece that names one of the area's words, newest first among them
+  let ranked=exRank(m,mods,pool,areaRes,false);
+  // with little that clearly fits, a piece that names two words of this area's own is still shown, never one on a word every area shares
+  if(ranked.length<2){const idf=exIdf(mods),rare=Math.log((mods.length+1)/1.5);ranked=exRank(m,mods,pool,areaRes,true).filter(x=>x.hits.filter(w=>idf(w)>=rare).length>=2)}
+  const room=Math.max(0,5-moments.length);const picked=ranked.slice(0,Math.max(room,6)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,room).map(ownExample);
+  return [...picked,...moments].slice(0,5)}
 const exHtml=xs=>xs.length?`<div class="gex">${xs.map(x=>`<div class="cnt">${x.open?`<button class="linkbtn" ${x.open} style="text-align:left">${H(x.label)}</button>`:H(x.label)}${x.when?` <span class="muted">${H(x.when)}</span>`:""}</div>`).join("")}</div>`:`<div class="cnt">Examples appear here as work is kept in TREE.</div>`;
+/* The Reflective Practice and Professional Growth tally, a small line beside the placement for that area. It is read
+   from the records on the server, this school year's journal entries, check-ins whose Focus Until Next Time was marked
+   tried, module reflections finished, Proud Moments and Presenting entries, and it never touches a score. */
+const nOf=(n,one,many)=>n+" "+(n===1?one:many||one+"s");
+function tallyHtml(d){const t=d&&d.tally;if(!t)return "";
+  const parts=[nOf(t.journal||0,"journal entry","journal entries"),nOf(t.tried||0,"focus tried","focuses tried"),nOf(t.reflections||0,"module reflection"),nOf(t.proud||0,"Proud Moment"),nOf(t.presenting||0,"presenting entry","presenting entries")];
+  return `<div class="cnt gtally" style="margin-top:4px">This year, ${H(parts.join(", "))}. Counted from the records, never a score.</div>`}
 
 /* ---------- the continuum ---------- */
 function pointsHtml(k,opts){opts=opts||{};const a=contArea(k);const mine=!!opts.mine;
@@ -149,13 +188,13 @@ async function growPage(my){const name=who();const d=await doc(name,true);const 
     const cols=[...past.map(p=>[p,yrLabel(p)]),[y,yrLabel(y)]];
     body=`<div class="hint">The score for an area is the number of the continuum point, from 1 to 4. Established is the expectation for an experienced educator here, and Mentoring is not expected of everyone.${newEd?" New educators commonly sit at 1 or 2 in their first year.":""}</div>
       ${showScores||past.length?`<div class="tablewrap"><table class="grid2" style="min-width:${360+cols.length*120}px"><thead><tr><th>Area</th>${cols.map(c=>`<th>${H(c[1])}</th>`).join("")}<th>${dir?"Their":"Your"} own placement</th></tr></thead><tbody>
-      ${AK().map(k=>`<tr><td><b>${H(areaName(k))}</b></td>${cols.map(([cy])=>{const s=scoresOf(d,cy);const vis=cy!==y||showScores;return `<td>${vis?scoreCell(s.by[k]):`<span class="cnt">At the end of the year</span>`}</td>`}).join("")}<td>${self[k]?`${self[k]} <span class="cnt">${PN[self[k]]}</span>`:`<span class="cnt">Not placed yet</span>`}</td></tr>`).join("")}
+      ${AK().map(k=>`<tr><td><b>${H(areaName(k))}</b>${k==="refl"?tallyHtml(d):""}</td>${cols.map(([cy])=>{const s=scoresOf(d,cy);const vis=cy!==y||showScores;return `<td>${vis?scoreCell(s.by[k]):`<span class="cnt">At the end of the year</span>`}</td>`}).join("")}<td>${self[k]?`${self[k]} <span class="cnt">${PN[self[k]]}</span>`:`<span class="cnt">Not placed yet</span>`}</td></tr>`).join("")}
       <tr><td><b>Overall</b><div class="cnt">The average of the areas that were scored</div></td>${cols.map(([cy])=>{const s=scoresOf(d,cy);const vis=cy!==y||showScores;return `<td>${vis&&s.overall?`<span class="gscore">${s.overall}</span>`:""}</td>`}).join("")}<td></td></tr></tbody></table></div>`
       :`<div class="cnt" style="margin-top:6px">Scores come with the end of year evaluation. ${newEd?"In the first year there are no scores until then.":"Until then each area shows the continuum and examples from "+(dir?"their":"your")+" own work."}</div>`}
       ${showScores?`<div class="cnt" style="margin-top:6px">Each score sits beside the narrative and ${dir?"the educator's":"your"} own placement, never alone. When an area shows Not yet seen, there was too little evidence to judge, so a gap in evidence never reads as a low score.</div>`:""}`}
   if(viewK==="continuum")body=`<div class="hint">What each point looks like in daily work at our school, so ${dir?"the educator":"you"} can see where ${dir?"they are":"you are"} and what the next step looks like. The points describe practice. They never describe the person.</div>
     ${AK().map(k=>{const cur=showScores&&numeric(sc.by[k])?numeric(sc.by[k]):numeric(self[k]);return `<div class="garea"><b>${H(areaName(k))}</b>${(cont().notes||{})[k]?`<div class="cnt">${H(cont().notes[k])}</div>`:""}
-      <div style="margin-top:6px">${pointsHtml(k,{on:cur||0,dir:met&&numeric(dirP[k])&&!pr.lighter?numeric(dirP[k]):0,next:cur&&cur<4?cur+1:0})}</div>
+      <div style="margin-top:6px">${pointsHtml(k,{on:cur||0,dir:met&&numeric(dirP[k])&&!pr.lighter?numeric(dirP[k]):0,next:cur&&cur<4?cur+1:0})}</div>${k==="refl"?tallyHtml(d):""}
       <details style="margin-top:6px"><summary class="cnt">Examples from ${dir?"their":"your"} own work</summary>${exHtml(examplesFor(name,k))}</details></div>`}).join("")}`;
   if(viewK==="narrative"){const dv=ev.dir||{};body=met||pr.lighter&&met?`${dv.strengths?`<h4 style="margin:4px 0">Strengths</h4>${md(dv.strengths)}`:""}${dv.narrative?`<h4 style="margin:10px 0 4px">Growth across the year</h4>${md(dv.narrative)}`:""}${AK().filter(k=>(dv.notes||{})[k]).map(k=>`<div class="gq"><b>${H(areaName(k))}</b>${md(dv.notes[k])}</div>`).join("")}${!dv.narrative&&!dv.strengths?`<div class="cnt">The narrative is written at the end of the year.</div>`:""}`
       :`<div class="cnt">${dir?"Your narrative is written in the evaluation below and shared during the meeting.":"The director's narrative comes with the end of year evaluation, during your meeting, with story and example."}${pl.feedback==="conversation"?" You said you take in feedback best in conversation, so it is talked through together first.":""}</div>`;
@@ -181,7 +220,7 @@ function evalCards(d,name,ev,met){const dir=isDir(),pr=d.profile||{};const self=
     <div class="actions">${self.done?chip("ok","Done "+fms(self.done)):self.at?chip("soonish","Started"):""}<button class="btn small ${self.done?"ghost":""}" data-gself="1">${self.at?"Open my self-assessment":"Place myself on the continuum"}</button></div>`)}
   else{h+=card(pr.lighter?"Her placements and your narrative":"Your placements",`<div class="hint">${pr.lighter?"After thirteen years as atelierista, her evaluation is lighter. She places herself on the continuum, her own placements become her scores, and you add a short narrative.":"Complete your own placements without seeing theirs. Each score is the number of the continuum point, from 1 to 4, or Not yet seen when evidence is thin."}</div>
     ${self.done?`<div class="cnt">${H(name)} finished the self-assessment ${H(fms(self.done))}.${pr.lighter?"":" Their placements stay hidden from you here until the meeting view opens."}</div>`:`<div class="cnt">${H(name)} has not finished the self-assessment yet.</div>`}
-    ${pr.lighter?AK().map(k=>`<div class="garea"><b>${H(areaName(k))}</b> ${self.placements&&self.placements[k]?`<span class="cnt">${self.placements[k]}, ${PN[self.placements[k]]}</span>`:`<span class="cnt">Not placed yet</span>`}</div>`).join(""):AK().map(k=>{const v=(dv.placements||{})[k];return `<div class="garea"><b>${H(areaName(k))}</b><div style="margin-top:6px">${pointsHtml(k,{on:numeric(v),tap:"data-gdir"})}</div>
+    ${pr.lighter?AK().map(k=>`<div class="garea"><b>${H(areaName(k))}</b> ${self.placements&&self.placements[k]?`<span class="cnt">${self.placements[k]}, ${PN[self.placements[k]]}</span>`:`<span class="cnt">Not placed yet</span>`}${k==="refl"?tallyHtml(d):""}</div>`).join(""):AK().map(k=>{const v=(dv.placements||{})[k];return `<div class="garea"><b>${H(areaName(k))}</b><div style="margin-top:6px">${pointsHtml(k,{on:numeric(v),tap:"data-gdir"})}</div>${k==="refl"?tallyHtml(d):""}
       <div class="actions" style="margin:6px 0 0"><button class="pill" aria-pressed="${v==="nys"}" data-gdir="${k}|nys">Not yet seen</button></div>
       <label class="fld-label">A note for this area, optional<textarea rows="2" data-gdirnote="${k}">${H((dv.notes||{})[k]||"")}</textarea></label>
       <details><summary class="cnt">Examples from their own work</summary>${exHtml(examplesFor(name,k))}</details></div>`}).join("")}
@@ -190,7 +229,7 @@ function evalCards(d,name,ev,met){const dir=isDir(),pr=d.profile||{};const self=
     <div class="actions"><button class="btn small ghost" data-gdirsave="0">Save</button><button class="btn small" data-gdirsave="1">${dv.done?"Save, placements done":"My placements are done"}</button>${met?chip("ok","Meeting view open"):`<button class="btn small ghost" data-gmeet="1">Open the meeting view</button>`}</div>
     <div class="cnt">${met?`${H(name)} sees both placements side by side now.`:`The educator first sees your placements during the meeting, when you open the meeting view.`}</div>`)}
   if(met||(dir&&self.done&&dv.done)){
-    h+=card("Side by side",`<div class="hint">The conversation begins where the two views meet and where they differ.</div>${AK().map(k=>{const a=(self.placements||{})[k],b=(dv.placements||{})[k];return `<div class="garea"><b>${H(areaName(k))}</b><div class="gcols" style="margin-top:4px"><div class="cnt">${dir?"Their":"Your"} placement, ${a?`${a} ${PN[a]}`:"not placed"}</div><div class="cnt">${pr.lighter?"":dir?"Your placement, ":"The director's placement, "}${pr.lighter?"":b==="nys"?"Not yet seen":b?`${b} ${PN[b]}`:"not placed"}</div></div>${(self.writes||{})[k]?`<div class="gq">${md(self.writes[k])}</div>`:""}</div>`}).join("")}${self.closing?`<h4 style="margin:10px 0 4px">Where ${dir?"they want":"I want"} to grow next year</h4>${md(self.closing)}`:""}`);
+    h+=card("Side by side",`<div class="hint">The conversation begins where the two views meet and where they differ.</div>${AK().map(k=>{const a=(self.placements||{})[k],b=(dv.placements||{})[k];return `<div class="garea"><b>${H(areaName(k))}</b><div class="gcols" style="margin-top:4px"><div class="cnt">${dir?"Their":"Your"} placement, ${a?`${a} ${PN[a]}`:"not placed"}</div><div class="cnt">${pr.lighter?"":dir?"Your placement, ":"The director's placement, "}${pr.lighter?"":b==="nys"?"Not yet seen":b?`${b} ${PN[b]}`:"not placed"}</div></div>${k==="refl"?tallyHtml(d):""}${(self.writes||{})[k]?`<div class="gq">${md(self.writes[k])}</div>`:""}</div>`}).join("")}${self.closing?`<h4 style="margin:10px 0 4px">Where ${dir?"they want":"I want"} to grow next year</h4>${md(self.closing)}`:""}`);
     const goals=ev.goals||[];
     h+=card("Next year's goals",`<div class="hint">${dir?"The educator names":"Name"} two or three goals for next year. They carry into ${dir?"their":"your"} next Educator Reflection and Growth Plan, so each year begins where the last one ended.</div>${[0,1,2].map(i=>`<label class="fld-label">Goal ${i+1}<textarea rows="2" data-gnext="${i}">${H((goals[i]||{}).text||"")}</textarea></label>`).join("")}<div class="actions"><button class="btn small" data-gnextsave="1">Save the goals</button>${goals.length?chip("ok","In next year's Growth Plan"):""}</div>`)}
   return h}

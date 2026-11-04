@@ -379,5 +379,7 @@ Writing rules. No dashes. No colons inside sentences. Plain warm sentences. Only
     if (!all.length) return null; const n = Math.floor(Date.parse(day + 'T12:00:00Z') / 864e5) % all.length; const { kind, x } = all[n];
     const own = (L.photos || []).filter(p => p.plant === x.id && p.ok).slice(-1)[0];
     return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || cardKnow(x) || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
-  return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, CHEM };
+  // the garden's setup as kept, for the server's place reading and the weekly place sheet. Nothing is changed through it.
+  const setupFor = () => { const s = setup(); return s && s.ready ? s : null; };
+  return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, setupFor, CHEM };
 };

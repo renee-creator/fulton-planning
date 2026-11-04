@@ -277,11 +277,26 @@ module.exports = function growthModule(c) {
   // the Reflection part of the Growth Plan, the August form's other answers
   const REFLECTION = ['difficult', 'proud', 'natural', 'drains', 'pattern', 'why'];
 
+  /* ---------- the Reflective Practice tally, read from the records and never a score ---------- */
+  // this school year's journal entries, check-ins whose Focus Until Next Time was marked tried, module reflections
+  // finished, Proud Moments and Presenting entries presented. The educator sees it on their own page, the director on each.
+  function reflectiveTally(name, y) {
+    const from = `${y}-08-01`, to = `${+y + 1}-07-31`; const g = growth(name); const inYear = iso => { const d = String(iso || '').slice(0, 10); return d >= from && d <= to; };
+    const atYear = ms => ms && inYear(new Date(+ms).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }));
+    const journal = (get(jPath(name)) || { entries: [] }).entries.filter(e => inYear(e.date)).length;
+    const tried = (g.checkins || []).filter(x => inYear(x.date) && x.focus && String(x.focus.settled || '').trim() && x.followed).length;
+    const reflections = Object.values(g.modules || {}).filter(m => m && m.done && String(m.reflection || '').trim() && atYear(m.done)).length;
+    const proud = momentsAll().filter(m => m.kind !== 'kudos' && nameKey(m.by) === nameKey(name) && atYear(m.at)).length;
+    const presenting = (c.ledBy ? c.ledBy(name) : []).filter(x => inYear(x.date)).length;
+    return { year: y, journal, tried, reflections, proud, presenting };
+  }
+
   /* ---------- what an educator receives of their own growth ---------- */
   function forViewer(name, me) {
     const g = growth(name), dir = isDirector(me), y = thisYear(); const out = JSON.parse(JSON.stringify(g));
     // what they led, from Presenting entries marked presented
     out.led = c.ledBy ? c.ledBy(name) : [];
+    out.tally = reflectiveTally(name, y);
     out.profile = { role: roleOf(name), room: roomOf(name), lighter: lighter(name), curriculumFrom: profileOf(name).curriculumFrom || '', startDate: profileOf(name).startDate || '', partTime: !!profileOf(name).partTime, journalEvery: +profileOf(name).journalEvery || 1, checkin: profileOf(name).checkin || '' };
     if (dir) {
       out.trend = (g.checkins || []).filter(x => x.date).sort((a, b) => a.date.localeCompare(b.date)).map(x => ({ date: x.date, self: (x.temp || {}).self || 0, dir: (x.temp || {}).dir || 0, align: (x.align || {}).rating || 0, effect: x.effect || 0 }));

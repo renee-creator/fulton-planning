@@ -8,5 +8,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
   }
 }

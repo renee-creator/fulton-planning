@@ -253,5 +253,7 @@ module.exports = function ideabank(o) {
     if (P === 'ideabank/decide') { done(decide(me, body || {}, saveRecord)); return; }
     err(req, res, 404, 'Not found');
   }
-  return { seed, list, forFamily, familyOn, canOpen, handle, SPEC, NEEDS, SUPPORTS, LEVELS, US, CARDS, BEH };
+  // one behavior by id, its label, keywords and needs, for the server's inquiry gathering
+  const behaviorFor = id => { const b = behaviors().find(y => y.id === id); return b ? { id: b.id, label: b.label || '', keywords: Array.isArray(b.keywords) ? b.keywords.map(String) : [], needs: Array.isArray(b.needs) ? b.needs : [] } : null; };
+  return { seed, list, forFamily, familyOn, canOpen, behaviorFor, handle, SPEC, NEEDS, SUPPORTS, LEVELS, US, CARDS, BEH };
 };

@@ -21,11 +21,13 @@ test('a moment the director only sent keeps her name on the card, and readings l
   assert.strictEqual(read('a1').kaymbu.sentBy, 1, 'named only because the director sent it');
   assert.strictEqual(read('a2').kaymbu.sentBy, undefined, 'the subject named her, so it is hers');
   assert.strictEqual(read('a3').kaymbu.sentBy, undefined, 'an educator who sent her own');
-  assert.deepStrictEqual([read('a1').by, read('a2').by], ['Dee', 'Dee'], 'the name stays on the moment');
+  // s16Credit, November 4, 2026. A moment named only because she sent it, with no small group, is the class team's, with her name kept in creditWas
+  for (let i = 0; i < 60 && read('a1').by === 'Dee'; i++) await new Promise(r => setTimeout(r, 250));
+  assert.deepStrictEqual([read('a1').by, read('a1').creditWas, read('a2').by, read('a2').creditWas], ['North class team', 'Dee', 'Dee', undefined], 'the class team is credited, and a moment that named her stays hers');
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.waitForFunction(() => notices.get('a1') && notices.get('a1').kaymbu && notices.get('a1').kaymbu.sentBy, null, { timeout: 15000 });
   assert.deepStrictEqual(await s.p.evaluate(() => ['a1', 'a2', 'a3'].map(id => noticeAsPlan(notices.get(id)).educator)), ['', 'Dee', 'Ann']);
-  assert.match(await s.p.evaluate(() => noticeCard(notices.get('a1'))), /Dee/, 'the card keeps her name');
+  assert.match(await s.p.evaluate(() => noticeCard(notices.get('a1'))), /North class team/, 'the card names the class team');
   assert.deepStrictEqual(s.errors, []);
 });
