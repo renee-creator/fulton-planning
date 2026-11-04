@@ -54,7 +54,7 @@ function renderGrant0(){
   const pr=[...prods.values()].sort((a,b)=>b.total-a.total);
   const cat=f=>sum(lines.filter(x=>f(x)));
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">CDFA Farm to School Incubator Grant · ${esc(S.agreement)}</span><h2 style="margin-top:4px">Farm to School grant</h2>
-    <div class="sub" style="max-width:76ch">What TREE already holds, gathered by quarter, by year or across the whole grant, against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
+    <div class="sub prose" style="--pw:76ch">What TREE already holds, gathered by quarter, by year or across the whole grant, against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
     <div class="actions">${printBtns("grantq",q,isQuarter(q)?"Quarter summary":/^\d{4}$/.test(q)?"Year summary":"Grant summary",true)}<button class="linkbtn" data-gact="csv">Procurement worksheet</button></div></div>
     <div class="filters" role="group" aria-label="Whole grant or a year"><button class="pill" aria-pressed="${q==="all"}" data-gq="all">Whole grant</button>${ys.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(periodName(x))}</button>`).join("")}</div>
     <div class="filters" role="group" aria-label="Quarter" style="margin-top:6px">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div>

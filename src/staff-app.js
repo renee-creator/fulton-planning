@@ -53,7 +53,9 @@ if(!document.getElementById("staffcss")){const c=document.createElement("style")
 .stq{border-left:3px solid var(--marigold);padding-left:10px}
 .strow a,.stmd a,.pmd a{color:var(--moss)}
 /* the policies, read in full */
-.pmd{max-width:72ch}.pmd h4{font-size:16px;margin:16px 0 6px}.pmd h5{font-size:14.5px;margin:12px 0 4px}.pmd p{margin:0 0 9px;line-height:1.55}.pmd ul,.pmd ol{margin:0 0 10px;padding-left:22px}.pmd li{margin:3px 0;line-height:1.5}.pmd li.pmnest{list-style:none}
+.pmd{max-width:72ch}
+/* on a wide screen the reading follows the card up to 105ch, phones and tablets as before (November 4, 2026) */
+@media (min-width:1101px){.stmd,.pmd{max-width:105ch}}.pmd h4{font-size:16px;margin:16px 0 6px}.pmd h5{font-size:14.5px;margin:12px 0 4px}.pmd p{margin:0 0 9px;line-height:1.55}.pmd ul,.pmd ol{margin:0 0 10px;padding-left:22px}.pmd li{margin:3px 0;line-height:1.5}.pmd li.pmnest{list-style:none}
 .pmd blockquote{margin:0 0 9px;padding-left:14px;border-left:3px solid var(--line)}.pmd table{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 12px}.pmd td,.pmd th{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}.pmd .tw{max-width:100%;overflow-x:auto}.pmd figure{margin:8px 0}
 details.stpart{border-top:1px solid var(--line);padding:8px 0}details.stpart>summary{cursor:pointer;padding:4px 0}details.stpart .prow{padding-left:12px}
 .stgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
@@ -67,7 +69,7 @@ const chip=(s,t)=>`<span class="stchip ${s}">${H(t)}</span>`;
 const peBtn=(path,label,item)=>D()&&!(typeof VIEW_AS!=="undefined"&&VIEW_AS)?`<button class="btn small ghost" data-pageedit="${H(path)}"${item?` data-pageitem="${H(item)}"`:""}>${H(label||"Edit")}</button>`:"";
 const card=(title,inner,side)=>`<section class="card"><div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">${H(title)}</h3>${side?`<span class="cnt">${side}</span>`:""}</div>${inner}</section>`;
 const printBar=k=>`<div class="actions" style="margin:0"><button class="btn small ghost" data-stprint="${k}">Print</button><button class="linkbtn" data-stword="${k}">Word</button></div>`;
-const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${H(eyebrow)}</span><h2 style="margin-top:4px">${H(title)}</h2>${sub?`<div class="sub" style="max-width:76ch">${sub}</div>`:""}</div></div>`;
+const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${H(eyebrow)}</span><h2 style="margin-top:4px">${H(title)}</h2>${sub?`<div class="sub prose" style="--pw:76ch">${sub}</div>`:""}</div></div>`;
 
 /* ---------- a little Markdown, for the handbook and the pieces ---------- */
 function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>")

@@ -148,7 +148,9 @@ if(!document.getElementById("staffcss")){const c=document.createElement("style")
 .stq{border-left:3px solid var(--marigold);padding-left:10px}
 .strow a,.stmd a,.pmd a{color:var(--moss)}
 /* the policies, read in full */
-.pmd{max-width:72ch}.pmd h4{font-size:16px;margin:16px 0 6px}.pmd h5{font-size:14.5px;margin:12px 0 4px}.pmd p{margin:0 0 9px;line-height:1.55}.pmd ul,.pmd ol{margin:0 0 10px;padding-left:22px}.pmd li{margin:3px 0;line-height:1.5}.pmd li.pmnest{list-style:none}
+.pmd{max-width:72ch}
+/* on a wide screen the reading follows the card up to 105ch, phones and tablets as before (November 4, 2026) */
+@media (min-width:1101px){.stmd,.pmd{max-width:105ch}}.pmd h4{font-size:16px;margin:16px 0 6px}.pmd h5{font-size:14.5px;margin:12px 0 4px}.pmd p{margin:0 0 9px;line-height:1.55}.pmd ul,.pmd ol{margin:0 0 10px;padding-left:22px}.pmd li{margin:3px 0;line-height:1.5}.pmd li.pmnest{list-style:none}
 .pmd blockquote{margin:0 0 9px;padding-left:14px;border-left:3px solid var(--line)}.pmd table{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 12px}.pmd td,.pmd th{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}.pmd .tw{max-width:100%;overflow-x:auto}.pmd figure{margin:8px 0}
 details.stpart{border-top:1px solid var(--line);padding:8px 0}details.stpart>summary{cursor:pointer;padding:4px 0}details.stpart .prow{padding-left:12px}
 .stgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
@@ -162,7 +164,7 @@ const chip=(s,t)=>`<span class="stchip ${s}">${H(t)}</span>`;
 const peBtn=(path,label,item)=>D()&&!(typeof VIEW_AS!=="undefined"&&VIEW_AS)?`<button class="btn small ghost" data-pageedit="${H(path)}"${item?` data-pageitem="${H(item)}"`:""}>${H(label||"Edit")}</button>`:"";
 const card=(title,inner,side)=>`<section class="card"><div class="secthead" style="margin-bottom:6px"><h3 style="font-size:17px">${H(title)}</h3>${side?`<span class="cnt">${side}</span>`:""}</div>${inner}</section>`;
 const printBar=k=>`<div class="actions" style="margin:0"><button class="btn small ghost" data-stprint="${k}">Print</button><button class="linkbtn" data-stword="${k}">Word</button></div>`;
-const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${H(eyebrow)}</span><h2 style="margin-top:4px">${H(title)}</h2>${sub?`<div class="sub" style="max-width:76ch">${sub}</div>`:""}</div></div>`;
+const head=(eyebrow,title,sub)=>`<div class="head"><div><span class="eyebrow">${H(eyebrow)}</span><h2 style="margin-top:4px">${H(title)}</h2>${sub?`<div class="sub prose" style="--pw:76ch">${sub}</div>`:""}</div></div>`;
 
 /* ---------- a little Markdown, for the handbook and the pieces ---------- */
 function inline(s){return H(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>")
@@ -1787,7 +1789,7 @@ function drdpEvPool(){const kids=typeof children!=="undefined"?[...children.valu
 // conf, on a module, is the writing help's reading, so Suggested folds and the confirmed ones come first
 function exPicker(slug,ex,sugg,conf){const kept=(ex.examples||[]);const room=Math.max(0,5-kept.length);const q=(st.exQ&&st.exQ.slug===slug)?st.exQ.q:"";
   const found=q?exPool().filter(x=>x.raw.toLowerCase().includes(q.toLowerCase())&&!kept.some(k=>k.id===x.id)).slice(0,6).map(x=>({kind:x.kind,id:x.id,text:clip(exAnon(x.raw),420),why:"Found by searching "+q+"."})):[];
-  const row=(x,acts)=>`<div class="gq"><div>${H(x.text)}</div>${x.why?`<div class="cnt">${H(x.why)}</div>`:""}<div class="actions" style="margin:4px 0 0">${acts}</div></div>`;
+  const row=(x,acts,kept)=>`<div class="gq"><div>${H(x.text)}</div>${x.why?`<div class="cnt${kept?" whyline":""}">${kept?"<i>Why TREE offered it.</i> ":""}${H(x.why)}</div>`:""}<div class="actions" style="margin:4px 0 0">${acts}</div></div>`;
   const pick=x=>row(x,`<button class="btn small" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button><button class="linkbtn" data-gexnot="${H(slug)}|${H(x.id)}">Swap for another</button>`);
   const none=`<div class="cnt">Nothing in this school year's documentation fits yet. Suggestions refresh as new documentation comes in.</div>`;
   let list;
@@ -1800,7 +1802,7 @@ function exPicker(slug,ex,sugg,conf){const kept=(ex.examples||[]);const room=Mat
   else{st._exSugg=Object.assign(st._exSugg||{},{[slug]:[...sugg,...found]});
     list=`<div class="lbl" style="margin-top:8px">Suggested</div>${sugg.slice(0,Math.min(room,5)).map(pick).join("")||none}`}
   return `<div class="hint">Educators see an example only once you keep it. Examples name no child or educator, give a child's words with initials and show no photo.</div>
-    ${kept.length?`<div class="lbl">Kept, shown to educators</div>${kept.map((x,i)=>row(x,`<button class="linkbtn" data-gexout="${H(slug)}|${i}">Take it out</button>`)).join("")}`:""}
+    ${kept.length?`<div class="lbl">Kept, shown to educators</div>${kept.map((x,i)=>row(x,`<button class="linkbtn" data-gexout="${H(slug)}|${i}">Take it out</button>`,true)).join("")}`:""}
     ${room?`${list}
       <label class="fld-label">Search for your own<input type="search" data-gexq="${H(slug)}" value="${H(q)}" placeholder="A word from an observation, slide, story or plan"></label>${found.map(x=>row(x,`<button class="btn small ghost" data-gexkeep="${H(slug)}|${H(x.id)}">Keep</button>`)).join("")}`:`<div class="cnt">Five examples are kept. Take one out to keep another.</div>`}`}
 async function exSave(slug,examples,out){await ga("module/examples",{slug,examples,out});st.mods=null}
@@ -1820,7 +1822,7 @@ async function drdpRefPage(my){const ms=await loadMods();const dir=isDir();let L
   const kids=typeof children!=="undefined"?[...children.values()]:[];
   const evFor=code=>{const out=[];for(const c of kids){if(typeof kidDrdpItems!=="function")break;for(const x of kidDrdpItems(c))if(x.code===code&&(x.status==="accepted"||x.status==="changed")&&x.level&&x.src){const raw=[x.evidence,x.src.title].filter(Boolean).join(". ");out.push({kind:"drdp",id:"drdp:"+x.id,raw,at:x.src.at||x.at||0,label:"Accepted evidence",boost:3,why:`Accepted evidence for ${code}, ${typeof drdpLevelText==="function"?drdpLevelText(x.level,x.emerging):x.level}.`})}}return out};
   const mBlock=code=>{const m=M[code];const t=L&&L[v]&&L[v][code];const slug="drdp:"+code;const ex=(ms.examples||{})[slug]||{examples:[]};
-    const body=dir?exPicker(slug,ex,exSuggest({title:m.n,desc:t?t.def:"",sections:[],serves:[]},slug,null,evFor(code))):(ex.examples||[]).map(x=>`<div class="gq">${H(x.text)}</div>`).join("");
+    const body=dir?exPicker(slug,ex,exSuggest({title:m.n,desc:t?t.def:"",sections:[],serves:[]},slug,null,evFor(code))):(ex.examples||[]).map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt whyline"><i>Why TREE offered it.</i> ${H(x.why)}</div>`:""}</div>`).join("");
     return `<details class="gq" style="margin:6px 0"><summary><b>${H(code)}</b> ${H(m.n)}</summary>${t&&t.def?`<p>${H(t.def)}</p>`:""}<ol style="margin:4px 0 8px;padding-left:20px">${(m.l||"").split(" ").filter(Boolean).map(k=>`<li><b>${H((typeof DRDP_LV!=="undefined"&&DRDP_LV[k])||k)}</b> ${H(t&&t.levels?t.levels[k]||"":"")}</li>`).join("")}</ol>
       <div class="actions" style="margin:0 0 6px"><button class="linkbtn" data-drdef="${H(code+"||"+v+"||")}">Open it as educators see it on a child's page</button></div>${body?`<div class="lbl">From our own documentation</div>${body}`:""}</details>`};
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">DRDP reference</h2><div class="sub">Every measure of the DRDP (2025) by domain, with its definition and every level in the official wording, and examples from our own documentation.</div></div></div>
@@ -1869,7 +1871,7 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
   if(dir&&/drdp/i.test(slug))exBody=exPicker(slug,ex,exSuggest(m,slug,own,drdpEvPool()));
   else if(dir){const sugg=exSuggest(m,slug,own);st._exConfArgs=Object.assign(st._exConfArgs||{},{[slug]:{m,sugg}});const open=exOpen(slug);if(open&&!viewing&&!exConfGet(slug))exConfirm(m,slug,sugg);
     exBody=exPicker(slug,ex,sugg,Object.assign({fits:[]},exConfGet(slug)||{},{open}))}
-  else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt">${H(x.why)}</div>`:""}</div>`).join(""):"";
+  else exBody=(ex.examples||[]).length?ex.examples.map(x=>`<div class="gq">${H(x.text)}${x.why?`<div class="cnt whyline"><i>Why TREE offered it.</i> ${H(x.why)}</div>`:""}</div>`).join(""):"";
   draw(my,`<div class="head"><div><span class="eyebrow">PD library</span><h2 style="margin-top:4px">${H(m.title)}</h2>${serves.length?`<div class="sub">Serves ${H(serves.join(" and "))}.</div>`:""}</div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-stmodback="1">‹ PD library</button>${viewing?"":(pr.done?chip("ok","Finished "+fms(pr.done)):pr.opened?chip("soonish","Started"):"")}${viewing?"":leadBtn}</div>${restBar}${viewing?"":draftCard}${restCard}${tabBar}
     ${why?card("Why it matters",md(why.body)):""}${waysCard}${reading?card("Reading",md(reading.body)):""}

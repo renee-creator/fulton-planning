@@ -198,6 +198,13 @@ textarea{resize:vertical;line-height:1.55;min-height:84px}
 .card{background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .card .lbl{font-family:var(--display);font-weight:500;font-size:18px}
 .card .hint{color:var(--muted);font-size:13.5px;max-width:72ch}
+/* explanatory text keeps its reading width on a phone or a tablet, and on a wide screen it follows the card up to 105ch, so a
+   page stops stretching down beside empty space. .prose carries the width it had before in --pw (November 4, 2026) */
+.prose,.card .hint.prose{max-width:var(--pw,76ch)}
+@media (min-width:1101px){.card .hint,.prose,.card .hint.prose,.head .sub{max-width:105ch}}
+/* TREE's reason for offering something stays with it once it is added, as one quiet line under the item */
+.whyline{color:var(--muted);font-size:13px;margin-top:2px;overflow-wrap:anywhere}.whyline i{font-style:normal;color:var(--muted);opacity:.85}
+.whyedit{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}.whyedit input{flex:1 1 240px;width:auto;font-size:13px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .kidsgrp{margin:8px 0 4px}
 .chip{border:1px dashed var(--line);background:var(--bg);border-radius:999px;padding:2px 10px;font-size:12.5px;cursor:pointer}
@@ -4784,7 +4791,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=e310865881","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7afca3beb9","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4797,7 +4804,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=e310865881","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=7afca3beb9","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4815,7 +4822,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="572249a3e65a";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="13d0d587a055";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8928,6 +8935,37 @@ function foldSections(html,key){
     const k=key+":"+title.replace(/<[^>]*>/g,"").trim(),open=foldOpen.has(k)||(id&&/pwall/.test(id)&&typeof wallOpen!=="undefined"&&Object.values(wallOpen).some(Boolean));
     return `<details class="card fold"${id} data-fold="${esc(k)}" ${open?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${title}</span>${side?`<span class="cnt">${side}</span>`:""}</summary><div class="foldbody">${rest}</div></details>`})}
 function moreMenu(inner){inner=String(inner||"").trim();return inner?`<details class="moremenu"><summary>More</summary><div class="actions">${inner}</div></details>`:""}
+/* TREE's reason for offering something stays with it. Wherever TREE offers an observation, a thread, a passage or an example
+   with a why, the why is kept on the join when the director or an educator adds it, and shows as one quiet line under the
+   item wherever it is listed and on its prints. How it connects reads the same stored why. Where the item's text can be
+   changed, the why can be changed too, with Change on the line (November 4, 2026) */
+const whyText=w=>{const t=String(w||"").replace(/\s*[—–]\s*/g,", ").replace(/\s+/g," ").trim();return t?(/[.!?]$/.test(t)?t:t+"."):""};
+let whyEditing="";
+function whyLine(w,edit){const t=whyText(w);if(edit&&whyEditing===edit)return `<div class="whyedit"><input type="text" data-whybox="${esc(edit)}" value="${esc(String(w||""))}" aria-label="Why TREE offered it"><button class="btn small" data-whysave="${esc(edit)}">Save</button><button class="linkbtn" data-whyno="1">Cancel</button></div>`;
+  if(!t)return "";return `<div class="whyline"><i>Why TREE offered it.</i> ${esc(t)}${edit&&!VIEW_AS?` <button class="linkbtn" data-whyedit="${esc(edit)}">Change</button>`:""}</div>`}
+// the why of an observation kept for a project, from its evidence entry, and of a thread the project took in, from its link
+const projObsWhy=(x,n)=>{if(!x||!n)return "";const ids=new Set(noteGroup(n).map(g=>g.id));const e=(x.evidence||[]).find(e=>e&&ids.has(e.planId||e.id)&&has(e.why));return e?e.why:""};
+const projThreadWhy=(x,tid)=>{const l=(x&&x.threads||[]).find(l=>l&&l.id===tid);return l&&l.why||""};
+// the why on a thread's evidence entry for an observation, from any photo of its post
+const threadObsWhy=(t,n)=>{if(!t||!n)return "";const ids=new Set(noteGroup(n).map(g=>g.id));const e=(t.evidence||[]).find(e=>e&&ids.has(e.planId||e.id)&&has(e.why));return e?e.why:""};
+// the why a lens reading gave a moment, from the newest lens reading that quotes it
+function lensWhyOf(n,lensId){if(!n)return "";let best=null;for(const sc of scans.values()){if(!sc||sc.kind!=="lens"||(lensId&&sc.lensId&&sc.lensId!==lensId))continue;const m=(sc.moments||[]).find(m=>m&&m.planId===n.id&&has(m.why));if(m&&(!best||(sc.createdAt||0)>best.at))best={at:sc.createdAt||0,why:m.why}}return best?best.why:""}
+// which record holds the why, read from the key on the line. Each save goes through the record's own save
+function whySet(key,v){const [k,a,b]=String(key||"").split("|");v=String(v||"").trim();
+  if(k==="inq"){const x=inquiries.get(a);if(!x||!isDirector())return false;x.obsFound=Object.assign({},x.obsFound||{},{[b]:Object.assign({},(x.obsFound||{})[b]||{},{why:v})});saveInquiry(x);return true}
+  if(k==="pev"){const x=projects.get(a);if(!x||!isDirector())return false;const n=notices.get(b);const ids=new Set(n?noteGroup(n).map(g=>g.id):[b]);x.evidence=(x.evidence||[]).map(e=>e&&ids.has(e.planId||e.id)?Object.assign({},e,{why:v}):e);saveProject(x);return true}
+  if(k==="pth"){const x=projects.get(a);if(!x||!isDirector())return false;x.threads=(x.threads||[]).map(l=>l&&l.id===b?Object.assign({},l,{why:v}):l);saveProject(x);return true}
+  if(k==="proj"){const x=projects.get(a);if(!x||!isDirector())return false;x.why=v;saveProject(x);return true}
+  if(k==="pweb"){const x=projects.get(a);if(!x||!isDirector())return false;x.web=Object.assign({},x.web||{},{why:v});saveProject(x);return true}
+  if(k==="tev"){const t=threads.get(a);if(!t)return false;t.evidence=(t.evidence||[]).map(e=>e&&(e.planId||e.id)===b?Object.assign({},e,{why:v}):e);saveThread(t);return true}
+  if(k==="torig"){const t=threads.get(a);if(!t)return false;t.origin=Object.assign({},t.origin||{},{why:v});saveThread(t);return true}
+  if(k==="lens"){const sc=scans.get(a);if(!sc||!isDirector())return false;sc.moments=(sc.moments||[]).map(m=>m&&m.planId===b?Object.assign({},m,{why:v}):m);saveScan(sc);return true}
+  return false}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-whyedit],[data-whysave],[data-whyno]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(t.dataset.whyno){whyEditing="";renderMain();return}
+  if(t.dataset.whyedit){whyEditing=t.dataset.whyedit;renderMain();const el=document.querySelector(`[data-whybox="${CSS.escape(whyEditing)}"]`);if(el)el.focus();return}
+  const key=t.dataset.whysave,box=document.querySelector(`[data-whybox="${CSS.escape(key)}"]`);const ok=whySet(key,box?box.value:"");whyEditing="";renderMain();toast(ok?"Saved.":"That could not be changed here.")},true);
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${obsGroups(n).length?" \u00b7 "+esc(obsAnd(obsGroups(n)))+(obsGroups(n).length>1?" groups":" group"):""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
@@ -8936,10 +8974,10 @@ function noticeCard(n){
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
     ${placeChipsHtml(n)}
-    ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
-    ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}
+    ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}${whyLine(lensWhyOf(n))}
+    ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}${inqsOfNotice(n.id).map(x=>whyLine(((x.obsFound||{})[n.id]||{}).why)).join("")}
     ${pr?`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button></div></div>`:""}
-    ${threadLineHtml(n)}${threadSuggestHtml(n)}
+    ${threadLineHtml(n)}${threadsOfNotice(n).map(t=>whyLine(threadObsWhy(t,n))).join("")}${threadSuggestHtml(n)}
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
         ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
         ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
@@ -9040,7 +9078,7 @@ function patternObsHtml(p,i){const ns=patternMoments(p);if(!ns.length)return "";
     return `<div style="display:grid;grid-template-columns:${n.photo?"64px ":""}1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line);min-width:0">
       ${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`:""}
       <div style="display:grid;gap:4px;min-width:0"><span class="cnt">${esc(who)}</span><span style="font-size:14.5px;overflow-wrap:anywhere">${esc(firstLine(noticeText(n),260))}</span>
-        <span class="actions" style="gap:4px 12px">${th?(inIt(n)?`<span class="cnt">In the thread</span>${VIEW_AS?"":`<button class="linkbtn" data-tnout="${esc(n.id)}|${esc(th.id)}">Take out</button>`}`:VIEW_AS?"":`<button class="btn small ghost" data-patone="${i}|${esc(n.id)}">Add to the thread</button>`):""}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span></div></div>`};
+        <span class="actions" style="gap:4px 12px">${th?(inIt(n)?`<span class="cnt">In the thread</span>${VIEW_AS?"":`<button class="linkbtn" data-tnout="${esc(n.id)}|${esc(th.id)}">Take out</button>`}`:VIEW_AS?"":`<button class="btn small ghost" data-patone="${i}|${esc(n.id)}">Add to the thread</button>`):""}<button class="linkbtn" data-mjump="${esc(n.id)}">Open it</button></span>${th&&inIt(n)?whyLine(threadObsWhy(th,n)):""}</div></div>`};
   return `<details style="margin-top:6px"><summary class="cnt" style="cursor:pointer">${posts.length} observation${posts.length>1?"s":""}, see each one</summary><div style="margin-top:4px">${posts.map(row).join("")}</div></details>`}
 // observations join a thread the same way an observation suggestion does, as evidence the thread holds, one entry per post
 function addNoticesToThread(th,ns,meta){let added=0;meta=meta||{};
@@ -9130,13 +9168,13 @@ function renderMoments(){
   // the observations list waits while the form is open, and comes back when it closes (November 3, 2026)
   if(noticeForm){$("#main").innerHTML=`<div class="head" id="nf-top"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">${notices.has(noticeForm.id)?"Change an observation":"Keep an observation"}</h2></div></div>${noticeFormCard()}`;return}
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
-    <div class="sub" style="max-width:74ch">Observations kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on an observation whenever it comes round to it.</div></div>
+    <div class="sub prose" style="--pw:74ch">Observations kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on an observation whenever it comes round to it.</div></div>
     <span class="actions">${noticeForm?"":photoPickHtml("nf-photo2","Upload a photo")}</span></div>
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}${noClassPill()}</div>${placePills()}
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="actions">${printTwo("moments","")}${isDirector()&&!VIEW_AS?(()=>{const n=pfLeft();return n?`<button class="btn small ghost" data-tview="proofobs">Proofread observations, ${n} left</button>`:""})():""}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
-    ${sample&&isDirector()?`<div class="hint muted" style="font-size:13.5px;max-width:74ch">For what is emerging now. TREE reads only the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
+    ${sample&&isDirector()?`<div class="hint muted prose" style="font-size:13.5px;--pw:74ch">For what is emerging now. TREE reads only the observations in this view and names what they keep returning to, using only what educators wrote. The reading stays here for the whole team.</div>`:""}</div>
   ${draftsHtml()}${momentsReadHtml()}`;
   if(!all.length)h+=`<div class="empty">${notices.size?"No observations kept in this view. Widen the class or the range.":"No observations kept yet. Press Keep an observation and write one in a minute."}</div>`;
   // grouped, every group is listed at once, folded, with its count, and each opens twelve at a time (October 31, 2026)
@@ -9637,7 +9675,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
     [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
   return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
-function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","b79eb56aa6").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","43c803dd50").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
@@ -9786,7 +9824,7 @@ function drIdeas(d){const kw=[...new Set(Object.values(DRDP_M.ptk).filter(m=>m.d
 function renderDrdpReport(){const {rows,rooms}=drData();const doms=DR_ORDER.filter(d=>rows.some(x=>x.dom[d]));const yr=ptYearStart();
   const bar=(have,of)=>{const pc=of?have/of:0;return `<div class="drbar ${pc<.5?"thin":""}"><i style="width:${Math.round(pc*100)}%"></i></div><span class="cnt">${have} of ${of}</span>`};
   let h=`<div class="head"><span class="eyebrow">Children</span><div class="head-row"><h2 style="margin-top:4px">DRDP report</h2><span class="actions">${printBtns("drdprep",drRoom,"Print",true)}</span></div>
-    <div class="sub" style="max-width:76ch">How the Preschool Learning Foundations are visible in each class since ${esc(fmtDate(yr))}, from the evidence educators accepted. A bar is the children with any evidence in that domain. Only you see this page.</div>
+    <div class="sub prose" style="--pw:76ch">How the Preschool Learning Foundations are visible in each class since ${esc(fmtDate(yr))}, from the evidence educators accepted. A bar is the children with any evidence in that domain. Only you see this page.</div>
     <div class="filters" role="group" aria-label="Class">${["All",...rooms].map(r=>`<button class="pill" aria-pressed="${r===drRoom}" data-drroom="${esc(r)}">${r==="All"?"Every class":esc(r)}</button>`).join("")}</div></div>`;
   if(drRoom==="All"){
     h+=`<section class="card"><div class="drov" style="grid-template-columns:minmax(110px,1.1fr) repeat(${doms.length},minmax(70px,1fr))"><span></span>${doms.map(d=>`<b class="cnt">${esc(DRDP_DOM[d]||d)}</b>`).join("")}
@@ -10205,7 +10243,7 @@ async function binLoad(fresh){
 function renderBin(){
   const b=binCurrent(),room=binRoomNow(),list=binAll();
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">From FEED Sonoma</span><h2 style="margin-top:4px">Weekly bin</h2>
-    <div class="sub" style="max-width:74ch">Each class receives a bin of produce from local farms, and on Tuesday a small group the class team chooses opens it together. The list comes from FEED a few days ahead, so the team can think about it on Monday.</div></div>
+    <div class="sub prose" style="--pw:74ch">Each class receives a bin of produce from local farms, and on Tuesday a small group the class team chooses opens it together. The list comes from FEED a few days ahead, so the team can think about it on Monday.</div></div>
     ${b?`<div class="actions">${printBtns("bin",b.id,"Print the bin sheet",true)}<span id="binplan"><button class="btn small ghost" data-binplan="${esc(b.id)}">Make a plan from this bin</button></span><button class="btn small ghost" data-storybin="${esc(b.id)}">Make a story</button></div>`:""}</div>
     <div class="filters" role="group" aria-label="Class">${CLASSROOMS.map(r=>`<button class="pill" aria-pressed="${r===room}" data-binroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(!b){
@@ -10474,7 +10512,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <details class="helpme"><summary>What a team inquiry is</summary><div class="hint" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></details>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
+    <details class="helpme"><summary>What a team inquiry is</summary><div class="hint prose" style="--pw:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></details>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
@@ -10572,6 +10610,7 @@ function renderInquiry(x){
       <div class="cnt">${shortDate(n.at)} · ${esc(n.by||"An educator")}${momentRoomsText(n)?" · "+esc(momentRoomsText(n)):""}${!own.has(n.id)&&n.threadId&&threads.get(n.threadId)?" · from the thread "+esc(threads.get(n.threadId).name):""}</div>
       <div style="white-space:pre-line">${esc(n.noticed||"")}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}
       ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>esc(l.name)).join(", ")}</div>`:""})()}
+      ${whyLine(((x.obsFound||{})[n.id]||{}).why,isDirector()?"inq|"+x.id+"|"+n.id:"")}
       <div class="actions"><button class="linkbtn" data-mopen="${esc(n.id)}">See it in Observations</button>${own.has(n.id)?`<button class="linkbtn" data-iqobrm="${esc(n.id)}">Take out of the inquiry</button>`:""}</div></div></div>`;
   let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-iqback="1">All team inquiries</button></div>
   <div class="head"><div class="head-row"><div style="flex:1;min-width:0"><span class="eyebrow">Team inquiry · ${esc(inqScope(x))}</span></div>
@@ -10697,7 +10736,8 @@ function inquiryDoc(x,long){
   const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));if(a.length){blocks.push(dSub("Read through "+L.name));a.forEach(q=>blocks.push(dText(q,x.lensNotes[q])))}}
   if(looks.length){blocks.push(dSub("When we looked again"));(long?looks:looks.slice(0,2)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)))}
   const obs=long?ns:ns.slice(0,3);
-  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true))})}
+  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true));
+      const w=whyText(((x.obsFound||{})[n.id]||{}).why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})})}
   for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))blocks.push(dText("Team notes from the thread "+t.name,t.notes))}
   if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",[shortDate(e.at)])))}}
   const meta=[["Class",x.room||"Whole school"],["Started",shortDate(x.createdAt)],["Status",ISTATUS[x.status]||"Open"]];
@@ -11585,6 +11625,7 @@ function projThreadCard(x,l,t,ws){
     ${ws.length?`<div class="tl" aria-label="Weeks this thread appears">${ws.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`:""}
     ${last?`<div class="evid"><div>“${esc(last.text)}”${evSource(last)}</div></div>`:""}
     <div class="cnt">Joined the project the week of ${fmtDate(l.week||mondayOf(new Date(l.at||Date.now())))}${l.by?" · added by "+esc(l.by):""}${t.unfollowed?" · no longer followed":""}</div>
+    ${whyLine(l.why,isDirector()?"pth|"+x.id+"|"+t.id:"")}
     <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start a plan from it</button><button class="linkbtn" data-tsee="${esc(t.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-ptrm="${esc(t.id)}">Take out of the project</button>`:""}</div></div>`;
 }
 /* Threads the reading suggests. The nightly reading keeps threadSuggest [{id, why}] on a project. Each waits in one folded
@@ -11599,7 +11640,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-ptsadd],[d
   if(!isDirector()||VIEW_AS){toast("The director changes a project.");return}
   const [pid,tid]=String(t.dataset.ptsadd||t.dataset.ptsno).split("|");const x=projects.get(pid),th=threads.get(tid);if(!x||!th)return;
   if(t.dataset.ptsno){x.threadSuggestNo=[...(x.threadSuggestNo||[]),{id:tid,by:whoAmI(),at:Date.now()}];x.threadSuggest=(x.threadSuggest||[]).filter(s=>(s&&(s.id||s))!==tid);saveProject(x);renderMain();toast("This thread will not be suggested for the project again.");return}
-  x.threadSuggest=(x.threadSuggest||[]).filter(s=>(s&&(s.id||s))!==tid);addThreadToProject(x,th)},true);
+  const sg=projThreadSuggests(x).find(s=>s.id===tid);x.threadSuggest=(x.threadSuggest||[]).filter(s=>(s&&(s.id||s))!==tid);addThreadToProject(x,th,sg&&sg.why)},true);
 /* Observations the reading suggests. The same candidates Observations TREE found holds, as one folded line so accepting is one
    tap here, beside the project's own observations (November 4, 2026) */
 function projObsSuggestHtml(x){const sg=projWaiting(x);if(!sg.length)return "";
@@ -11657,6 +11698,7 @@ function renderProject(x){
   const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span>${has(r.why)?`<div class="muted">What changed our thinking. ${esc(r.why)}</div>`:""}</div>`).join("")}</div></details>`:""};
   h+=`<section class="card"><div class="lbl">Where it came from</div>
     ${dt?`<div class="ref" style="background:var(--marigold-soft)"><div>It grew from the thread <button class="linkbtn" data-tsee="${esc(dt.id)}">${esc(dt.name)}</button>.</div>${dt.question?`<div class="muted">The question the team is following there. ${esc(dt.question)}</div>`:""}</div>`:""}
+    ${whyLine(x.why,isDirector()?"proj|"+x.id:"")}
     <label class="fld-label">The experience it grew from<textarea data-pf="experience" rows="2" placeholder="What happened, and what children felt or showed">${esc(x.experience||"")}</textarea></label>
     <div class="hint">A project usually begins in an experience that mattered to children.</div>${projStrHtml(x,"experience")}</section>
   <section class="card"><div class="lbl">What may lie underneath</div>
@@ -11697,7 +11739,7 @@ function renderProject(x){
   const br=(x.web&&x.web.branches)||[];
   h+=`<section class="card"><div class="lbl">Possible directions</div>
     <div class="hint">Hypotheses about where the inquiry could go. Add, change, or drop them as documentation comes in.</div>
-    ${projWebSuggestHtml(x)}
+    ${projWebSuggestHtml(x)}${whyLine(x.web&&x.web.why,isDirector()?"pweb|"+x.id:"")}
     <div class="webwrap"><div style="display:grid;gap:8px">
       ${br.map((b,i)=>`<div class="pdir"><div class="actions" style="justify-content:space-between"><span class="cnt">Direction ${i+1}</span><button class="linkbtn" data-pwrm="${i}">Remove</button></div>
         <input type="text" data-pwb="${i}|name" value="${esc(b.name||"")}" placeholder="A direction the inquiry could take">
@@ -11709,7 +11751,7 @@ function renderProject(x){
     const shown=new Set();const firsts=dir?ns.filter(n=>{const k=n.group||n.id;if(shown.has(k))return false;shown.add(k);return true}):[];const first=new Set(firsts.map(n=>n.id));
     if(ns.length||aside.length)h+=`<section class="card"><div class="lbl">Observations</div>
     <div class="hint">Observations educators kept for this project, in the order they happened.${dir?" More under an observation holds Not part of this project, which takes it out of the project only. Its threads stay as they are, and it waits at the end of this list to put back.":""}</div>
-    <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(dir&&first.has(n.id)?`<details class="pmore" id="pmore-${esc(n.id)}" style="margin:-6px 0 0"><summary class="cnt" style="cursor:pointer">More</summary><div class="actions"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div></details>`:"")).join("")}</div>
+    <div style="display:grid;gap:12px">${ns.map(n=>noticeCard(n)+(projObsWhy(x,n)?`<div style="margin:-6px 0 0">${whyLine(projObsWhy(x,n),dir?"pev|"+x.id+"|"+n.id:"")}</div>`:"")+(dir&&first.has(n.id)?`<details class="pmore" id="pmore-${esc(n.id)}" style="margin:-6px 0 0"><summary class="cnt" style="cursor:pointer">More</summary><div class="actions"><button class="linkbtn" data-projout="${esc(x.id)}|${esc(n.id)}">Not part of this project</button></div></details>`:"")).join("")}</div>
     ${dir&&aside.length?`<details style="margin-top:10px"><summary class="cnt" style="cursor:pointer">Not part of this project, ${aside.length}</summary>${aside.map(({a,n})=>`<div class="cnt">${esc(momentHeading(n)||firstLine(noticeText(n),80))}, ${esc(shortDate(n.at))}. Taken out by ${esc(a.by||"the director")} on ${esc(shortDate(a.at))}. <button class="linkbtn" data-projback="${esc(x.id)}|${esc(a.id)}">Put it back</button></div>`).join("")}</details>`:""}</section>`;}
   if(isDirector()&&!VIEW_AS){const sg=projWaiting(x);projSuggestSoon(x);
     const busy=projFinding[x.id];
@@ -11771,10 +11813,11 @@ function startProject(){
   if(t&&t.classroom&&t.classroom!==home)x.classrooms.push({room:t.classroom,how:"",week:wk,by,at:now,note:""});
   saveProject(x);projForm=null;openProject(x.id);toast("Project started.");
 }
-function addThreadToProject(x,t){
+function addThreadToProject(x,t,why){
   if(!x||!t)return;if(projectOfThread(t.id)){toast("That thread is already part of a project.");return}
   const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
-  x.threads=[...(x.threads||[]),{id:t.id,by,at:now,week:wk}];
+  // a thread the reading suggested keeps TREE's reason on the project's link to it
+  x.threads=[...(x.threads||[]),Object.assign({id:t.id,by,at:now,week:wk},has(why)?{why:String(why)}:{})];
   let joined=false;if(t.classroom&&!projRooms(x).includes(t.classroom)){x.classrooms=[...(x.classrooms||[]),{room:t.classroom,how:"",week:wk,by,at:now,note:""}];joined=true}
   saveProject(x);renderMain();toast(joined?`Added. The ${t.classroom} class has joined ${x.name}. Open the project to record how.`:`Added to the project ${x.name}.`);
 }
@@ -11957,7 +12000,7 @@ async function projectsClick(t){
   if(t.dataset.pdraft){projDraft(x,t.dataset.pdraft);return true}
   if(t.id==="pw-assist"){projWebAssist(x);return true}
   if(t.id==="pw-sgno"){delete projSug[x.id];renderMain();return true}
-  if(t.id==="pw-sgyes"){const d=projSug[x.id]?.branches;if(d){x.web=Object.assign({},x.web,{branches:JSON.parse(JSON.stringify(d))});saveProject(x);delete projSug[x.id];renderMain();toast("Directions updated. Edit any part below.")}return true}
+  if(t.id==="pw-sgyes"){const d=projSug[x.id]?.branches;if(d){x.web=Object.assign({},x.web,{branches:JSON.parse(JSON.stringify(d))},has(projSug[x.id].why)?{why:projSug[x.id].why}:{});saveProject(x);delete projSug[x.id];renderMain();toast("Directions updated. Edit any part below.")}return true}
   if(t.dataset.pstr){projStrengthen(x,t.dataset.pstr);return true}
   if(t.dataset.pstrno){delete projStr[x.id+t.dataset.pstrno];renderMain();return true}
   if(t.dataset.pstryes){const k=t.dataset.pstryes;const v=($("#pstr-"+k)?.value||"").trim();if(v){x[k]=v;saveProject(x);delete projStr[x.id+k];renderMain();toast("Wording updated.")}return true}
@@ -12104,7 +12147,7 @@ function renderLens(){
   const rooms=lRoom==="All"?[...CLASSROOMS,...(ps.some(p=>!p.classroom)?[""]:[])]:[lRoom];
   const scan=lensScan(lRoom);
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">${LENS.year?"This year's lens":"Lens"}</span><h2 style="margin-top:4px">${esc(LENS.name)}</h2>
-    <div class="sub" style="max-width:76ch">${esc(LENS.description)}</div></div></div>
+    <div class="sub prose" style="--pw:76ch">${esc(LENS.description)}</div></div></div>
     ${LENSES.length>1?`<div class="filters" style="margin:0 0 4px" role="group" aria-label="Lens">${[...LENSES.filter(l=>l.year),...LENSES.filter(l=>!l.year)].map(l=>`<button class="pill" aria-pressed="${l.id===lensId}" data-lensid="${esc(l.id)}">${esc(l.name)}</button>`).join("")}</div>`:""}
     <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===lRoom}" data-lroom="${r}">${r}</button>`).join("")}</div>
       <select id="lrange" style="width:auto" aria-label="Weeks to read">${[["4","Last 4 weeks"],["8","Last 8 weeks"],["year","This school year"],["all","All saved plans"]].map(([v,l])=>`<option value="${v}" ${lRange===v?"selected":""}>${l}</option>`).join("")}</select>
@@ -12138,7 +12181,7 @@ function renderLens(){
     if(moments.length>cap)h+=`<div class="actions"><button class="linkbtn" data-lmore="1">Show all ${moments.length} passages</button></div>`}
   h+=`</section>`;
   if(silent.length)h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>Marked, with no passage written yet</h2></div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">These plans mark a language of the lens, and their writing does not yet say what children made or did with it. A sentence in Final remarks is enough.</div>
+    <div class="hint muted prose" style="font-size:13.5px;--pw:72ch">These plans mark a language of the lens, and their writing does not yet say what children made or did with it. A sentence in Final remarks is enough.</div>
     <div class="evid">${silent.slice(0,30).map(p=>`<div>${lensSrc(p,"")}<span class="cnt">${esc(lensMarked(p).join(", "))}</span></div>`).join("")}</div></section>`;
 
   // projects and threads
@@ -12152,13 +12195,14 @@ function renderLens(){
   // a closer reading
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>A closer reading</h2>
     ${sample&&isDirector()?`<button class="btn small" id="lensread" ${lensBusy||!ps.length?"disabled":""}>${lensBusy?"Reading plans":"Read through the lens"}</button>`:""}</div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">For reading the year through this lens and its questions. ${isDirector()?"TREE reads the saved plans in this range and answers the questions above for the passages the plans describe most fully, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask TREE to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
+    <div class="hint muted prose" style="font-size:13.5px;--pw:72ch">For reading the year through this lens and its questions. ${isDirector()?"TREE reads the saved plans in this range and answers the questions above for the passages the plans describe most fully, using only what the plans say. An empty answer shows what has not yet been recorded.":"The director can ask TREE to read the saved plans through the lens. The reading appears here for the whole team."}</div>`;
   if(scan&&(scan.moments||[]).length){
     h+=`<div class="chiprow-label">Read by TREE, ${shortDate(scan.createdAt)}, ${esc({"4":"last 4 weeks","8":"last 8 weeks",year:"this school year",all:"all saved plans"}[scan.range]||"")}${scan.by?", asked by "+esc(scan.by):""}</div>`;
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     const qs=scan.questionsAsked||LENS.questions;
     h+=`<div class="lmoments">${scan.moments.map(m=>{const p=rec(m.planId);
       return `<div class="lmoment"><div>“${esc(m.quote)}”</div>${p?lensSrc(p,sectionOf(p,m.quote)):`<span class="src">This plan has since been deleted</span>`}
+        ${whyLine(m.why,isDirector()?"lens|"+(scan.room||lensKey(lRoom))+"|"+m.planId:"")}
         ${m.language?`<div class="chips"><span class="chip on" style="cursor:default">${esc(m.language)}</span></div>`:""}
         <dl class="lans">${qs.map((q,i)=>`<dt>${esc(q)}</dt><dd>${(m.answers||[])[i]?esc(m.answers[i]):`<span class="muted">Not recorded in the plan</span>`}</dd>`).join("")}</dl></div>`}).join("")}</div>`;
     if((scan.gaps||[]).length)h+=`<div class="card"><div class="lbl">What the plans do not yet say</div><ul style="margin:0;padding-left:18px;font-size:14px">${scan.gaps.map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div>`;
@@ -12189,14 +12233,14 @@ ${LENS.languages.length?`The languages this lens looks for are ${LENS.languages.
 For each moment answer the school's questions, in this order. ${LENS.questions.map((q,i)=>`${i+1}. ${q}`).join(" ")}
 Rules. Read for the thinking. ${PHOTO_RULE} Never rate, praise, or judge how anything a child made looks, and never use words such as beautiful, detailed, neat, careful, or advanced. Use only what the plans say. Never invent children, quotes, tools, materials, or events. When a plan says nothing for a question, return an empty string for it, because an empty answer shows the team what has not yet been recorded. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Copy each quote exactly from the plan, under 30 words. Use a planId from the list. Return only the JSON, with no other text.
 ${STYLE}
-Return JSON {"summary": two or three sentences on what this lens shows of children in this range, "moments":[{"planId": id, "quote": exact words from that plan, "language": ${LENS.languages.length?"one of the lens languages, or an empty string":"an empty string"}, "answers": [${n} strings, one for each question in order]}], "gaps":[up to 4 short sentences naming what the plans rarely record, each phrased as something educators could notice next], "teamQuestions":[2 or 3 questions the team could take to its next meeting]}
+Return JSON {"summary": two or three sentences on what this lens shows of children in this range, "moments":[{"planId": id, "quote": exact words from that plan, "language": ${LENS.languages.length?"one of the lens languages, or an empty string":"an empty string"}, "why": one short sentence on why this passage speaks to the lens, "answers": [${n} strings, one for each question in order]}], "gaps":[up to 4 short sentences naming what the plans rarely record, each phrased as something educators could notice next], "teamQuestions":[2 or 3 questions the team could take to its next meeting]}
 
 Plans, one JSON object per line.
 ${d.map(x=>JSON.stringify(x)).join("\n")}`;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"lens"});
     const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();const lmap=new Map(LENS.languages.map(l=>[l.toLowerCase(),l]));
-    const moments=(Array.isArray(out?.moments)?out.moments:[]).filter(m=>m&&ids.has(m.planId)&&c2(m.quote)).slice(0,14).map(m=>({planId:m.planId,quote:sentCut(c2(m.quote),300),language:lmap.get(String(m.language||"").trim().toLowerCase())||"",answers:Array.from({length:n},(_,i)=>sentCut(c2((Array.isArray(m.answers)?m.answers:[])[i]),500))}));
+    const moments=(Array.isArray(out?.moments)?out.moments:[]).filter(m=>m&&ids.has(m.planId)&&c2(m.quote)).slice(0,14).map(m=>({planId:m.planId,quote:sentCut(c2(m.quote),300),language:lmap.get(String(m.language||"").trim().toLowerCase())||"",why:sentCut(c2(m.why),240),answers:Array.from({length:n},(_,i)=>sentCut(c2((Array.isArray(m.answers)?m.answers:[])[i]),500))}));
     const strs=(a,k)=>(Array.isArray(a)?a:[]).map(c2).filter(Boolean).slice(0,k);
     saveScan({room:lensKey(room),kind:"lens",range,createdAt:Date.now(),by:whoAmI(),lensId,lensName:LENS.name,questionsAsked:[...LENS.questions],summary:c2(out?.summary),moments,gaps:strs(out?.gaps,4),teamQuestions:strs(out?.teamQuestions,3)});
     rToast(moments.length?`Read ${d.length} plans and found ${moments.length} moment${moments.length>1?"s":""}.`:"No moments with enough in the plans yet.");
@@ -12424,7 +12468,8 @@ function threadDoc(t){
   const pr=projectOfThread(t.id);const blocks=[];
   if(has(t.question))blocks.push(dLead("The question we are following",t.question));
   const qs=pickSpread(ev,4);
-  if(qs.length){blocks.push(dSub("In educators' words"));qs.forEach(e=>{const pl=rec(e.planId);blocks.push(dQuote(e.text,whoLine(pl),shortWeek(e.week||pl.weekOf)))})}
+  {const w=whyText(t.origin&&t.origin.why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}
+  if(qs.length){blocks.push(dSub("In educators' words"));qs.forEach(e=>{const pl=rec(e.planId);blocks.push(dQuote(e.text,whoLine(pl),shortWeek(e.week||pl.weekOf)));const w=whyText(e.why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})})}
   {const lr=threadLastRemarks(t);if(lr){blocks.push(dSub("Where it is now"));blocks.push(dQuote(lr.text,pBy(byLine(lr.p))))}}
   {const ns=threadNotices(t).filter(n=>n.photo).sort((a,b)=>(a.at||0)-(b.at||0)),posts=ns.filter((n,i)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
     const ph=spread(posts,2);if(ph.length){blocks.push(dSub("Moments along the way"));ph.forEach(n=>{blocks.push(dPhoto(n,150,false));blocks.push(dText([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(momentBody(n)||n.noticed,220)))})}}
@@ -12662,6 +12707,7 @@ function projectDoc(x,long){
   const after=pls.filter(pl=>planAfter(pl));
   if(has(projUnder(x)))blocks.push(dLead("What may lie underneath",projUnder(x)));
   if(has(x.experience))blocks.push(dText("The experience it grew from",x.experience));
+  {const w=whyText(x.why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}
   if(has(projIntent(x)))blocks.push(dText("Our intent as educators",projIntent(x)));
   const earlier=projEarlier(x,"underneath").slice(0,long?6:2);
   if(earlier.length)blocks.push(dList("How our reading has changed",earlier.map(r=>`${shortDate(r.at)}. ${r.text}`)));
@@ -12671,12 +12717,13 @@ function projectDoc(x,long){
     for(const {t} of ths){const c=(x.classrooms||[]).find(c=>c.room===t.classroom);
       const where=[c&&t.classroom===x.home?"where the project began":"",c&&t.classroom!==x.home&&c.week?"joined "+shortWeek(c.week):"",c&&t.classroom!==x.home&&PJOIN[c.how]?"through "+PJOIN[c.how].toLowerCase():""].filter(Boolean).join(", ");
       blocks.push(dItem(t.name,t.question||"",where?where[0].toUpperCase()+where.slice(1):"",[t.classroom?t.classroom+" class":"All classes"]));
+      {const w=whyText(projThreadWhy(x,t.id));if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}
       if(long){const ev=[...(t.evidence||[])].filter(e=>e&&has(e.text)&&rec(e.planId)).sort((a,b)=>(a.week||"").localeCompare(b.week||""));
         ev.slice(-4).forEach(e=>blocks.push(dQuote(e.text,pBy(byLine(rec(e.planId))))))}}}
   const posts=obs.filter((n,i)=>obs.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);
   if(!long){const ph=spread(posts.filter(n=>n.photo),2);if(ph.length){blocks.push(dSub("Moments along the way"));
       ph.forEach(n=>{blocks.push(dPhoto(n,140,false));blocks.push(dText([momentHeading(n),shortDate(n.at)].filter(Boolean).join(", "),firstLine(n.photo?momentBody(n):n.noticed,220)))})}}
-  if(projWeb(x).branches.length){blocks.push(dSub("Possible directions"));blocks.push({t:"web",web:projWeb(x)})}
+  if(projWeb(x).branches.length){blocks.push(dSub("Possible directions"));blocks.push({t:"web",web:projWeb(x)});const w=whyText(x.web&&x.web.why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}
   const meta=[["Classes",roomsText(x)],["Seen",weeksSpan(ws)||"Started "+shortDate(x.createdAt)],["Gathered",[obs.length&&`${obs.length} observation${obs.length>1?"s":""}`,pls.length&&`${pls.length} plan${pls.length>1?"s":""}`].filter(Boolean).join(", ")||"Nothing yet"]];
   if(!long)return {display:true,type:"report",acc:"classroom",title:x.name||"Project",meta,blocks};
   // the record, week by week. Observations in the order they were kept, and the week's final remarks after them
@@ -12687,7 +12734,8 @@ function projectDoc(x,long){
       for(const n of os.filter(n=>posts.includes(n))){const credit=[pBy(n.by),obsRoomText(n)].filter(Boolean).join(", ");
         const body=(n.photo?momentBody(n):String(n.noticed||""))+(has(n.wonder)?"\n"+wonderLine(n.wonder):"");
         if(n.photo){os.filter(o=>o.photo&&(o.group||o.id)===(n.group||n.id)).slice(0,3).forEach(o=>blocks.push(dPhoto(o,230,false)));blocks.push(dText([momentHeading(n),shortDate(n.at),credit].filter(Boolean).join(", "),body))}
-        else blocks.push(dQuote(body,[credit,shortDate(n.at)].filter(Boolean).join(", ")))}
+        else blocks.push(dQuote(body,[credit,shortDate(n.at)].filter(Boolean).join(", ")));
+        const w=whyText(projObsWhy(x,n));if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}
       for(const pl of rs)blocks.push(dText([pl.type==="smallgroup"?"After the week":"Final remarks",pBy(whoLine(pl))].filter(Boolean).join(", "),planAfter(pl)))}}
   if((x.groups||[]).length)blocks.push(dTags("Small groups carrying it",x.groups));
   if(has(x.returns))blocks.push(dText("How the work returns to the whole class",x.returns));
@@ -12731,6 +12779,7 @@ function lensDocs(long,cap){
     {const nw=ps.filter(p=>(p.updatedAt||p.at||0)>(scan.createdAt||0)).length;b.push({t:"text",label:"",quiet:true,text:`Read on ${shortDate(scan.createdAt)}.${nw?` ${nw} plan${nw>1?"s and observations have":" or observation has"} changed or been kept since, and ${nw>1?"are":"is"} not in this reading.`:""}`})}
     scan.moments.forEach(m=>{const p=rec(m.planId);
       b.push(dQuote(m.quote,byLine(p),m.language||""));
+      {const w=whyText(m.why);if(w)b.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}
       qs.forEach((q,k)=>{const a=(m.answers||[])[k];if(has(a))b.push({t:"qa",q,a})});
       b.push({t:"rule"})});
     if((scan.gaps||[]).length)b.push(dList("What we could notice next",scan.gaps));
@@ -13564,7 +13613,7 @@ function renderThreads(){
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
     <span class="actions">${isDirector()&&!VIEW_AS?`<button class="btn small ghost" data-readings="1">Readings</button>`:""}${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads"}</button>`:""}</span></div>
-    <div class="hint muted" style="font-size:13.5px;max-width:72ch">For what children have pursued over several weeks. Find threads reads the plans and observations together. A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"TREE reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks TREE to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
+    <div class="hint muted prose" style="font-size:13.5px;--pw:72ch">For what children have pursued over several weeks. Find threads reads the plans and observations together. A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"TREE reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks TREE to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
   if(stoppedOld.length)h+=`<details><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedOld.length} from earlier school years</summary><div class="stopped">${stoppedOld.map(t=>stoppedCard(t)).join("")}</div></details>`;
@@ -13654,12 +13703,13 @@ function originHtml(t,isTracked){
   if(isTracked){
     const how=t.origin&&t.origin.hand?"from an observation":t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" class":" across all classes"}`:"";
     rows.push(`<div><b>Followed</b> ${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
+    if(t.origin&&has(t.origin.why))rows.push(whyLine(t.origin.why,"torig|"+t.id));
   }
   return rows.length?`<div class="origin">${rows.join("")}</div>`:"";
 }
 function evidenceHtml(t){
   const all=[...(t.evidence||[])].sort((a,b)=>(b.week||"").localeCompare(a.week||""));if(!all.length)return"";
-  const line=e=>`<div>“${esc(e.text)}”${evSource(e)}</div>`;
+  const line=e=>`<div>“${esc(e.text)}”${evSource(e)}${whyLine(e.why,t.id&&(e.planId||e.id)?"tev|"+t.id+"|"+(e.planId||e.id):"")}</div>`;
   return `<div class="evid">${all.slice(0,4).map(line).join("")}</div>${all.length>4?`<details><summary class="chiprow-label" style="cursor:pointer">Show ${all.length-4} earlier quote${all.length-4>1?"s":""}</summary><div class="evid" style="margin-top:8px">${all.slice(4).map(line).join("")}</div></details>`:""}`;
 }
 let tEdit="";
@@ -13758,7 +13808,9 @@ function onePairThreads(x,scan){const made=[];
 function onePairProject(x,scan){const ts=onePairThreads(x,scan);const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
   const home=ts.map(t=>t.classroom).find(Boolean)||"";const rooms=[...new Set(ts.map(t=>t.classroom).filter(Boolean))];
   const firstWeek=ts.flatMap(t=>t.weeks||[]).sort()[0]||wk;
-  const p={id:uid(),year:yearFromTime(now),name:ts.map(t=>t.name).join(" and "),experience:"",underneath:"",intent:"",earlier:{underneath:[],intent:[]},home,classrooms:rooms.map((r,i)=>({room:r,how:i?"":"start",week:i?wk:firstWeek,by,at:now,note:""})),threads:ts.map(t=>({id:t.id,by,at:now,week:wk})),
+  // the card's reason, the evidence the threads share or the class they share, stays with the project and with each thread's link
+  const why="These may be one project. "+ts.map(t=>t.name).join(" and ")+(onePairDesc(x)?", "+onePairDesc(x):"")+".";
+  const p={id:uid(),year:yearFromTime(now),name:ts.map(t=>t.name).join(" and "),experience:"",underneath:"",intent:"",why,earlier:{underneath:[],intent:[]},home,classrooms:rooms.map((r,i)=>({room:r,how:i?"":"start",week:i?wk:firstWeek,by,at:now,note:""})),threads:ts.map(t=>({id:t.id,by,at:now,week:wk,why})),
     decision:{who:by,by,at:now,threadId:ts[0]?ts[0].id:""},groups:[...new Set(ts.flatMap(t=>t.groups||[]))],returns:"",web:{branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}]},people:"",notes:"",status:"active",closure:"",stories:[],createdAt:now,createdBy:by};
   saveProject(p);openProject(p.id);toast("Project started from both threads. Write what may lie underneath and your intent as educators.")}
 function onePairHtml(scan,fresh,tracked){const ps=onePairs(scan,fresh,tracked);if(!ps.length)return "";
@@ -13885,7 +13937,7 @@ async function threadsClick(t){
   if(t.dataset.term){tSearch=t.dataset.term;$("#tsearch").value=tSearch;renderSearch();$("#tsearch").scrollIntoView({block:"center"});return true}
   if(t.id==="scan"){if(isDirector())findThreads();return true}
   if(t.dataset.tjoin){const [i,tid]=t.dataset.tjoin.split("|");const scan=scans.get(tRoom);const x=scan?.threads?.[+i],th=threads.get(tid);if(!x||!th)return true;
-    const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));th.evidence=[...(th.evidence||[]),...(x.evidence||[]).filter(e=>!have.has(e.planId+e.text)).map(e=>Object.assign({},e,{via:"find",at:Date.now(),by:whoAmI()}))];
+    const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));th.evidence=[...(th.evidence||[]),...(x.evidence||[]).filter(e=>!have.has(e.planId+e.text)).map(e=>Object.assign({},e,{via:"find",at:Date.now(),by:whoAmI()},has(x.question)&&x.question!==th.question?{why:x.question}:{}))];
     th.weeks=[...new Set([...(th.weeks||[]),...(x.weeks||[])])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";
     if(th.unfollowed){delete th.unfollowed;th.followedBy=whoAmI()}if(th.status==="closed")th.status=x.status&&x.status!=="closed"?x.status:"growing";
     saveThread(th);x.trackedId=th.id;saveScan(scan);renderMain();toast(`Added to the thread ${th.name}.`);return true}
@@ -14000,7 +14052,7 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     // update followed threads with new evidence
     const joined=[];
     for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
-      const add=x.evidence.filter(e=>!have.has(e.planId+e.text)).map(e=>Object.assign({},e,{via:"find",at:Date.now()}));if(add.length)joined.push({id:th.id,name:th.name,n:add.length,closed:th.status==="closed"});th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
+      const add=x.evidence.filter(e=>!have.has(e.planId+e.text)).map(e=>Object.assign({},e,{via:"find",at:Date.now()},has(x.question)&&x.question!==th.question?{why:x.question}:{}));if(add.length)joined.push({id:th.id,name:th.name,n:add.length,closed:th.status==="closed"});th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
       th.next=(th.next||[]).length?th.next:x.next;th.languages=[...new Set([...(th.languages||[]),...x.languages])];saveThread(th)}
     saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths,joined});
     const nNew=ths.filter(x=>!x.trackedId).length;
@@ -14372,7 +14424,7 @@ function renderProofObs(){
   const ready=items.filter(x=>x.status==="ready"),reading=items.some(x=>x.status==="reading"),shown=items.slice(0,PF_AHEAD+PF_BATCH);
   const total=pf.order.length,doneN=total-items.length;
   $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Observations</span><h2 style="margin-top:4px">Proofread observations</h2>
-    <div class="sub" style="max-width:74ch">Every saved observation never proofread, oldest first. Only spelling, grammar and punctuation are fixed. Children's names, their quoted words and class words stay as written. Nothing is saved until you approve it, and the educator stays the author.</div></div></div>
+    <div class="sub prose" style="--pw:74ch">Every saved observation never proofread, oldest first. Only spelling, grammar and punctuation are fixed. Children's names, their quoted words and class words stay as written. Nothing is saved until you approve it, and the educator stays the author.</div></div></div>
     <div class="actions" style="margin:0 0 10px"><button class="chip-btn back" data-tview="moments">‹ Observations</button></div>
     <section class="card"><div class="pfcount"><b id="pf-left">${left===0?"Every observation has been proofread.":left===1?"1 observation left to proofread.":left+" observations left to proofread."}</b>${pf.skipped?` <span class="cnt">${pf.skipped} skipped for now.</span>`:""}</div>
       ${total?`<div class="pfbar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${pf.read}" aria-label="Proofread so far"><span style="width:${Math.round(100*pf.read/Math.max(1,total))}%"></span></div><div class="cnt">Proofread ${pf.read} of ${total}${doneN?`. ${pf.saved} approved`:""}.${reading?" Reading the next few.":pf.paused&&!pf.error?" Paused.":""}</div>`:""}
@@ -14645,7 +14697,7 @@ function howEvents(){const ev=[];const nm=t=>t&&t.name||"a thread";const D=s=>s?
   for(const n of notices.values()){const found=lensesFinding(n),ids=new Set([...(Array.isArray(n.lensIds)?n.lensIds:[]),...found.map(l=>l.id)]);
     for(const id of ids){const L=LENSES.find(l=>l.id===id);if(!L)continue;const tr=found.some(l=>l.id===id);
       const hits=tr?(()=>{const re=lensRegex(L);const m=re?([n.noticed,n.wonder].join(" ").match(re)||[]):[];const langs=(n.languages||[]).filter(x=>(L.languages||[]).some(y=>y.toLowerCase()===x.toLowerCase()));return [...new Set([...m.map(x=>x.toLowerCase()),...langs])].slice(0,4)})():[];
-      ev.push({item:n.id,at:n.at||0,t:threadsOfNotice(n).map(t=>t.id),room:n.classroom||"",what:`Observation <b>${esc(momentHeading(n)||firstLine(noticeText(n),60))}</b> seen through the lens <b>${esc(L.name)}</b>`,who:"",how:"lens",why:hits.length?`The lens found ${hits.join(", ")}`:"Marked by the reading",words:firstLine(noticeText(n),200),open:`data-obsgo="${esc(n.id)}"`,lens:true})}}
+      ev.push({item:n.id,at:n.at||0,t:threadsOfNotice(n).map(t=>t.id),room:n.classroom||"",what:`Observation <b>${esc(momentHeading(n)||firstLine(noticeText(n),60))}</b> seen through the lens <b>${esc(L.name)}</b>`,who:"",how:"lens",why:lensWhyOf(n,id)||(hits.length?`The lens found ${hits.join(", ")}`:"Marked by the reading"),words:firstLine(noticeText(n),200),open:`data-obsgo="${esc(n.id)}"`,lens:true})}}
   // team inquiries. Every observation and thread an inquiry holds, with who kept it, and TREE's reason where the reading brought it
   for(const x of inqAll()){for(const id of x.obs||[]){const o=(x.obsFound||{})[id];if(o)continue;const it=itemOf(id);if(!it)continue;
       ev.push({item:id,at:it.at,room:it.room,what:`Observation <b>${esc(it.label)}</b> kept for the team inquiry <b>${esc(x.name||"")}</b>`,who:it.by||x.createdBy||"",how:"hand",words:firstLine(noticeText(notices.get(id)),220),open:`data-iqopen="${esc(x.id)}"`,inq:true})}
@@ -14667,8 +14719,8 @@ function howEvents(){const ev=[];const nm=t=>t&&t.name||"a thread";const D=s=>s?
     if(p.source&&p.source.kind==="pattern")ev.push({at:p.source.at||p.createdAt||D(p.weekOf),t:p.threadId?[p.threadId]:[],room:p.classroom||"",what:`Plan ${L} began from a pattern TREE read, <b>${esc(p.source.name||"")}</b>`,who:p.educator||"",how:"pattern",open:`data-open="${esc(p.id)}"`});
     for(const r of p.evidenceRefs||[]){const it=itemOf(r.id);if(!it)continue;ev.push({at:r.at||D(p.weekOf),t:planThreads(p).map(c=>c.t.id),room:p.classroom||"",what:`${it.kind==="obs"?"Observation":"Plan"} <b>${esc(it.label)}</b> attached as evidence to ${L}`,who:r.by||"",how:"search",why:r.q?`Searched for ${r.q}`:"",open:`data-open="${esc(p.id)}"`})}}
   for(const x of projects.values()){if(!x)continue;
-    ev.push({at:x.createdAt||0,pr:[x.id],t:(x.threads||[]).map(l=>l.id),room:x.home||"",what:`The project <b>${esc(x.name||"")}</b> began`,who:x.createdBy||(x.decision&&x.decision.who)||"",how:"hand",why:projUnder(x)?firstLine(projUnder(x),200):"",open:`data-popen="${esc(x.id)}"`});
-    for(const l of x.threads||[]){const t=threads.get(l.id);if(!t)continue;ev.push({at:l.at||x.createdAt||0,pr:[x.id],t:[t.id],room:t.classroom||"",what:`Thread <b>${esc(nm(t))}</b> joined the project <b>${esc(x.name||"")}</b>`,who:l.by||"",how:"hand",open:`data-popen="${esc(x.id)}"`})}
+    ev.push({at:x.createdAt||0,pr:[x.id],t:(x.threads||[]).map(l=>l.id),room:x.home||"",what:`The project <b>${esc(x.name||"")}</b> began`,who:x.createdBy||(x.decision&&x.decision.who)||"",how:has(x.why)?"find":"hand",why:has(x.why)?x.why:projUnder(x)?firstLine(projUnder(x),200):"",open:`data-popen="${esc(x.id)}"`});
+    for(const l of x.threads||[]){const t=threads.get(l.id);if(!t)continue;ev.push({item:t.id,at:l.at||x.createdAt||0,pr:[x.id],t:[t.id],room:t.classroom||"",what:`Thread <b>${esc(nm(t))}</b> joined the project <b>${esc(x.name||"")}</b>`,who:l.by||"",how:has(l.why)?"suggest":"hand",why:l.why||"",open:`data-popen="${esc(x.id)}"`})}
     for(const e of x.evidence||[]){if(!e||e.via!=="weekly")continue;const it=itemOf(e.planId||e.id);if(!it)continue;ev.push({item:it.id,at:e.at||it.at,pr:[x.id],room:it.room,what:`Observation <b>${esc(it.label)}</b> joined the project <b>${esc(x.name||"")}</b>`,who:e.by||"",how:"weekly",why:e.why||"",words:firstLine(noticeText(notices.get(it.id)),220),open:`data-obsgo="${esc(it.id)}"`})}
     for(const c of x.classrooms||[])if(c.room&&c.room!==x.home)ev.push({at:c.at||D(c.week),pr:[x.id],room:c.room,what:`${esc(c.room)} class joined the project <b>${esc(x.name||"")}</b>`,who:c.by||"",how:"hand",why:PJOIN[c.how]||"",open:`data-popen="${esc(x.id)}"`})}
   for(const x of inqAll())for(const [id,o] of Object.entries(x.obsFound||{})){if(!(x.obs||[]).includes(id))continue;const it=itemOf(id);if(!it)continue;ev.push({item:id,at:o.at||it.at,room:it.room,what:`Observation <b>${esc(it.label)}</b> joined the team inquiry <b>${esc(x.name||"")}</b>`,who:o.by||"",how:"weekly",why:o.why||"",words:firstLine(noticeText(notices.get(id)),220),open:`data-obsgo="${esc(id)}"`})}
@@ -15925,7 +15977,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=e310865881","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7afca3beb9","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
