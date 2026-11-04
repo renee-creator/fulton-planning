@@ -305,12 +305,22 @@ async function gqlFiles(branch) {
 }
 // every file under a folder, its folders included to four levels, for the educator records when the allowance is spent
 async function gqlDeep(branch, dirs) {
-  const lvl = n => n ? `entries{name oid type object{...on Tree{${lvl(n - 1)}}}}` : 'entries{name oid type}';
-  const d = await gql(`query{${gqlRepo()}{${dirs.map((k, i) => `d${i}:object(expression:${JSON.stringify(branch + ':' + k)}){...on Tree{${lvl(4)}}}`).join(' ')}}}`);
-  const repo = d.repository || {}, files = [];
-  const walk = (base, t) => { for (const e of (t && t.entries) || []) { const pth = base + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') walk(pth, e.object); } };
-  dirs.forEach((k, i) => walk(k, repo['d' + i]));
+  const files = [];
+  for (const k of dirs) await gqlDeepOne(branch, k, files, 4);
   return files;
+}
+// one folder to the given depth in one query. When GitHub cannot answer a large nested query in time (502 or 504), the
+// folder is listed one level and each of its subfolders is read on its own, so a folder that has grown still lists.
+async function gqlDeepOne(branch, dir, files, depth) {
+  const lvl = n => n ? `entries{name oid type object{...on Tree{${lvl(n - 1)}}}}` : 'entries{name oid type}';
+  const ask = n => gql(`query{${gqlRepo()}{d:object(expression:${JSON.stringify(branch + ':' + dir)}){...on Tree{${lvl(n)}}}}}`);
+  const walk = (base, t) => { for (const e of (t && t.entries) || []) { const pth = base + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') walk(pth, e.object); } };
+  const gone = e => /answered (502|504)/.test(String(e && e.message));
+  try { const d = await ask(depth); walk(dir, (d.repository || {}).d); return; }
+  catch (e) { if (!gone(e) || depth < 1) throw e; log('GitHub could not list', dir, 'in one go, reading its folders one by one'); }
+  const d = await ask(0); const subs = [];
+  for (const e of (((d.repository || {}).d || {}).entries) || []) { const pth = dir + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') subs.push(pth); }
+  for (const s of subs) await gqlDeepOne(branch, s, files, depth - 1);
 }
 // the text of many files at once, by their ids
 async function gqlTexts(shas) {

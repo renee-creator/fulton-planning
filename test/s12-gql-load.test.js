@@ -26,3 +26,17 @@ test('with the allowance spent, the calendar and the educator records still load
   let L = null; for (let i = 0; i < 40; i++) { L = (await fx.as(dee, '/api/staff/library', {})).body; if (L && (L.recipes || []).length) break; await new Promise(r => setTimeout(r, 250)); }
   assert.strictEqual(L.recipes.length, 1);
 });
+
+test('when GitHub cannot list a folder in one go, the records are listed folder by folder', async t => {
+  const gh = { gql: true, spent: true, gqlShallow: true };
+  const fx = await start({ gh, more: put => {
+    put('staff/library/recipes/r0.md', '<!--\nlibrary: recipe\nkind: food\nsource: Ours\n-->\n# Recipe zero\n');
+    put('staff/library/songs/s0.md', '<!--\nlibrary: song\ncopyright: no\nsongwriter: Traditional\n-->\n# Old Tune\n\n## Words\n\nLa la\n');
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  let L = null; for (let i = 0; i < 60; i++) { L = (await fx.as(dee, '/api/staff/library', {})).body; if (L && (L.recipes || []).length) break; await new Promise(r => setTimeout(r, 250)); }
+  assert.strictEqual(L.recipes.length, 1);
+  assert.strictEqual(L.songs.length, 1);
+  assert.ok(gh.gqlShallowCalls >= 1, 'the nested listing was refused');
+});
