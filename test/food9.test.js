@@ -58,6 +58,7 @@ test('food education items show and count once, sorted by the writing help, conf
   await p.evaluate(() => { gQuarter = 'all'; goView('grant'); });
   await p.waitForFunction(() => document.querySelector('[data-gedall]'), null, { timeout: 15000 });
   await p.evaluate(() => { const d = document.querySelector('[data-gsec=edu]'); if (d) d.open = true; });
+  for (let i = 0; i < 40 && !read().sort; i++) await new Promise(r => setTimeout(r, 250));
   const sorted = read().sort;
   assert.strictEqual(sorted['o|kg1'].likely, true); assert.deepStrictEqual(sorted['o|kg1'].objs, [5]);
   assert.strictEqual(sorted['o|s1'].likely, false);
