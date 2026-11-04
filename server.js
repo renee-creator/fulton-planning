@@ -629,6 +629,27 @@ ONCE.push(['freeStories', () => staff.once.edits('freeStories', recsEdit)]);
 ONCE.push(['starterBooks', () => staff.once.edits('starterBooks', recsEdit)]);
 // November 3, 2026. Fixes from the director's review, from once/s13-review.json, with proposals for what changes a policy or the Family Handbook
 ONCE.push(['s13Review', () => staff.once.edits('s13Review', recsEdit)]);
+/* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
+   only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
+   and a parent already on the list keeps their entry. */
+ONCE.push(['northSignups1103', () => {
+  const crypto = require('crypto'); const fp = e => crypto.createHash('sha256').update(String(e || '').trim().toLowerCase()).digest('hex').slice(0, 16);
+  const want = [['bc5b89128452e75e', 'rep'], ['dfb98b47a5fe4f63', 'rep'], ['0370578be825af2a', 'rep'], ['0c051c9a1ab1ce0b', 'rep'],
+    ['bc5b89128452e75e', 'pac'], ['dfb98b47a5fe4f63', 'pac'], ['0370578be825af2a', 'pac'], ['be572465cec12f5d', 'pac'], ['0c051c9a1ab1ce0b', 'pac']];
+  const found = new Map();
+  for (const [, r] of store.recs.children) { const d = r.doc; if (r.deleted || !d || d.classroom !== 'North' || !Array.isArray(d.parents)) continue;
+    for (const p of d.parents) if (p && p.email && p.name && !found.has(fp(p.email))) found.set(fp(p.email), { name: String(p.name), email: String(p.email).trim() }); }
+  if (!found.size) return;
+  const r = store.recs.participation.get('config'); const doc = r && !r.deleted && r.doc ? r.doc : { kind: 'config' };
+  const roles = Array.isArray(doc.roles) ? doc.roles.slice() : []; let n = 0;
+  for (const [h, role] of want) { const p = found.get(h); if (!p) continue;
+    if (roles.some(x => x && String(x.email || '').toLowerCase() === p.email.toLowerCase() && x.role === role)) continue;
+    roles.push({ name: p.name, email: p.email, role, classroom: 'North' }); n++; }
+  if (!n) return;
+  const next = Object.assign({}, doc, { kind: 'config', roles, updatedAt: Date.now() });
+  if (r) { r.doc = next; r.local = true; } else store.recs.participation.set('config', { doc: next, path: 'participation/config.json', local: true });
+  noteChange('participation', 'config'); scheduleSave('participation', 'config'); log('North sign-ups added to the PAC and representatives list,', n);
+}]);
 ONCE.push(['gardenAgreements', () => staff.once.edits('gardenAgreements', recsEdit)]);
 ONCE.push(['presentingFixes', () => staff.once.edits('presentingFixes', recsEdit)]);
 ONCE.push(['helpSession11', () => staff.once.edits('helpSession11', recsEdit)]);
