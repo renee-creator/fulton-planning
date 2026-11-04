@@ -251,3 +251,45 @@ test('the one-time step s17Ages names children by age rather than by class, once
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.ok(src.indexOf("ONCE.push(['s17Ages'") > src.indexOf("ONCE.push(['s15Materials'"), 's17Ages runs after s15Materials');
 });
+
+// November 4, 2026. The senses and the body join Beyond Discipline, the six kinds of risky play and the research join Risky
+// Play, the heavy work guidelines and calming tools join the cards, and the sensory patterns join the needs list, once.
+test('the one-time step s18Sensory puts the theory in the modules and the practice on the cards, once', async () => {
+  const fs = require('fs'), path = require('path');
+  const list = require('../once/s18-sensory-risk.json');
+  assert.strictEqual(list.changes.length, 35);
+  for (const c of list.changes) assert.ok(c.to.startsWith(c.from.split('\n')[0]) || c.to.endsWith(c.from), 'every change keeps the words it hangs on');
+  const texts = list.changes.map(c => c.to.replace(/\(https?:[^)]*\)/g, '')).join('\n');
+  assert.doesNotMatch(texts, /[—–;]|\bteacher|\btoddler|\bClaude\b|overwhelmed/);
+  assert.ok(!/^[^\n]*:[^\n]*$/m.test(texts.replace(/\n/g, '\n')), 'no colons in prose');
+  const H = s => ({ text: `<!--\nstatus: draft\n-->\n# Page\n\n## Reading\n\n${s}\n\n## From our own documentation\n\n- a\n\n## Readings\n\n- [Outside Play, Mariana Brussoni, University of British Columbia](https://outsideplay.ca/)\n- [It's OK Not to Share, Heather Shumaker, Penguin](https://www.penguin.com.au/books/its-ok-not-to-share-and-other-renegade-rules-for-raising-competent-and-compassionate-kids-9781101597132)\n\n## For the director, sources\n\n- **Why it matters.** Ours.\n`, sha: 'p' });
+  const h = make(PEOPLE);
+  h.files.set('staff/pd/modules/04-beyond.md', H('Words.'));
+  h.files.set('staff/pd/modules/20-risk.md', H('### Assessing risk with children\n\nWords.'));
+  h.files.set('staff/pd/modules/06-development.md', H('Words.'));
+  h.files.set('staff/familypieces/together-beyond.md', { text: '<!--\nstatus: draft\n-->\n# When Feelings Run Big\n\n## Repair\n\nWords.\n\n## Partners in understanding\n\nWords.\n', sha: 'f' });
+  const cards = JSON.parse(JSON.stringify(SEED.cards));
+  h.files.set('staff/library/ideabank/cards.json', { doc: { id: 'ideabank-cards', cards, removed: [], sources: [], history: [] }, sha: 'c' });
+  h.files.set('staff/library/ideabank/behaviors.json', { doc: { id: 'ideabank-behaviors', behaviors: JSON.parse(JSON.stringify(SEED.behaviors)) }, sha: 'b' });
+  await h.staff.load();
+  assert.notStrictEqual(await h.staff.once.edits('s18Sensory', () => false), false);
+  const d = h.staff.dump();
+  const beyond = d['staff/pd/modules/04-beyond.md'];
+  assert.match(beyond, /### The senses and the body \(sensory integration\)[\s\S]*## From our own documentation/);
+  assert.match(beyond, /Early Learning Institute, Behavioral Consultation Project/); assert.match(beyond, /\*\*The senses and the body\.\*\*/);
+  const risk = d['staff/pd/modules/20-risk.md'];
+  assert.match(risk, /### The six kinds of risky play[\s\S]*### What the research tells us[\s\S]*### How risky play grows[\s\S]*### Assessing risk with children/);
+  assert.match(risk, /Sandseter and Leif Kennair/); assert.match(risk, /Balanced and Barefoot/);
+  assert.match(d['staff/pd/modules/06-development.md'], /### The senses, in brief/);
+  assert.match(d['staff/familypieces/together-beyond.md'], /## Every body is different[\s\S]*## Partners in understanding/);
+  const c = d['staff/library/ideabank/cards.json'].cards;
+  assert.match(JSON.stringify(c.find(x => x.id === 'heavy-work')), /one twentieth of the child's own weight/);
+  assert.match(JSON.stringify(c.find(x => x.id === 'calm-body-after-big-movement').home), /weighted lap friend/);
+  assert.match(JSON.stringify(c.find(x => x.id === 'quiet-and-cozy-space')), /closed on three sides/);
+  const b = d['staff/library/ideabank/behaviors.json'].behaviors;
+  assert.match(b.find(x => x.label === 'Crashing into people').might_be_seeking, /active and driving pattern/);
+  assert.match(b.find(x => x.label === 'Covering ears').might_be_seeking, /highly sensitive pattern/);
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s18Sensory', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.ok(src.indexOf("ONCE.push(['s18Sensory'") > src.indexOf("ONCE.push(['s17Ages'"));
+});
