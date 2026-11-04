@@ -19,7 +19,8 @@ test('every print is made through the one print kit', () => {
     assert.doesNotMatch(s, /docx@9\.8\.1|pdf\.js\/3\.11\.174|mammoth\/1\.6\.0|pdf-lib@1\.17\.1|pdf-lib\/1\.17\.1|fontkit@/, f + ' loads no print library of its own');
     assert.doesNotMatch(s, /fetch\("fonts\/"\+f\)|fetch\("fonts\/"/, f + ' loads no typeface of its own');
   }
-  assert.match(read('tree.html'), /<script src="print-kit\.js"><\/script>/);
+  // TREE's copy carries a fingerprint of the file, so a phone never pairs a new page with an old print kit
+  assert.match(read('tree.html'), /<script src="print-kit\.js\?v=[0-9a-f]{10}"><\/script>/);
   assert.match(read('tree-conferences.html'), /<script src="print-kit\.js"><\/script>/);
 });
 

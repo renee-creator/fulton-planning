@@ -143,6 +143,16 @@ function readSession(req) {
   const tok = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
   return checkSession(tok);
 }
+// whether a request carries a TREE sign-in with a good signature that has not run out, without asking the sign-ins
+// file, which may not be read yet in the first seconds after a start
+function signedRequest(req) {
+  const h = String(req.headers.authorization || ''); const tok = h.startsWith('Bearer ') ? h.slice(7).trim() : '';
+  if (!tok || tok.length > 600) return false;
+  const [body, mac] = tok.split('.'); if (!body || !mac) return false;
+  const want = sign(body); if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac))) return false;
+  let s; try { s = JSON.parse(Buffer.from(body.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); } catch (e) { return false; }
+  return !!s && typeof s.n === 'string' && s.e > Date.now();
+}
 function checkSession(tok) {
   if (!tok || tok.length > 600) return null;
   const [body, mac] = tok.split('.');
@@ -344,6 +354,23 @@ async function gqlTexts(shas) {
   return out;
 }
 const restSpent = r => r && (r.status === 403 || r.status === 429);
+// the records' texts through GraphQL, and any file GraphQL gives back empty or cut short is read from the raw file
+// address instead, six at a time. A file that still cannot be read is listed in the answer's missing array.
+async function recordTexts(jobs) {
+  const texts = await gqlTexts(jobs.map(j => j.sha));
+  const left = jobs.filter(j => texts.get(j.sha) == null), missing = [];
+  if (left.length) log('GraphQL could not give', left.length, 'record' + (left.length === 1 ? '' : 's') + ' in full, reading them from the raw file address');
+  const readOne = async j => { try { const r = await rawText(j.path, store.branch); if (r.status === 200) texts.set(j.sha, r.text); else missing.push(j.path); } catch (e) { missing.push(j.path); } };
+  for (let i = 0; i < left.length; i += 6) await Promise.all(left.slice(i, i + 6).map(readOne));
+  return { texts, missing };
+}
+// records that could not be read at this start are logged, and the one-time steps wait for a start that reads everything,
+// so a step never runs against half the records
+function noteMissing(missing) {
+  if (!missing.length) return;
+  store.partial = true;
+  log('Could not read', missing.length, 'record' + (missing.length === 1 ? '' : 's') + ' at this start, so the one-time steps wait for the next start.', missing.slice(0, 20).join(', ') + (missing.length > 20 ? ', ...' : ''));
+}
 // a file's text from GitHub's raw file address, which has an allowance of its own, for a file too large for GraphQL to
 // give while the hourly allowance is spent, so a start never waits on the hour
 const GITHUB_RAW = (process.env.GITHUB_RAW || 'https://raw.githubusercontent.com').replace(/\/+$/, '');
@@ -462,7 +489,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -533,6 +560,8 @@ let onceBusy = null;
 function runOnce() {
   if (!store.ready) return;
   confHoursSoon();
+  // with records unread at this start, the one-time steps wait for a start, or a recheck, that reads them all
+  if (store.partial) return;
   if (onceBusy) { onceBusy.again = true; return; }
   const run = { again: false }; onceBusy = run;
   const mark = id => { const r = store.recs.settings.get('once'); const doc = r && !r.deleted && r.doc ? r.doc : { done: {} };
@@ -667,6 +696,7 @@ ONCE.push(['freeStories', () => staff.once.edits('freeStories', recsEdit)]);
 ONCE.push(['starterBooks', () => staff.once.edits('starterBooks', recsEdit)]);
 // November 3, 2026. Fixes from the director's review, from once/s13-review.json, with proposals for what changes a policy or the Family Handbook
 ONCE.push(['s13Review', () => staff.once.edits('s13Review', recsEdit)]);
+ONCE.push(['s14Wording', () => staff.once.edits('s14Wording', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
@@ -824,12 +854,14 @@ async function doLoadGraph() {
     if (o) { const cur = store.originals.get(o[1]); if (cur && cur.drive) cur.leftover = { path: f.path, sha: f.sha }; else store.originals.set(o[1], { path: f.path, sha: f.sha, size: 0 }); }
     if (f.path.startsWith('photos/')) photosDrive.seen(f.path);
   }
-  const texts = await gqlTexts([...jobs.map(j => j.sha), ...(accSha ? [accSha] : []), ...(rolesSha ? [rolesSha] : []), ...(drdpSha ? [drdpSha] : [])]);
-  if (rolesSha) takeRoles(texts.get(rolesSha));
-  if (accSha) { accounts.sha = accSha; try { const a = JSON.parse(texts.get(accSha) || '{}'); if (Array.isArray(a.accounts)) accounts.list = a.accounts.filter(x => x && x.name); } catch (e) { log('The sign-ins file could not be read'); } }
+  const small = await gqlTexts([...(accSha ? [accSha] : []), ...(rolesSha ? [rolesSha] : []), ...(drdpSha ? [drdpSha] : [])]);
+  if (rolesSha) takeRoles(small.get(rolesSha));
+  if (accSha) { accounts.sha = accSha; try { const a = JSON.parse(small.get(accSha) || '{}'); if (Array.isArray(a.accounts)) accounts.list = a.accounts.filter(x => x && x.name); } catch (e) { log('The sign-ins file could not be read'); } }
   accounts.loaded = true;
-  for (const j of jobs) { const tx = texts.get(j.sha); if (tx == null) { log('Skipped unreadable record', j.path); continue; } try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (e) { log('Skipped unreadable record', j.path); } }
-  if (drdpSha) { try { DRDP_DESC = JSON.parse(texts.get(drdpSha)); } catch (e) { DRDP_DESC = null; } }
+  const { texts, missing } = await recordTexts(jobs);
+  for (const j of jobs) { const tx = texts.get(j.sha); if (tx == null) continue; try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (e) { log('Skipped unreadable record', j.path); missing.push(j.path); } }
+  noteMissing(missing);
+  if (drdpSha) { try { DRDP_DESC = JSON.parse(small.get(drdpSha)); } catch (e) { DRDP_DESC = null; } }
   if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 15 * 60000); }
   store.ready = true; store.error = ''; store.loadedAt = Date.now();
   try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); }
@@ -880,8 +912,9 @@ async function doLoad() {
     };
     try { await Promise.all(Array.from({ length: 8 }, worker)); }
     catch (e) { if (!e.spent) throw e; log('GitHub allowance spent while reading records, reading the rest through GraphQL');
-      const left = jobs.filter(j => !store.recs[j.kind].has(j.id)); const texts = await gqlTexts(left.map(j => j.sha));
-      for (const j of left) { const tx = texts.get(j.sha); if (tx == null) { log('Skipped unreadable record', j.path); continue; } try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (er) { log('Skipped unreadable record', j.path); } } }
+      const left = jobs.filter(j => !store.recs[j.kind].has(j.id)); const { texts, missing } = await recordTexts(left);
+      for (const j of left) { const tx = texts.get(j.sha); if (tx == null) continue; try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (er) { log('Skipped unreadable record', j.path); missing.push(j.path); } }
+      noteMissing(missing); }
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
     store.ready = true; store.error = ''; store.loadedAt = Date.now();
@@ -1138,6 +1171,10 @@ async function recheckRecords() {
     try { const doc = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); store.recs[m[1]].set(m[2], { doc, sha: f.sha, path: f.path }); noteChange(m[1], m[2]); n++; } catch (e) {}
   }
   if (n) log('Read', n, 'records again that changed while the server was starting');
+  if (store.partial) {
+    const unread = (tree.json.tree || []).filter(f => { const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/); return m && !store.recs[m[1]].has(m[2]); });
+    if (!unread.length) { store.partial = false; log('Every record is read now, so the one-time steps can run'); runOnce(); }
+  }
 }
 
 /* ---------- FEED orders, for the Farm to School grant ----------
@@ -1321,6 +1358,23 @@ function flushPath(path) {
     if (!stopping) { clearTimeout(timers.get(path)); timers.set(path, setTimeout(() => flushPath(path), 30000)); } });
   chains.set(path, run);
   return run;
+}
+// the files each sign-in changed and that are still waiting, so a phone locking sends its own changes on, not everyone's
+const dirtyBy = new Map();
+function wroteBy(name, path) { const k = nameKey(name); if (!k) return; if (!dirtyBy.has(k)) dirtyBy.set(k, new Set()); dirtyBy.get(k).add(path); }
+async function flushMine(name) {
+  const k = nameKey(name), mine = dirtyBy.get(k) || new Set(); dirtyBy.delete(k);
+  const paths = [...mine].filter(p => dirtyPaths.has(p) || chains.has(p));
+  await Promise.all(paths.map(flushPath)); await Promise.all(paths.map(p => chains.get(p) || Promise.resolve()));
+  return paths.every(p => !dirtyPaths.has(p));
+}
+// the calendar and the educator records keep no note of who changed what, so a phone locking sends them on at most
+// once every thirty seconds across the school, and a lock inside that time answers at once
+let otherFlushAt = 0, otherFlushOk = true;
+async function flushOthers() {
+  if (Date.now() - otherFlushAt < 30000) return otherFlushOk; otherFlushAt = Date.now();
+  otherFlushOk = (await Promise.all([calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean);
+  return otherFlushOk;
 }
 // true when everything waiting reached GitHub
 async function flushEverything() { await Promise.all([...dirtyPaths.keys()].map(flushPath)); await Promise.all([...chains.values()]); return dirtyPaths.size === 0; }
@@ -1630,11 +1684,17 @@ function send(req, res, status, headers, body) {
   try { if (res.headersSent) { res.end(); return; } res.writeHead(status, Object.assign({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, corsFor(req), headers)); res.end(body); }
   catch (e) { log('Could not send', e.message); }
 }
-// a large answer, such as the records TREE loads when it opens, is sent compressed when the browser accepts it, about a quarter of the size
-function json(req, res, status, obj) {
-  const body = JSON.stringify(obj);
+// a large answer, such as the records TREE loads when it opens, is sent compressed when the browser accepts it, about a
+// quarter of the size. The compressing runs off the main thread, so many phones opening at once do not hold each other up.
+function json(req, res, status, obj) { jsonText(req, res, status, JSON.stringify(obj)); }
+// the same, for an answer already written out as JSON
+function jsonText(req, res, status, body) {
   if (body.length > 16384 && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
-    try { send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }, zlib.gzipSync(Buffer.from(body, 'utf8'), { level: 6 })); return; } catch (e) {}
+    zlib.gzip(Buffer.from(body, 'utf8'), { level: 6 }, (e, gz) => {
+      if (e) { send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, body); return; }
+      send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' }, gz);
+    });
+    return;
   }
   send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, body);
 }
@@ -1663,9 +1723,20 @@ function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCach
 // an observation still being written is a draft. It is kept in the records as the educator types, so it survives a
 // change of phone, signing out or closing TREE, and only the educator who started it and the director see it.
 const draftSeen = (kind, doc, name, director) => kind !== 'drafts' || director || (!!doc && nameKey(doc.by) === nameKey(name));
-function snapshot(director, kitchen, office, name) {
-  const out = {}; for (const k of KINDS) { out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id)) && draftSeen(k, r.doc, name, director)) out[k][id] = forViewer(k, r.doc, director, office); }
-  return out;
+/* The records TREE loads when it opens, written out as JSON. Everything but the drafts is the same for every sign-in
+   of the same shape, director, kitchen or office, so that part is written out once per shape and kept thirty seconds
+   while the records do not change, and only the drafts, which each educator sees their own of, are written per name.
+   So a school of phones opening together after a restart writes the records out a few times, not once each. */
+const snapCache = new Map();
+function snapshotText(director, kitchen, office, name) {
+  const key = [director ? 'd' : '', kitchen ? 'k' : '', office ? 'o' : ''].join('');
+  let c = snapCache.get(key);
+  if (!c || c.rev !== rev || Date.now() - c.at > 30000) {
+    const out = {}; for (const k of KINDS) { if (k === 'drafts') continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
+    c = { rev, at: Date.now(), text: JSON.stringify(out) }; snapCache.set(key, c);
+  }
+  const drafts = {}; for (const [id, r] of store.recs.drafts) if (!r.deleted && (!kitchen || kitchenSees('drafts', id)) && draftSeen('drafts', r.doc, name, director)) drafts[id] = forViewer('drafts', r.doc, director);
+  return c.text.slice(0, -1) + ',"drafts":' + JSON.stringify(drafts) + '}';
 }
 // the server's status, in full for the director in Settings, and without any counts on the page anyone can open
 function statusLines() {
@@ -2000,9 +2071,15 @@ async function handle(req, res) {
   // a request is read only up to what its page needs. The Family page and the public pages send small forms and one photo,
   // and a staff request without a good sign-in is read only a little, since it is refused anyway
   const famOrPublic = path.startsWith('/family/') || path.startsWith('/public/');
-  const limit = path === '/login' ? LOGIN_MAX_BYTES : path === '/family/photo' ? FAMILY_PHOTO_MAX_BYTES : famOrPublic ? SMALL_MAX_BYTES : (path.startsWith('/api/') && !readSession(req)) ? SMALL_MAX_BYTES : MAX_BODY_BYTES;
+  // in the first seconds after a start the sign-ins may not be read yet, so a staff request waits for them, and a
+  // sign-in with a good signature is taken as signed in for this limit should the sign-ins still not be read
+  if (path.startsWith('/api/') && !accounts.loaded && signedRequest(req)) { try { await loadAll(); } catch (e) {} }
+  const signedIn = path.startsWith('/api/') && (accounts.loaded ? !!readSession(req) : signedRequest(req));
+  const limit = path === '/login' ? LOGIN_MAX_BYTES : path === '/family/photo' ? FAMILY_PHOTO_MAX_BYTES : famOrPublic ? SMALL_MAX_BYTES : (path.startsWith('/api/') && !signedIn) ? SMALL_MAX_BYTES : MAX_BODY_BYTES;
   try { body = await readBody(req, limit); }
-  catch (e) { log('Request refused', path, e.message); err(req, res, e.message === 'too_big' ? 413 : 400, e.message === 'too_big' ? 'That upload is too large. Use fewer or smaller pages.' : 'The request could not be read.'); return; }
+  // a refused upload carries how long the server has been up, so a phone keeps a save refused in the first moments
+  // after a start, when the small limit for strangers may still have applied, and sends it again
+  catch (e) { log('Request refused', path, e.message); if (e.message === 'too_big') json(req, res, 413, { error: 'That upload is too large. Use fewer or smaller pages.', up: Math.round(process.uptime()) }); else err(req, res, 400, 'The request could not be read.'); return; }
 
   // the Family page. A family's sign-in never reaches the staff side, and the staff side never takes one
   if (path.startsWith('/family/') || path === '/public/menu' || path === '/public/community' || path === '/public/handbook' || path === '/public/handbook/img' || path === '/public/playgarden' || path === '/public/playgarden/apply') {
@@ -2170,7 +2247,7 @@ async function handle(req, res) {
   if (path === '/api/drdp-levels') { await ensureDrdp(); const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
-  if (path === '/api/data') { json(req, res, 200, { staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, data: snapshot(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) }); return; }
+  if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
     const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
@@ -2371,7 +2448,7 @@ async function handle(req, res) {
     else if (op === 'delete') { if (cur) cur.deleted = true; else { json(req, res, 200, { ok: true, rev, ...sidNow() }); return; } }
     else { err(req, res, 400, 'Unknown change'); return; }
     { const r0 = map.get(id); if (r0) r0.local = true; if (r0 && !r0.deleted && op !== 'delete') keepRecent(fpath, r0.doc, dev); }
-    noteChange(kind, id); scheduleSave(kind, id); if (cidKey) cidSeen(cidKey);
+    noteChange(kind, id); scheduleSave(kind, id); if (cidKey) cidSeen(cidKey); wroteBy(me.name, fpath);
     if (sid) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); }
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'educators' || id === 'main') && onceDone('educatorList')) syncEducators();
@@ -2489,7 +2566,8 @@ async function handle(req, res) {
     if (r.error) { err(req, res, r.status || 400, r.error); return; }
     json(req, res, 200, r); return;
   }
-  if (path === '/api/save-now') { const ok = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
+  // a phone locking sends on what this sign-in changed, and the rest at most once in thirty seconds
+  if (path === '/api/save-now') { const ok = (await Promise.all([flushMine(me.name).catch(() => false), flushOthers()])).every(Boolean); if (ok) json(req, res, 200, { ok: true }); else err(req, res, 502, 'Some changes have not reached GitHub yet. Saving keeps trying.'); return; }
   if (path === '/api/original') {
     const name = String(body.name || 'file').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(-60);
     const ext = (name.match(/\.(pdf|jpe?g|png|webp)$/) || [])[1];

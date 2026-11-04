@@ -1,0 +1,430 @@
+{
+ "note": "Wording brought in line with our writing rules, November 4, 2026. Real as emphasis across the Idea bank cards, children under three in the family safety lines, and dysregulation named without reducing it in hitting, tantrums, saying no and music and movement",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "show real interest in each soil",
+   "to": "show interest in each soil"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "look at the same object with real interest",
+   "to": "look at the same object with interest"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "look at the object with real interest before you speak",
+   "to": "look at the object with interest before you speak"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "look at the object yourself with real interest",
+   "to": "look at the object yourself with interest"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Sit beside the palette with real curiosity",
+   "to": "Sit beside the palette with curiosity"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Making a batch is real shared work with roles for everyone.",
+   "to": "Making a batch is shared work with roles for everyone."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "In the Studio a group batch gives every child a real job.",
+   "to": "In the Studio a group batch gives every child a job that matters."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "stiff dough that takes real strength to push through",
+   "to": "stiff dough that takes strength to push through"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "where children can work with real force",
+   "to": "where children can work with full force"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "let a child work alone with real force while an adult stays near",
+   "to": "let a child work alone with full force while an adult stays near"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Wash, hang and fold fabric as real care work.",
+   "to": "Wash, hang and fold fabric as care work the class needs."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Holding the end while you tie is a real job too.",
+   "to": "Holding the end while you tie is a job that matters too."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "That is the start of real science.",
+   "to": "That is the start of science."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the strawberry beds as real care work.",
+   "to": "the strawberry beds as care work the garden needs."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Real jobs with water, such as watering plants, help them feel capable.",
+   "to": "Jobs with water that matter, such as watering plants, help them feel capable."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Heavy buckets of sand to haul, weigh and tip as real work.",
+   "to": "Heavy buckets of sand to haul, weigh and tip as work that matters."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Connect play to real work on our site, such as",
+   "to": "Connect play to the work of our site, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Invite people with real jobs, such as a vet, a baker or a mail carrier,",
+   "to": "Invite people whose work children play at, such as a vet, a baker or a mail carrier,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "offer heavy real jobs in play, such as",
+   "to": "offer heavy jobs in play, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Give your child a real job alongside you,",
+   "to": "Give your child a job that matters alongside you,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Real jobs and play with real tools give children strong hands",
+   "to": "Jobs that matter and play with real tools give children strong hands"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "with real choices about height and order",
+   "to": "with choices of their own about height and order"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "where children move real loads with their whole bodies",
+   "to": "where children move heavy loads with their whole bodies"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "sleds of logs, real hauling jobs across the site,",
+   "to": "sleds of logs, hauling jobs across the site,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Connect hauling to real care of the site,",
+   "to": "Connect hauling to the care of the site,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and a real job such as filling a whole landing zone",
+   "to": "and a job that matters, such as filling a whole landing zone"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Real jobs give real pride.",
+   "to": "Jobs that matter give pride."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Finishing with one last real load, such as",
+   "to": "Finishing with one last load, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the value of real challenge outdoors",
+   "to": "the value of challenge outdoors"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Real jobs that use big muscles, carrying, digging,",
+   "to": "Jobs that matter and use big muscles, carrying, digging,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "For the South class, real jobs across the site that children plan.",
+   "to": "For the South class, jobs across the site that children plan."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "lifting and digging against real resistance",
+   "to": "lifting and digging against resistance"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Work alongside with real effort, at the children's pace",
+   "to": "Work alongside with effort, at the children's pace"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Begin with one invitation and one real job.",
+   "to": "Begin with one invitation and one job that matters."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Connect jobs to real needs on the site.",
+   "to": "Connect jobs to needs on the site."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "a laundry basket and real jobs around the house and yard",
+   "to": "a laundry basket and jobs that matter around the house and yard"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Your child is building strength and pride in real work.",
+   "to": "Your child is building strength and pride in work that matters."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "a writing center full of real reasons to make marks",
+   "to": "a writing center full of reasons to make marks"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "tells children that any mark is a real start",
+   "to": "tells children that any mark is a start"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Writing grows when it has a real reader and a real reason.",
+   "to": "Writing grows when it has a reader and a reason to write."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "negotiation, shared plans and real teamwork",
+   "to": "negotiation, shared plans and teamwork"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "The shelf labels make sorting a real job children can finish on their own",
+   "to": "The shelf labels make sorting a job children can finish on their own"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Bring a real problem from play, such as",
+   "to": "Bring a problem from play, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "choose a cooking job and do the real steps",
+   "to": "choose a cooking job and do the steps"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "when children take real roles in it",
+   "to": "when children take on roles that matter in it"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Real kitchen work gives the hands and arms plenty to push against.",
+   "to": "Kitchen work gives the hands and arms plenty to push against."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Your child can do real kitchen work, including",
+   "to": "Your child can do kitchen work, including"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "when children hold real care and real questions",
+   "to": "when children hold care and questions of their own"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "These jobs give strong heavy work with a real purpose.",
+   "to": "These jobs give strong heavy work with a purpose."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Build the first areas with children doing real work.",
+   "to": "Build the first areas with children doing the work."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Give real heavy jobs, such as carrying the laundry basket",
+   "to": "Give heavy jobs that matter, such as carrying the laundry basket"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "with real carrying work around our site",
+   "to": "with carrying work around our site"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Real carrying jobs, such as carrying water to the garden beds",
+   "to": "Carrying jobs the site needs, such as carrying water to the garden beds"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Trucks and trains with real loads of stones",
+   "to": "Trucks and trains with loads of stones"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Heavy loads, long routes and real jobs bring children together",
+   "to": "Heavy loads, long routes and jobs that matter bring children together"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Take on real jobs that move things around the site.",
+   "to": "Take on jobs that move things around the site."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Give children real carrying jobs in the garden and animal yards.",
+   "to": "Give children carrying jobs in the garden and animal yards."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Give real jobs with a destination, such as",
+   "to": "Give jobs with a destination, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Heavy work at tidy-up time is a real job they can feel proud of.",
+   "to": "Heavy work at tidy-up time is a job they can feel proud of."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "seek high places, with real challenge, safe heights",
+   "to": "seek high places, with challenge, safe heights"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Use their power to help in real ways around the school.",
+   "to": "Use their power to help in ways that matter around the school."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Give heroes real jobs, such as helping in the garden",
+   "to": "Give heroes jobs that matter, such as helping in the garden"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "offer hero training with real strong work, such as",
+   "to": "offer hero training with strong work, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "may look different from yours and still hold real meaning",
+   "to": "may look different from yours and still hold meaning"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "to haul mulch, compost and logs as real work in the garden",
+   "to": "to haul mulch, compost and logs as work the garden needs"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Haul real loads with wheelbarrows and wagons.",
+   "to": "Haul loads with wheelbarrows and wagons."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "offer real hauling with wheelbarrows and wagons full of mulch or logs",
+   "to": "offer hauling with wheelbarrows and wagons full of mulch or logs"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Let your child carry real loads in a wagon or wheelbarrow",
+   "to": "Let your child carry loads in a wagon or wheelbarrow"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Sorting cars into a basket afterward is a real job they can finish on their own.",
+   "to": "Sorting cars into a basket afterward is a job they can finish on their own."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "let the children do the real work even when it is slower",
+   "to": "let the children do the work even when it is slower"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Building it together is real work, and",
+   "to": "Building it together is work that matters, and"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "so your body shows this is real work",
+   "to": "so your body shows this is work that matters"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Big energy needs real work.",
+   "to": "Big energy needs work that matters."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and a real job builds the feeling of being capable",
+   "to": "and a job that matters builds the feeling of being capable"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Washing is real work with a clear beginning and end.",
+   "to": "Washing is work with a clear beginning and end."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Heavy work as real power, such as",
+   "to": "Heavy work that gives a feeling of power, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "offer real tools, real hauling jobs and higher climbing",
+   "to": "offer real tools, hauling jobs and higher climbing"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Keep small pieces away from babies and toddlers.",
+   "to": "Keep small pieces away from babies and children under three."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Small seeds can be a choking risk for toddlers.",
+   "to": "Small seeds can be a choking risk for children under three."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Keep real coins away from babies and toddlers.",
+   "to": "Keep real coins away from babies and children under three."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Small items can be a choking risk for babies and toddlers.",
+   "to": "Small items can be a choking risk for babies and children under three."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "slow swaying helps the body calm down",
+   "to": "slow swaying helps a body find its steady rhythm"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "A body that is tired, hungry or overwhelmed (interoception) might reach for hitting",
+   "to": "A body that is tired, hungry or out of balance (dysregulation) might reach for hitting"
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "They may be tired, hungry or overwhelmed (interoception). They might also need help to calm their body (self-regulation).",
+   "to": "They may be tired, hungry or out of balance (dysregulation). They might also need a steady adult to borrow calm from (co-regulation) while their body settles."
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "They might also be tired or overwhelmed.",
+   "to": "They might also be tired, or their body may be out of balance (dysregulation)."
+  }
+ ]
+}

@@ -7,7 +7,8 @@
 // plans/abc.json or calendar/bookings/2026-10.json, and the folder can then be committed and pushed.
 // Sign-ins, access/accounts.json, are not in a backup, so an existing file there is left as it is. The director and office
 // names, access/roles.json, are restored.
-// Photos are listed in the manifest with their Google Drive ids. The photo files themselves stay in Google Drive.
+// Photos are listed in the manifest with their Google Drive ids. The photo files themselves stay in Google Drive, and the
+// markers that point TREE to them, photos/<id>~<drive id>~<size>.ref, are written back from the manifest.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -27,27 +28,41 @@ if (!bundle || !bundle.manifest || bundle.manifest.kind !== 'TREE backup' || !bu
 }
 const root = path.resolve(out);
 let n = 0;
+// a path is always inside the records folder, with plain names only, and never the sign-ins file
+function fileFor(rel) {
+  const rp = String(rel).split(/[\\/]+/).join('/');
+  if (!/^[\w.~-]+(\/[\w.~-]+)*$/.test(rp) || /(^|\/)\.\.?(\/|$)/.test(rp)) return null;
+  if (rp.startsWith('access/') && rp !== 'access/roles.json') return null;
+  const file = path.join(root, rp);
+  return file.startsWith(root + path.sep) ? { rp, file } : null;
+}
+function write(file, data) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, data); n++; }
 for (const [rel, doc] of Object.entries(bundle.files)) {
-  // a path is always inside the records folder, and never the sign-ins file
-  const clean = path.normalize(rel).replace(/^(\.\.(\/|\\|$))+/, '');
-  // records are JSON, and the PD library's pieces under staff/pd are Markdown, kept as written
-  // a picture from the Policies and Procedures, the Family Handbook or the recipe library comes back as the image it was
-  const pic = /^(staff\/policies|family\/handbook|staff\/library\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(clean.split(path.sep).join('/')) && doc && typeof doc.base64 === 'string';
-  if (pic) { const file = path.join(root, clean); if (!file.startsWith(root + path.sep)) { console.error('Skipped', rel); continue; } fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.from(doc.base64, 'base64')); n++; continue; }
-  const md = /^staff\/pd\/[\w.~/-]+\.md$/.test(clean.split(path.sep).join('/')) && typeof doc === 'string';
-  if ((!md && !/^[\w.-]+(\/[\w.~-]+)*\.json$/.test(clean.split(path.sep).join('/'))) || (clean.startsWith('access') && clean.split(path.sep).join('/') !== 'access/roles.json')) { console.error('Skipped', rel); continue; }
-  const file = path.join(root, clean);
-  if (!file.startsWith(root + path.sep)) { console.error('Skipped', rel); continue; }
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const at = fileFor(rel);
+  if (!at) { console.error('Skipped', rel); continue; }
+  const { rp, file } = at;
+  // a picture, from the Policies and Procedures, the Family Handbook or a library, comes back as the image it was
+  if (doc && typeof doc === 'object' && typeof doc.base64 === 'string' && /\.(png|jpe?g|gif|webp)$/i.test(rp)) { write(file, Buffer.from(doc.base64, 'base64')); continue; }
+  // a record kept as text, the PD library's pieces, the school's wording, the new educator pages, the family pieces and
+  // any other Markdown page, is written as it was. Every other record is JSON.
+  if (typeof doc === 'string') { write(file, doc); continue; }
+  if (!doc || typeof doc !== 'object') { console.error('Skipped', rel); continue; }
   // the DRDP descriptors and the educator records under staff/ are kept with one space of indent, every other record with
   // two, as the server writes them
-  const rp = clean.split(path.sep).join('/');
   const indent = rp === 'drdp/descriptors.json' || rp.startsWith('staff/') || rp.startsWith('family/handbook/') ? 1 : 2;
-  fs.writeFileSync(file, md ? doc : JSON.stringify(doc, null, indent) + '\n');
-  n++;
+  write(file, JSON.stringify(doc, null, indent) + '\n');
 }
 const m = bundle.manifest;
+// the markers for photos kept in Google Drive, written as the server writes them, with the Drive id as the text
+let marks = 0;
+for (const p of (m.photos && m.photos.list) || []) {
+  if (!p || !p.drive) continue;
+  const ref = /^photos\/[^/]+\.ref$/.test(String(p.ref || '')) ? p.ref : `photos/${p.id}~${p.drive}~${Number(p.size) || 0}.ref`;
+  const at = fileFor(ref);
+  if (!at || !/^photos\/[a-z0-9][a-z0-9._-]{0,150}~[A-Za-z0-9_-]{10,}~\d+\.ref$/i.test(at.rp)) { console.error('Skipped photo marker', ref); continue; }
+  write(at.file, String(p.drive)); marks++;
+}
 console.log(`Restored ${n} files from the backup of ${m.date} into ${root}`);
 console.log('By kind', Object.entries(m.counts || {}).map(([k, v]) => `${k} ${v}`).join(', '));
-if (m.photos) console.log(`Photos listed ${m.photos.total}, ${m.photos.inDrive} of them in Google Drive`);
+if (m.photos) console.log(`Photos listed ${m.photos.total}, ${m.photos.inDrive} of them in Google Drive, ${marks} markers written`);
 console.log(m.left || '');

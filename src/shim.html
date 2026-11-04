@@ -74,7 +74,7 @@
       LS.set("fp-signout-why", j.error||"Your sign-in ended. Sign in again to keep going."); signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
     if(r.status===403) throw {code:"not_allowed", status:403, message:j.error};
-    if(r.status===413) throw {code:"too_big", status:413, message:j.error};
+    if(r.status===413) throw {code:"too_big", status:413, message:j.error, up:j.up};
     if(!r.ok) throw {code:r.status>=500?"server_error":"bad_request", status:r.status, message:j.error||("The server answered "+r.status+".")};
     if(path==="/api/me/passcode"&&j.token){ Auth.token=j.token; LS.set("fp-token",j.token); }
     return j;
@@ -185,7 +185,11 @@
   async function obAll(){ const w=obWho(); if(!w) return []; const a=await obTx("readonly",st=>st.getAll()).catch(()=>null);
     if(Array.isArray(a)){ const keep=new Map(a.map(e=>[e.sid,e])); for(const [sid,e] of OB.mem) if(!keep.has(sid)&&Date.now()-e.at<3000) keep.set(sid,e); OB.mem=keep; }
     return [...OB.mem.values()].filter(e=>e.who===w).sort((x,y)=>(x.at-y.at)||((x.n||0)-(y.n||0))); }
-  const obKeep=err=>!!err&&(["unavailable","server_error","rate_limited","session_expired"].includes(err.code)||err.status===503||err.status===502||err.status===504);
+  // a save refused as too large in the server's first two minutes is kept and sent again, since a server just started
+  // may not have read the sign-ins yet and held the save to a stranger's limit
+  const obEarly413=err=>!!err&&err.status===413&&typeof err.up==="number"&&err.up<120;
+  const obKeep=err=>!!err&&(["unavailable","server_error","rate_limited","session_expired"].includes(err.code)||err.status===503||err.status===502||err.status===504||obEarly413(err));
+  function obWait(err){ if(!obEarly413(err)) return; try{ (window.toast||alert)("TREE is still starting. That save is kept on this device and will be tried again in a moment."); }catch(e){} }
   const newSid=()=>"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
   // this tab's own id rides with every save, so the server can tell a page's older copy from this tab's own changes
   const TAB=(()=>{ const m=()=>Math.random().toString(36).slice(2,12)+Date.now().toString(36); try{ let t=sessionStorage.getItem("tree-tab"); if(!t||!/^[a-z0-9]{6,32}$/.test(t)){ t=m(); sessionStorage.setItem("tree-tab",t); } return t; }catch(e){ return m(); } })();
@@ -209,7 +213,7 @@
       for(const e of (await obAll()).filter(x=>!x.sent)){
         if(navigator.onLine===false) break;
         try{ const r=await api("/api/write",{op:e.op,kind:e.kind,id:e.id,...(e.extra||{}),sid:e.sid}); obTook(e,r); any=true; if(r.written) await obDel(e.sid); else { e.sent=Date.now(); e.failed=0; await obPut(e); } }
-        catch(err){ if(!obKeep(err)){ await obDel(e.sid); obTell(err); continue; } e.failed=Date.now(); await obPut(e); break; } }
+        catch(err){ if(!obKeep(err)){ await obDel(e.sid); obTell(err); continue; } obWait(err); e.failed=Date.now(); await obPut(e); break; } }
       // then the server is asked which of the rest are written
       const list=(await obAll()).filter(x=>x.sent); if(!list.length) return;
       const j=await api("/api/saved",{items:list.slice(0,60).map(e=>({sid:e.sid,kind:e.kind,id:e.id,at:e.at}))});
@@ -247,7 +251,7 @@
         if(!obKeep(err)){ await obDel(sid); throw err; }
         // a draft keeps its own copy and sends it under the same save id, so only one of them is kept here
         if(extra&&extra.cid){ await obDel(sid); throw err; }
-        e.failed=Date.now(); await obPut(e); obLocal(e); obChanged(); notify(); obSoon(); return Store.data[kind]?.[id]??null; }
+        obWait(err); e.failed=Date.now(); await obPut(e); obLocal(e); obChanged(); notify(); obSoon(); return Store.data[kind]?.[id]??null; }
       if(r.written) await obDel(sid); else { e.sent=Date.now(); await obPut(e); obSoon(20000); }
       Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); obChanged(); return r.doc; };
     return { id, path,

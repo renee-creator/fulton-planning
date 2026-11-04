@@ -19,9 +19,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <!-- the PDF tool loads beside TREE instead of before it, so TREE opens without waiting for it -->
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="print-kit.js"></script>
-<script src="wording.js"></script>
-<script src="sitemap.js"></script>
+<script src="print-kit.js?v=6730f29575"></script>
+<script src="wording.js?v=2f5e2c3af2"></script>
+<script src="sitemap.js?v=da4b12e1c1"></script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -326,7 +326,7 @@ span.pfstate{cursor:default;border-style:dashed}
 @media (max-width:760px){.tablewrap:has(+.lenscards){display:none}.lenscards{display:grid;gap:8px}.lenscard{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}.lcells{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-size:14.5px}}
 details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-webkit-details-marker{display:none}details.drdom:not([open])>summary{opacity:.8}details.drdom>summary b::before{content:"▸ ";color:var(--muted)}details.drdom[open]>summary b::before{content:"▾ "}
 .secidx{display:none}
-@media (max-width:760px){.secidx{display:grid;gap:6px;position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0 6px;margin-bottom:4px}.secidx .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.secidx .chip{flex:none;white-space:nowrap}
+@media (max-width:760px){.secidx{display:grid;gap:6px;position:sticky;top:var(--ttop-h,96px);z-index:5;background:var(--bg);padding:8px 0 6px;margin-bottom:4px}.secidx .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.secidx .chip{flex:none;white-space:nowrap}
   section.card.filled[data-card]:not(.showall)>.hint,section.card.filled[data-card]:not(.showall)>.chips,section.card.filled[data-card]:not(.showall)>details,section.card.filled[data-card]:not(.showall)>.chiprow-label,section.card.filled[data-card]:not(.showall) .cardfoot .actions{display:none}
   section.card.filled[data-card]:not(.showall)>.lbl::after{content:" · prompts";font-size:12px;color:var(--muted);font-family:var(--body)}}
 .drnote{margin:10px 0;padding:10px 12px;border-left:3px solid var(--marigold);background:var(--marigold-soft);border-radius:6px;font-size:14.5px}
@@ -765,7 +765,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kitchen>summary h3{font-size:17px;margin:0}.kitchen>summary h3::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.kitchen[open]>summary h3::before{transform:rotate(90deg)}
 .klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}.knote.kset{color:var(--moss);font-weight:600}.kchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.kchips .chip-btn{font-size:12.5px;padding:4px 10px}
 /* on a touch screen a text link gets a taller area to tap, without moving anything around it */
-@media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}}
+@media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}.chip{padding-top:8px;padding-bottom:8px}}
 .kwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}.kmain{display:grid;gap:10px;min-width:0}
 .kweek{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.kday{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;gap:6px;min-width:0;align-content:start}.kday.closed{opacity:.6}
 .kdayh{display:flex;justify-content:space-between;gap:2px 4px;flex-wrap:wrap;align-items:center;font-size:12.5px;min-height:22px}.kdayh label{white-space:nowrap;font-size:11.5px;display:flex;align-items:center;gap:3px}.kdayh label input{margin:0}.kmeal{display:grid;gap:3px;font-size:11.5px;color:var(--muted);font-weight:600}
@@ -922,7 +922,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
       LS.set("fp-signout-why", j.error||"Your sign-in ended. Sign in again to keep going."); signOut(); throw {code:"session_expired", message:j.error}; }
     if(r.status===429) throw {code:"rate_limited", message:j.error};
     if(r.status===403) throw {code:"not_allowed", status:403, message:j.error};
-    if(r.status===413) throw {code:"too_big", status:413, message:j.error};
+    if(r.status===413) throw {code:"too_big", status:413, message:j.error, up:j.up};
     if(!r.ok) throw {code:r.status>=500?"server_error":"bad_request", status:r.status, message:j.error||("The server answered "+r.status+".")};
     if(path==="/api/me/passcode"&&j.token){ Auth.token=j.token; LS.set("fp-token",j.token); }
     return j;
@@ -1033,7 +1033,11 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
   async function obAll(){ const w=obWho(); if(!w) return []; const a=await obTx("readonly",st=>st.getAll()).catch(()=>null);
     if(Array.isArray(a)){ const keep=new Map(a.map(e=>[e.sid,e])); for(const [sid,e] of OB.mem) if(!keep.has(sid)&&Date.now()-e.at<3000) keep.set(sid,e); OB.mem=keep; }
     return [...OB.mem.values()].filter(e=>e.who===w).sort((x,y)=>(x.at-y.at)||((x.n||0)-(y.n||0))); }
-  const obKeep=err=>!!err&&(["unavailable","server_error","rate_limited","session_expired"].includes(err.code)||err.status===503||err.status===502||err.status===504);
+  // a save refused as too large in the server's first two minutes is kept and sent again, since a server just started
+  // may not have read the sign-ins yet and held the save to a stranger's limit
+  const obEarly413=err=>!!err&&err.status===413&&typeof err.up==="number"&&err.up<120;
+  const obKeep=err=>!!err&&(["unavailable","server_error","rate_limited","session_expired"].includes(err.code)||err.status===503||err.status===502||err.status===504||obEarly413(err));
+  function obWait(err){ if(!obEarly413(err)) return; try{ (window.toast||alert)("TREE is still starting. That save is kept on this device and will be tried again in a moment."); }catch(e){} }
   const newSid=()=>"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
   // this tab's own id rides with every save, so the server can tell a page's older copy from this tab's own changes
   const TAB=(()=>{ const m=()=>Math.random().toString(36).slice(2,12)+Date.now().toString(36); try{ let t=sessionStorage.getItem("tree-tab"); if(!t||!/^[a-z0-9]{6,32}$/.test(t)){ t=m(); sessionStorage.setItem("tree-tab",t); } return t; }catch(e){ return m(); } })();
@@ -1057,7 +1061,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
       for(const e of (await obAll()).filter(x=>!x.sent)){
         if(navigator.onLine===false) break;
         try{ const r=await api("/api/write",{op:e.op,kind:e.kind,id:e.id,...(e.extra||{}),sid:e.sid}); obTook(e,r); any=true; if(r.written) await obDel(e.sid); else { e.sent=Date.now(); e.failed=0; await obPut(e); } }
-        catch(err){ if(!obKeep(err)){ await obDel(e.sid); obTell(err); continue; } e.failed=Date.now(); await obPut(e); break; } }
+        catch(err){ if(!obKeep(err)){ await obDel(e.sid); obTell(err); continue; } obWait(err); e.failed=Date.now(); await obPut(e); break; } }
       // then the server is asked which of the rest are written
       const list=(await obAll()).filter(x=>x.sent); if(!list.length) return;
       const j=await api("/api/saved",{items:list.slice(0,60).map(e=>({sid:e.sid,kind:e.kind,id:e.id,at:e.at}))});
@@ -1095,7 +1099,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
         if(!obKeep(err)){ await obDel(sid); throw err; }
         // a draft keeps its own copy and sends it under the same save id, so only one of them is kept here
         if(extra&&extra.cid){ await obDel(sid); throw err; }
-        e.failed=Date.now(); await obPut(e); obLocal(e); obChanged(); notify(); obSoon(); return Store.data[kind]?.[id]??null; }
+        obWait(err); e.failed=Date.now(); await obPut(e); obLocal(e); obChanged(); notify(); obSoon(); return Store.data[kind]?.[id]??null; }
       if(r.written) await obDel(sid); else { e.sent=Date.now(); await obPut(e); obSoon(20000); }
       Store.wroteAt[kind+"/"+id]=Date.now(); Store.data[kind]=Store.data[kind]||{}; if(r.doc) Store.data[kind][id]=r.doc; else delete Store.data[kind][id]; notify(); obChanged(); return r.doc; };
     return { id, path,
@@ -1758,7 +1762,7 @@ function renderMain(){
     </div>
     <div class="actions" id="m-addrow" hidden><input type="text" id="m-newname" placeholder="New educator's name" style="width:220px"><button class="btn small" id="m-addname">Add educator</button><button class="linkbtn" id="m-addcancel">Cancel</button></div>
     ${sendable(p)&&!isDirector()?`<div class="actions"><span class="muted" style="font-size:13px">Status</span><span class="status ${p.status}">${esc(STATUS[p.status]||"Draft")}</span></div>`:`<div class="actions"><span class="muted" style="font-size:13px">Status</span>
-      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>!(p.byDirector&&isDirector()&&k==="ready")).filter(([k])=>k!=="reviewed"||isDirector()||p.status==="reviewed").map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}" ${k==="reviewed"&&!isDirector()?"disabled data-keepoff=\"1\" title=\"The director marks a plan reviewed\"":""}>${v}</button>`).join("")}</div>
+      <div class="seg" role="group" aria-label="Status">${Object.entries(STATUS).filter(([k])=>!(p.byDirector&&isDirector()&&k==="ready")).filter(([k])=>k!=="reviewed"||isDirector()).map(([k,v])=>`<button data-status="${k}" aria-pressed="${p.status===k}">${v}</button>`).join("")}</div>${!isDirector()&&p.status==="reviewed"?`<span class="status reviewed">${esc(STATUS.reviewed)}</span>`:""}
     </div>`}
   </div>`;
   if(needsRemarks(p)){const f=FORMS[p.type].fields.find(x=>x.k===AFTER_KEY[p.type]);h+=`<section class="ref" style="background:var(--clay-soft)"><b style="color:var(--clay)">${esc(f.label)} still to write</b><div>The week of ${fmtDate(p.weekOf)} has ended. Write the reflection on how children's thinking changed before starting next week's plan.</div><div><button class="linkbtn" data-jump="${f.k}">Go to ${esc(f.label)}</button></div></section>`}
@@ -2121,19 +2125,6 @@ document.addEventListener("change",e=>{const t=e.target;if(t.id!=="m-edsel")retu
   if(t.value==="__add"){$("#m-addrow").hidden=false;$("#m-newname").focus();return}
   p.educator=t.value;persist(p);renderList()});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="m-newname"){e.preventDefault();$("#m-addname").click()}if(e.key==="Enter"&&e.target.id==="r-name"){e.preventDefault();$("#r-add").click()}});
-function renderWelcome(){
-  $("#main").innerHTML=`<section class="welcome">
-    <div><span class="eyebrow">Week of ${fmtDate(week)}</span><h2 style="font-size:32px;margin-top:4px">Plan from what children are thinking</h2>
-    <p class="muted" style="max-width:62ch;margin:.4em 0 0">Each form follows the cycle in our handbook. Informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, then back to observation. Tap a sentence starter or a material to add it, check the example for each section, and download a printable PDF when you are done.</p></div>
-    <div class="steps">
-      <div class="step"><h3>1. Note what you see</h3><p>Jot during the week, or paste your notepad notes. ${sample?"TREE can sort them into the right sections for you.":"Sentence starters keep entries quick."}</p></div>
-      <div class="step"><h3>2. Fill the form</h3><p>Starters, a materials library, our outdoor spaces, and the hundred languages are one tap away. Gentle prompts flag theme or activity language.</p></div>
-      <div class="step"><h3>3. Print or share</h3><p>Download a clean PDF for your binder or the classroom wall. Plans save for your team. Send each one to the director for review when every box has writing.</p></div>
-      <div class="step"><h3>4. Carry it forward</h3><p>Next week starts from this week's reflection, so threads continue without rewriting.</p></div>
-    </div>
-    <div class="actions"><button class="btn" data-new="classroom">Start this week's Classroom Plan</button><button class="btn ghost" id="sample">Download a sample filled plan</button></div>
-  </section>`;
-}
 
 /* ---------- Back to where you were ----------
    Every screen opened is remembered with how far down it was scrolled. Back, at the top of the page or the phone's own
@@ -2334,6 +2325,10 @@ function applyLock(){try{foldIntros()}catch(e){}try{proofBtn()}catch(e){}
 document.addEventListener("click",e=>{const x=e.target.closest&&e.target.closest("#main.locked input[data-lock-tick],#main.locked label");if(!x)return;const inp=x.matches("input")?x:x.querySelector("input[data-lock-tick]");if(inp){e.preventDefault();e.stopPropagation()}},true);
 const lockObs=new MutationObserver(()=>{if(lockObs.busy)return;lockObs.busy=true;queueMicrotask(()=>{try{applyLock()}finally{lockObs.busy=false;lockObs.takeRecords()}})});
 document.addEventListener("DOMContentLoaded",()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})});
+// the sticky header's height, so a sticky row below it sits just under it on a phone. The 96px fallback matches the section scroll margin
+{const hd=()=>document.querySelector("header.ttop");const setH=()=>{const h=hd();if(h)document.documentElement.style.setProperty("--ttop-h",Math.ceil(h.getBoundingClientRect().height)+"px")};
+  const go=()=>{const h=hd();if(!h)return;setH();if(window.ResizeObserver)new ResizeObserver(setH).observe(h);else window.addEventListener("resize",setH)};
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go()}
 setTimeout(()=>{const m=$("#main");if(m)lockObs.observe(m,{childList:true})},0);
 document.addEventListener("click",e=>{const t=e.target.closest("[data-unlock]");if(!t)return;lockOn=false;const m=$("#main");m.classList.remove("locked");
   m.querySelectorAll("[readonly]").forEach(el=>el.readOnly=false);m.querySelectorAll(":disabled").forEach(el=>{if(!el.dataset.keepoff)el.disabled=false});
@@ -2377,9 +2372,6 @@ const STORE_SOFT=1024**3,STORE_HARD=5*1024**3;
 function storageInfo(){const s=window.FP_STORAGE;if(!s||!s.repoBytes)return null;const mb=b=>b>=1024**3?(b/1024**3).toFixed(2)+" GB":Math.max(1,Math.round(b/1024**2))+" MB";
   const used=s.repoBytes,avg=s.photos?s.photoBytes/s.photos:900*1024,left=Math.max(0,STORE_SOFT-used);
   return {used,usedText:mb(used),photos:s.photos,photoText:mb(s.photoBytes),pct:Math.min(100,Math.round(used/STORE_SOFT*100)),roomFor:Math.floor(left/avg),over:used>=STORE_SOFT,near:s.driveOn?used>=STORE_SOFT*0.8:used>=STORE_SOFT/2,drive:!!s.driveOn,inDrive:s.inDrive||0}}
-// the day a child under three turns three, when no view was chosen and it falls within the next six weeks
-function kidTurnsThree(c){if(!c||!c.dob||(c.drdp||{}).view)return"";const d=String(c.dob).slice(0,10);const t=(Number(d.slice(0,4))+3)+d.slice(4);const day=t.endsWith("-02-29")?t.slice(0,5)+"02-28":t;
-  const today=iso(new Date());return day>today&&day<=addDays(today,42)?day:""}
 // which view of the DRDP a child is read against. Chosen on the child's page, or by age, under three years old is Infant and Toddler
 function drdpViewOf(c){
   const d=c&&c.drdp||{};if(d.view==="it"||d.view==="ptk")return {v:d.view,why:"chosen for "+(c.first||"this child")};
@@ -4543,7 +4535,7 @@ const draftMem=new Map(),draftHeld=new Map(),planWait=new Set();let draftDbP=nul
 const draftWho=()=>VIEW_AS||!window.FP_HOSTED||!window.FP_NAME?"":String(window.FP_NAME()||"").trim().toLowerCase();
 function draftDb(){if(draftDbP)return draftDbP;draftDbP=new Promise(res=>{try{const q=indexedDB.open("tree-drafts",1);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains("d"))d.createObjectStore("d",{keyPath:"key"})};
   q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);q.onblocked=()=>res(null)}catch(e){res(null)}});return draftDbP}
-function draftTx(mode,fn){return draftDb().then(d=>d&&new Promise(res=>{try{const t=d.transaction("d",mode),st=t.objectStore("d");let out=null;const r=fn(st);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=t.onabort=()=>res(null)}catch(e){res(null)}}))}
+function draftTx(mode,fn){return draftDb().then(d=>d&&new Promise(res=>{try{const t=d.transaction("d",mode),st=t.objectStore("d");let out=null;const r=fn(st);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out===null?true:out);t.onerror=t.onabort=()=>res(null)}catch(e){res(null)}}))}
 const draftGet=key=>draftTx("readonly",st=>st.get(key));
 const draftMine=()=>{const w=draftWho();return w?draftTx("readonly",st=>st.getAll(IDBKeyRange.bound(w+"|",w+"|￿"))).then(a=>a||[]):Promise.resolve([])};
 const draftMemOf=r=>({slot:r.slot,kind:r.kind,id:r.id,doc:r.doc,base:r.base,cid:r.cid});
@@ -4802,7 +4794,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="86d3548882f6";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="6430114d3fac";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6504,7 +6496,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-qsadd],[da
   persist(p);renderMain();toast(c?"Added, with the card for "+c.name+" attached.":"Added. Change it or delete it as you like.")});
 /* The seven materials guides are folded into their Idea bank cards. Guide beside a Materials library group and Open the
    guide on a plan's Classroom area open the matching card, and a plan that attached a guide before opens that card. */
-async function loadGuides(){if(!ib)await ibLoad();return []}
 const guideBy=(k,v)=>{const key=String(v||"").toLowerCase().trim();if(!key)return null;if(!ib){ibLoad();return null}
   const id=(IB_GUIDE[k]||{})[key]||(k==="area"?(ibByTitle(v)||{}).id:"");const c=id&&ibCard(id);return c?{slug:c.id,title:c.title}:null};
 const guideLink=(g,label)=>g?`<button class="linkbtn" type="button" data-ibopen="${esc(g.slug)}">${esc(label||g.title)}</button>`:"";
@@ -7626,7 +7617,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","45030a7027").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","b3bc800cd8").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -8355,7 +8346,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-tsadd],[da
 function patchNotice(id,patch){const n=notices.get(id);if(!n||VIEW_AS)return;papply(n,jclone(patch));n.updatedAt=Date.now();
   if(!db){LS.set("fps.notices",[...notices.values()]);return}
   db.doc("notices/"+id).update(Object.assign(jclone(patch),{updatedAt:n.updatedAt})).catch(e=>{if(e&&e.status===404)return;toast(e&&e.message||"Could not save. Check your connection.")})}
-function saveNoticeSoon(n){notices.set(n.id,n);clearTimeout(nTimers[n.id]);nTimers[n.id]=setTimeout(()=>saveNotice(n),700)}
 function removeNotice(id){const was=notices.get(id);notices.delete(id);if(db)db.doc("notices/"+id).delete().catch(e=>{if(was)notices.set(id,was);renderMain();toast(e&&e.message||"Could not remove it. Check your connection.")});else LS.set("fps.notices",[...notices.values()])}
 /* ---------- Combine two observations ----------
    Any educator can make two observations one. Every photo stays at full size with its own children, both sets of words
@@ -8723,11 +8713,6 @@ function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml
   return `<div class="nf-pgroups">${ps.map((p,i)=>`<div class="nf-pg"><a class="nf-pgimg" href="${esc(photoSrc(p))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(p))}" alt="Photo ${i+1} in this observation"></a>
     <div style="min-width:0">${nfKidsHtml(p,i)}${i?sibStatusHtml(p):""}</div></div>`).join("")}</div>
     <div class="hint">Tap the children in each photo. Each child's portfolio and conference evidence get only the photos they are in, with these words.</div>`}
-function renderNoticeForm(){
-  $("#main").innerHTML=`<div class="head"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
-    <div class="sub" style="max-width:72ch">An observation worth keeping, written now.</div></div></div>
-  ${noticeFormCard()}`;
-}
 let nfMoreOpen=false;
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("nfmore"))nfMoreOpen=d.open},true);
 function noticeFormCard(){
@@ -8787,13 +8772,6 @@ function changeKeptBy(v){const f=noticeForm;if(!f||!v)return;
   toastAct(`Kept by ${v} on ${was.size} photos from that email, the ones from your class with no small group.`,"Undo, just this one",()=>{
     for(const id of others){const x=notices.get(id);if(!x)continue;const base=jclone(x);x.by=was.get(id);x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
     if(view==="moments"&&!noticeForm)renderMain();toast("Kept by "+v+" on this observation only.")})}
-function noticeBrowseHtml(){
-  const all=noticesFor(nRoom==="All"?"":nRoom,0);
-  const rooms=["All",...CLASSROOMS];
-  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations kept</h3><span class="cnt">${all.length} in the record</span></div>
-    <div class="filters" style="margin:0 0 8px">${rooms.map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${r}</button>`).join("")}${noClassPill()}</div>
-    ${all.length?`<div style="display:grid;gap:12px">${all.slice(0,40).map(noticeCard).join("")}</div>${all.length>40?`<div class="cnt" style="margin-top:8px">Showing the 40 most recent.</div>`:""}`:`<div class="empty">No observations kept for this view yet.</div>`}</section>`;
-}
 // a quote counts as a child's words when a child is named as saying it, or it is a statement in an observation.
 // An unnamed question in an observation is most often the educator's prompt.
 const childsWords=l=>!!l.name||(!l.title&&!/\?\s*$/.test(l.words));
@@ -9104,10 +9082,6 @@ function momentsDocs(long,cap){
   if(s&&(s.questions||[]).length)blocks.push(dList("Questions for the team",s.questions));
   return [{display:true,type:"report",acc:"story",title:"Observations",meta,blocks}];
 }
-function noticeListHtml(list,title){
-  if(!list.length)return"";
-  return `<section class="card"><div class="lbl">${esc(title)}</div><div style="display:grid;gap:12px">${list.map(noticeCard).join("")}</div></section>`;
-}
 function noticesClick(t){
   if(t.dataset.draftopen){openDraft(t.dataset.draftopen);return true}
   // her own draft she deletes herself, after a question (October 31, 2026). The director can remove anyone's.
@@ -9295,35 +9269,6 @@ function projRooms(x){return (x.classrooms||[]).map(c=>c.room)}
 // They are never filed against a week, so this is every moment for the room, newest first.
 const NOTICE_TARGET={classroom:"observation",individual:"observation",smallgroup:"reflection"};
 let nwOpen="";
-function noticeNoteHtml(p){
-  if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type))return"";
-  const used=new Set(p.noticeUsed||[]);
-  // a plan following a thread offers that thread's moments first, from any class. The class's other moments wait one tap away.
-  const tids=new Set(planThreads(p).map(c=>c.t.id));
-  const fromThread=tids.size?[...new Map([...tids].flatMap(id=>threads.get(id)?threadNotices(threads.get(id)):[]).filter(n=>!used.has(n.id)).map(n=>[n.id,n])).values()].sort((a,b)=>(b.at||0)-(a.at||0)):[];
-  const inThread=new Set(fromThread.map(n=>n.id));
-  const ns=noticesFor(p.classroom,0).filter(n=>!used.has(n.id)&&!inThread.has(n.id));
-  if(!ns.length&&!fromThread.length)return"";
-  const k=NOTICE_TARGET[p.type],f=k&&FORMS[p.type].fields.find(x=>x.k===k);
-  const one=n=>`<div class="nwrow"><div style="min-width:0">
-      <div>${esc(n.noticed)}</div>
-      ${has(n.wonder)?`<div class="muted" style="font-size:13.5px">${esc(wonderLine(n.wonder))}</div>`:""}
-      <span class="src">${esc(n.by||"An educator")} \u00b7 ${shortDate(n.at)}${momentRooms(n).length&&!(momentRooms(n).length===1&&momentRooms(n)[0]===p.classroom)?" \u00b7 "+esc(momentRoomsText(n)):""}</span></div>
-    <div class="actions" style="justify-self:end">${f?`<button class="btn small ghost" data-nwuse="${p.id}|${n.id}">Add it to the ${esc(f.label.toLowerCase())}</button>`:""}<button class="linkbtn" data-nwskip="${p.id}|${n.id}">Not this one</button></div></div>`;
-  let h="";
-  if(fromThread.length){const names=planThreads(p).map(c=>c.t.name).filter(Boolean);
-    h+=`<section class="ref" style="background:var(--marigold-soft)"><b style="color:var(--marigold)">${fromThread.length} observation${fromThread.length===1?"":"s"} from ${names.length===1?"the thread "+esc(names[0]):"the threads this plan follows"}</b>
-      <div class="nwlist">${fromThread.slice(0,12).map(one).join("")}</div>${fromThread.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}</section>`}
-  if(ns.length){const head=`<b style="color:var(--sky)">${fromThread.length?"Other observations":ns.length+" observation"+(ns.length===1?"":"s")} from ${esc(p.classroom||"no class")}${fromThread.length?", "+ns.length:""}</b>
-    <div class="muted">Kept whenever they happened. They do not expire, so using one here is a choice rather than a deadline.</div>`;
-    if(nwOpen!==p.id)h+=`<section class="ref" style="background:var(--sky-soft)">${head}
-      <div class="actions"><button class="btn small ghost" data-nwopen="${esc(p.id)}">Read them</button></div></section>`;
-    else h+=`<section class="ref" style="background:var(--sky-soft)">${head}
-      <div class="nwlist">${ns.slice(0,12).map(one).join("")}</div>
-      ${ns.length>12?`<div class="cnt">Showing the 12 most recent.</div>`:""}
-      <div class="actions"><button class="linkbtn" data-nwshut="1">Close these</button></div></section>`}
-  return h;
-}
 // a project holds the moments kept for it and the moments kept for any thread it holds
 // a thread holds the observations kept for it and the ones Find threads found for it, which sit in its evidence by id
 const evNoticeIds=list=>(list||[]).map(e=>e&&(e.planId||e.id)).filter(id=>id&&notices.has(id));
@@ -9389,7 +9334,7 @@ const gDonated=x=>/\bdonat|\bgift(ed)?\b|no charge|free of charge|complimentary/
 // the grant counts California farms and food hubs only
 const gLines=(from,to)=>gLinesAll(from,to).filter(x=>x.ca);
 // how far the food travels, straight line from each producer's town to the school, and the county it comes from
-const G_TOWN_LL={"Nicasio":[38.0613,-122.6983,"Marin","CA"],"Occidental":[38.4074,-122.9483,"Sonoma","CA"],"Geyserville":[38.7074,-122.9044,"Sonoma","CA"],"Petaluma":[38.2324,-122.6367,"Sonoma","CA"],"Penngrove":[38.2996,-122.6667,"Sonoma","CA"],"Sebastopol":[38.4021,-122.8239,"Sonoma","CA"],"Bodega":[38.3457,-122.9733,"Sonoma","CA"],"Boonville":[39.009,-123.3661,"Mendocino","CA"],"Santa Rosa":[38.4405,-122.7144,"Sonoma","CA"],"Healdsburg":[38.6105,-122.8692,"Sonoma","CA"],"Windsor":[38.5471,-122.8164,"Sonoma","CA"],"Sonoma":[38.2919,-122.458,"Sonoma","CA"],"Kenwood":[38.4135,-122.5461,"Sonoma","CA"],"Glen Ellen":[38.3641,-122.5244,"Sonoma","CA"],"Guinda":[38.8291,-122.1925,"Yolo","CA"],"Santa Rosa":[38.4405,-122.7141,"Sonoma","CA"],"Forestville":[38.4735,-122.8903,"Sonoma","CA"],"Salinas":[36.6777,-121.6555,"Monterey","CA"],"West Sacramento":[38.5805,-121.5302,"Yolo","CA"],"Parlier":[36.6116,-119.5271,"Fresno","CA"],"Reedley":[36.5963,-119.4504,"Fresno","CA"],"Rumsey":[38.8889,-122.2372,"Yolo","CA"],"Pescadero":[37.2552,-122.3833,"San Mateo","CA"],"Brentwood":[37.9319,-121.6958,"Contra Costa","CA"],"Esparto":[38.6924,-122.0172,"Yolo","CA"],"Royal Oaks":[36.8794,-121.7444,"Monterey","CA"],"Laytonville":[39.6882,-123.4828,"Mendocino","CA"],"Newcastle":[38.874,-121.1333,"Placer","CA"],"Caruthers":[36.5427,-119.8332,"Fresno","CA"],"Logan":[41.737,-111.8338,"Cache","UT"],"Santa Cruz":[36.9741,-122.0308,"Santa Cruz","CA"]};
+const G_TOWN_LL={"Nicasio":[38.0613,-122.6983,"Marin","CA"],"Occidental":[38.4074,-122.9483,"Sonoma","CA"],"Geyserville":[38.7074,-122.9044,"Sonoma","CA"],"Petaluma":[38.2324,-122.6367,"Sonoma","CA"],"Penngrove":[38.2996,-122.6667,"Sonoma","CA"],"Sebastopol":[38.4021,-122.8239,"Sonoma","CA"],"Bodega":[38.3457,-122.9733,"Sonoma","CA"],"Boonville":[39.009,-123.3661,"Mendocino","CA"],"Healdsburg":[38.6105,-122.8692,"Sonoma","CA"],"Windsor":[38.5471,-122.8164,"Sonoma","CA"],"Sonoma":[38.2919,-122.458,"Sonoma","CA"],"Kenwood":[38.4135,-122.5461,"Sonoma","CA"],"Glen Ellen":[38.3641,-122.5244,"Sonoma","CA"],"Guinda":[38.8291,-122.1925,"Yolo","CA"],"Santa Rosa":[38.4405,-122.7141,"Sonoma","CA"],"Forestville":[38.4735,-122.8903,"Sonoma","CA"],"Salinas":[36.6777,-121.6555,"Monterey","CA"],"West Sacramento":[38.5805,-121.5302,"Yolo","CA"],"Parlier":[36.6116,-119.5271,"Fresno","CA"],"Reedley":[36.5963,-119.4504,"Fresno","CA"],"Rumsey":[38.8889,-122.2372,"Yolo","CA"],"Pescadero":[37.2552,-122.3833,"San Mateo","CA"],"Brentwood":[37.9319,-121.6958,"Contra Costa","CA"],"Esparto":[38.6924,-122.0172,"Yolo","CA"],"Royal Oaks":[36.8794,-121.7444,"Monterey","CA"],"Laytonville":[39.6882,-123.4828,"Mendocino","CA"],"Newcastle":[38.874,-121.1333,"Placer","CA"],"Caruthers":[36.5427,-119.8332,"Fresno","CA"],"Logan":[41.737,-111.8338,"Cache","UT"],"Santa Cruz":[36.9741,-122.0308,"Santa Cruz","CA"]};
 const G_SCHOOL_LL=[38.4706,-122.779];
 function gTownInfo(town){const t=String(town||"").trim();const v=G_TOWN_LL[t]||Object.entries(G_TOWN_LL).find(([k])=>k.toLowerCase()===t.toLowerCase())?.[1];return v?{lat:v[0],lng:v[1],county:v[2],state:v[3]}:null}
 function gMilesTo(lat,lng){const R=3958.8,r=x=>x*Math.PI/180;const [a,b]=G_SCHOOL_LL;const h=Math.sin(r(lat-a)/2)**2+Math.cos(r(a))*Math.cos(r(lat))*Math.sin(r(lng-b)/2)**2;return Math.round(2*R*Math.asin(Math.sqrt(h)))}
@@ -9414,7 +9359,7 @@ function gBinFarms(from,to){const m=new Map();for(const b of binAll())if(b.date>
 // the eight goals, the planned activities, who carries them out and where the evidence is kept, from
 // staff/wording/grant.md, which the director edits in place
 const G_GOALS_=()=>{const W=wordsOf("grant");return [1,2,3,4,5,6,7,8].map(n=>{const ps=window.TREE_WORDS?TREE_WORDS.paras(W["goal "+n]):[];return {n,goal:ps[0]||"",plan:ps[1]||"",by:ps[2]||"",where:ps[3]||""}})};
-// how the school is measuring up to each goal, for the chosen period, from the figures the page gathers
+// the eight objectives by a short name, for tables on the page and in the summaries
 const G_SHORT=new Proxy({},{get:(o,k)=>wordsOf("grant")["short "+String(k)]||""});
 // where each objective stands, as a short figure and its pace or count, for the table
 function gGoalRows(from,to){const L=gLines(from,to),sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0),all=sum(L),S=gSet(),r=n=>"$"+Math.round(n).toLocaleString("en-US");
@@ -9540,7 +9485,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
     [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
   return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
-function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","51c9c0cbcb").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","b79eb56aa6").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
@@ -10377,7 +10322,7 @@ function renderInquiries(){
   const all=inqAll().filter(x=>iqRoom==="All"||(iqRoom==="School-wide"?!x.room:x.room===iqRoom)).sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
   const live=all.filter(x=>x.status!=="closed"),closed=all.filter(x=>x.status==="closed");
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Practice and development</span><h2 style="margin-top:4px">Team inquiries</h2>
-    <div class="sub" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
+    <details class="helpme"><summary>What a team inquiry is</summary><div class="hint" style="max-width:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></details>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
   else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
@@ -10524,7 +10469,7 @@ function renderInquiry(x){
 
   h+=ibInquiryHtml(x);
   h+=`<section class="card"><div class="lbl">What we will try</div>
-    <div class="hint">Guided by relationship-based, positive discipline. Connection first, such as time with an educator the child trusts. Changes the adults make, to a transition, the space, the warning, a role a child is given or who goes with them. Guiding with the children, through a meeting time conversation where they help decide an expectation and hear why it matters, or support for peers solving a problem together. Never a time-out or a punishment. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div>
+    <details class="helpme"><summary>What belongs here</summary><div class="hint">Guided by relationship-based, positive discipline. Connection first, such as time with an educator the child trusts. Changes the adults make, to a transition, the space, the warning, a role a child is given or who goes with them. Guiding with the children, through a meeting time conversation where they help decide an expectation and hear why it matters, or support for peers solving a problem together. Never a time-out or a punishment. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div></details>
     ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${o.idea?`<div class="actions" style="margin:0"><button class="linkbtn" data-ibopen="${esc(o.idea)}">Open the card in the Idea bank</button></div>`:""}${iqAssistHtml(x,"try:"+o.id)}
       <label class="cnt"><input type="checkbox" data-iqtcur="${esc(o.id)}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
       <textarea data-iqt="${o.id}|result" rows="1" placeholder="What happened when we tried it">${esc(o.result||"")}</textarea>
@@ -11152,8 +11097,8 @@ document.addEventListener("click",e=>{if(view!=="participation")return;const t=e
     const known=!email||ptParentEmail(email);
     ptPacForm=null;saveCfg({roles:(c.roles||[]).concat([{name,email,role,classroom}])}).then(()=>toast(known?name+" added.":name+" added. That email is not on any child's record yet, so they can't post gatherings until it matches a parent's email."));return}
   if(d.ptpacdel!=null){const R=(c.roles||[]).slice();const r=R[+d.ptpacdel];if(!r||!confirm("Take "+r.name+" off the list?"))return;R.splice(+d.ptpacdel,1);saveCfg({roles:R});return}
-  if(d.ptpacwelcome!=null){const R=(c.roles||[]).slice();const r=R[+d.ptpacwelcome];if(!r)return;t.disabled=true;
-    api("/api/family/pacwelcome",{email:r.email}).then(()=>{R[+d.ptpacwelcome]=Object.assign({},r,{welcomed:iso(new Date())});return saveCfg({roles:R})}).then(()=>toast("The welcome went to "+r.name+".")).catch(er=>{t.disabled=false;toast(er&&er.message||"The welcome could not be sent.")});return}
+  if(d.ptpacwelcome!=null){const R=(c.roles||[]).slice();const r=R[+d.ptpacwelcome];if(!r)return;if(!window.FP_API){toast("The welcome can only be sent from the hosted TREE.");return}t.disabled=true;
+    window.FP_API("/api/family/pacwelcome",{email:r.email}).then(()=>{R[+d.ptpacwelcome]=Object.assign({},r,{welcomed:iso(new Date())});return saveCfg({roles:R})}).then(()=>toast("The welcome went to "+r.name+".")).catch(er=>{t.disabled=false;toast(er&&er.message||"The welcome could not be sent.")});return}
   if(d.ptff){const f0=c.firstFriday||{};if(t.checked&&!(/^\d{2}:\d{2}$/.test($("#ff-start")?.value||f0.start||"")&&/^\d{2}:\d{2}$/.test($("#ff-end")?.value||f0.end||""))){t.checked=false;toast("Choose the start and end times first, then turn it on.");return}
     saveCfg({firstFriday:Object.assign({},c.firstFriday||{},{on:t.checked})}).then(()=>toast(t.checked?"First Friday will be posted each month.":"First Friday is no longer posted."));return}
   if(d.ptffsave){const s=$("#ff-start")?.value||"",en=$("#ff-end")?.value||"";if(s&&en&&en<=s){toast("The end comes after the start.");return}saveCfg({firstFriday:Object.assign({},c.firstFriday||{},{start:s,end:en})}).then(()=>toast("Saved. First Fridays already posted change to these times unless one was changed by hand."));return}
@@ -14597,22 +14542,6 @@ function planConn(p){const ths=planThreads(p).map(c=>c.t);const prs=new Map();
   return {ths,prs:[...prs.values()],iqs,refs,obs:[...obs].map(id=>notices.get(id))}}
 function connLine(c){return [c.ths.length&&"Follows "+c.ths.map(t=>t.name).join(", "),c.prs.length&&"Project "+c.prs.map(x=>x.name).join(", "),c.iqs.length&&"Inquiry "+c.iqs.map(q=>q.name||"Untitled").join(", "),
   c.refs.length&&`${c.refs.length} attached`,c.obs.length&&`${c.obs.length} observation${c.obs.length>1?"s":""}`].filter(Boolean)}
-function connListHtml(ps){ps=ps.filter(p=>p.type!=="notice");if(!ps.length)return `<div class="empty">No plans match these filters.</div>`;
-  const weeks=[...new Set(ps.map(p=>p.weekOf))];
-  return weeks.map(w=>{const wp=ps.filter(p=>p.weekOf===w);return `<section style="display:grid;gap:8px"><div class="chiprow-label">Week of ${fmtDate(w)}</div>${wp.map(p=>{const c=planConn(p),line=connLine(c);
-    const refRow=r=>{if(r.kind==="obs"){const n=notices.get(r.id);return `<div class="evhit" style="display:grid;gap:2px"><span class="cnt">Observation, ${esc([n.by,shortDate(n.at)].filter(Boolean).join(", "))}</span><span>${esc(firstLine(noticeText(n),180))}</span><span><button class="linkbtn" data-obsgo="${esc(n.id)}">Open it</button></span></div>`}
-      const pl=plans.get(r.id),f=FORMS[pl.type].fields.find(x=>x.k===r.k);return `<div class="evhit" style="display:grid;gap:2px"><span class="cnt">${esc(f?f.label:"Plan")}, ${esc(byLine(pl))}</span><span>${esc(firstLine(pl.fields?.[r.k]||"",180))}</span><span><button class="linkbtn" data-open="${esc(pl.id)}">Open it</button></span></div>`};
-    return `<details class="card fold connrow"><summary class="foldhead"><span style="flex:1 1 auto;min-width:0"><span class="tag ${p.type}">${FORMS[p.type].short}</span> <b>${esc(planTitle(p))}</b><span class="cnt" style="display:block;margin-top:3px">${line.length?esc(line.join(" · ")):"Not connected yet"}</span></span></summary><div class="foldbody" style="display:grid;gap:8px">
-      ${c.ths.length?`<div><span class="chiprow-label">Threads it follows</span><div class="actions">${c.ths.map(t=>`<button class="linkbtn" data-tsee="${esc(t.id)}">${esc(t.name)}</button>`).join("")}</div></div>`:""}
-      ${c.prs.length?`<div><span class="chiprow-label">Project</span><div class="actions">${c.prs.map(x=>`<button class="linkbtn" data-popen="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div></div>`:""}
-      ${c.iqs.length?`<div><span class="chiprow-label">Team inquiry</span><div class="actions">${c.iqs.map(q=>`<button class="linkbtn" data-iqopen="${esc(q.id)}">${esc(q.name||"Untitled")}</button>`).join("")}</div></div>`:""}
-      ${c.refs.length?`<div style="display:grid;gap:6px"><span class="chiprow-label">Attached evidence</span>${c.refs.map(refRow).join("")}</div>`:""}
-      ${c.obs.length?`<div style="display:grid;gap:6px"><span class="chiprow-label">Observations in it</span>${c.obs.slice(0,6).map(n=>refRow({kind:"obs",id:n.id})).join("")}${c.obs.length>6?`<span class="cnt">${c.obs.length-6} more in the plan.</span>`:""}</div>`:""}
-      <div class="actions"><button class="btn small ghost" data-open="${esc(p.id)}">Open the plan</button></div></div></details>`}).join("")}</section>`}).join("")}
-function connDocs(ps){ps=ps.filter(p=>p.type!=="notice");if(!ps.length)return [];const blocks=[];
-  for(const w of [...new Set(ps.map(p=>p.weekOf))]){blocks.push(dSub("Week of "+fmtDate(w)));
-    for(const p of ps.filter(p=>p.weekOf===w)){const c=planConn(p),line=connLine(c);blocks.push(dItem(planTitle(p),line.length?line.join(". ")+".":"Not connected yet.","",[FORMS[p.type].short]))}}
-  return [{display:true,type:"report",acc:"classroom",title:"How the plans connect",meta:[["Classes",aRoom==="All"?"All":aRoom],["Plans",String(ps.length)]],blocks}]}
 // the whole school at once. What each class is working on, the threads and projects that reach across classes, and the moments
 // children from different classes shared
 function schoolSince(){const now=new Date();if(aSRange==="year"){const y=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;return new Date(y,7,1).getTime()}return Date.now()-(+aSRange)*7*864e5}
@@ -15256,7 +15185,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-tsshare],[
 /* ---------- School years ---------- */
 // a school year runs August to July. Records made before years were kept belong to the year they happened in.
 function yearFromTime(t){const d=t instanceof Date?t:new Date(t||Date.now());const y=d.getMonth()>=7?d.getFullYear():d.getFullYear()-1;return y+"-"+String(y+1).slice(2)}
-function yearOf(rec){if(rec&&rec.year)return rec.year;if(rec&&rec.weekOf)return yearFromTime(parseIso(rec.weekOf));return yearFromTime(rec&&(rec.at||rec.createdAt)||Date.now())}
 const yearLabel=y=>{const a=+y.slice(0,4);return a+" to "+(a+1)};
 
 /* ---------- Children's names on display documentation ---------- */
@@ -15311,8 +15239,9 @@ function spaceCardHtml(p){
   const sp=planSpace(p);const busy=spaceBusy[p.id];const space=calSpaces.find(x=>x.id===sp.spaceId);
   const dayName=d=>parseIso(addDays(p.weekOf,d-1)).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   // where the small group meets is asked once, here. The space signs up on the calendar, and the words say anything more,
-  // such as a plan written before the two were one, which keeps both
-  const words=p.focus!=="area"?`<label class="fld-label" style="margin-top:8px">In your words, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden, then the goat yard"></label>${gardenNote(p)}`:"";
+  // such as a plan written before the two were one, which keeps both.
+  // A garden plan already asks its space in the focus card, so this box stays out to keep one f-where on the page
+  const words=p.focus!=="area"&&!isGardenPlan(p)?`<label class="fld-label" style="margin-top:8px">In your words, optional<input type="text" id="f-where" list="placelist" value="${esc(p.where||"")}" placeholder="Ex. the garden, then the goat yard"></label>${gardenNote(p)}`:"";
   return `<section class="card" id="spacecard"><div class="secthead"><div class="lbl">Where it happens</div><button class="linkbtn" data-tview="calendar">Calendar</button></div>
     <div class="hint">Small groups meet Tuesday to Friday, 9 to 10:30. Change the days or times when this group meets at another time.</div>
     <div class="kfields"><label>Space<select data-spsel="1"><option value="">Choose a space</option>${calSpaces.map(x=>`<option value="${esc(x.id)}" ${x.id===sp.spaceId?"selected":""}>${esc(x.name)}${x.byWeek?", by the week":""}</option>`).join("")}</select></label>

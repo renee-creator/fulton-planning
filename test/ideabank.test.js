@@ -134,3 +134,40 @@ test('every card closes with the children, and educators write what they tried b
   assert.strictEqual((await call(h.staff, 'Dee', 'ideabank/untried', { id })).status, 200);
   assert.strictEqual(h.staff.ideabank.canOpen('biting', 'North'), false);
 });
+
+test('the one-time step s14Wording swaps real as emphasis, children under three and dysregulation, and leaves real tools alone', async () => {
+  const fs = require('fs'), path = require('path');
+  const list = require('../once/s14-wording.json');
+  assert.ok(list.changes.length >= 80 && list.changes.every(c => /^staff\/library\/ideabank\/(cards|behaviors)\.json$/.test(c.path) && c.from && c.to), 'every change is a swap on the two Idea bank records');
+  assert.ok(list.changes.every(c => !/[—:]/.test(c.to)), 'no em dash or colon in the new wording');
+  assert.ok(!list.changes.some(c => /real (tools|photos|objects|dishes|instruments|food|coins)\b/.test(c.from) && !/real (tools|photos|objects|dishes|instruments|food|coins)\b/.test(c.to)), 'real tools, photos, objects, dishes, instruments, food and coins stay');
+  const s13 = require('../once/s13-review.json').changes.filter(c => /ideabank/.test(c.path) && c.from).map(c => c.from);
+  assert.ok(!list.changes.some(c => s13.some(f => f.includes(c.from) || c.from.includes(f))), 'nothing s13Review already changes');
+  // the seed already carries the new words, so a fresh seed matches the records after the step
+  const seedText = JSON.stringify(SEED);
+  assert.ok(list.changes.every(c => !seedText.includes(c.from) && seedText.includes(c.to)), 'the seed holds the new wording and none of the old');
+  // records seeded before the fix hold the old words, and the step brings them in line, outside a record's history
+  const back = (v, f, t) => typeof v === 'string' ? v.split(t).join(f) : Array.isArray(v) ? v.map(x => back(x, f, t)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, back(x, f, t)])) : v;
+  let cards = JSON.parse(JSON.stringify(SEED.cards)), behaviors = JSON.parse(JSON.stringify(SEED.behaviors));
+  for (const c of list.changes) { cards = back(cards, c.from, c.to); behaviors = back(behaviors, c.from, c.to); }
+  const h = make(PEOPLE);
+  h.files.set('staff/library/ideabank/cards.json', { doc: { id: 'ideabank-cards', cards, removed: [], sources: [], history: [{ note: 'Real jobs give real pride.' }] }, sha: 'c' });
+  h.files.set('staff/library/ideabank/behaviors.json', { doc: { id: 'ideabank-behaviors', behaviors }, sha: 'b' });
+  await h.staff.load();
+  const before = JSON.stringify(h.staff.dump()['staff/library/ideabank/cards.json']);
+  assert.match(before, /Real jobs give real pride\./); assert.match(before, /babies and toddlers/); assert.match(before, /helps the body calm down/);
+  assert.match(JSON.stringify(h.staff.dump()['staff/library/ideabank/behaviors.json']), /tired, hungry or overwhelmed \(interoception\)/);
+  assert.notStrictEqual(await h.staff.once.edits('s14Wording', () => false), false);
+  const d = h.staff.dump(); const ct = JSON.stringify(Object.assign({}, d['staff/library/ideabank/cards.json'], { history: [] })), bt = JSON.stringify(d['staff/library/ideabank/behaviors.json']);
+  for (const c of list.changes) assert.ok((c.path.endsWith('cards.json') ? ct : bt).includes(c.to), 'applied ' + c.to);
+  assert.doesNotMatch(ct, /\breal (job|jobs|work|interest|choices|challenge|loads|load|force|teamwork|problem|reader|pride)\b/, 'real as emphasis is gone from the cards');
+  assert.doesNotMatch(ct, /toddler/); assert.match(ct, /babies and children under three/); assert.match(ct, /Jobs that matter give pride\./);
+  assert.match(ct, /care for real tools/); assert.match(ct, /Keep real coins away/); assert.ok((ct.match(/real photos/g) || []).length > 20, 'real photos stay');
+  assert.match(bt, /out of balance \(dysregulation\)/); assert.match(bt, /a steady adult to borrow calm from \(co-regulation\) while their body settles/); assert.doesNotMatch(bt, /or overwhelmed/, 'overwhelmed stays only as a search keyword');
+  assert.match(ct, /slow swaying helps a body find its steady rhythm/);
+  assert.strictEqual(d['staff/library/ideabank/cards.json'].history[0].note, 'Real jobs give real pride.', 'a record\'s own history keeps its words');
+  // a second run changes nothing, and the step is wired to run once at start, after s13Review
+  const again = JSON.stringify(d); await h.staff.once.edits('s14Wording', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.ok(src.indexOf("ONCE.push(['s14Wording'") > src.indexOf("ONCE.push(['s13Review'"), 's14Wording runs after s13Review');
+});

@@ -8,7 +8,7 @@
 const crypto = require('crypto');
 
 // the sections of the conference form a family sees once the director shares the notes
-const CONF_FIELDS = [['interests', 'Main Interests'], ['friends', 'Friends'], ['smallGroup', 'Small Group Work and Current Inquiry'], ['favoriteAreas', 'Favorite Areas and Activities'], ['nature', 'Connection to Nature and the Farm'], ['approaches', 'Approaches to Learning and Self-Regulation'], ['social', 'Social and Emotional Development'], ['language', 'Language and Literacy'], ['cognition', 'Cognition (math and science)'], ['physical', 'Physical Development and Health'], ['expressive', 'Expressive Languages'], ['strengths', 'Strengths'], ['goals', 'Shared Goals (school and home)'], ['nextSteps', 'Next Steps']];
+const CONF_FIELDS = [['interests', 'Main Interests'], ['friends', 'Friends'], ['smallGroup', 'Small Group Work and Current Inquiry'], ['favoriteAreas', 'Favorite Areas and Activities'], ['nature', 'Connection to Nature and the Farm'], ['approaches', 'Approaches to Learning and Steadying the Body and Feelings (Self-Regulation)'], ['social', 'Social and Emotional Development'], ['language', 'Language and Literacy'], ['cognition', 'Cognition (math and science)'], ['physical', 'Physical Development and Health'], ['expressive', 'Expressive Languages'], ['strengths', 'Strengths'], ['goals', 'Shared Goals (school and home)'], ['nextSteps', 'Next Steps']];
 // the parts of a transition summary for kindergarten or TK, as TREE writes them
 const TS_SECTIONS = [['who', 'Who this child is'], ['play', 'How they play and learn'], ['friends', 'Friends and relationships'], ['working', 'What they are working on'], ['helps', 'What helps']];
 const TS_NEXT = { k: 'Going to kindergarten next year', tk: 'Going to TK next year' };

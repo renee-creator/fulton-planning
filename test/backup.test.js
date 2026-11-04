@@ -24,14 +24,21 @@ test('the backup holds every staff folder and the director and office names, nev
   put(dir, 'staff/people/ann.json', { name: 'Ann', profile: { role: 'educator' } }, 1);
   put(dir, 'staff/journal/ann.json', { entries: [{ id: 'j1', date: '2026-10-02', joy: 'a moment' }] }, 1);
   put(dir, 'staff/pd/licensing/01-a.md', '## A piece\n\nAbout 5 minutes\n');
+  // the school's wording and the other Markdown records outside staff/pd, and a photo kept in Google Drive by its marker
+  put(dir, 'staff/wording/family.md', '# Family page\n\n## Welcome\n\nOur words.\n');
+  put(dir, 'staff/newed/day-one.md', '## Day one\n\nA start.\n');
+  const refName = 'photos/k-2026-10-02-abc~1AbCdEfGhIjKlMnOp~12345.ref';
+  put(dir, refName, '1AbCdEfGhIjKlMnOp');
   const s = await server(dir);
   try {
     let r; for (let i = 0; i < 120; i++) { r = await fetch(s.url + '/inbound/backup', { method: 'POST', headers: { 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, body: '{}' }); if (r.status === 200) break; await new Promise(ok => setTimeout(ok, 250)); }
     assert.strictEqual(r.status, 200);
     const buf = Buffer.from(await r.arrayBuffer()); const text = (buf[0] === 0x1f ? zlib.gunzipSync(buf) : buf).toString('utf8');
     const b = JSON.parse(text);
-    for (const k of ['access/roles.json', 'staff/people/ann.json', 'staff/journal/ann.json', 'staff/pd/licensing/01-a.md', 'plans/p1.json']) assert.ok(b.files[k], k);
+    for (const k of ['access/roles.json', 'staff/people/ann.json', 'staff/journal/ann.json', 'staff/pd/licensing/01-a.md', 'staff/wording/family.md', 'staff/newed/day-one.md', 'plans/p1.json']) assert.ok(b.files[k], k);
     assert.ok(!b.files['access/accounts.json']);
+    const ph = b.manifest.photos; assert.strictEqual(ph.inDrive, 1);
+    assert.deepStrictEqual(ph.list.find(p => p.drive), { id: 'k-2026-10-02-abc', size: 12345, drive: '1AbCdEfGhIjKlMnOp', ref: refName });
     assert.ok(!text.includes('8642'), 'no passcode in the backup');
     const file = path.join(dir, 'b.json.gz'); fs.writeFileSync(file, buf);
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'tree-out-'));
@@ -39,6 +46,9 @@ test('the backup holds every staff folder and the director and office names, nev
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(out, 'access/roles.json'), 'utf8')).office, ['Gia']);
     assert.ok(!fs.existsSync(path.join(out, 'access/accounts.json')));
     assert.strictEqual(fs.readFileSync(path.join(out, 'staff/journal/ann.json'), 'utf8'), fs.readFileSync(path.join(dir, 'staff/journal/ann.json'), 'utf8'));
+    // every Markdown record comes back as written, not only the PD library, and the photo marker is made again from the manifest
+    for (const k of ['staff/pd/licensing/01-a.md', 'staff/wording/family.md', 'staff/newed/day-one.md']) assert.strictEqual(fs.readFileSync(path.join(out, k), 'utf8'), fs.readFileSync(path.join(dir, k), 'utf8'), k);
+    assert.strictEqual(fs.readFileSync(path.join(out, refName), 'utf8'), '1AbCdEfGhIjKlMnOp');
   } finally { await s.stop(); }
 });
 

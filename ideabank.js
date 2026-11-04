@@ -17,7 +17,7 @@
    the educator sections, what a card feeds or supports, its setting or the behaviors. */
 const fs = require('fs'), path = require('path');
 module.exports = function ideabank(o) {
-  const { S, get, put, log, isDirector, isKitchen, nameKey } = o;
+  const { S, get, put, log, isDirector, isKitchen, nameKey } = o; const isNewHire = typeof o.isNewHire === 'function' ? o.isNewHire : () => false;
   const CARDS = 'staff/library/ideabank/cards.json', BEH = 'staff/library/ideabank/behaviors.json';
   const SET = 'staff/library/ideabank/settings.json', SUG = 'staff/library/ideabank/suggestions.json', TRIED = 'staff/library/ideabank/tried.json';
   const SEED = path.join(__dirname, 'once', 'ideabank.json');
@@ -236,6 +236,8 @@ module.exports = function ideabank(o) {
 
   async function handle(P, body, me, req, res, { json, err }, saveRecord) {
     if (isKitchen(me)) { err(req, res, 403, 'The Idea bank is for educators.'); return; }
+    // a new educator reaches the New Educator section alone until the director turns on full access
+    if (isNewHire(me)) { err(req, res, 403, 'The Idea bank opens once the director turns on full access.'); return; }
     const dir = isDirector(me);
     const done = r => { if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, Object.assign(list(me), r)); };
     if (P === 'ideabank') { json(req, res, 200, list(me)); return; }

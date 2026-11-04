@@ -505,7 +505,8 @@ module.exports = function staffModule(o) {
     // the kitchen also adds and edits recipes in the recipe library
     const kitRecipe = ['page', 'page/save', 'page/restore'].includes(P) && !body.module && /^staff\/library\/recipes\//.test(String(body.path || ''));
     if (isKitchen(me) && !(['boot', 'person', 'save', 'upload', 'file', 'notices', 'notices/ack', 'notices/lang', 'notices/emergency'].includes(P) && nameKey(who) === nameKey(me)) && !['garden', 'garden/harvest', 'help', 'library', 'library/add', 'library/ready', 'library/photo', 'library/img', 'library/picture'].includes(P) && !kitRecipe) return deny('A kitchen sign-in reaches its own records page.');
-    if (P === 'library/picture' && isNewHire(me)) return deny('A new educator reads the libraries.');
+    // a new educator reads the libraries and adds or changes nothing in them until the director turns on full access
+    if (isNewHire(me) && (P === 'library/picture' || (P.startsWith('library/') && !['library/img', 'library/artshown'].includes(P)))) return deny('A new educator reads the libraries. The rest opens once the director turns on full access.');
     if (P === 'volunteer' || P.startsWith('volunteer/')) { await VOL.handle(P, body, me, req, res, { json, err }); return; }
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
     if (P === 'ideabank' || P.startsWith('ideabank/')) { await IB.handle(P, body, me, req, res, { json, err }, saveRecord); return; }
@@ -1069,7 +1070,7 @@ module.exports = function staffModule(o) {
   // the Volunteer Jobs library, in volunteer.js, its words edited with the same Edit, history and restore as a record
   const VOL = require('./volunteer.js')({ get, put, S, log, isDirector, isOffice, saveRecord }); RECORD_EDIT.push(...VOL.SPECS);
   // the Idea bank, its cards and behaviors kept as records in staff/library/ideabank and edited with the one editor
-  const IB = require('./ideabank.js')({ S, get, put, log, isDirector, isKitchen, nameKey }); RECORD_EDIT.push(IB.SPEC);
+  const IB = require('./ideabank.js')({ S, get, put, log, isDirector, isKitchen, nameKey, isNewHire }); RECORD_EDIT.push(IB.SPEC);
   const LIB = require('./library.js')({ S, get, put, putText, log, isDirector, isKitchen, isOffice, keepOriginal, readImage: p => readImage(p), pdShown: slug => { try { return !!G.published(slug); } catch (e) { return false; } } });
   const PGA = require('./playgarden.js')({ S, get, put, log, wordingDoc: id => wordingDoc(id), agreements: () => { const A = (get('staff/garden/setup.json') || {}).agreements || {}; return { guiding: A.guiding || [], families: A.families || null }; } });
   const GD = require('./garden.js')({ ask: o.ask, hasAsk: o.hasAsk, recipeFor: id => recipeForFamily(id), get, put, getText: p => { const r = S.files.get(p); return r && typeof r.text === 'string' ? r.text : ''; }, libraryPaths: dir => [...S.files.keys()].filter(k => k.startsWith(dir)), log, isDirector, isKitchen, nameKey, roomOf, classrooms, today, mondayOf, staffNames, addDays: (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); } });
@@ -1186,6 +1187,8 @@ module.exports = function staffModule(o) {
     starterBooks: ['code:once/starter-books.json', 'A starter set of books, each waiting for the director to vet it'],
     // November 3, 2026. The director's review, with proposals for the Policies and Procedures and the Family Handbook
     s13Review: ['code:once/s13-review.json', 'Fixes from the director\'s review of November 3, 2026'],
+    // November 4, 2026. Real as emphasis, children under three and dysregulation in the Idea bank cards and behaviors
+    s14Wording: ['code:once/s14-wording.json', 'Wording brought in line with our writing rules, November 4, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
