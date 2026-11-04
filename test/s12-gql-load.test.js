@@ -40,3 +40,17 @@ test('when GitHub cannot list a folder in one go, the records are listed folder 
   assert.strictEqual(L.songs.length, 1);
   assert.ok(gh.gqlShallowCalls >= 1, 'the nested listing was refused');
 });
+
+test('with the allowance spent, a file too large for GraphQL is read from the raw file address', async t => {
+  const gh = { gql: true, spent: true, gqlTruncateOver: 2000 };
+  const big = { cards: Array.from({ length: 40 }, (_, i) => ({ id: 'c' + i, title: 'Card ' + i, body: 'Something to try outdoors with the children, kept short. '.repeat(3) })) };
+  const fx = await start({ gh, more: put => {
+    put('staff/library/ideabank/cards.json', big);
+    put('staff/library/recipes/r0.md', '<!--\nlibrary: recipe\nkind: food\nsource: Ours\n-->\n# Recipe zero\n');
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  let L = null; for (let i = 0; i < 60; i++) { L = (await fx.as(dee, '/api/staff/library', {})).body; if (L && (L.recipes || []).length) break; await new Promise(r => setTimeout(r, 250)); }
+  assert.strictEqual(L.recipes.length, 1);
+  assert.ok(gh.rawCalls >= 1, 'the large file came through the raw address');
+});

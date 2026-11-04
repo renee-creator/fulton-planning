@@ -333,6 +333,23 @@ async function gqlTexts(shas) {
   return out;
 }
 const restSpent = r => r && (r.status === 403 || r.status === 429);
+// a file's text from GitHub's raw file address, which has an allowance of its own, for a file too large for GraphQL to
+// give while the hourly allowance is spent, so a start never waits on the hour
+const GITHUB_RAW = (process.env.GITHUB_RAW || 'https://raw.githubusercontent.com').replace(/\/+$/, '');
+function rawText(filePath, branch) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${GITHUB_RAW}/${RECORDS_REPO}/${encodeURIComponent(branch || 'main')}/${String(filePath).split('/').map(encodeURIComponent).join('/')}`);
+    const lib = url.protocol === 'http:' ? http : https;
+    const req = lib.request({ method: 'GET', hostname: url.hostname, port: url.port || undefined, path: url.pathname + url.search, headers: { 'Authorization': 'Bearer ' + githubToken(), 'User-Agent': 'fulton-planning' } }, res => {
+      const chunks = []; res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+      res.on('error', reject);
+    });
+    req.setTimeout(60000, () => req.destroy(new Error('GitHub did not answer in time')));
+    req.on('error', reject);
+    req.end();
+  });
+}
 // a photo read from GitHub as raw bytes, which takes a quarter of the memory of reading it as text. At most four are read
 // at once, and a photo asked for by several cards at the same moment is read only once.
 function ghRaw(path) {
@@ -757,7 +774,7 @@ function keepingDue() {
 const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it.id);
 function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
-const staff = require('./staff.js')({ ask: (c, careful, extra) => askClaude(c, careful, extra), hasAsk: () => !!anthropicKey(), gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
+const staff = require('./staff.js')({ ask: (c, careful, extra) => askClaude(c, careful, extra), hasAsk: () => !!anthropicKey(), gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), rawText: p => rawText(p, store.branch), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), spaces: () => calendar.spaces(), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 staff.useRecsEdit(recsEdit);
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();

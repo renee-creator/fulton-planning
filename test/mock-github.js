@@ -23,7 +23,7 @@ function start(dir, port, opt) {
       let body = {}; try { body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch (e) {}
       const m = u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)?$/);
       // with opt.gql the mock answers GraphQL requests for files by their ids, the way educator records are read in batches
-      if (u.pathname === '/graphql' && opt.gql && /object\(oid:/.test(body.query || '')) { const bs = blobs(); const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(oid:"([a-f0-9]+)"\)/g)) { const b = bs.get(mm[2]); repo[mm[1]] = b ? { text: b.toString('utf8'), isTruncated: false } : null; } opt.gqlCalls = (opt.gqlCalls || 0) + 1; return send(200, { data: { repository: repo } }); }
+      if (u.pathname === '/graphql' && opt.gql && /object\(oid:/.test(body.query || '')) { const bs = blobs(); const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(oid:"([a-f0-9]+)"\)/g)) { const b = bs.get(mm[2]); repo[mm[1]] = b ? (opt.gqlTruncateOver && b.length > opt.gqlTruncateOver ? { text: '', isTruncated: true } : { text: b.toString('utf8'), isTruncated: false }) : null; } opt.gqlCalls = (opt.gqlCalls || 0) + 1; return send(200, { data: { repository: repo } }); }
       // folders by their path, to four levels, for the GraphQL listing used when the hourly allowance is spent
       if (u.pathname === '/graphql' && opt.gql && /object\(expression:/.test(body.query || '')) {
         // with opt.gqlShallow a nested listing times out the way GitHub does on a large folder, and only a one-level listing answers
@@ -35,6 +35,8 @@ function start(dir, port, opt) {
         return send(200, { data: { repository: repo } }); }
       if (u.pathname === '/graphql' && opt.gql && /defaultBranchRef/.test(body.query || '')) return send(200, { data: { repository: { defaultBranchRef: { name: 'main' } } } });
       if (u.pathname === '/graphql') return send(502, { message: 'not in the mock' });
+      // the raw file address, /raw/<owner>/<repo>/<branch>/<path>, with an allowance of its own
+      if (u.pathname.startsWith('/raw/')) { const rel = u.pathname.split('/').slice(5).map(decodeURIComponent).join('/'); const full = path.join(dir, rel); if (!rel || !fs.existsSync(full) || fs.statSync(full).isDirectory()) return send(404, { message: 'Not Found' }); opt.rawCalls = (opt.rawCalls || 0) + 1; res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end(fs.readFileSync(full)); }
       // with opt.spent the REST allowance is spent, so reading anything through REST is refused the way GitHub refuses it
       if (opt.spent && req.method === 'GET') return send(403, { message: 'API rate limit exceeded' });
       if (!m) return send(404, { message: 'Not Found' });

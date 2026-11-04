@@ -136,9 +136,13 @@ module.exports = function staffModule(o) {
       // a file already read at this version is kept as it is, and the rest are read six at a time
       const todo = want.filter(f => { const cur = S.files.get(f.path); return !(cur && (cur.local || cur.sha === f.sha)); });
       const readOne = async f => {
-        const b = await gh('GET', `/repos/${repo}/git/blobs/${f.sha}`); if (b.status !== 200) throw new Error('GitHub answered ' + b.status + ' when reading ' + f.path);
+        const b = await gh('GET', `/repos/${repo}/git/blobs/${f.sha}`);
+        let text = null;
+        if (b.status === 200) text = Buffer.from(b.json.content, 'base64').toString('utf8');
+        // with the hourly allowance spent, a file too large for GraphQL is read from GitHub's raw file address instead
+        else if ((b.status === 403 || b.status === 429) && o.rawText) { const r = await o.rawText(f.path); if (r.status === 200) text = r.text; else throw new Error('GitHub answered ' + b.status + ' and the raw address ' + r.status + ' when reading ' + f.path); }
+        else throw new Error('GitHub answered ' + b.status + ' when reading ' + f.path);
         const cur = S.files.get(f.path); if (cur && cur.local) return;
-        const text = Buffer.from(b.json.content, 'base64').toString('utf8');
         if (/\.md$/.test(f.path)) { S.files.set(f.path, { text, sha: f.sha }); return; }
         try { S.files.set(f.path, { doc: JSON.parse(text), sha: f.sha }); } catch (e) { log('Skipped unreadable educator record', f.path); }
       };

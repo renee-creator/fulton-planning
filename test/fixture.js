@@ -38,7 +38,7 @@ async function start(opt) {
   if (opt.feed) { put('calendar/settings/program.json', { calendars: [{ id: 'cal3', name: 'Conferences', color: 'clay' }], spaces: [], dayStart: 420, dayEnd: 1080, weekends: true });
     put('calendar/settings/feeds.json', { addresses: { cal3: `http://127.0.0.1:${web}/feeds/conf.ics` } }); }
   const gh = await mock.start(dir, 0, opt.gh);
-  const srv = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_TOKEN: 't', PORT: String(port),
+  const srv = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_RAW: 'http://127.0.0.1:' + gh.port + '/raw', GITHUB_TOKEN: 't', PORT: String(port),
     TEACHER_PASSCODES: 'Dee=director-pass-1,Shared=shared-pass-1', ALLOWED_ORIGINS: 'http://localhost:' + web, FLUSH_DELAY_MS: '500', WRITE_GAP_MS: '20', FAMILY_SHOW_CODE: '1', FEED_TEST_BASE: `http://127.0.0.1:${web}/feeds`, ONCE_SKIP: 'starterBooks,s13Review' }, opt.env || {}), stdio: process.env.FX_LOG ? 'inherit' : 'ignore' });
   const files = http.createServer((q, r) => { if (opt.feed && q.url.startsWith('/feeds/conf.ics')) { r.writeHead(200, { 'Content-Type': 'text/calendar' }); r.end(opt.feed()); return; }
     const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/, '') || 'tree.html');
