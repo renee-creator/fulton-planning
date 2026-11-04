@@ -1189,6 +1189,8 @@ module.exports = function staffModule(o) {
     s13Review: ['code:once/s13-review.json', 'Fixes from the director\'s review of November 3, 2026'],
     // November 4, 2026. Real as emphasis, children under three and dysregulation in the Idea bank cards and behaviors
     s14Wording: ['code:once/s14-wording.json', 'Wording brought in line with our writing rules, November 4, 2026'],
+    // November 4, 2026. About this material, first on both sides of every material card and the areas that are a material
+    s15Materials: ['code:once/s15-materials.json', 'About this material on the Idea bank cards, November 4, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
@@ -1252,16 +1254,21 @@ module.exports = function staffModule(o) {
           S.files.delete(c.path); hit.add(c); continue; }
       } catch (er) { failed++; log('One-time step', name, 'could not change', c.path, er.message); }
     }
-    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
+    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id) || (typeof c.insert === 'string' && c.value && typeof c.value.h === 'string'))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
     // a passage is swapped only where it is not already the new wording, so a step that runs again changes nothing
     const swapAll = (t, from, to) => { const k = to.indexOf(from); if (k < 0) return t.split(from).join(to);
       const pre = to.slice(0, k), post = to.slice(k + from.length); let out = '', i = 0, j;
       while ((j = t.indexOf(from, i)) >= 0) { const done = t.slice(Math.max(0, j - pre.length), j) === pre && t.slice(j + from.length, j + from.length + post.length) === post; out += t.slice(i, j) + (done ? from : to); i = j + from.length; }
       return out + t.slice(i); };
-    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add) continue; if (c.all) { if (t === c.from) { t = c.to; hit.add(c); } } else if (t.includes(c.from)) { const n = swapAll(t, c.from, c.to); if (n !== t) { t = n; hit.add(c); } } } return t; };
+    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add || c.insert) continue; if (c.all) { if (t === c.from) { t = c.to; hit.add(c); } } else if (t.includes(c.from)) { const n = swapAll(t, c.from, c.to); if (n !== t) { t = n; hit.add(c); } } } return t; };
     const deep = (v, cs) => typeof v === 'string' ? swap(v, cs) : Array.isArray(v) ? v.map(x => deep(x, cs)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === 'history' ? x : deep(x, cs)])) : v;
     const sets = (doc, cs) => { const d = JSON.parse(JSON.stringify(doc)); for (const c of cs) { if (c.set && setAt(d, c.set, c.value === undefined ? null : c.value, c.expect)) hit.add(c);
-      if (c.add) { const arr = c.add.split('.').reduce((t, k) => t && t[k], d); if (Array.isArray(arr) && !arr.some(x => x && String(x.id) === String(c.value.id))) { arr.push(JSON.parse(JSON.stringify(c.value))); hit.add(c); } } } return d; };
+      if (c.add) { const arr = c.add.split('.').reduce((t, k) => t && t[k], d); if (Array.isArray(arr) && !arr.some(x => x && String(x.id) === String(c.value.id))) { arr.push(JSON.parse(JSON.stringify(c.value))); hit.add(c); } }
+      // a section put into a card's list of sections at a place (insert, with at), only while no section of that heading is
+      // there, so a step that runs again, or a card the director has already given the section, is left as it is
+      if (c.insert) { const arr = arrAt(d, c.insert); if (Array.isArray(arr) && !arr.some(x => x && x.h === c.value.h)) { arr.splice(Math.min(Math.max(0, c.at | 0), arr.length), 0, JSON.parse(JSON.stringify(c.value))); hit.add(c); } } } return d; };
+    // the list at a place written as cards[id=clay].home.sections
+    const arrAt = (doc, at) => { let t = doc; for (const [k, id] of placeOf(at)) { if (!t || typeof t !== 'object') return null; t = t[k]; if (id !== undefined) { if (!Array.isArray(t)) return null; t = t.find(x => x && String(x.id) === id); } } return t; };
     const both = (doc, cs) => sets(deep(doc, cs), cs);
     const tpFor = p => POL.entries().find(e => { const s = POL.tpSection(e); return s.ref === p || `staff/policies/teacher/${e.id}.json` === p; });
     let n = 0;

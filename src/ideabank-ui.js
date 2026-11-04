@@ -278,9 +278,11 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
 /* ---------- printing ---------- */
 // one card to a letter page, centred when it fits, with only what matters most, the educator side or the At home side
 const IB_PRINT_EDU=["Invitations","A starting point","What it might look like","Through the year","What you need","Set it up"];
+// About this material, where a card has it, opens both sides of the one-page card (November 4, 2026)
+const IB_ABOUT="About this material";
 function ibDoc(c,side){const home=side==="home"&&!!c.home;const S=home?c.home.sections:c.sections||[];const by=h=>S.find(s=>s.h===h);
-  const pick=home?["Ways to try it","Your child's role","Wonder together","What your child is learning"].map(by).filter(Boolean)
-    :[S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it works on hard days"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
+  const pick=home?[IB_ABOUT,"Ways to try it","Your child's role","Wonder together","What your child is learning"].map(by).filter(Boolean)
+    :[by(IB_ABOUT),S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it works on hard days"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
   const sub=home?"To try at home":[IB_KIND[c.type],c.setting&&c.setting.level].filter(has).join(", ");const title=home?c.home.title:c.title;
   // every item of the parts it shows, and a card with more than fits continues on a second page
   const blocks=pick.map(s=>s.style==="text"?dText(s.h,s.text):dList(s.h,(s.items||[]).filter(Boolean)));

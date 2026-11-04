@@ -171,3 +171,55 @@ test('the one-time step s14Wording swaps real as emphasis, children under three 
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.ok(src.indexOf("ONCE.push(['s14Wording'") > src.indexOf("ONCE.push(['s13Review'"), 's14Wording runs after s13Review');
 });
+
+test('the one-time step s15Materials puts About this material first on both sides of the material cards, once', async () => {
+  const fs = require('fs'), path = require('path');
+  const list = require('../once/s15-materials.json'); const H = 'About this material';
+  const ids = [...new Set(list.changes.map(c => c.insert.match(/^cards\[id=([^\]]+)\]/)[1]))];
+  assert.strictEqual(list.changes.length, 156); assert.strictEqual(ids.length, 78);
+  assert.ok(list.changes.every(c => c.path === 'staff/library/ideabank/cards.json' && /^cards\[id=[a-z0-9-]+\]\.(sections|home\.sections)$/.test(c.insert) && c.at === 0 && c.value.h === H && c.value.style === 'text' && c.value.text.length > 100), 'every change inserts the section first on one side of a card');
+  // every material card and the four areas that are a material, with the same words on both sides
+  const media = SEED.cards.filter(c => c.type === 'medium').map(c => c.id);
+  assert.deepStrictEqual(ids.filter(i => !media.includes(i)).sort(), ['block-area', 'log-yard', 'mud-kitchen', 'sensory-table']);
+  assert.ok(media.every(i => ids.includes(i)), 'every material card');
+  for (const id of ids) { const two = list.changes.filter(c => c.insert.startsWith(`cards[id=${id}]`)); assert.strictEqual(two.length, 2); assert.strictEqual(two[0].value.text, two[1].value.text, id + ' says the same at home'); }
+  // the words keep to our writing rules, and the seed already carries the same section
+  for (const c of list.changes) { const t = c.value.text;
+    assert.doesNotMatch(t, /[—–:;]|\bteacher|\btoddler|\bactivit|\bClaude\b|\n/, id(c) + ' keeps the writing rules');
+    assert.doesNotMatch(t, /\breal\b(?! (tools|objects|photos|dishes|instruments|food|coins)\b)/, id(c) + ' uses real only for a true object');
+    const n = (t.match(/[.!?](\s|$)/g) || []).length; assert.ok(n >= 2 && n <= 4, id(c) + ' is two to four sentences, ' + n);
+    const card = SEED.cards.find(x => x.id === id(c)); const side = /home/.test(c.insert) ? card.home.sections : card.sections;
+    assert.strictEqual(side[0].h, H); assert.strictEqual(side[0].text, t); assert.strictEqual(side.filter(x => x.h === H).length, 1); }
+  assert.strictEqual(SEED.cards.find(c => c.id === 'clay').sections[0].text.slice(0, 45), 'Clay is fine earth that holds water, dug from');
+  assert.ok(SEED.cards.filter(c => c.type === 'medium').every(c => c.sections[1].h === 'Invitations' && c.home.sections[1].h === 'What you need'), 'Invitations and What you need follow it');
+  assert.ok(SEED.cards.filter(c => !ids.includes(c.id)).every(c => !(c.sections || []).some(s => s.h === H) && !(c.home && c.home.sections.some(s => s.h === H))), 'no other card has it');
+  // records seeded before the step hold no such section, and the step puts it in, first on both sides, outside a record's history
+  const strip = arr => arr.filter(s => s.h !== H);
+  const cards = JSON.parse(JSON.stringify(SEED.cards)).map(c => Object.assign(c, { sections: strip(c.sections || []) }, c.home ? { home: Object.assign(c.home, { sections: strip(c.home.sections) }) } : {}));
+  // one card the director already gave the section, in her own words, keeps them
+  const mine = cards.find(c => c.id === 'sand'); mine.sections.splice(1, 0, { h: H, style: 'text', text: 'Our sand comes from the river.' });
+  const h = make(PEOPLE);
+  h.files.set('staff/library/ideabank/cards.json', { doc: { id: 'ideabank-cards', cards, removed: [], sources: [], history: [{ note: 'Before', cards: [{ id: 'clay', sections: [{ h: 'Invitations', style: 'bullets', items: [] }] }] }] }, sha: 'c' });
+  h.files.set('staff/library/ideabank/behaviors.json', { doc: { id: 'ideabank-behaviors', behaviors: [] }, sha: 'b' });
+  await h.staff.load();
+  assert.ok(!JSON.stringify(h.staff.dump()['staff/library/ideabank/cards.json'].cards.find(c => c.id === 'clay')).includes(H));
+  assert.notStrictEqual(await h.staff.once.edits('s15Materials', () => false), false);
+  const d = h.staff.dump()['staff/library/ideabank/cards.json'];
+  for (const id of ids) { const c = d.cards.find(x => x.id === id); const want = list.changes.find(x => x.insert === `cards[id=${id}].sections`).value.text;
+    if (id === 'sand') { assert.strictEqual(c.sections[0].h, 'Invitations'); assert.strictEqual(c.sections[1].text, 'Our sand comes from the river.'); assert.strictEqual(c.sections.filter(s => s.h === H).length, 1, 'her own section stays and no second is added'); }
+    else { assert.strictEqual(c.sections[0].h, H); assert.strictEqual(c.sections[0].text, want); assert.strictEqual(c.sections[1].h, SEED.cards.find(x => x.id === id).sections[1].h); }
+    assert.strictEqual(c.home.sections[0].h, H); assert.strictEqual(c.home.sections[0].text, want); assert.strictEqual(c.home.sections[1].h, 'What you need'); }
+  assert.ok(!JSON.stringify(d.cards.find(c => c.id === 'meeting-time')).includes(H), 'a place is not a material');
+  assert.strictEqual(d.history.length, 1); assert.ok(!JSON.stringify(d.history).includes(H), 'a record\'s own history keeps its shape');
+  // a second run changes nothing, and the step is wired to run once at start, after s14Wording
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s15Materials', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.ok(src.indexOf("ONCE.push(['s15Materials'") > src.indexOf("ONCE.push(['s14Wording'"), 's15Materials runs after s14Wording');
+  // the one-page card prints it, on both sides, and the family page's cards carry it
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'src', 'ideabank-ui.js'), 'utf8');
+  assert.match(ui, /const IB_ABOUT="About this material"/); assert.match(ui, /\[IB_ABOUT,"Ways to try it"/); assert.match(ui, /\[by\(IB_ABOUT\),S\.find/);
+  await call(h.staff, 'Dee', 'ideabank/family', { on: true });
+  const fam = h.staff.ideabank.forFamily(); const clay = fam.cards.find(c => c.id === 'clay');
+  assert.strictEqual(clay.sections[0].h, H); assert.strictEqual(clay.sections[0].text, list.changes.find(x => x.insert === 'cards[id=clay].sections').value.text);
+  function id(c) { return c.insert.match(/^cards\[id=([^\]]+)\]/)[1]; }
+});

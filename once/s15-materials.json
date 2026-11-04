@@ -1,0 +1,1565 @@
+{
+ "note": "About this material opens every material card and the block area, sensory table, mud kitchen and log yard, on the educator side and the At home side, November 4, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=watercolor].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Watercolor is ground pigment held together with gum from the acacia tree, pressed into pans or kept liquid, and woken with water. Painters in China and Japan have brushed thin washes of ink and color onto paper and silk for well over a thousand years, and in Europe watercolor was the paint of travelers, mapmakers and botanical artists who needed something light to carry. Because the paper shows through the color, a watercolor always keeps some of the light it was painted in."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=watercolor].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Watercolor is ground pigment held together with gum from the acacia tree, pressed into pans or kept liquid, and woken with water. Painters in China and Japan have brushed thin washes of ink and color onto paper and silk for well over a thousand years, and in Europe watercolor was the paint of travelers, mapmakers and botanical artists who needed something light to carry. Because the paper shows through the color, a watercolor always keeps some of the light it was painted in."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=tempera].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Tempera is pigment mixed into a binder, egg yolk in the oldest kind and starch or gum in the school kind we pour from bottles. Egg tempera was the paint of Byzantine icons and of panel painters in Italy before oil paint spread, and it dries fast to a soft matte finish that lasts for centuries. The thick, opaque tempera in our Studio comes from that same family, made washable and safe for hands."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=tempera].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Tempera is pigment mixed into a binder, egg yolk in the oldest kind and starch or gum in the school kind we pour from bottles. Egg tempera was the paint of Byzantine icons and of panel painters in Italy before oil paint spread, and it dries fast to a soft matte finish that lasts for centuries. The thick, opaque tempera in our Studio comes from that same family, made washable and safe for hands."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=acrylic].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Acrylic paint is pigment carried in a plastic resin that dries fast, sticks to almost anything and turns waterproof. It was invented in the twentieth century, and Mexican muralists were among the first artists to try synthetic paints for walls that had to stand up to sun and rain. Since the 1950s it has been the paint of house painters, sign painters and most artists who want bold color that holds."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=acrylic].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Acrylic paint is pigment carried in a plastic resin that dries fast, sticks to almost anything and turns waterproof. It was invented in the twentieth century, and Mexican muralists were among the first artists to try synthetic paints for walls that had to stand up to sun and rain. Since the 1950s it has been the paint of house painters, sign painters and most artists who want bold color that holds."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=earth-and-plant-paints].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Earth paints come from colored soil and soft stones such as ochre, ground fine and mixed with water or a binder, and plant paints come from petals, berries and leaves crushed to release their color. Ochre is the oldest paint we know, found at cave walls in France and Spain and in rock shelters across Australia, and Pomo and Coast Miwok people used red ochre, white earth and charcoal for painting bodies and regalia for dances. Every color in these paints was once part of the ground or a plant near where it was used."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=earth-and-plant-paints].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Earth paints come from colored soil and soft stones such as ochre, ground fine and mixed with water or a binder, and plant paints come from petals, berries and leaves crushed to release their color. Ochre is the oldest paint we know, found at cave walls in France and Spain and in rock shelters across Australia, and Pomo and Coast Miwok people used red ochre, white earth and charcoal for painting bodies and regalia for dances. Every color in these paints was once part of the ground or a plant near where it was used."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=ink-and-pens].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Ink is a dark liquid made from soot or from oak galls and iron, mixed with water and gum, and a pen is any tool that carries it to a surface. Scribes in China and Egypt wrote with brushes and reeds dipped in soot ink thousands of years ago, and in Europe quills cut from goose feathers wrote on parchment until steel nibs arrived in the 1800s. Ink dries to a line that cannot be rubbed away, which is why it has held laws, letters and stories for so long."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=ink-and-pens].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Ink is a dark liquid made from soot or from oak galls and iron, mixed with water and gum, and a pen is any tool that carries it to a surface. Scribes in China and Egypt wrote with brushes and reeds dipped in soot ink thousands of years ago, and in Europe quills cut from goose feathers wrote on parchment until steel nibs arrived in the 1800s. Ink dries to a line that cannot be rubbed away, which is why it has held laws, letters and stories for so long."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=pencil].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A pencil is a thin stick of graphite mixed with clay and baked, sealed inside wood. Graphite was found in a pure seam in Borrowdale, England, in the 1500s, and shepherds first used it to mark sheep, and in 1795 Nicolas Conté in France worked out how to mix it with clay so pencils could be made hard or soft. Carpenters, surveyors, artists and children all reach for the same simple tool."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=pencil].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A pencil is a thin stick of graphite mixed with clay and baked, sealed inside wood. Graphite was found in a pure seam in Borrowdale, England, in the 1500s, and shepherds first used it to mark sheep, and in 1795 Nicolas Conté in France worked out how to mix it with clay so pencils could be made hard or soft. Carpenters, surveyors, artists and children all reach for the same simple tool."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=crayon].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A crayon is pigment held in wax, most often paraffin, and sometimes beeswax or soy wax. Painters in Roman Egypt mixed pigment into hot wax for portraits that are still bright today, and the wax crayons in boxes we know began in the early 1900s as a cheap, clean way for children to draw in color. Pressing hard or lightly changes how much wax a crayon leaves behind, so one stick holds many shades."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=crayon].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A crayon is pigment held in wax, most often paraffin, and sometimes beeswax or soy wax. Painters in Roman Egypt mixed pigment into hot wax for portraits that are still bright today, and the wax crayons in boxes we know began in the early 1900s as a cheap, clean way for children to draw in color. Pressing hard or lightly changes how much wax a crayon leaves behind, so one stick holds many shades."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=oil-pastel].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "An oil pastel is pigment bound with wax and a little oil, pressed into a soft stick that glides and smears. It was first made in Japan in 1925 so schoolchildren could have a color that was richer than crayon and cleaner than paint, and later the French maker Sennelier made a finer kind for Picasso. It never fully dries, so colors can be blended with a finger or scraped back days later."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=oil-pastel].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "An oil pastel is pigment bound with wax and a little oil, pressed into a soft stick that glides and smears. It was first made in Japan in 1925 so schoolchildren could have a color that was richer than crayon and cleaner than paint, and later the French maker Sennelier made a finer kind for Picasso. It never fully dries, so colors can be blended with a finger or scraped back days later."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=chalk-pastel].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A chalk pastel is almost pure pigment held together with just enough gum or clay to form a stick. Artists in Italy and France began drawing with pastels in the 1500s, and in the 1700s portrait painters in Venice and Paris worked whole pictures in them, with Degas later using them for dancers. The color sits as loose dust on the surface, which is why a pastel drawing is so soft and so easily smudged."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=chalk-pastel].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A chalk pastel is almost pure pigment held together with just enough gum or clay to form a stick. Artists in Italy and France began drawing with pastels in the 1500s, and in the 1700s portrait painters in Venice and Paris worked whole pictures in them, with Degas later using them for dancers. The color sits as loose dust on the surface, which is why a pastel drawing is so soft and so easily smudged."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=charcoal].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Charcoal is wood heated without air until only black carbon remains, and drawing charcoal is usually willow or vine. It is the oldest drawing material people know, used on cave walls in France more than thirty thousand years ago, and Pomo and Coast Miwok people used charcoal from their fires as the black for painting bodies and for marking. A charcoal line can be pressed dark or brushed almost away, which is why artists still begin with it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=charcoal].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Charcoal is wood heated without air until only black carbon remains, and drawing charcoal is usually willow or vine. It is the oldest drawing material people know, used on cave walls in France more than thirty thousand years ago, and Pomo and Coast Miwok people used charcoal from their fires as the black for painting bodies and for marking. A charcoal line can be pressed dark or brushed almost away, which is why artists still begin with it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=chalk].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Chalk is soft white limestone made from the shells of tiny sea creatures that settled on ancient sea floors, and the white cliffs of southern England are made of it. For centuries it has marked slates, sidewalks, tailors' cloth, the lines of playing fields and the hands of climbers and gymnasts. Rain and a damp cloth take it away, which is why it has always been the material for marks meant to last a while and then go."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=chalk].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Chalk is soft white limestone made from the shells of tiny sea creatures that settled on ancient sea floors, and the white cliffs of southern England are made of it. For centuries it has marked slates, sidewalks, tailors' cloth, the lines of playing fields and the hands of climbers and gymnasts. Rain and a damp cloth take it away, which is why it has always been the material for marks meant to last a while and then go."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=color-mixing].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Color mixing is the work of making a new color from two or more others, with paint, dye or light. Painters in workshops from ancient Egypt to the Renaissance ground and blended their own pigments, dyers in India and West Africa layered indigo and other dyes to reach exact shades, and in 1666 Isaac Newton showed with a prism that white light holds every color. Mixing paint and mixing light follow different rules, which is part of what makes it worth trying."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=color-mixing].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Color mixing is the work of making a new color from two or more others, with paint, dye or light. Painters in workshops from ancient Egypt to the Renaissance ground and blended their own pigments, dyers in India and West Africa layered indigo and other dyes to reach exact shades, and in 1666 Isaac Newton showed with a prism that white light holds every color. Mixing paint and mixing light follow different rules, which is part of what makes it worth trying."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=printmaking].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Printmaking is making a picture on one surface and pressing it onto another, so the same image can be made again. Woodblock printing began in China, where the oldest dated printed book was made in 868, and carved blocks went on to print cloth in Rajasthan, ukiyo-e pictures in Japan and adinkra symbols stamped with carved calabash in Ghana. People have also pressed hands, leaves and cut potatoes into paint for as long as there has been paint."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=printmaking].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Printmaking is making a picture on one surface and pressing it onto another, so the same image can be made again. Woodblock printing began in China, where the oldest dated printed book was made in 868, and carved blocks went on to print cloth in Rajasthan, ukiyo-e pictures in Japan and adinkra symbols stamped with carved calabash in Ghana. People have also pressed hands, leaves and cut potatoes into paint for as long as there has been paint."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sun-prints].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A sun print is made on paper coated with iron salts that turn deep blue in sunlight, so anything laid on top leaves a pale shape behind. The process, called cyanotype, was discovered by John Herschel in 1842, and the botanist Anna Atkins used it the next year to make a book of seaweeds, the first book illustrated with photographs. Architects used the same chemistry for the blueprints that carried building plans for a century."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sun-prints].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A sun print is made on paper coated with iron salts that turn deep blue in sunlight, so anything laid on top leaves a pale shape behind. The process, called cyanotype, was discovered by John Herschel in 1842, and the botanist Anna Atkins used it the next year to make a book of seaweeds, the first book illustrated with photographs. Architects used the same chemistry for the blueprints that carried building plans for a century."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=clay].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Clay is fine earth that holds water, dug from riverbanks and hillsides and worked wet. People everywhere have shaped it for thousands of years into cooking pots, water jars, bricks, tiles and figures, from Pomo and other California peoples' use of local clays to the potters of Oaxaca, China and West Africa. Fired in a kiln or an open pit it turns hard and lasts, which is why pottery shards are among the oldest things we find."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=clay].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Clay is fine earth that holds water, dug from riverbanks and hillsides and worked wet. People everywhere have shaped it for thousands of years into cooking pots, water jars, bricks, tiles and figures, from Pomo and other California peoples' use of local clays to the potters of Oaxaca, China and West Africa. Fired in a kiln or an open pit it turns hard and lasts, which is why pottery shards are among the oldest things we find."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=playdough].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Playdough is flour, salt and water, warmed with a little oil and cream of tartar so it stays soft, and colored as we like. Salt dough has long been shaped into ornaments and figures in homes across Europe, and in Ecuador bread dough is worked into tiny painted figures sold at Christmas. The Play-Doh sold in cans began in the 1930s as a putty for cleaning wallpaper before a nursery school found it was better for hands."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=playdough].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Playdough is flour, salt and water, warmed with a little oil and cream of tartar so it stays soft, and colored as we like. Salt dough has long been shaped into ornaments and figures in homes across Europe, and in Ecuador bread dough is worked into tiny painted figures sold at Christmas. The Play-Doh sold in cans began in the 1930s as a putty for cleaning wallpaper before a nursery school found it was better for hands."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=beeswax].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Beeswax is made by honeybees, who produce it from glands on their bodies to build the comb that holds honey and young. People have warmed and shaped it for thousands of years into candles, seals for letters, the resist for batik cloth in Java and the first model in lost wax casting, the method behind the bronzes of Benin and ancient Mesopotamia. It softens in a warm hand and keeps the smell of the hive."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=beeswax].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Beeswax is made by honeybees, who produce it from glands on their bodies to build the comb that holds honey and young. People have warmed and shaped it for thousands of years into candles, seals for letters, the resist for batik cloth in Java and the first model in lost wax casting, the method behind the bronzes of Benin and ancient Mesopotamia. It softens in a warm hand and keeps the smell of the hive."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=plaster-and-casting].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Plaster is gypsum rock heated and ground to a powder that sets hard again when mixed with water, and casting is pouring it into a mold to take a shape. Builders coated the walls of Egyptian tombs with it, lime plaster statues from Jordan are nine thousand years old, and plaster of Paris takes its name from the gypsum quarried under Montmartre. The same quick set lets a dentist, a sculptor and a child hold the shape of something that was there for a moment."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=plaster-and-casting].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Plaster is gypsum rock heated and ground to a powder that sets hard again when mixed with water, and casting is pouring it into a mold to take a shape. Builders coated the walls of Egyptian tombs with it, lime plaster statues from Jordan are nine thousand years old, and plaster of Paris takes its name from the gypsum quarried under Montmartre. The same quick set lets a dentist, a sculptor and a child hold the shape of something that was there for a moment."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wire].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Wire is metal drawn through smaller and smaller holes until it becomes a long thin strand that bends and holds its bend. Smiths have made wire for chain mail, jewelry and fences for over two thousand years, Alexander Calder drew whole circuses and faces in the air with it in the 1920s, and children in Zimbabwe and South Africa build rolling galimoto cars from scraps of it. It lets a line stand up on its own."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wire].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Wire is metal drawn through smaller and smaller holes until it becomes a long thin strand that bends and holds its bend. Smiths have made wire for chain mail, jewelry and fences for over two thousand years, Alexander Calder drew whole circuses and faces in the air with it in the 1920s, and children in Zimbabwe and South Africa build rolling galimoto cars from scraps of it. It lets a line stand up on its own."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wood-and-tools].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Wood is the body of a tree, cut, dried and worked with saws, hammers, drills and sandpaper. Coast Miwok people built houses of redwood bark slabs and Pomo people shaped yew bows, digging sticks and fire drills, while carpenters in Japan developed joinery that holds without nails and builders everywhere raised frames, boats and furniture. Each kind of wood has its own grain, smell and weight, and the tools let a child feel the difference."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wood-and-tools].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Wood is the body of a tree, cut, dried and worked with saws, hammers, drills and sandpaper. Coast Miwok people built houses of redwood bark slabs and Pomo people shaped yew bows, digging sticks and fire drills, while carpenters in Japan developed joinery that holds without nails and builders everywhere raised frames, boats and furniture. Each kind of wood has its own grain, smell and weight, and the tools let a child feel the difference."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=found-and-recycled-sculpture].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Found and recycled sculpture is made from things that already had a life, bottle caps, boxes, broken toys, scrap metal and the like. Picasso joined a bicycle seat and handlebars into a bull's head in 1942, Simon Rodia built the Watts Towers in Los Angeles from steel, bottles and tile over thirty years, and in Haiti artists cut flattened oil drums into openwork figures. The material brings its own history to the work."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=found-and-recycled-sculpture].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Found and recycled sculpture is made from things that already had a life, bottle caps, boxes, broken toys, scrap metal and the like. Picasso joined a bicycle seat and handlebars into a bull's head in 1942, Simon Rodia built the Watts Towers in Los Angeles from steel, bottles and tile over thirty years, and in Haiti artists cut flattened oil drums into openwork figures. The material brings its own history to the work."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=cardboard].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Cardboard is layers of paper, and corrugated cardboard has a wavy sheet glued between flat ones, which makes it light and strong. It was patented in England in 1856 for the lining of tall hats and became boxes in the 1890s, and since then it has been used by Frank Gehry for furniture and by the architect Shigeru Ban for whole buildings raised after earthquakes. Almost every household has some, which is why it is one of the most shared materials in the world."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=cardboard].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Cardboard is layers of paper, and corrugated cardboard has a wavy sheet glued between flat ones, which makes it light and strong. It was patented in England in 1856 for the lining of tall hats and became boxes in the 1890s, and since then it has been used by Frank Gehry for furniture and by the architect Shigeru Ban for whole buildings raised after earthquakes. Almost every household has some, which is why it is one of the most shared materials in the world."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=blocks].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Blocks are wooden solids cut to sizes that fit together, so two of one length equal one of the next. Friedrich Froebel gave the first kindergarten sets of cubes and bricks in Germany in the 1830s, and Caroline Pratt designed the unit blocks we use in New York around 1913 so children could build the city they saw around them. The wood is usually hard maple, which takes years of use and knocking down."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=blocks].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Blocks are wooden solids cut to sizes that fit together, so two of one length equal one of the next. Friedrich Froebel gave the first kindergarten sets of cubes and bricks in Germany in the 1830s, and Caroline Pratt designed the unit blocks we use in New York around 1913 so children could build the city they saw around them. The wood is usually hard maple, which takes years of use and knocking down."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=loose-parts].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Loose parts are open materials with no set purpose, such as stones, shells, sticks, rings, spools, bottle caps and lengths of cloth, that can be moved, combined and taken apart again. Children everywhere have always built and played with what lies around them, and in 1971 the architect Simon Nicholson named the idea after watching the adventure playgrounds of Denmark and England, where children built with scrap wood and tools. The fewer rules a material carries, the more a child can invent with it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=loose-parts].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Loose parts are open materials with no set purpose, such as stones, shells, sticks, rings, spools, bottle caps and lengths of cloth, that can be moved, combined and taken apart again. Children everywhere have always built and played with what lies around them, and in 1971 the architect Simon Nicholson named the idea after watching the adventure playgrounds of Denmark and England, where children built with scrap wood and tools. The fewer rules a material carries, the more a child can invent with it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=natural-materials].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Natural materials are what the land offers, sticks, bark, stones, cones, seeds, leaves, feathers, shells and wool. Pomo weavers made some of the finest baskets in the world from sedge root, willow, redbud and bulrush, adding feathers and clamshell beads, and Coast Miwok people made houses, mats and boats from tule reeds. Artists such as Andy Goldsworthy still work only with what they find in one place on one day."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=natural-materials].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Natural materials are what the land offers, sticks, bark, stones, cones, seeds, leaves, feathers, shells and wool. Pomo weavers made some of the finest baskets in the world from sedge root, willow, redbud and bulrush, adding feathers and clamshell beads, and Coast Miwok people made houses, mats and boats from tule reeds. Artists such as Andy Goldsworthy still work only with what they find in one place on one day."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=ramps-and-moving-things].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A ramp is a slope that lets something roll, slide or be raised with less effort, and moving things are balls, wheels, cars and tubes that travel on it. Builders in ancient Egypt dragged stone up earthen ramps, Galileo rolled balls down inclined planes around 1600 to study how things speed up, and marble runs have been toys in Europe for centuries. Changing the slope changes everything, which is why one plank can hold a child for an hour."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=ramps-and-moving-things].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A ramp is a slope that lets something roll, slide or be raised with less effort, and moving things are balls, wheels, cars and tubes that travel on it. Builders in ancient Egypt dragged stone up earthen ramps, Galileo rolled balls down inclined planes around 1600 to study how things speed up, and marble runs have been toys in Europe for centuries. Changing the slope changes everything, which is why one plank can hold a child for an hour."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=magnets].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A magnet is iron or another metal that pulls iron toward it and points north when it swings free. Lodestone, a rock that is naturally magnetic, was named for the region of Magnesia in ancient Greece, and the Chinese made the first compass from it, a spoon of lodestone that turned on a bronze plate, more than two thousand years ago. Every motor, speaker and refrigerator door uses the same pull."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=magnets].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A magnet is iron or another metal that pulls iron toward it and points north when it swings free. Lodestone, a rock that is naturally magnetic, was named for the region of Magnesia in ancient Greece, and the Chinese made the first compass from it, a spoon of lodestone that turned on a bronze plate, more than two thousand years ago. Every motor, speaker and refrigerator door uses the same pull."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=tape].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Tape is a strip of paper, cloth or plastic with glue on one side. Masking tape was invented in 1925 by Richard Drew at 3M for painters who needed a clean edge, clear cellophane tape followed in 1930, and cloth duct tape was made for sealing ammunition cases during the Second World War. Washi tape, from Japan, is made from the same long plant fibers as handmade paper and tears cleanly by hand."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=tape].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Tape is a strip of paper, cloth or plastic with glue on one side. Masking tape was invented in 1925 by Richard Drew at 3M for painters who needed a clean edge, clear cellophane tape followed in 1930, and cloth duct tape was made for sealing ammunition cases during the Second World War. Washi tape, from Japan, is made from the same long plant fibers as handmade paper and tears cleanly by hand."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=paper].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Paper is plant fiber beaten in water and spread thin to dry into a sheet. It was made in China by around 105 CE, traveled with traders to Samarkand and Baghdad, and reached Spain and then the rest of Europe by the twelfth century, while people in Mexico made amate from pounded bark and Egyptians pressed papyrus from reed stems. Otomi papermakers in San Pablito still make amate by hand today."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=paper].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Paper is plant fiber beaten in water and spread thin to dry into a sheet. It was made in China by around 105 CE, traveled with traders to Samarkand and Baghdad, and reached Spain and then the rest of Europe by the twelfth century, while people in Mexico made amate from pounded bark and Egyptians pressed papyrus from reed stems. Otomi papermakers in San Pablito still make amate by hand today."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=paper-collage].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Collage is cut or torn paper glued onto a surface, from the French word coller, to stick. Picasso and Braque pasted newspaper and wallpaper into paintings in 1912, Hannah Höch cut photographs into new pictures in Berlin, Matisse made whole rooms of cut paper when he could no longer stand to paint, and Romare Bearden built scenes of Harlem from magazine scraps. In Japan, chigiri-e builds pictures from torn handmade paper."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=paper-collage].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Collage is cut or torn paper glued onto a surface, from the French word coller, to stick. Picasso and Braque pasted newspaper and wallpaper into paintings in 1912, Hannah Höch cut photographs into new pictures in Berlin, Matisse made whole rooms of cut paper when he could no longer stand to paint, and Romare Bearden built scenes of Harlem from magazine scraps. In Japan, chigiri-e builds pictures from torn handmade paper."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=glue].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Glue is anything that joins two surfaces as it dries. Egyptian furniture makers boiled animal hides into glue more than three thousand years ago, Japanese scroll mounters cooked rice into paste, and California peoples including the Pomo used pine pitch and asphaltum, a natural tar from coastal seeps, to fasten points and seal baskets. The white school glue we use is a plastic resin in water, made since the 1940s."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=glue].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Glue is anything that joins two surfaces as it dries. Egyptian furniture makers boiled animal hides into glue more than three thousand years ago, Japanese scroll mounters cooked rice into paste, and California peoples including the Pomo used pine pitch and asphaltum, a natural tar from coastal seeps, to fasten points and seal baskets. The white school glue we use is a plastic resin in water, made since the 1940s."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=papermaking].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Papermaking is beating plant fiber or old paper into a pulp in water, lifting a thin layer on a screen and pressing it dry. The craft began in China about two thousand years ago and spread along trade routes to the Islamic world and Europe, and in Japan washi is still made by hand from the inner bark of the kozo shrub. Recycling paper into new sheets uses the very same steps."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=papermaking].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Papermaking is beating plant fiber or old paper into a pulp in water, lifting a thin layer on a screen and pressing it dry. The craft began in China about two thousand years ago and spread along trade routes to the Islamic world and Europe, and in Japan washi is still made by hand from the inner bark of the kozo shrub. Recycling paper into new sheets uses the very same steps."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=bookmaking].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A book is pages joined along one edge so they can be turned. Romans folded parchment into the codex that replaced scrolls, Maya and Aztec scribes painted on long strips of bark paper folded back and forth into screenfold books, Coptic binders in Egypt sewed pages through their folds, and Japanese binders stabbed and stitched along the spine with thread. Every one of these ways still works with a few sheets and some string."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=bookmaking].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A book is pages joined along one edge so they can be turned. Romans folded parchment into the codex that replaced scrolls, Maya and Aztec scribes painted on long strips of bark paper folded back and forth into screenfold books, Coptic binders in Egypt sewed pages through their folds, and Japanese binders stabbed and stitched along the spine with thread. Every one of these ways still works with a few sheets and some string."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=fabric].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Fabric is cloth made by weaving, knitting or felting fibers from plants, animals or oil. Egyptians wove linen from flax more than five thousand years ago, cotton was spun in India and Peru, silk came from China, and Pomo and Coast Miwok people wore skirts of shredded bark and tule and slept under blankets woven from strips of rabbit skin. The weight, stretch and drape of each cloth come from the fiber and the way it was made."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=fabric].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Fabric is cloth made by weaving, knitting or felting fibers from plants, animals or oil. Egyptians wove linen from flax more than five thousand years ago, cotton was spun in India and Peru, silk came from China, and Pomo and Coast Miwok people wore skirts of shredded bark and tule and slept under blankets woven from strips of rabbit skin. The weight, stretch and drape of each cloth come from the fiber and the way it was made."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=yarn-and-string].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Yarn and string are fibers twisted together so they become long and strong. Twisting cord is one of the oldest skills people have, and Pomo and Coast Miwok people rolled dogbane and milkweed fiber on the thigh into cordage for fishing nets, carrying nets and snares. Spindles and spinning wheels turned wool, cotton and flax into yarn in homes across the world, and string figures such as cat's cradle are played from the Arctic to the Pacific."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=yarn-and-string].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Yarn and string are fibers twisted together so they become long and strong. Twisting cord is one of the oldest skills people have, and Pomo and Coast Miwok people rolled dogbane and milkweed fiber on the thigh into cordage for fishing nets, carrying nets and snares. Spindles and spinning wheels turned wool, cotton and flax into yarn in homes across the world, and string figures such as cat's cradle are played from the Arctic to the Pacific."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=weaving].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Weaving is crossing threads over and under each other so they hold together as cloth or a basket. Pomo and Coast Miwok weavers coiled and twined baskets so tight they held water and cooked acorn mush with hot stones, and wove tule into mats and sleeping places. Backstrap looms in Guatemala and Peru, Navajo looms in the Southwest and great mill looms all do the same crossing with different tools."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=weaving].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Weaving is crossing threads over and under each other so they hold together as cloth or a basket. Pomo and Coast Miwok weavers coiled and twined baskets so tight they held water and cooked acorn mush with hot stones, and wove tule into mats and sleeping places. Backstrap looms in Guatemala and Peru, Navajo looms in the Southwest and great mill looms all do the same crossing with different tools."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sewing-and-embroidery].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Sewing is joining cloth with thread and a needle, and embroidery is stitching for pattern and picture. Bone needles are more than forty thousand years old, Pomo weavers used bone awls to stitch coiled baskets, Chinese embroiderers worked silk for thousands of years, Hmong families record stories in paj ntaub cloth and Kuna women of Panama layer and cut cloth into molas. A needle and thread still mend, fasten and decorate in nearly every home."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sewing-and-embroidery].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Sewing is joining cloth with thread and a needle, and embroidery is stitching for pattern and picture. Bone needles are more than forty thousand years old, Pomo weavers used bone awls to stitch coiled baskets, Chinese embroiderers worked silk for thousands of years, Hmong families record stories in paj ntaub cloth and Kuna women of Panama layer and cut cloth into molas. A needle and thread still mend, fasten and decorate in nearly every home."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wool-and-felting].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Wool is the fleece of sheep, washed, pulled open with carders and either spun into yarn or felted, which means rubbing the wet fibers with soap until they lock together. Felt is the oldest cloth people made, and nomads of Mongolia and Kyrgyzstan still cover their yurts and floors with felt, with shyrdak rugs pieced from colored felt. Sheep came to California with the Spanish, and wool has been spun and knit in Sonoma County ever since."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wool-and-felting].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Wool is the fleece of sheep, washed, pulled open with carders and either spun into yarn or felted, which means rubbing the wet fibers with soap until they lock together. Felt is the oldest cloth people made, and nomads of Mongolia and Kyrgyzstan still cover their yurts and floors with felt, with shyrdak rugs pieced from colored felt. Sheep came to California with the Spanish, and wool has been spun and knit in Sonoma County ever since."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=botanical-dyeing].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Botanical dyeing is drawing color from plants into fiber and cloth with water, heat and time. Indigo has dyed cloth blue in India, West Africa and Japan for thousands of years, madder root gave reds and onion skins and walnut hulls give browns and golds, and Pomo weavers darkened bulrush root to black by burying it in mud and ash before weaving it into baskets. The same plant can give a different color depending on the water, the pot and the season."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=botanical-dyeing].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Botanical dyeing is drawing color from plants into fiber and cloth with water, heat and time. Indigo has dyed cloth blue in India, West Africa and Japan for thousands of years, madder root gave reds and onion skins and walnut hulls give browns and golds, and Pomo weavers darkened bulrush root to black by burying it in mud and ash before weaving it into baskets. The same plant can give a different color depending on the water, the pot and the season."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=beads-and-threading].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Beads are small objects with a hole, strung on thread, and threading is the work of lining them up. Shell beads found in Africa and the Middle East are among the oldest ornaments people made, and Pomo and Coast Miwok people ground clamshell from Bodega Bay into disk beads that served as money, along with baked magnesite beads worth far more. Glassmakers in Venice, beadworkers of the Maasai and Yoruba and children at a table all follow the same order of hole, thread, hole."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=beads-and-threading].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Beads are small objects with a hole, strung on thread, and threading is the work of lining them up. Shell beads found in Africa and the Middle East are among the oldest ornaments people made, and Pomo and Coast Miwok people ground clamshell from Bodega Bay into disk beads that served as money, along with baked magnesite beads worth far more. Glassmakers in Venice, beadworkers of the Maasai and Yoruba and children at a table all follow the same order of hole, thread, hole."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=concoctions].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A concoction is a mixture made to see what happens, with water, flour, salt, oil, vinegar, baking soda, soap and whatever else the kitchen holds. Cooks, soapmakers, dyers, ink makers and apothecaries have always worked this way, mixing, watching and writing down what they learned, and much of chemistry began in such kitchens and workshops. A fizz, a thickening or a color change is the mixture answering back."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=concoctions].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A concoction is a mixture made to see what happens, with water, flour, salt, oil, vinegar, baking soda, soap and whatever else the kitchen holds. Cooks, soapmakers, dyers, ink makers and apothecaries have always worked this way, mixing, watching and writing down what they learned, and much of chemistry began in such kitchens and workshops. A fizz, a thickening or a color change is the mixture answering back."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=water].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Water falls as rain, gathers in creeks and rivers and sinks into the ground, and every living thing needs it. Pomo and Coast Miwok people fished the Russian River and the Laguna with weirs and nets and paddled tule boats on Clear Lake and the bays, Romans carried water to cities in aqueducts, and farmers in Persia, Spain and New Mexico still share it through channels dug by hand. It takes the shape of whatever holds it, which is why it is the first material most children explore."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=water].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Water falls as rain, gathers in creeks and rivers and sinks into the ground, and every living thing needs it. Pomo and Coast Miwok people fished the Russian River and the Laguna with weirs and nets and paddled tule boats on Clear Lake and the bays, Romans carried water to cities in aqueducts, and farmers in Persia, Spain and New Mexico still share it through channels dug by hand. It takes the shape of whatever holds it, which is why it is the first material most children explore."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=ice].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Ice is water frozen solid, and it melts back as soon as it warms. Persians kept ice through summer in deep domed ice houses two thousand years ago, New England ice was cut from ponds and shipped as far as India in the 1800s, and Inuit people built winter shelters from blocks of snow. In the Sonoma lowlands a hard frost is rare enough that ice in a tray is a small event."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=ice].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Ice is water frozen solid, and it melts back as soon as it warms. Persians kept ice through summer in deep domed ice houses two thousand years ago, New England ice was cut from ponds and shipped as far as India in the 1800s, and Inuit people built winter shelters from blocks of snow. In the Sonoma lowlands a hard frost is rare enough that ice in a tray is a small event."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sand].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Sand is rock and shell ground down over ages by water and wind, each grain once part of a mountain or a sea creature. People melted it into glass in Mesopotamia and Egypt more than four thousand years ago, Navajo healers and Tibetan monks pour colored sand into pictures meant to be swept away, and gardeners in Japan rake gravel and sand into patterns. Wet sand holds a shape and dry sand pours, which is the whole of its invitation."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sand].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Sand is rock and shell ground down over ages by water and wind, each grain once part of a mountain or a sea creature. People melted it into glass in Mesopotamia and Egypt more than four thousand years ago, Navajo healers and Tibetan monks pour colored sand into pictures meant to be swept away, and gardeners in Japan rake gravel and sand into patterns. Wet sand holds a shape and dry sand pours, which is the whole of its invitation."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=mud].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Mud is soil and water, and it is one of the oldest building materials there is. Pomo and Coast Miwok people roofed their dance houses with earth, Pueblo builders raised adobe towns in the Southwest, and the Great Mosque of Djenné in Mali, the largest mud building in the world, is replastered by the whole town each year. Mud pies are made by children on every continent."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=mud].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Mud is soil and water, and it is one of the oldest building materials there is. Pomo and Coast Miwok people roofed their dance houses with earth, Pueblo builders raised adobe towns in the Southwest, and the Great Mosque of Djenné in Mali, the largest mud building in the world, is replastered by the whole town each year. Mud pies are made by children on every continent."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=bubbles].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A bubble is a thin skin of soapy water stretched around air. Soap has been made from fat and ashes since Babylon, and children blowing bubbles through clay pipes appear in Dutch and French paintings of the 1600s and 1700s, including Chardin's boy leaning out a window. A bubble is always round because the skin pulls in equally from every side, and the colors on it are light bending in a layer thinner than a hair."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=bubbles].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A bubble is a thin skin of soapy water stretched around air. Soap has been made from fat and ashes since Babylon, and children blowing bubbles through clay pipes appear in Dutch and French paintings of the 1600s and 1700s, including Chardin's boy leaning out a window. A bubble is always round because the skin pulls in equally from every side, and the colors on it are light bending in a layer thinner than a hair."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wind-and-air].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Air is all around us and wind is air on the move, felt on the skin and seen only in what it moves. Kites were flown in China more than two thousand years ago and are still flown in festivals across India, Japan and Afghanistan, windmills ground grain in Persia and pumped water in the Netherlands, and sails carried people across every sea. Ribbons, pinwheels, feathers and seeds all show which way the wind is going."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=wind-and-air].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Air is all around us and wind is air on the move, felt on the skin and seen only in what it moves. Kites were flown in China more than two thousand years ago and are still flown in festivals across India, Japan and Afghanistan, windmills ground grain in Persia and pumped water in the Netherlands, and sails carried people across every sea. Ribbons, pinwheels, feathers and seeds all show which way the wind is going."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=light-and-shadow].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Light travels in straight lines, and a shadow is the place something blocks it. Puppeteers in Java, China and Turkey have told stories with shadows thrown on a cloth for centuries, Egyptians read the time from the shadow of a sundial, and the camera obscura, a dark room with one small hole, showed painters the world upside down on a wall long before cameras. The sun moves, so a shadow is never still for long."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=light-and-shadow].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Light travels in straight lines, and a shadow is the place something blocks it. Puppeteers in Java, China and Turkey have told stories with shadows thrown on a cloth for centuries, Egyptians read the time from the shadow of a sundial, and the camera obscura, a dark room with one small hole, showed painters the world upside down on a wall long before cameras. The sun moves, so a shadow is never still for long."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=light-table].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A light table is a flat surface lit from below, so whatever lies on it glows and shows what is inside. Photographers used them to sort slides and negatives, architects and animators to trace, and the schools of Reggio Emilia in Italy brought them into the atelier so children could study leaves, color and transparent things in light. Stained glass windows in cathedrals such as Chartres work the same way, with daylight coming through color."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=light-table].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A light table is a flat surface lit from below, so whatever lies on it glows and shows what is inside. Photographers used them to sort slides and negatives, architects and animators to trace, and the schools of Reggio Emilia in Italy brought them into the atelier so children could study leaves, color and transparent things in light. Stained glass windows in cathedrals such as Chartres work the same way, with daylight coming through color."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=mirrors].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A mirror is a surface so smooth that light bounces off it in order, giving back a picture of what is in front. The oldest were polished obsidian, found at Çatalhöyük in Turkey from eight thousand years ago and used by the Aztecs, then came polished bronze in China and Egypt, and glass mirrors backed with metal were perfected on the island of Murano near Venice. Still water was the first mirror of all."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=mirrors].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A mirror is a surface so smooth that light bounces off it in order, giving back a picture of what is in front. The oldest were polished obsidian, found at Çatalhöyük in Turkey from eight thousand years ago and used by the Aztecs, then came polished bronze in China and Egypt, and glass mirrors backed with metal were perfected on the island of Murano near Venice. Still water was the first mirror of all."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=magnifiers-and-microscopes].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A magnifier is a curved piece of glass that bends light so a thing looks larger, and a microscope stacks lenses to see what the eye cannot. Monks read through polished reading stones in the Middle Ages, Robert Hooke drew a flea and the cells in cork for Micrographia in 1665, and Antonie van Leeuwenhoek, a cloth merchant in Delft, ground tiny lenses and was the first to see living things in a drop of water. A drop of water on a leaf bends light the same way."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=magnifiers-and-microscopes].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A magnifier is a curved piece of glass that bends light so a thing looks larger, and a microscope stacks lenses to see what the eye cannot. Monks read through polished reading stones in the Middle Ages, Robert Hooke drew a flea and the cells in cork for Micrographia in 1665, and Antonie van Leeuwenhoek, a cloth merchant in Delft, ground tiny lenses and was the first to see living things in a drop of water. A drop of water on a leaf bends light the same way."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sound-and-instruments].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Sound is air set shaking, and an instrument is anything made to shake it on purpose. The oldest known instruments are flutes of bird bone and mammoth ivory from caves in Germany, about forty thousand years old, and Pomo and Coast Miwok people played split elderberry clapper sticks, elderwood flutes, bone whistles, cocoon rattles and the great plank foot drum of the dance house. A pot, a stick and a taut string still make the three families of sound, struck, blown and plucked."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sound-and-instruments].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Sound is air set shaking, and an instrument is anything made to shake it on purpose. The oldest known instruments are flutes of bird bone and mammoth ivory from caves in Germany, about forty thousand years old, and Pomo and Coast Miwok people played split elderberry clapper sticks, elderwood flutes, bone whistles, cocoon rattles and the great plank foot drum of the dance house. A pot, a stick and a taut string still make the three families of sound, struck, blown and plucked."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=music-and-movement].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Music and movement go together in every culture people know, and dancing with others to a shared beat is among the oldest things humans do. Pomo and Coast Miwok people danced in roundhouses to clapper sticks and song, drummers and dancers in West Africa answer each other, and circle dances turn at weddings and festivals from Greece to the Balkans. A body keeps time before it has words for it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=music-and-movement].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Music and movement go together in every culture people know, and dancing with others to a shared beat is among the oldest things humans do. Pomo and Coast Miwok people danced in roundhouses to clapper sticks and song, drummers and dancers in West Africa answer each other, and circle dances turn at weddings and festivals from Greece to the Balkans. A body keeps time before it has words for it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=photography].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Photography is catching light on a surface that keeps it, first on metal and glass coated with silver salts, then on film, now on a sensor. The first lasting photograph was made by Nicéphore Niépce in France in 1826, the Kodak Brownie put a camera in ordinary hands in 1900, and photographs of Pomo basket weavers from the early 1900s are among the records their descendants study today. A photograph holds one moment for everyone who comes after."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=photography].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Photography is catching light on a surface that keeps it, first on metal and glass coated with silver salts, then on film, now on a sensor. The first lasting photograph was made by Nicéphore Niépce in France in 1826, the Kodak Brownie put a camera in ordinary hands in 1900, and photographs of Pomo basket weavers from the early 1900s are among the records their descendants study today. A photograph holds one moment for everyone who comes after."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=puppets-and-storytelling].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A puppet is a figure moved by a hand, strings or rods so it seems to live, and storytelling is older than writing. Shadow puppets have played all night in Java, Bunraku puppeteers in Japan move one figure with three people, Sicilian marionettes fight in armor, and Punch has shouted from his booth in England since the 1600s. Pomo and Coast Miwok elders told the stories of Coyote in winter, when the days were short and the work was inside."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=puppets-and-storytelling].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A puppet is a figure moved by a hand, strings or rods so it seems to live, and storytelling is older than writing. Shadow puppets have played all night in Java, Bunraku puppeteers in Japan move one figure with three people, Sicilian marionettes fight in armor, and Punch has shouted from his booth in England since the 1600s. Pomo and Coast Miwok elders told the stories of Coyote in winter, when the days were short and the work was inside."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=books].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A book is a set of pages that keeps words and pictures together so they can be returned to. Books were copied by hand for most of history, in monasteries, in Timbuktu and in the libraries of Baghdad, until printing with movable type spread in Europe in the 1400s, and the first picture book made for children, Orbis Pictus, was printed in 1658. A child who turns a page is doing what readers have done for two thousand years."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=books].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A book is a set of pages that keeps words and pictures together so they can be returned to. Books were copied by hand for most of history, in monasteries, in Timbuktu and in the libraries of Baghdad, until printing with movable type spread in Europe in the 1400s, and the first picture book made for children, Orbis Pictus, was printed in 1658. A child who turns a page is doing what readers have done for two thousand years."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=real-objects-for-dramatic-play].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Real objects are the tools, dishes, clothes and containers that adults use, offered to children for their play. Children in every culture have played at the work of the grownups with the things around them, and tiny pots and figures found in ancient Egypt and Greece and the small practice baskets Pomo children wove show how old this is. A wooden spoon, a metal pot and a scrap of cloth each carry their own weight, sound and story."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=real-objects-for-dramatic-play].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Real objects are the tools, dishes, clothes and containers that adults use, offered to children for their play. Children in every culture have played at the work of the grownups with the things around them, and tiny pots and figures found in ancient Egypt and Greece and the small practice baskets Pomo children wove show how old this is. A wooden spoon, a metal pot and a scrap of cloth each carry their own weight, sound and story."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=seeds].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A seed is a plant's beginning, a small package of food and a sleeping sprout wrapped in a coat. Farming began with seeds gathered and sown in the Fertile Crescent about ten thousand years ago and with maize in Mexico, and Pomo and Coast Miwok people beat the seeds of grasses and wildflowers into baskets, parched them with hot coals and gathered acorns, the seed of the oak, as a staple food. Seed vaults such as the one in Svalbard keep seeds for the future."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=seeds].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A seed is a plant's beginning, a small package of food and a sleeping sprout wrapped in a coat. Farming began with seeds gathered and sown in the Fertile Crescent about ten thousand years ago and with maize in Mexico, and Pomo and Coast Miwok people beat the seeds of grasses and wildflowers into baskets, parched them with hot coals and gathered acorns, the seed of the oak, as a staple food. Seed vaults such as the one in Svalbard keep seeds for the future."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=pressed-plants].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A pressed plant is a leaf or flower flattened and dried between papers until it keeps its shape. Luca Ghini in Bologna began pressing plants for study in the 1500s, Linnaeus and every botanist since have kept herbaria of pressed specimens with names and places, and Emily Dickinson pressed more than four hundred plants into a book as a girl. In Japan, oshibana arranges pressed petals into pictures."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=pressed-plants].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A pressed plant is a leaf or flower flattened and dried between papers until it keeps its shape. Luca Ghini in Bologna began pressing plants for study in the 1500s, Linnaeus and every botanist since have kept herbaria of pressed specimens with names and places, and Emily Dickinson pressed more than four hundred plants into a book as a girl. In Japan, oshibana arranges pressed petals into pictures."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=obstacle-courses].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "An obstacle course is a path of things to climb over, crawl under, balance on and jump across, laid out from logs, planks, tires, ropes and boxes. Soldiers have trained on them for a long time, and parkour began in the suburbs of Paris in the 1980s as a way of running, climbing and vaulting through a city. Children build their own from whatever is around, which is where the idea came from in the first place."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=obstacle-courses].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "An obstacle course is a path of things to climb over, crawl under, balance on and jump across, laid out from logs, planks, tires, ropes and boxes. Soldiers have trained on them for a long time, and parkour began in the suburbs of Paris in the 1980s as a way of running, climbing and vaulting through a city. Children build their own from whatever is around, which is where the idea came from in the first place."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=jumping-and-landing].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Jumping and landing use the ground, a step, a stump or a mat and nothing else. Athletes at the ancient Olympic Games leapt holding stone weights, Maasai men jump straight up from standing in the adumu dance, and jump rope rhymes are chanted on playgrounds on every continent. The landing is as much the skill as the jump, with bent knees and soft feet."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=jumping-and-landing].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Jumping and landing use the ground, a step, a stump or a mat and nothing else. Athletes at the ancient Olympic Games leapt holding stone weights, Maasai men jump straight up from standing in the adumu dance, and jump rope rhymes are chanted on playgrounds on every continent. The landing is as much the skill as the jump, with bent knees and soft feet."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=climbing].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Climbing uses trees, rocks, ropes, ladders and stacked logs, and the hands and feet that have climbed since before people were people. Children have always climbed trees for fruit and for the view, Pacific Islanders climb coconut palms with a loop of cloth, and Pomo and Coast Miwok families knocked acorns from the oaks with long poles each fall. Rock climbing grew into a sport in the Alps and the Lake District in the 1800s."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=climbing].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Climbing uses trees, rocks, ropes, ladders and stacked logs, and the hands and feet that have climbed since before people were people. Children have always climbed trees for fruit and for the view, Pacific Islanders climb coconut palms with a loop of cloth, and Pomo and Coast Miwok families knocked acorns from the oaks with long poles each fall. Rock climbing grew into a sport in the Alps and the Lake District in the 1800s."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=balancing].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Balancing is keeping the body upright over a narrow or moving base, a log, a beam, a rope or a rolling thing. Women in West Africa and India carry heavy loads on their heads with a straight back and even step, tightrope walkers have crossed squares and gorges for centuries, and the balance beam has been a gymnastics event since the first modern games. The ear, the eyes and the feet all take part."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=balancing].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Balancing is keeping the body upright over a narrow or moving base, a log, a beam, a rope or a rolling thing. Women in West Africa and India carry heavy loads on their heads with a straight back and even step, tightrope walkers have crossed squares and gorges for centuries, and the balance beam has been a gymnastics event since the first modern games. The ear, the eyes and the feet all take part."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=swinging-spinning-and-hanging].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Swinging, spinning and hanging use ropes, swings, bars and the pull of the earth itself. Swings appear on Greek vases from more than two thousand years ago and in the monsoon jhula festivals of India, Korean women swing high in long dresses at the Dano festival, and the Mevlevi dervishes of Turkey turn for an hour in prayer. The body's sense of balance lives in the inner ear, and all three movements wake it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=swinging-spinning-and-hanging].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Swinging, spinning and hanging use ropes, swings, bars and the pull of the earth itself. Swings appear on Greek vases from more than two thousand years ago and in the monsoon jhula festivals of India, Korean women swing high in long dresses at the Dano festival, and the Mevlevi dervishes of Turkey turn for an hour in prayer. The body's sense of balance lives in the inner ear, and all three movements wake it."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=hammocks].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A hammock is a length of woven cloth or net hung between two points so a body floats in it. The Taíno people of the Caribbean wove hammocks from cotton and bark fiber long before Columbus carried the word to Europe, sailors slept in them on crowded ships, and in Brazil and Mexico they are still the bed in many homes. A hammock rocks with the smallest shift of weight, which is why it settles so many people."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=hammocks].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A hammock is a length of woven cloth or net hung between two points so a body floats in it. The Taíno people of the Caribbean wove hammocks from cotton and bark fiber long before Columbus carried the word to Europe, sailors slept in them on crowded ships, and in Brazil and Mexico they are still the bed in many homes. A hammock rocks with the smallest shift of weight, which is why it settles so many people."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=crawling-tunnels-and-squeezing-through].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Crawling and squeezing through use tunnels, boxes, hoops, hollow logs and the spaces under tables and between bushes. Foxes, rabbits and badgers raise their young in burrows, people have crawled into caves to paint and to shelter since the earliest times, and children on every continent make dens and tunnels from blankets, branches and snow. Pushing the body through a tight space tells it exactly where its edges are."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=crawling-tunnels-and-squeezing-through].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Crawling and squeezing through use tunnels, boxes, hoops, hollow logs and the spaces under tables and between bushes. Foxes, rabbits and badgers raise their young in burrows, people have crawled into caves to paint and to shelter since the earliest times, and children on every continent make dens and tunnels from blankets, branches and snow. Pushing the body through a tight space tells it exactly where its edges are."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=pushing-pulling-and-hauling].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Pushing, pulling and hauling use wheelbarrows, wagons, ropes, buckets, sleds and heavy things that need moving. The wheelbarrow was in use in China by the second century, Pomo and Coast Miwok people carried acorns and firewood in large burden baskets held by a strap across the forehead, and tug of war is shown on Egyptian tomb walls and still opens village festivals around the world. Moving a load is work that children seek out."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=pushing-pulling-and-hauling].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Pushing, pulling and hauling use wheelbarrows, wagons, ropes, buckets, sleds and heavy things that need moving. The wheelbarrow was in use in China by the second century, Pomo and Coast Miwok people carried acorns and firewood in large burden baskets held by a strap across the forehead, and tug of war is shown on Egyptian tomb walls and still opens village festivals around the world. Moving a load is work that children seek out."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=rough-and-tumble-play].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Rough and tumble play is wrestling, chasing, rolling and tussling between willing partners, with no gear beyond a soft surface and a clear agreement. Young mammals of nearly every kind play this way, wrestling is painted on Egyptian tomb walls from four thousand years ago, and sumo in Japan, Mongolian wrestling at Naadam and schoolyard tag all come from the same root. Its rules, that everyone agrees and anyone can stop, are the oldest rules of play."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=rough-and-tumble-play].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Rough and tumble play is wrestling, chasing, rolling and tussling between willing partners, with no gear beyond a soft surface and a clear agreement. Young mammals of nearly every kind play this way, wrestling is painted on Egyptian tomb walls from four thousand years ago, and sumo in Japan, Mongolian wrestling at Naadam and schoolyard tag all come from the same root. Its rules, that everyone agrees and anyone can stop, are the oldest rules of play."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=rolling-and-tumbling].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Rolling and tumbling use a slope, a mat, grass or a cardboard tube, and the body's own weight. Acrobats in China have tumbled for two thousand years, gymnasts in ancient Greece trained in rolling and vaulting, capoeira in Brazil turns cartwheels into dance, and every spring people chase a wheel of cheese down a hill in Gloucestershire. A forward roll was most people's first gymnastics."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=rolling-and-tumbling].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Rolling and tumbling use a slope, a mat, grass or a cardboard tube, and the body's own weight. Acrobats in China have tumbled for two thousand years, gymnasts in ancient Greece trained in rolling and vaulting, capoeira in Brazil turns cartwheels into dance, and every spring people chase a wheel of cheese down a hill in Gloucestershire. A forward roll was most people's first gymnastics."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=speed-and-running].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Running needs a clear stretch of ground and a reason to go. The footrace was the only event at the first Olympic Games in 776 BCE, Inca messengers ran relays along mountain roads, and the Rarámuri people of northern Mexico run long distances in sandals as a way of life and a game. Children run because moving fast feels good, long before anyone times them."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=speed-and-running].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Running needs a clear stretch of ground and a reason to go. The footrace was the only event at the first Olympic Games in 776 BCE, Inca messengers ran relays along mountain roads, and the Rarámuri people of northern Mexico run long distances in sandals as a way of life and a game. Children run because moving fast feels good, long before anyone times them."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=heights-and-lookouts].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Heights and lookouts are stumps, platforms, ladders, low roofs, trees and hilltops, anywhere a child can stand above the ground and look out. Sailors climbed to the crow's nest, lookouts have watched for fire from towers in the Sierra for a century, and children have built treehouses wherever there were trees and spare boards. Seeing the whole yard from above changes how it is understood."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=heights-and-lookouts].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Heights and lookouts are stumps, platforms, ladders, low roofs, trees and hilltops, anywhere a child can stand above the ground and look out. Sailors climbed to the crow's nest, lookouts have watched for fire from towers in the Sierra for a century, and children have built treehouses wherever there were trees and spare boards. Seeing the whole yard from above changes how it is understood."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=risky-play-set-ups].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Risky play set-ups are places built so children can test height, speed, tools, rough play and getting lost in ways they can manage. The first adventure playground opened in Emdrup, Denmark, in 1943, where children built with scrap wood and nails, the idea spread to England through Lady Allen of Hurtwood, and Norwegian researcher Ellen Sandseter named six kinds of risky play in 2007 that educators now use. Forest schools in Denmark and Germany have let children climb and use knives for decades."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=risky-play-set-ups].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Risky play set-ups are places built so children can test height, speed, tools, rough play and getting lost in ways they can manage. The first adventure playground opened in Emdrup, Denmark, in 1943, where children built with scrap wood and nails, the idea spread to England through Lady Allen of Hurtwood, and Norwegian researcher Ellen Sandseter named six kinds of risky play in 2007 that educators now use. Forest schools in Denmark and Germany have let children climb and use knives for decades."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=heavy-work].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Heavy work is pushing, carrying, digging, hauling and lifting things that have weight, logs, buckets of water, wheelbarrows of soil and bags of feed. It has been the daily work of children on farms and in villages everywhere, fetching water and firewood, and Pomo and Coast Miwok children carried in burden baskets alongside their families. The body has a sense that feels this load in the muscles and joints, and feeding it steadies many bodies."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=heavy-work].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "Heavy work is pushing, carrying, digging, hauling and lifting things that have weight, logs, buckets of water, wheelbarrows of soil and bags of feed. It has been the daily work of children on farms and in villages everywhere, fetching water and firewood, and Pomo and Coast Miwok children carried in burden baskets alongside their families. The body has a sense that feels this load in the muscles and joints, and feeding it steadies many bodies."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=calm-body-after-big-movement].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A calm body after big movement needs a quiet place, a slow breath and sometimes a heavy blanket, a wall to lean on or a hand to hold. Yoga in India ends every practice lying still, tai chi in China moves slowly on purpose, and people everywhere have rested in the shade after hard work. Breath is the oldest tool for settling, and it is always with us."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=calm-body-after-big-movement].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A calm body after big movement needs a quiet place, a slow breath and sometimes a heavy blanket, a wall to lean on or a hand to hold. Yoga in India ends every practice lying still, tai chi in China moves slowly on purpose, and people everywhere have rested in the shade after hard work. Breath is the oldest tool for settling, and it is always with us."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=block-area].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "The blocks in a block area are maple cut to sizes that fit together, with hollow blocks of plywood for building big. Froebel gave the first kindergartens their building gifts in the 1830s, and Caroline Pratt made unit blocks in New York around 1913 after watching children rebuild their city on the floor, with Harriet Johnson writing down what they built. Every culture that has built with stone or brick began the same way, by stacking."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=block-area].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "The blocks in a block area are maple cut to sizes that fit together, with hollow blocks of plywood for building big. Froebel gave the first kindergartens their building gifts in the 1830s, and Caroline Pratt made unit blocks in New York around 1913 after watching children rebuild their city on the floor, with Harriet Johnson writing down what they built. Every culture that has built with stone or brick began the same way, by stacking."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sensory-table].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A sensory table is a low tray on legs filled with water, sand, soil, ice or something from the pantry, with tools for pouring and scooping. Margaret McMillan put sand and water trays in her open-air nursery in London in 1911, and sand tables stood in kindergartens before that, following Froebel's idea of learning through the hands. The material in it changes, and the table stays."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=sensory-table].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A sensory table is a low tray on legs filled with water, sand, soil, ice or something from the pantry, with tools for pouring and scooping. Margaret McMillan put sand and water trays in her open-air nursery in London in 1911, and sand tables stood in kindergartens before that, following Froebel's idea of learning through the hands. The material in it changes, and the table stays."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=mud-kitchen].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A mud kitchen is a set of old pots, pans, spoons and a work surface outdoors, with soil, water and plants to cook with. Mud pies are among the oldest games children play, Pomo and Coast Miwok people baked in earth ovens and lined pits with earth, and the mud kitchen as a built place took its name and shape in England's nature play movement in the early 2000s. Nothing in it is new, which is the point."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=mud-kitchen].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A mud kitchen is a set of old pots, pans, spoons and a work surface outdoors, with soil, water and plants to cook with. Mud pies are among the oldest games children play, Pomo and Coast Miwok people baked in earth ovens and lined pits with earth, and the mud kitchen as a built place took its name and shape in England's nature play movement in the early 2000s. Nothing in it is new, which is the point."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=log-yard].sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A log yard holds logs, stumps, rounds, sticks and planks under the valley oaks, cut from trees on our site or brought in. The valley oak gave Pomo and Coast Miwok people the acorns that were their staple food, oak and other wood heated every home, and a fallen log is also a home for beetles, fungi, lichens and the creatures that eat them. Wood that is left to rot gives back to the soil it grew from."
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "insert": "cards[id=log-yard].home.sections",
+   "at": 0,
+   "value": {
+    "h": "About this material",
+    "style": "text",
+    "text": "A log yard holds logs, stumps, rounds, sticks and planks under the valley oaks, cut from trees on our site or brought in. The valley oak gave Pomo and Coast Miwok people the acorns that were their staple food, oak and other wood heated every home, and a fallen log is also a home for beetles, fungi, lichens and the creatures that eat them. Wood that is left to rot gives back to the soil it grew from."
+   }
+  }
+ ]
+}
