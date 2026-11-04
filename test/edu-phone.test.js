@@ -29,10 +29,10 @@ test('educators on a phone', async t => {
   t.after(async () => { await b.close(); await fx.stop(); });
   const wait = async (fn, ms) => { for (let i = 0; i < (ms || 8000) / 200; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 200)); } return false; };
 
-  await t.test('Final remarks wait for the last three weeks only', async () => {
+  await t.test('Final remarks never expire. Every plan still waiting for them waits (November 4, 2026)', async () => {
     const s = await signedIn(fx, b, 'Bea', '1357', 390);
     await s.p.waitForFunction(() => plans.get('w5'), null, { timeout: 15000 });
-    assert.deepStrictEqual(await s.p.evaluate(() => dueList().list.map(p => p.id)), ['w1', 'w2', 'w3']);
+    assert.deepStrictEqual(await s.p.evaluate(() => dueList().list.map(p => p.id)), ['w1', 'w2', 'w3', 'w5']);
     await s.close();
   });
 

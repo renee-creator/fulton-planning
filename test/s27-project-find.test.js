@@ -27,10 +27,10 @@ test('Find observations for this project lists what may belong, and nothing join
   await s.p.evaluate(() => document.querySelector('[data-pfind="x1"]').click());
   await s.p.waitForFunction(() => projWaiting(projects.get('x1')).length === 1, null, { timeout: 15000 });
   assert.ok(asked.some(b => /may belong to a project/.test(b) && /Threw sticks in the creek/.test(b)), 'TREE read the recent observations');
-  assert.deepStrictEqual(await s.p.evaluate(() => projNotices(projects.get('x1')).map(n => n.id)), [], 'nothing joined yet');
+  assert.deepStrictEqual(await s.p.evaluate(() => projOwnNotices(projects.get('x1')).map(n => n.id)), [], 'nothing joined yet');
   await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
   assert.match(await s.p.innerText('#main'), /From the week's reading\. Perhaps they are following where the water carries things\./);
   await s.p.click('[data-projadd="x1|n1"]'); await s.p.waitForTimeout(300);
-  assert.deepStrictEqual(await s.p.evaluate(() => projNotices(projects.get('x1')).map(n => n.id)), ['n1']);
+  assert.deepStrictEqual(await s.p.evaluate(() => projOwnNotices(projects.get('x1')).map(n => n.id)), ['n1']);
   assert.deepStrictEqual(s.errors, []);
 });

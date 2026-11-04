@@ -743,6 +743,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:8px 0}.gstat{padding:10px 12px;border-radius:10px;background:var(--sky-soft,#eef4f7)}.gstat b{display:block;font-size:19px}.gstat span{font-size:12.5px;color:var(--ink-soft,#6b6b62)}
 .kitchen>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:32px}.kitchen>summary::-webkit-details-marker{display:none}
 /* a notice on Today folded to one closed line, its details and buttons inside (November 3, 2026) */
+.placechips .chip{font-size:12.5px;opacity:.85}.placefilter{margin:4px 0 0}
 .tfold>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:32px}.tfold>summary::-webkit-details-marker{display:none}.tfold>summary b::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.tfold[open]>summary b::before{transform:rotate(90deg)}.tfold>summary b{font-size:16px}
 .kitchen>summary h3{font-size:17px;margin:0}.kitchen>summary h3::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.kitchen[open]>summary h3::before{transform:rotate(90deg)}
 .klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}.knote.kset{color:var(--moss);font-weight:600}.kchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.kchips .chip-btn{font-size:12.5px;padding:4px 10px}
@@ -875,7 +876,7 @@ function langPick(arr){const all=langList();const m=new Map(all.map(x=>[x.toLowe
 function langAddRow(where){return `<div class="actions" style="gap:6px"><input type="text" id="lang-new-${where}" placeholder="Add another language" style="width:240px"><button class="btn small ghost" data-langadd="${where}">Add</button></div>`}
 let PDEF=null;
 const PROGRAM="Fulton Community School & Farm (Child Family Community, Inc.) is a Reggio-inspired, nature-based early childhood program in Santa Rosa, California, with a garden, farm animals, and art, nature, library, and culinary ateliers. Its mission is to respect and honor the whole child and support children as citizens of the world who follow their imagination into deep discovery. Guiding principles are social constructivism, the image of the child as competent and capable, the educator as researcher and partner, relationships, environment as the third teacher, family involvement, collaboration, documentation, and projects that last days to months. The curriculum is emergent and co-constructed by children and educators, following the cycle of informal observation, assumptions, outcomes, goals, and biases, provocation, formal observation, documentation, and reflection, which leads back to informal observation. At its center are visible purposeful learning, emergent curriculum, project work, and community. Classrooms are mixed-age. Risky play is valued, as safe as necessary rather than as safe as possible. The school does not celebrate holidays and instead discusses the values behind them. Families receive weekly classroom newsletters and Friday picture digests through Kaymbu.";
-const DOC_PLAN=["Photos","Children's words and quotes","Work samples","Revisit an earlier drawing or map","Post work at children's eye level","Notepad observations"];
+const DOC_PLAN=["Photos","Children's words and quotes","Work samples","Revisit an earlier drawing or map","Post work at children's eye level","Notepad observations","Revisit"];
 const WEAK=[["theme","Name what children are doing or wondering. Themes are outside our approach."],["activity","Connect it to what children are thinking.",{not:["materials"]}],["enjoyed","Say how children's thinking changed."],["had fun","Say how children's thinking changed."],["learn about","Phrase it as a question children are holding."],["talk about","Describe how children will share and compare ideas."],["set up","Name the specific materials and how the space changes.",{only:["indoor","outdoor","materials"]}],["all children","Our plans hold several threads at once. Name the different groups."],["worksheet","Worksheets are outside our approach."],["craft","Offer open materials as languages for thinking."],["halloween","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["christmas","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["thanksgiving","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["valentine","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["easter","We do not celebrate holidays. Follow the values or the children's own questions underneath."],["holiday","We do not celebrate holidays. Follow the values or the children's own questions underneath."]];
 
 const FORMS={
@@ -1250,8 +1251,8 @@ const sendable=p=>!!(p&&SEND_NEED[p.type]&&p.id!=="example"&&!p.blank);
 function planMissing(p){if(!sendable(p))return [];const F=FORMS[p.type];return SEND_NEED[p.type].filter(k=>!String((p.fields||{})[k]||"").trim()).map(k=>({k,label:(F.fields.find(f=>f.k===k)||{}).label||k}))}
 const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
 function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
-// only the last three weeks wait for Final remarks. Older ones are let go (October 31, 2026).
-function dueList(){const m=me().toLowerCase();const from=addDays(mondayOf(new Date()),-21);const all=[...plans.values()].filter(p=>needsRemarks(p)&&p.weekOf>=from);const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
+// Final remarks never expire. Every plan still waiting for them waits on Today, however old (November 4, 2026).
+function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(p=>needsRemarks(p));const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
 /* Director feedback. Only the director writes it, the educator is told when a note is waiting, and can reply under it. */
 const myName=()=>{const s=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";return (isShared(s)?"":s)||me()||""};
 const fbNew=p=>!!(String(p.feedback||"").trim()&&(p.feedbackAt||0)>(p.feedbackSeenAt||0));
@@ -1457,7 +1458,7 @@ function renderMain(){
   if((p.type==="classroom"||p.type==="individual")&&sample)h+=`<section class="card"><div class="lbl">Family update for Kaymbu</div><div class="hint">${p.type==="individual"?((p.groups||[]).length?"A short note for the families of "+esc(p.groups.join(" and "))+" group"+(p.groups.length>1?"s":"")+", written from this plan":"A short note for families about this investigation, written from this plan"):"A short note for this week's class newsletter, written from this plan"} in family-friendly language. Edit it, then copy it into Kaymbu.</div>
     <textarea id="family" data-talk="1" rows="5" placeholder="Press Draft family update once the plan has some content.">${esc(p.familyUpdate||"")}</textarea>
     <div class="actions"><button class="btn small ghost" id="famdraft">Draft family update</button><button class="btn small ghost" id="famcopy">Copy</button></div></section>`;
-  h+=attachHtml(p)+sendHtml(p)+feedbackHtml(p)+`
+  h+=planObsWeekHtml(p)+attachHtml(p)+sendHtml(p)+feedbackHtml(p)+`
     <div class="actions" style="justify-content:space-between"><span class="savestate" id="saved2"></span><span id="delwrap"><button class="btn warn small" id="del">Delete this plan</button></span></div>`;
   $("#main").innerHTML=h;
   planFolds(p);
@@ -1465,6 +1466,22 @@ function renderMain(){
   if(F.web)drawWebPreview(p);
   setTimeout(()=>{if(currentId===p.id&&view==="plans")markFeedbackSeen(p)},800);
 }
+// A plan gathers its own week's observations. Formal observations, folded closed with a count, lists the observations of
+// the plan's class kept in the plan's week, Monday to Sunday, and when the plan names a space or a small group, only those
+// matching it. Nothing is tagged. Read only (November 4, 2026)
+function planWeekObs(p){if(!p||p.blank||p.id==="example"||!PLAN_TYPES.includes(p.type)||!p.weekOf)return [];
+  const from=parseIso(p.weekOf).getTime(),to=parseIso(addDays(p.weekOf,7)).getTime();
+  const gs=p.type==="individual"?(p.groups||[]):p.type==="smallgroup"&&p.group?[p.group]:[];
+  const sp=p.space&&p.space.spaceId?((calSpaces||[]).find(x=>x.id===p.space.spaceId)||{}).name:"",where=String(sp||p.where||"").trim().toLowerCase();
+  const inSpace=n=>{if(!where)return true;const ps=obsPlaces(n).map(x=>x.toLowerCase());if(ps.length)return ps.some(x=>x===where||x.includes(where)||where.includes(x));return !Array.isArray(n.place)};
+  return [...notices.values()].filter(n=>(n.at||0)>=from&&(n.at||0)<to&&(!p.classroom||momentIn(n,p.classroom))&&(!gs.length||obsGroups(n).some(g=>gs.includes(g)))&&inSpace(n)).sort((a,b)=>(b.at||0)-(a.at||0))}
+function planObsWeekHtml(p){const ns=planWeekObs(p);if(!ns.length)return "";const posts=shareGroups(ns);
+  const row=([n,...more])=>`<div class="evob"><div class="cnt">${esc(shortDate(n.at))} · ${esc(n.by||"An educator")}${momentRoomsText(n)?" · "+esc(momentRoomsText(n)):""}${obsGroups(n).length?" · "+esc(obsAnd(obsGroups(n)))+" group":""}</div>
+    ${n.photo?`<div class="evrow"><a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="min-width:0;white-space:pre-line">${esc(n.noticed)}</div></div>`:`<div style="white-space:pre-line">${esc(n.noticed)}</div>`}
+    ${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}${placeChipsHtml(n)}${more.length?`<div class="cnt">${more.length} more photo${more.length>1?"s":""} with this note</div>`:""}
+    <div class="actions"><button class="linkbtn" data-obsgo="${esc(n.id)}">Open it</button></div></div>`;
+  return `<details class="card fold planobs" data-fold="planobs:${esc(p.id)}" ${foldOpen.has("planobs:"+p.id)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">Formal observations</span><span class="cnt">${posts.length} this week${(p.groups||[]).length||p.group||p.where||(p.space&&p.space.spaceId)?", matching this plan":""}</span></summary>
+    <div class="foldbody"><div class="hint">Observations of ${esc(p.classroom?p.classroom+" class":"this class")} kept in the week of ${esc(fmtDate(p.weekOf))}, Monday to Sunday. Nothing here is tagged, and nothing changes the plan.</div><div style="display:grid;gap:12px">${posts.map(row).join("")}</div></div></details>`}
 /* The floating Proofread button never covers a field or a choice. The page has room at its end so the last fields
    scroll clear of it, and whenever a box, a choice or a button sits under it, it steps aside until the page moves on. */
 function proofTabClear(){const t=document.querySelector(".prooftab");if(!t||t.hidden)return;t.classList.remove("tucked");const r=t.getBoundingClientRect();if(!r.width)return;
@@ -4740,6 +4757,8 @@ const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiti
 function waitingHtml(list){
   // a quick task opens right here under its row. Anything else opens its page, with the Next bar to move through the rest
   const row=w=>{const k=(WAIT_KIND(w)||[])[0]||"";const open=tqOpen===w.q;
+    // a row already read, such as this week's reading report, folds to one line and stays all week
+    if(w.seen)return `<details class="tgroup tseen"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist"><div class="titem"><span class="tdot ${w.dot}"></span><div class="cnt">Read. It stays here all week.</div><button class="btn small ghost" ${w.act}>${w.b}</button></div></div></details>`;
     return `<div class="titem${open?" tqon":""}"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div>${w.q?`<button class="btn small ghost" data-tq="${esc(w.q)}" aria-expanded="${open}">${open?"Close":w.b}</button>`:`<button class="btn small ghost" ${w.act} data-wk="${esc(k)}" data-wt="${esc(w.t+"|"+w.s)}">${w.b}</button>`}</div>${open?`<div class="tq" id="tqbox">${tqHtml(w)}</div>`:""}`};
   const rows=[],seen=new Map();
   for(const w of list){const k=WAIT_KIND(w);const n=k?list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]).length:0;
@@ -5070,11 +5089,27 @@ function renderWeeklyReport(){wrLoadMine();const dir=isDirector()&&!VIEW_AS;cons
   const rooms=dir?["All",...CLASSROOMS]:[...new Set(all.map(r=>r.room))];if(!rooms.includes(wrRoom))wrRoom=rooms[0]||"";
   const weeks=[...new Set(all.filter(r=>r.room===wrRoom).map(r=>r.week))].sort().reverse();if(!weeks.includes(wrWeek))wrWeek=weeks[0]||"";
   const r=all.find(x=>x.room===wrRoom&&x.week===wrWeek);const name=x=>x==="All"?"The whole school":x+" class";
+  const wkNow=mondayOf(new Date());
   $("#main").innerHTML=`<div class="head"><h2>Weekly reading report</h2><div class="sub">What is growing, what is new, what has gone quiet, and how we might support the children's work, written after each week's reading and kept by week.</div></div>
     <section class="card wrbar"><div class="actions" style="flex-wrap:wrap">${rooms.length>1?rooms.map(x=>`<button class="chip-btn" data-wrroom="${esc(x)}" aria-pressed="${x===wrRoom}">${esc(name(x))}</button>`).join(""):""}
-      ${weeks.length?`<label class="cnt">Week of <select data-wrweek="1" style="width:auto">${weeks.map(w=>`<option value="${esc(w)}" ${w===wrWeek?"selected":""}>${esc(fmtDate(w))}</option>`).join("")}</select></label>`:""}
+      ${weeks.length?`<label class="cnt">Week of <select data-wrweek="1" style="width:auto">${weeks.map(w=>`<option value="${esc(w)}" ${w===wrWeek?"selected":""}>${esc(fmtDate(w))}${w===wkNow?", this week":""}</option>`).join("")}</select></label>`:""}
       ${r?`<button class="btn small ghost" data-wrprint="1">Print or save as PDF</button>`:""}</div></section>
-    ${r?wrHtml(r,name(wrRoom)):`<section class="card"><p class="muted" style="margin:0">${all.length?"No report for this one yet.":"The first report is written after the next week's reading. The director's first visit to TREE each week starts the reading."}</p></section>`}`}
+    ${r?wrHtml(r,name(wrRoom))+wrFindingsHtml(r):`<section class="card"><p class="muted" style="margin:0">${all.length?"No report for this one yet.":"The first report is written after the next week's reading. The director's first visit to TREE each week starts the reading."}</p></section>`}`}
+// what the reading found that week, kept with the report by the server as findings, folded under the report. Nothing shows
+// when the server did not keep any (November 4, 2026)
+// the week's findings are kept by the server as their own report record, <week>-findings, beside the written report
+function wrFindingsOf(r){if(!r)return null;if(r.findings&&typeof r.findings==="object")return r.findings;const k=reports.get((r.week||"")+"-findings");if(!k)return null;
+  const out={};for(const [kind,list] of Object.entries(k)){if(!Array.isArray(list))continue;const rows=list.filter(x=>x&&(r.room==="All"||!x.room||x.room===r.room||x.room==="All")).map(x=>Object.assign({},x,{what:x.name||x.quote||x.lens||"",why:x.why||x.question||""}));
+    if(kind==="projects"||kind==="inquiries")for(const x of list)for(const f of (x.found||[]).concat(x.threads||[]))rows.push({name:x.name,id:f.id,why:f.why,project:kind==="projects"?x.id:undefined});
+    if(rows.length)out[kind]=rows}return out}
+function wrFindingsHtml(r){const f=wrFindingsOf(r);if(!f||typeof f!=="object")return "";
+  const list=Array.isArray(f)?f.map(x=>typeof x==="string"?{what:x}:x):Object.entries(f).flatMap(([k,v])=>(Array.isArray(v)?v:[v]).map(x=>typeof x==="string"?{kind:k,what:x}:Object.assign({kind:k},x||{})));
+  const rows=list.filter(x=>x&&(x.what||x.name||x.text||x.why)).map(x=>{const title=String(x.name||x.what||x.text||"").trim(),why=x.why&&x.why!==title?String(x.why):"";
+    const open=x.thread&&threads.has(x.thread)?`data-tsee="${esc(x.thread)}"`:x.project&&projects.has(x.project)?`data-popen="${esc(x.project)}"`:x.id&&notices.has(x.id)?`data-obsgo="${esc(x.id)}"`:x.id&&threads.has(x.id)?`data-tsee="${esc(x.id)}"`:x.id&&projects.has(x.id)?`data-popen="${esc(x.id)}"`:"";
+    return `<div class="evhit" style="display:grid;gap:2px">${x.kind?`<span class="cnt">${esc(String(x.kind).replace(/[_-]+/g," "))}</span>`:""}<span>${esc(title)}</span>${why?`<span class="muted">${esc(why)}</span>`:""}${open?`<span><button class="linkbtn" ${open}>Open it</button></span>`:""}</div>`});
+  if(!rows.length)return "";
+  return `<details class="card fold" data-fold="wrfind:${esc(r.id||r.week+r.room)}" ${foldOpen.has("wrfind:"+(r.id||r.week+r.room))?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">What the reading found</span><span class="cnt">${rows.length}</span></summary><div class="foldbody" style="display:grid;gap:8px">${rows.join("")}</div></details>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-readings]");if(!t||!isDirector())return;e.preventDefault();e.stopImmediatePropagation();wrRoom="All";wrWeek=mondayOf(new Date());goView("wreport")},true);
 function wrHtml(r,title){const part=(h,t)=>has(t)?`<div class="wrpart"><div class="lbl">${h}</div><div>${esc(t)}</div></div>`:"";
   const prev=wrList().filter(x=>x.room===r.room&&x.week<r.week).sort((a,b)=>b.week.localeCompare(a.week))[0];
   return `<section class="card wrrep"><div class="secthead"><h3 style="font-size:19px">${esc(title)}</h3><span class="cnt">Week of ${esc(fmtDate(r.week))}${prev?`, compared with the weeks before`:", the first report, so there is nothing to compare with yet"}</span></div>
@@ -5093,8 +5128,8 @@ document.addEventListener("click",e=>{if(view!=="wreport")return;const t=e.targe
 document.addEventListener("change",e=>{if(view!=="wreport"||!e.target.dataset.wrweek)return;wrWeek=e.target.value;renderMain()});
 // on Today, the newest report for the class, or for the director after the week's reading
 function wrTodayItem(){const dir=isDirector()&&!VIEW_AS;wrLoadMine();const wk=mondayOf(new Date());
-  const mine=wrList().filter(r=>r.week===wk&&(dir?r.room==="All":true));if(!mine.length||LS.get("tree.wrseen")===wk)return null;
-  const r=mine[0];return {dot:"sky",t:dir?"This week's reading report":`This week's reading report for the ${r.room} class`,s:firstLine(WR_PARTS.map(([k])=>r[k]).find(has)||"",90),act:`data-tview="wreport" data-wrseen="${esc(wk)}"`,b:"Read"}}
+  const mine=wrList().filter(r=>r.week===wk&&(dir?r.room==="All":true));if(!mine.length)return null;
+  const r=mine[0],seen=LS.get("tree.wrseen")===wk;return {dot:"sky",t:dir?"This week's reading report":`This week's reading report for the ${r.room} class`,s:seen?"":firstLine(WR_PARTS.map(([k])=>r[k]).find(has)||"",90),act:`data-tview="wreport" data-wrseen="${esc(wk)}"`,b:seen?"Open":"Read",seen}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wrseen]");if(t)LS.set("tree.wrseen",t.dataset.wrseen)},true);
 let weeklyRec,weeklyBusy=false;
 const rToast=m=>{if(!weeklyBusy)toast(m)};
@@ -5143,14 +5178,14 @@ async function weeklyReads(){
 function weeklyHtml(){if(!isDirector()||!weeklyRec||weeklyRec.week!==mondayOf(new Date()))return "";const w=weeklyRec;
   if(w.failed)return `<div class="card" style="margin-top:14px"><b>Part of this week's reading did not finish</b> <span class="cnt">${w.missed?`${w.missed} part${w.missed===1?"":"s"} still to read. `:""}TREE carries on from there the next time you open it, after an hour.</span></div>`;
   if(!w.done){let all=0;try{all=weeklySteps().length}catch(e){}const dn=(w.doneSteps||[]).length;return `<div class="card" style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span><b>This week's reading</b> <span class="cnt">TREE is reading threads, the lens and observations for the whole school and each class, then the open projects and team inquiries${all?`, ${Math.min(dn,all)} of ${all} done`:""}. Keep TREE open for a few minutes.</span></span></div>`}
-  if(LS.get("tree.weeklyseen")===w.week)return "";
+  const seen=LS.get("tree.weeklyseen")===w.week;
   const n=(k,one,many)=>w[k]?`${w[k]} ${w[k]===1?one:many}`:"";
   const parts=[n("threads","new thread","new threads"),w.joined?`more evidence for ${w.joined} thread${w.joined===1?"":"s"} you follow`:"",n("moments","lens moment","lens moments"),n("patterns","new pattern in observations","new patterns in observations"),w.projects?`observations that may belong to ${w.projects} project${w.projects===1?"":"s"}`:"",w.inquiries?`observations for ${w.inquiries} team inquir${w.inquiries===1?"y":"ies"}`:""].filter(Boolean);
   const any=parts.length;
   const btn=(go,label,show)=>show?`<button class="btn small${go==="threads"?"":" ghost"}" data-weeklygo="${go}">${label}</button>`:"";
   // one closed line, with what it found and its buttons inside (November 3, 2026)
-  return `<details class="card tfold" id="weeklydone" style="margin-top:14px"><summary><b>This week's reading is done</b><span class="cnt">${any?"Open it to see what it found":"Nothing new this week"}</span></summary><div class="cnt" style="margin-top:6px">${esc(any?parts.join(", ").replace(/^./,c=>c.toUpperCase())+".":"Nothing new this week.")}${any?" They wait for you. Each class has its own reading beside the one for the whole school.":""}</div><div class="actions">${[...reports.values()].some(r=>r.week===w.week)?`<button class="btn small" data-weeklygo="wreport">Read the report</button>`:""}${btn("threads","Threads",true)}${btn("lens","The lens",true)}${btn("moments","Observations",w.patterns)}${btn("projects","Projects",w.projects)}${btn("inquiries","Team inquiries",w.inquiries)}<button class="linkbtn" data-weeklyok="1">Close</button></div></details>`}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else renderMain()});
+  return `<details class="card tfold${seen?" seen":""}" id="weeklydone" style="margin-top:14px"><summary><b>This week's reading is done</b><span class="cnt">${any?(seen?"Read":"Open it to see what it found"):"Nothing new this week"}</span></summary><div class="cnt" style="margin-top:6px">${esc(any?parts.join(", ").replace(/^./,c=>c.toUpperCase())+".":"Nothing new this week.")}${any?" They wait for you. Each class has its own reading beside the one for the whole school.":""}</div><div class="actions">${[...reports.values()].some(r=>r.week===w.week)?`<button class="btn small" data-weeklygo="wreport">Read the report</button>`:""}${btn("threads","Threads",true)}${btn("lens","The lens",true)}${btn("moments","Observations",w.patterns)}${btn("projects","Projects",w.projects)}${btn("inquiries","Team inquiries",w.inquiries)}<button class="linkbtn" data-weeklyok="1">Close</button></div></details>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-weeklygo],[data-weeklyok]");if(!t)return;LS.set("tree.weeklyseen",weeklyRec&&weeklyRec.week);if(t.dataset.weeklygo)goView(t.dataset.weeklygo);else{const d=$("#weeklydone");if(d)d.open=false;renderMain()}});
 // Produce coming, folded to one line until opened. Whether it is open is remembered on this device.
 let kOpen=LS.get("tree.kopen",false);
 document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("kitchen")&&!e.target.dataset.kfixed){kOpen=e.target.open;LS.set("tree.kopen",kOpen)}},true);
@@ -5202,6 +5237,54 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-askf
   const id="rq-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   try{await db.doc("participation/"+id).create({kind:"item",type:"task",title:v("title"),date:v("date"),start:v("start"),end:v("end"),spots:Number(v("spots"))||0,classroom:v("room"),note:v("note"),hours:0,status:"requested",open:false,signups:[],createdAt:Date.now(),createdBy:myName()||""});askFam=false;renderMain();toast("Sent to the director. She posts it to the Family page.")}
   catch(er){toast(er&&er.message||"Could not send it.")}});
+/* Today invites one Wonder. The newest Kaymbu observation of the day credited to the educator or their class with no Wonder
+   waits as one folded line, Add a wonder to today's photo, which opens that observation with the Wonder box focused. It can be
+   skipped, and it shows once a day on each device (November 4, 2026) */
+function wonderTodayHtml(){if(isDirector()||isOffice()||VIEW_AS||isKitchenUser())return "";const m=String(me()||"").trim().toLowerCase(),rm=myRoom(),day=iso(new Date());
+  if(LS.get("tree.wonderask")===day)return "";
+  const n=[...notices.values()].filter(n=>n.kaymbu&&iso(new Date(n.at||0))===day&&!has(n.wonder)&&((m&&String(n.by||"").trim().toLowerCase()===m)||(rm&&momentIn(n,rm)))).sort((a,b)=>(b.at||0)-(a.at||0))[0];
+  if(!n)return "";
+  return `<details class="card tfold" id="wondertoday" style="margin-top:14px"><summary><b>Add a wonder to today's photo</b><span class="cnt">${esc(firstLine(n.noticed,60))}</span></summary>
+    <div class="cnt" style="margin-top:6px">A question it raises, or a note for the team, in a line or two.</div>
+    <div class="actions"><button class="btn small" data-wonderadd="${esc(n.id)}">Add a wonder</button><button class="linkbtn" data-wonderskip="1">Not today</button></div></details>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-wonderadd],[data-wonderskip]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
+  LS.set("tree.wonderask",iso(new Date()));
+  if(t.dataset.wonderskip){renderMain();return}
+  const n0=notices.get(t.dataset.wonderadd);if(!n0){renderMain();return}
+  const grp=noteGroup(n0),n=grp[0]||n0;noticeForm=Object.assign(jclone(n),{day:iso(new Date(n.at||Date.now()))});noticeBase.set(n.id,jclone(n));
+  if(grp.length>1)noticeForm.siblings=grp.slice(1).map(x=>{noticeBase.set(x.id,jclone(x));return jclone(x)});
+  view="moments";LS.set("fps.view",view);currentId=null;renderNav();renderMain();
+  const w=$("#nf-wonder");if(w){w.focus();w.scrollIntoView({block:"center"})}else jumpTop()},true);
+/* Start a plan from what grew. On the director's Today, each followed thread that gained three or more observations in the
+   current week is a card with the thread's name and Start a plan, which opens the same Individual plan form educators use,
+   with those observations in the rationale and the thread linked (November 4, 2026) */
+function grewThreads(){const wk=mondayOf(new Date()),from=parseIso(wk).getTime(),to=parseIso(addDays(wk,7)).getTime();
+  return [...threads.values()].filter(t=>threadLive(t)&&t.status!=="closed").map(t=>({t,ns:onePerPostN(threadNotices(t).filter(n=>(n.at||0)>=from&&(n.at||0)<to))})).filter(o=>o.ns.length>=3).sort((a,b)=>b.ns.length-a.ns.length)}
+function grewTodayHtml(){if(!isDirector()||VIEW_AS)return "";const gs=grewThreads();if(!gs.length)return "";
+  return gs.slice(0,4).map(({t,ns})=>`<section class="card" style="margin-top:14px"><div class="secthead"><div><h3 style="font-size:17px;margin:0">${esc(t.name)}</h3><div class="cnt">${ns.length} observations this week${t.classroom?", "+esc(t.classroom)+" class":""}</div></div><button class="btn small" data-grewplan="${esc(t.id)}">Start a plan</button></div></section>`).join("")}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-grewplan]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
+  const th=threads.get(t.dataset.grewplan);if(!th)return;const o=grewThreads().find(x=>x.t.id===th.id);const ns=(o?o.ns:[]).slice().reverse();
+  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:th.classroom||(ns.length?patternRoom(ns):"")||"",threadId:th.id,source:{kind:"thread",id:th.id,at:Date.now()}});
+  if((th.groups||[]).length){np.focus="smallgroup";np.groups=[...th.groups]}np.fields.area=th.question||th.name;
+  if(ns.length){np.fields.observation=ns.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");np.noticeAdded=ns.map(n=>n.id);np.noticeUsed=ns.map(n=>n.id)}
+  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
+  toast(`The plan continues ${th.name}, with this week's observations in the rationale.`)},true);
+/* Before Monday. The director's cycle health, from cycleHealth in the data head, one folded card listing educators with no
+   Wonder this week, threads with no plan this week, plans with remarks unwritten and drafts not sent, each a link to the item.
+   Nothing shows when the server does not send it (November 4, 2026) */
+function cycleTodayHtml(){if(!isDirector()||VIEW_AS)return "";const c=window.FP_CYCLE;if(!c||typeof c!=="object")return "";
+  // the server sends each part as {count, names|threads|plans}; a bare list is read too
+  const KEYS={noWonder:"noWonder",noPlan:"threadsNoPlan",remarksUnwritten:"remarksDue",draftsNotSent:"draftsNotSent"};
+  const arr=k=>{const v=c[KEYS[k]]!==undefined?c[KEYS[k]]:c[k];if(Array.isArray(v))return v;if(v&&typeof v==="object"){const l=v.names||v.threads||v.plans||v.list;return Array.isArray(l)?l:[]}return []};const nm=x=>typeof x==="string"?x:(x&&(x.name||x.title||x.id))||"";
+  const edu=arr("noWonder").map(x=>{const n=nm(x);return n?`<button class="linkbtn" data-tview="moments" data-cyedu="${esc(n)}">${esc(n)}</button>`:""}).filter(Boolean);
+  const ths=arr("noPlan").map(x=>{const id=typeof x==="string"?x:x&&x.id;const t=id&&threads.get(id);const n=t?t.name:nm(x);return n?`<button class="linkbtn" ${t?`data-tsee="${esc(t.id)}"`:`data-tview="threads"`}>${esc(n)}</button>`:""}).filter(Boolean);
+  const pl=k=>arr(k).map(x=>{const id=typeof x==="string"?x:x&&x.id;const p=id&&plans.get(id);const n=p?planTitle(p)+", week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""):nm(x);return n?`<button class="linkbtn" ${p?`data-open="${esc(p.id)}"`:`data-tview="all"`}>${esc(n)}</button>`:""}).filter(Boolean);
+  const rem=pl("remarksUnwritten"),dr=pl("draftsNotSent");
+  const rows=[["No Wonder this week",edu],["No plan this week",ths],["Final remarks still to write",rem],["Drafts not sent",dr]].filter(([,l])=>l.length);
+  if(!rows.length)return "";const total=rows.reduce((n,[,l])=>n+l.length,0);
+  return `<details class="card tfold" id="beforemonday" style="margin-top:14px"><summary><b>Before Monday</b><span class="cnt">${total} thing${total===1?"":"s"} to look at</span></summary>
+    <div style="display:grid;gap:8px;margin-top:8px">${rows.map(([l,items])=>`<div><div class="cnt">${esc(l)}, ${items.length}</div><div class="actions" style="gap:4px 14px">${items.join("")}</div></div>`).join("")}</div></details>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-cyedu]");if(!t)return;mGroup="educator";LS.set("fps.mgroup",mGroup);nRoom="All";LS.set("fps.nroom",nRoom);mRange="4";LS.set("fps.mrange",mRange);mGOpen.add(t.dataset.cyedu)},true);
 function renderToday(){
   if(isKitchenUser()){renderKitchenToday();return}
   const h=new Date().getHours();const greet=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
@@ -5224,6 +5307,7 @@ function renderToday(){
   ${keepTodayHtml()}${todayConfHtml()}${todayAttachedHtml()}${tidyTodayHtml()}
   ${staffNotesHtml()}${meetTodayHtml()}${walkTodayHtml()}${gardenTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
+  ${wonderTodayHtml()}${grewTodayHtml()}${cycleTodayHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3>${waiting.length?`<span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)}</span>`:""}</div>
@@ -7083,16 +7167,21 @@ function carryForward(p){
   const nw=addDays(p.weekOf,7);
   const exists=[...plans.values()].find(x=>x.prevId===p.id);
   if(exists){currentId=exists.id;week=exists.weekOf;renderAll();toast("Next week's plan already exists. Opened it.");return}
-  // a plan is carried forward only once every section is written, Final remarks included, since they are what prompts the next week
+  // a plan is carried forward once every section is written, Final remarks included, since they are what prompts the next week.
+  // A draft whose remarks are written carries forward too, even with other boxes empty. Only the remarks go into the new
+  // plan's Observation rationale, and the old plan is left as it was (November 4, 2026)
   const miss=missingSections(p);
-  if(miss.length){const el=$("#carrymsg");if(el){el.innerHTML=`<section class="ref" style="background:var(--clay-soft);margin-top:10px"><b style="color:var(--clay)">This plan is not complete, so it cannot be carried forward yet</b><div>Finish ${miss.length===1?"this section":"these "+miss.length+" sections"} first.</div><div class="actions">${miss.map(m=>`<button class="linkbtn" data-jump="${m.k}">${esc(m.label)}</button>`).join("")}</div></section>`;el.scrollIntoView({block:"nearest"})}return}
+  const remarksOnly=p.type==="individual"&&has(p.fields&&p.fields.remarks)&&miss.length;
+  if(miss.length&&!remarksOnly){const el=$("#carrymsg");if(el){el.innerHTML=`<section class="ref" style="background:var(--clay-soft);margin-top:10px"><b style="color:var(--clay)">This plan is not complete, so it cannot be carried forward yet</b><div>Finish ${miss.length===1?"this section":"these "+miss.length+" sections"} first.</div><div class="actions">${miss.map(m=>`<button class="linkbtn" data-jump="${m.k}">${esc(m.label)}</button>`).join("")}</div></section>`;el.scrollIntoView({block:"nearest"})}return}
   // a plan for the same group and week already started from the week board is the one carried into, never a second plan
   {const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
     const twin=[...plans.values()].find(x=>x.id!=="example"&&!x.deleted&&x.id!==p.id&&x.type===p.type&&x.weekOf===nw&&same(x.classroom,p.classroom)&&(p.type==="classroom"||(same(x.educator,p.educator)&&same(x.group,p.group))));
     if(twin){if(!twin.prevId){twin.prevId=p.id;const fr=String(p.fields.remarks||"").trim();if(p.type==="individual"&&fr&&!String((twin.fields||{}).observation||"").trim()){twin.fields=twin.fields||{};twin.fields.observation=fr;twin.obsFrom=fr}persist(twin)}
       currentId=twin.id;week=twin.weekOf;renderAll();toast("Next week's plan was already started. Opened it, joined to this one.");return}}
-  const np=newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,setting:[...(p.setting||[])],session:p.session,languages:[...(p.languages||[])],docplan:[...(p.docplan||[])],prevId:p.id});
-  if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`;
+  const np=remarksOnly?newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,prevId:p.id})
+    :newPlan(p.type,{weekOf:nw,classroom:p.classroom,educator:p.educator,group:p.group,setting:[...(p.setting||[])],session:p.session,languages:[...(p.languages||[])],docplan:[...(p.docplan||[])],prevId:p.id});
+  if(remarksOnly){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";const fr=String(p.fields.remarks||"").trim();np.fields.observation=fr;np.obsFrom=fr}
+  else if(p.type==="individual"){np.focus=p.focus||"area";np.groups=[...(p.groups||[])];np.where=p.where||"";np.fields.area=p.fields.area||"";np.fields.dates=`Continuing from the week of ${fmtDate(p.weekOf)}, extending based on ongoing engagement.`;
     // last week's final remarks are what prompted continuing, so they open this week's observation rationale
     const fr=String(p.fields.remarks||"").trim();if(fr){np.fields.observation=fr;np.obsFrom=fr}}
   if(p.type==="smallgroup"){np.fields.thread=p.fields.thread||""}
@@ -7100,7 +7189,7 @@ function carryForward(p){
     const links=cs.filter(c=>c.how!=="started").map(c=>({id:c.t.id,by:(c.link&&c.link.by)||whoAmI(),at:Date.now(),carried:true}));if(links.length)np.threadLinks=links}
   if(p.type==="classroom"){np.web=JSON.parse(JSON.stringify(p.web||blankWeb()))}
   plans.set(np.id,np);persist(np);currentId=np.id;week=nw;renderAll();jumpTop();
-  toast("Next week's plan is ready. Last week's reflection is shown at the top.");
+  toast(remarksOnly?"Next week's plan is ready, with your Final remarks as its observation. The draft stays as it was.":"Next week's plan is ready. Last week's reflection is shown at the top.");
 }
 
 /* ---------- Claude assist ---------- */
@@ -7716,6 +7805,17 @@ function momentRooms(n){const r=[];for(const x of obsRoomsChosen(n))r.push(x);fo
 // "none" is every observation that belongs to no class at all, with no class chosen and no tagged child in a class.
 // One with children tagged shows under their classes.
 const momentIn=(n,room)=>!room||room==="All"||(room==="none"?!momentRooms(n).length:momentRooms(n).includes(room));
+// place. An observation may carry place [], written by the server. Chips show it on cards, threads and projects, and the
+// Observations page can narrow to one place the way it narrows to a class. Nothing shows when the field is missing (November 4, 2026)
+const obsPlaces=n=>(n&&Array.isArray(n.place)?n.place:[]).map(x=>typeof x==="string"?x:(x&&(x.name||x.id))||"").map(x=>String(x).trim()).filter(Boolean);
+function placeChipsHtml(n){const ps=[...new Set(noteGroup(n).flatMap(obsPlaces))];return ps.length?`<div class="chips placechips">${ps.map(x=>`<button type="button" class="chip" data-placego="${esc(x)}" title="Observations at ${esc(x)}">${esc(x)}</button>`).join("")}</div>`:""}
+let nPlace=LS.get("fps.nplace","");
+function placePills(){const c=new Map();for(const n of notices.values())for(const x of obsPlaces(n))c.set(x,(c.get(x)||0)+1);if(!c.size&&!nPlace)return "";
+  const list=[...c.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  return `<details class="placefilter" ${nPlace?"open":""}><summary class="cnt" style="cursor:pointer">Place${nPlace?", "+esc(nPlace):""}</summary><div class="filters" style="margin:4px 0 0"><button class="pill" aria-pressed="${!nPlace}" data-nplace="">Anywhere</button>${list.map(([x,k])=>`<button class="pill" aria-pressed="${nPlace===x}" data-nplace="${esc(x)}">${esc(x)}, ${k}</button>`).join("")}</div></details>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-nplace],[data-placego]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
+  nPlace=t.dataset.placego!=null?t.dataset.placego:t.dataset.nplace;LS.set("fps.nplace",nPlace);
+  if(t.dataset.placego!=null){nRoom="All";LS.set("fps.nroom",nRoom);mRange="all";LS.set("fps.mrange",mRange);goView("moments");return}renderMain()},true);
 const noClassPill=()=>{const k=[...notices.values()].filter(n=>!momentRooms(n).length).length;return k||nRoom==="none"?`<button class="pill" aria-pressed="${nRoom==="none"}" data-nroom="none">No class, ${k}</button>`:""};
 const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
 function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
@@ -7741,7 +7841,13 @@ async function makeThumb(blob){
   cv.getContext("2d").drawImage(bm,0,0,cv.width,cv.height);if(bm.close)bm.close();
   return await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error("The small copy could not be made")),"image/jpeg",.82))}
 async function keepThumb(blob,cid){try{if(!window.FP_KEEP_ORIGINAL)return"";return await window.FP_KEEP_ORIGINAL(await makeThumb(blob),"moment-thumb.jpg",cid)}catch(e){console.warn("No small copy",e);return""}}
-function photoThumb(n){const ph=n&&n.photo;if(ph&&ph.thumb&&window.FP_ORIGINAL_URL&&!nPreview.get(n.id))return window.FP_ORIGINAL_URL(ph.thumb);return photoSrc(n)}
+// lists, cards and the observation picker take the server's resized copy, /photo/<id>?w=1200, when it offers one, and fall
+// back to the small copy or the original when that copy cannot be loaded. Printing, slides and walls keep the full size.
+const photoFallback=new Map(),photoBad=new Set();
+function photoThumb(n){const ph=n&&n.photo;const small=ph&&ph.thumb&&window.FP_ORIGINAL_URL&&!nPreview.get(n.id)?window.FP_ORIGINAL_URL(ph.thumb):photoSrc(n);
+  if(ph&&ph.id&&window.FP_PHOTO_URL&&!nPreview.get(n.id)){const u=window.FP_PHOTO_URL(ph.id,1200);if(u&&!photoBad.has(u)){photoFallback.set(u,small);return u}}
+  return small}
+document.addEventListener("error",e=>{const im=e.target;if(!im||im.tagName!=="IMG")return;const fb=photoFallback.get(im.src);if(!fb||photoBad.has(im.src))return;photoBad.add(im.src);im.src=fb},true);
 // photos kept before small copies existed get one, a few at a time, from the director's browser while TREE is open
 let thumbRun=false;
 async function fillThumbs(){
@@ -7983,7 +8089,7 @@ function noticeFormCard(){
       <label class="cnt nfrow"><span>Day it happened</span><input type="date" id="nf-day" value="${esc(n.day||iso(new Date(editing&&n.at?n.at:Date.now())))}" max="${iso(new Date())}"></label>
       ${obsGroupPlanHtml(n)}
       ${open.length?`<label class="cnt nfrow"><span>Project</span><select id="nf-proj"><option value="">Not yet</option>${open.map(x=>`<option value="${esc(x.id)}" ${n.projectId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`:""}
-      ${ths.length?`<label class="cnt nfrow"><span>Thread</span><select id="nf-thread"><option value="">Not yet</option>${ths.map(t=>`<option value="${esc(t.id)}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>`:""}
+      ${ths.length||!VIEW_AS?`<label class="cnt nfrow"><span>Thread</span><select id="nf-thread"><option value="">Not yet</option>${ths.map(t=>`<option value="${esc(t.id)}" ${n.threadId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}${VIEW_AS?"":`<option value="__new">Start a new thread from this</option>`}</select></label>`:""}
       ${(()=>{const b=n.bin?binAll().find(x=>x.id===n.bin)||{id:n.bin,date:n.bin}:binForDay(n.day||iso(new Date(n.at||Date.now())));const d=b?esc(fmtDate(b.date).replace(/, \d{4}$/,"")):"";return b?`<div class="nfrow"><span class="cnt">Weekly bin</span><div><button type="button" class="chip-btn" data-nfbin="${esc(b.id)}" aria-pressed="${n.bin===b.id}">${n.bin===b.id?"With the bin of "+d:"About the bin of "+d}</button><div class="cnt">Tap when the children were exploring the food in that week's FEED bin. It then shows with the bin on the Weekly bin page.</div></div></div>`:""})()}
     </div>
     <div class="fld-label">Languages children used, optional<div class="chips">${langList(n.languages).map(x=>`<button class="chip ${(n.languages||[]).includes(x)?"on":""}" data-nflang="${esc(x)}" type="button">${esc(x)}</button>`).join("")}</div></div>
@@ -8059,6 +8165,7 @@ function noticeCard(n){
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
     ${(n.languages||[]).length?`<div class="chips">${n.languages.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}
+    ${placeChipsHtml(n)}
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}
     ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}
     ${pr?`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button></div></div>`:""}
@@ -8073,7 +8180,7 @@ function noticeCard(n){
     ${momentDrdpHtml(n)}${noticeAttachHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
     <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
-      ${moreMenu(`${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button>${canRemoveObs(n)?`<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`:""}`)}</div></article>`;
+      ${moreMenu(`${VIEW_AS?"":`<button class="linkbtn" data-nwplan="${esc(n.id)}">Start a plan</button>`}${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button>${canRemoveObs(n)?`<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`:""}`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
    Grouping changes nothing about the record. It only changes what a reader notices in it. --- */
@@ -8088,7 +8195,7 @@ function mSince(){const cur=mondayOf(new Date());
   if(mRange==="year")return parseIso(schoolYearStart()).getTime();
   return 0}
 function momentsIn(){const s=mSince();
-  return [...notices.values()].filter(n=>momentIn(n,nRoom)&&(n.at||0)>=s).sort((a,b)=>(b.at||0)-(a.at||0))}
+  return [...notices.values()].filter(n=>momentIn(n,nRoom)&&(n.at||0)>=s&&(!nPlace||obsPlaces(n).includes(nPlace))).sort((a,b)=>(b.at||0)-(a.at||0))}
 const monthKey=ms=>{const d=new Date(ms||Date.now());return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
 const monthName=ms=>new Date(ms||Date.now()).toLocaleDateString("en-US",{month:"long",year:"numeric"});
 function momentGroups(list){
@@ -8194,6 +8301,20 @@ function planFromPattern(p){const th0=patternThread(p);if(th0){planFromThread(th
   if(p.threadId&&threads.get(p.threadId))np.threadId=p.threadId;else{const m=patternMatch(p);if(m)np.threadId=m.id}
   plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);renderAll();jumpTop();
   toast("The plan begins with these observations. Write the area and your intent in your own words.")}
+// Start a plan from an observation's card. A new Individual plan for the observation's class, with the observation's words
+// dropped into the Observation rationale exactly as the evidence panel's one tap does, and the observation linked to it
+// (November 4, 2026)
+function planFromNotice(n){if(!n)return;const grp=noteGroup(n),ids=grp.map(g=>g.id);
+  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:n.classroom||momentRooms(n)[0]||myRoom()||""});np.educator=me()||np.educator||"";
+  const k=NOTICE_TARGET.individual;np.fields[k]=noticeText(n);np.noticeAdded=[...ids];np.noticeUsed=[...ids];
+  const g=obsGroups(n);if(g.length){np.focus="smallgroup";np.groups=[...g]}
+  if(n.threadId&&threads.get(n.threadId))np.threadId=n.threadId;if(n.projectId&&projects.get(n.projectId))np.projectId=n.projectId;
+  np.source={kind:"observation",ids:[...ids],at:Date.now()};
+  plans.set(np.id,np);persist(np);
+  // the observation keeps the plan it started, as one kept for a plan does
+  for(const x of grp)if(!x.planId)patchNotice(x.id,{planId:np.id});
+  currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
+  toast("The plan begins with this observation. Write the area and your intent in your own words.")}
 // a plan from a project. It continues one of the project's threads when one is chosen, and it keeps the project beside it
 function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNotices(x);
   const room=(th&&th.classroom)||x.home||(ns.length?patternRoom(ns):"")||myRoom()||"";
@@ -8208,6 +8329,15 @@ function planFromProject(x,tid){const th=tid&&threads.get(tid);const ns=projNoti
     if(pick.length){np.fields.observation=pick.map(n=>shortDate(n.at).replace(/, \d{4}$/,"")+". "+noticeText(n)).join("\n");np.noticeAdded=pick.map(n=>n.id);np.noticeUsed=pick.map(n=>n.id)}}
   plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
   toast(th?`The plan continues ${th.name}. The project's evidence is beside it.`:"The plan begins from the project. Its evidence is beside it.")}
+// any educator starts a thread from one observation, from the observation form's Thread picker. It is made the way
+// Follow this thread makes one. Its name is the observation's first line, its question waits for the educator to write on
+// the thread page, and the observation is its evidence, added by hand (November 4, 2026)
+function threadFromNotice(n){const d=n.day?parseIso(n.day):new Date(n.at||Date.now()),week=mondayOf(d);
+  const name=firstLine(String(n.noticed||"").replace(/^[^\n]* - /,""),60)||"A new thread";
+  const nt={id:uid(),name,question:"",classroom:(n.classroom||momentRooms(n)[0]||""),groups:obsGroups(n).slice(0,1),status:"emerging",weeks:[week],lastWeek:week,
+    evidence:[{planId:n.id,week,text:firstLine([n.noticed,n.wonder].filter(Boolean).join(" "),240),by:whoAmI(),at:Date.now(),via:"hand"}],languages:[...(n.languages||[])],next:[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:"observation",hand:true,at:Date.now()}};
+  saveThread(nt);return nt}
+function openThreadPage(id){view="threads";LS.set("fps.view",view);tRoom="All";LS.set("fps.troom",tRoom);currentId=null;renderNav();renderMain();const el=document.getElementById("th-"+id);if(el)el.scrollIntoView({block:"start"});else jumpTop()}
 // the director follows a pattern as a thread, and its observations are kept for that thread
 function threadFromPattern(s,i){const p=s.patterns[i];const ns=patternMoments(p);if(!ns.length)return;
   const weeks=[...new Set(ns.map(n=>n.week||mondayOf(new Date(n.at||Date.now()))))].sort();
@@ -8232,7 +8362,7 @@ function renderMoments(){
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Our observational frame</span><h2 style="margin-top:4px">Observations</h2>
     <div class="sub" style="max-width:74ch">Observations kept by educators as they happened. Nothing here expires and nothing is tied to a week. A thread, a project, or the lens draws on an observation whenever it comes round to it.</div></div>
     <span class="actions">${noticeForm?"":photoPickHtml("nf-photo2","Upload a photo")}</span></div>
-    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}${noClassPill()}</div>
+    <div class="actions"><div class="filters" style="margin:0">${["All",...CLASSROOMS].map(r=>`<button class="pill" aria-pressed="${r===nRoom}" data-nroom="${r}">${esc(r)}</button>`).join("")}${noClassPill()}</div>${placePills()}
       <select id="mrange" style="width:auto" aria-label="How far back">${MRANGES.map(([v,l])=>`<option value="${v}" ${mRange===v?"selected":""}>${l}</option>`).join("")}</select>
       <select id="mgroup" style="width:auto" aria-label="Way of looking">${MGROUPS.map(([v,l])=>`<option value="${v}" ${mGroup===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="actions">${printTwo("moments","")}${isDirector()&&!VIEW_AS?(()=>{const n=pfLeft();return n?`<button class="btn small ghost" data-tview="proofobs">Proofread observations, ${n} left</button>`:""})():""}${sample&&isDirector()?`<button class="btn small ghost" id="mread" ${mBusy||all.length<3?"disabled":""}>${mBusy?"Reading observations":"Read the observations"}</button>`:""}</div>
@@ -8369,6 +8499,9 @@ function noticesClick(t){
     if(editing){n.by=n.by||was.by||whoAmI();n.editedBy=whoAmI();n.editedAt=Date.now()}else n.by=whoAmI();
     n.at=when;n.week=mondayOf(new Date(when));
     if(n.photo){n.photo={id:n.photo.id||"",w:n.photo.w,h:n.photo.h,...(n.photo.thumb?{thumb:n.photo.thumb}:{}),...(n.photo.data?{data:n.photo.data}:{}),...(n.photo.pending?{pending:true}:{})}}
+    // Start a new thread from this. The thread is made the way Follow this thread makes one, named from the observation's
+    // first line, its question left for the educator to write on the thread page, this observation its evidence, by hand
+    let newThread=null;if(n.threadId==="__new"){newThread=threadFromNotice(n);n.threadId=newThread.id}
     const did=n.draftId;delete n.draftId;
     delete n.day;delete n.fromClaude;
     // saving a moment from Kaymbu is the educator's check of its classroom and children
@@ -8386,6 +8519,7 @@ function noticesClick(t){
       saveNotice(s,had?noticeBase.get(s.id):undefined);noticeBase.delete(s.id)});
     saveNotice(n,editing?noticeBase.get(n.id):undefined);noticeBase.delete(n.id);noticeForm=null;
     const onPhone=waitingToSend(n.id);
+    if(newThread){serverDraftEnd(did);nQueue=[];openThreadPage(newThread.id);toast(`Following a new thread, ${newThread.name}. Write its question here when the team is ready.`);return true}
     if(editing){serverDraftEnd(did);showKept(n);toast(onPhone?DRAFT_NOTE:"Changes saved.");return true}
     if(nQueue.length){noticeForm=nQueue.shift();serverDraftSoon();renderAll();jumpTop();toast(onPhone?DRAFT_NOTE:"Kept. The next photo is open.");return true}
     serverDraftEnd(did);
@@ -8411,6 +8545,7 @@ function noticesClick(t){
     const left=new Set(p.noticeUsed);if(!noticesFor(p.classroom,0).some(x=>!left.has(x.id)))nwOpen="";
     renderMain();
     toast(t.dataset.nwuse?"Added. Edit it into the team's words.":"Left out of this plan. It stays in the record.");return true}
+  if(t.dataset.nwplan){const n=notices.get(t.dataset.nwplan);if(n)planFromNotice(n);return true}
   if(t.dataset.nwedit){const n0=notices.get(t.dataset.nwedit);if(!n0)return true;
     const grp=noteGroup(n0),n=grp[0]||n0;
     noticeForm=Object.assign(jclone(n),{day:iso(new Date(n.at||Date.now()))});noticeBase.set(n.id,jclone(n));
@@ -8479,7 +8614,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-pfin
 // the observations TREE suggests from a project's threads, still waiting for the director
 // one list for the project, from the week's reading and from the project's threads, each observation once
 const projNo=x=>new Set([...(x.suggestNo||[]).map(a=>a&&a.id),...(x.foundNo||[])].filter(Boolean));
-function projWaiting(x){const own=new Set(projNotices(x).map(n=>n.id)),out=projAside(x),no=projNo(x),seen=new Set();
+function projWaiting(x){const own=new Set(projOwnNotices(x).map(n=>n.id)),out=projAside(x),no=projNo(x),seen=new Set();
   const all=[...(x.suggest||[]),...(((x.found||{}).items)||[]).map(f=>({id:f.id,why:f.why,weekly:true}))];
   return all.map(s=>({s,n:s&&notices.get(s.id)})).filter(o=>{if(!o.n||own.has(o.n.id)||out.has(o.n.id)||no.has(o.n.id))return false;const k=o.n.group||o.n.id;if(seen.has(k))return false;seen.add(k);return true})}
 // the director's page asks the server to read the project's threads, at most once in ten minutes for each project
@@ -8535,8 +8670,17 @@ const threadNotices=t=>{if(!t)return [];const ix=obsIndex();if(!ix.byT){ix.byT=n
 // project, so its other observations wait as suggestions until the director adds them.
 // an observation the director marked Not part of this project stays out of it everywhere, its threads as they were
 const projAside=x=>new Set(((x&&x.setAside)||[]).map(a=>a&&a.id).filter(Boolean));
-const projNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
+// since November 4, 2026 the observations of a project's own threads count as the project's observations wherever the page
+// lists them. The server's helper gives them as threadObs or allObs on the project when it is present, and otherwise they are
+// read here from each thread's observations. Not part of this project and Not this one still keep one out
+// the observations kept for the project or added to it by the director, before its threads' are counted
+const projOwnNotices=x=>{const m=new Map();for(const n of notices.values())if(n.projectId===x.id)m.set(n.id,n);for(const id of evNoticeIds(x.evidence))m.set(id,notices.get(id));
   const out=projAside(x);return [...m.values()].filter(n=>n&&!out.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0))};
+const projNotices=x=>{const m=new Map();for(const n of projOwnNotices(x))m.set(n.id,n);
+  const srv=Array.isArray(x.allObs)?x.allObs:Array.isArray(x.threadObs)?x.threadObs:null;
+  if(srv)for(const v of srv){const id=typeof v==="string"?v:v&&v.id;if(id&&notices.has(id))m.set(id,notices.get(id))}
+  else for(const {t} of projThreads(x))for(const n of threadNotices(t))if(!m.has(n.id))m.set(n.id,n);
+  const out=projAside(x),no=projNo(x);return [...m.values()].filter(n=>n&&!out.has(n.id)&&(n.projectId===x.id||!no.has(n.id))).sort((a,b)=>(b.at||0)-(a.at||0))};
 function projThreads(x){return (x.threads||[]).map(l=>({l,t:threads.get(l.id)})).filter(o=>o.t)}
 /*__LAZY_BEGIN grant renderGrant__*/
 /* ---------- Farm to School grant ----------
@@ -10117,7 +10261,7 @@ function inqStartForm(){const f=iqForm;const t=(f.threads||[])[0]&&threads.get(f
    and names the ones that may belong, each with a short reason in TREE's words. They wait on the page for the director to
    add or set aside, and nothing joins until she adds it. A new reading replaces what still waits, and one she set aside is
    not offered again. */
-const foundHave=(kind,x)=>new Set((kind==="project"?projNotices(x):inqNotices(x)).map(n=>n.id));
+const foundHave=(kind,x)=>new Set((kind==="project"?projOwnNotices(x):inqNotices(x)).map(n=>n.id));
 function foundRooms(kind,x){if(kind==="inquiry")return x.room?[x.room]:[];if(!x.home)return [];const r=projRooms(x);if(!r.includes(x.home))r.push(x.home);return r}
 function foundPool(kind,x){const since=Date.now()-56*864e5,have=foundHave(kind,x),no=kind==="project"?projNo(x):new Set(x.foundNo||[]),rooms=foundRooms(kind,x),seen=new Set();
   return [...notices.values()].filter(n=>(n.at||0)>=since&&!have.has(n.id)&&!no.has(n.id)&&has(n.noticed)&&(!rooms.length||rooms.some(r=>momentIn(n,r))))
@@ -10548,6 +10692,7 @@ function evSync(){
   const began=ev.heads.length||(p.source&&p.source.kind);
   const lockedNow=$("#main")?.classList.contains("locked")&&NOTICE_TARGET[p.type];
   pn.innerHTML=`<div class="evhead"><b>${began?"The evidence this plan began from":"Observations for this plan"}</b><button class="linkbtn" data-evshut="1">Close</button></div>
+    ${window.FP_API&&!isKitchenUser()?`<div class="actions" style="padding:0 12px"><button class="linkbtn" data-print="placesheet" data-id="${esc(p.classroom||"")}">Print this week's place sheet</button></div>`:""}
     <div class="evbody"><div class="evsearch"><input type="search" id="evq" value="${esc(evQuery)}" placeholder="Search the evidence, ex. goats or water" aria-label="Search the evidence"><div class="evres" id="evres"></div></div>${evAttachedHtml(p,lockedNow)}${lockedNow?`<div class="muted">This plan is saved. Press Edit on the plan to add an observation to it.</div>`:""}${ev.heads.map(h=>`<div class="evsrc"><div class="cnt">${esc(h.kind)}</div>${h.img?`<button class="evstory" ${h.open} aria-label="Open the story ${esc(h.name)}"><img src="${esc(h.img)}" alt="" loading="lazy"></button>`:""}${h.open?`<button class="linkbtn" style="text-align:left;font-weight:700" ${h.open}>${esc(h.name)}</button>`:`<b>${esc(h.name)}</b>`}
       ${h.lines.map(([l,v])=>`<div><span class="cnt">${esc(l)}</span><div class="evclamp" style="white-space:pre-line" title="Tap to read all of it">${esc(v)}</div></div>`).join("")}
       ${(h.bin||[]).length?`<div style="display:grid;gap:6px;margin-top:4px">${h.bin.map(x=>{const k=BIN_TO[p.type][x.kind],inIt=binPieceIn(p,x);
@@ -11193,6 +11338,56 @@ function projThreadCard(x,l,t,ws){
     <div class="cnt">Joined the project the week of ${fmtDate(l.week||mondayOf(new Date(l.at||Date.now())))}${l.by?" · added by "+esc(l.by):""}${t.unfollowed?" · no longer followed":""}</div>
     <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start a plan from it</button><button class="linkbtn" data-tsee="${esc(t.id)}">See the thread</button>${isDirector()?`<button class="linkbtn" data-ptrm="${esc(t.id)}">Take out of the project</button>`:""}</div></div>`;
 }
+/* Threads the reading suggests. The nightly reading keeps threadSuggest [{id, why}] on a project. Each waits in one folded
+   line with Add and Not this. Add puts the thread in the project the way Add a thread we are following does, and Not this
+   keeps it from being offered again. Nothing shows when the server sends none (November 4, 2026) */
+function projThreadSuggests(x){const no=new Set((x.threadSuggestNo||[]).map(a=>a&&(a.id||a)).filter(Boolean)),have=new Set((x.threads||[]).map(l=>l.id));
+  return (Array.isArray(x.threadSuggest)?x.threadSuggest:[]).map(s=>typeof s==="string"?{id:s,why:""}:s).filter(s=>s&&s.id&&threads.has(s.id)&&threadLive(threads.get(s.id))&&!have.has(s.id)&&!no.has(s.id)&&!projectOfThread(s.id))}
+function projThreadSuggestHtml(x){const ss=projThreadSuggests(x);if(!ss.length)return "";
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Threads the reading suggests</h3><span class="cnt">${ss.length}</span></div>
+    <div style="display:grid;gap:8px">${ss.map(s=>{const t=threads.get(s.id);return `<div class="nfsuggest"><span><b>${esc(t.name)}</b>${t.classroom?", "+esc(t.classroom)+" class":""}.${has(s.why)?" "+esc(/[.!?]$/.test(s.why)?s.why:s.why+"."):""}</span><span class="actions"><button class="btn small" data-ptsadd="${esc(x.id)}|${esc(t.id)}">Add</button><button class="linkbtn" data-ptsno="${esc(x.id)}|${esc(t.id)}">Not this</button><button class="linkbtn" data-tsee="${esc(t.id)}">See the thread</button></span></div>`}).join("")}</div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-ptsadd],[data-ptsno]");if(!t)return;e.preventDefault();e.stopPropagation();
+  if(!isDirector()||VIEW_AS){toast("The director changes a project.");return}
+  const [pid,tid]=String(t.dataset.ptsadd||t.dataset.ptsno).split("|");const x=projects.get(pid),th=threads.get(tid);if(!x||!th)return;
+  if(t.dataset.ptsno){x.threadSuggestNo=[...(x.threadSuggestNo||[]),{id:tid,by:whoAmI(),at:Date.now()}];x.threadSuggest=(x.threadSuggest||[]).filter(s=>(s&&(s.id||s))!==tid);saveProject(x);renderMain();toast("This thread will not be suggested for the project again.");return}
+  x.threadSuggest=(x.threadSuggest||[]).filter(s=>(s&&(s.id||s))!==tid);addThreadToProject(x,th)},true);
+/* Observations the reading suggests. The same candidates Observations TREE found holds, as one folded line so accepting is one
+   tap here, beside the project's own observations (November 4, 2026) */
+function projObsSuggestHtml(x){const sg=projWaiting(x);if(!sg.length)return "";
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Observations the reading suggests</h3><span class="cnt">${sg.length}</span></div>
+    ${sg.length>1?`<div class="actions"><button class="btn small" data-projaddall="${esc(x.id)}">Add all ${sg.length}</button></div>`:""}
+    <div style="display:grid;gap:8px">${sg.map(({s,n})=>{const t=!s.weekly&&threads.get(s.thread);return `<div class="nfsuggest"><span>${n.photo?`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:44px;height:44px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:6px">`:""}<b>${esc(momentHeading(n)||firstLine(noticeText(n),70))}</b>, ${esc([n.by,shortDate(n.at)].filter(Boolean).join(", "))}. ${t?`From the thread ${esc(t.name)}.`:"From the week's reading."}${has(s.why)?" "+esc(/[.!?]$/.test(s.why)?s.why:s.why+"."):""}</span><span class="actions"><button class="btn small" data-projadd="${esc(x.id)}|${esc(n.id)}">Add it</button><button class="linkbtn" data-projno="${esc(x.id)}|${esc(n.id)}">Not this one</button><button class="linkbtn" data-obsgo="${esc(n.id)}">Open it</button></span></div>`}).join("")}</div></section>`}
+/* The children's question. A child's words from the project's observations, chosen with one tap from a picker over what was
+   noticed, kept with the id of the observation it came from, and editable afterward as other project text (November 4, 2026) */
+let projQPick=false;
+function projQuestionHtml(x){const q=x.childQuestion||{};const src=q.obs&&notices.get(q.obs);
+  const pool=projQPick?projNotices(x).filter((n,i,a)=>a.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i).slice(0,40):[];
+  const lines=n=>{const ls=childLines(n.noticed,true).filter(childsWords);return ls.length?ls.map(l=>({name:l.name,words:l.words})):String(n.noticed||"").split("\n").map(s=>s.trim()).filter(s=>s.length>3).slice(0,6).map(s=>({name:"",words:s}))};
+  return `<section class="card"><div class="lbl">The children's question</div>
+    <div class="hint">A child's own words that hold what the children are asking, chosen from the project's observations.</div>
+    <textarea data-pf="childQuestionText" rows="2" placeholder="Tap a child's words below, or write them here">${esc(q.text||"")}</textarea>
+    ${src?`<div class="cnt">From ${esc(src.by||"an educator")}'s observation of ${esc(shortDate(src.at))}${q.name?", said by "+esc(q.name):""}. <button class="linkbtn" data-obsgo="${esc(src.id)}">Open it</button></div>`:""}
+    <div class="actions" data-keep="1"><button class="btn small ghost" data-pqpick="1">${projQPick?"Close":"Choose from the children's words"}</button></div>
+    ${projQPick?(pool.length?`<div style="display:grid;gap:8px;margin-top:6px" data-keep="1">${pool.map(n=>{const ls=lines(n);return ls.length?`<div><div class="cnt">${esc([n.by,shortDate(n.at)].filter(Boolean).join(", "))}</div><div class="chips">${ls.map((l,i)=>`<button type="button" class="chip" data-pqset="${esc(n.id)}|${i}">${l.name?esc(l.name)+", ":""}${esc(firstLine(l.words,90))}</button>`).join("")}</div></div>`:""}).join("")}</div>`:`<div class="cnt">No observations in this project yet.</div>`):""}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-pqpick],[data-pqset]");if(!t||view!=="projects")return;e.preventDefault();e.stopPropagation();
+  const x=projId&&projects.get(projId);if(!x)return;
+  if(t.dataset.pqpick){projQPick=!projQPick;renderMain();return}
+  if(!isDirector()||VIEW_AS){toast("The director changes a project.");return}
+  const [nid,i]=t.dataset.pqset.split("|");const n=notices.get(nid);if(!n)return;
+  const ls=childLines(n.noticed,true).filter(childsWords);const l=ls.length?ls[+i]:{name:"",words:String(n.noticed||"").split("\n").map(s=>s.trim()).filter(s=>s.length>3).slice(0,6)[+i]};if(!l)return;
+  x.childQuestion={text:l.words,name:l.name||"",obs:n.id,by:whoAmI(),at:Date.now()};projQPick=false;saveProject(x);renderMain();toast("Kept as the children's question. Change the words above if you like.")},true);
+/* Final remarks from a plan that follows one of the project's threads show under What may lie underneath as new evidence,
+   with one tap, Keep as a reading, that adds them the way earlier readings are kept (November 4, 2026) */
+function projRemarks(x){const seen=new Set(),out=[];const kept=new Set(projEarlier(x,"underneath").map(r=>r.plan).filter(Boolean));
+  for(const {t} of projThreads(x))for(const p of threadPlans(t)){if(seen.has(p.id)||kept.has(p.id))continue;seen.add(p.id);const v=planAfter(p);if(v)out.push({p,t,text:v})}
+  return out.sort((a,b)=>String(b.p.weekOf).localeCompare(String(a.p.weekOf))).slice(0,6)}
+function projRemarksHtml(x){const rs=projRemarks(x);if(!rs.length)return "";
+  return `<details class="tpart" data-fold="premarks:${esc(x.id)}" ${foldOpen.has("premarks:"+x.id)?"open":""}><summary class="chiprow-label" style="cursor:pointer">New evidence, Final remarks from ${rs.length} plan${rs.length>1?"s":""} following its threads</summary><div class="evid" style="margin-top:8px">${rs.map(r=>`<div>${esc(r.text)}<span class="src">${esc(pBy(byLine(r.p)))} · the thread ${esc(r.t.name)} <span data-keep="1"><button class="linkbtn" data-open="${esc(r.p.id)}">Open the plan</button>${isDirector()&&!VIEW_AS?`<button class="linkbtn" data-pkeeprem="${esc(r.p.id)}">Keep as a reading</button>`:""}</span></span></div>`).join("")}</div></details>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-pkeeprem]");if(!t||view!=="projects")return;e.preventDefault();e.stopPropagation();
+  if(!isDirector()||VIEW_AS){toast("The director changes a project.");return}
+  const x=projId&&projects.get(projId),p=plans.get(t.dataset.pkeeprem);if(!x||!p)return;const v=planAfter(p);if(!v)return;
+  x.earlier=x.earlier||{};x.earlier.underneath=[...(x.earlier.underneath||[]),{text:v,at:Date.now(),by:whoAmI(),why:`Final remarks from ${planTitle(p)}, week of ${fmtDate(p.weekOf)}.`,plan:p.id}];
+  saveProject(x);renderMain();toast("Kept as an earlier reading, with today's date.")},true);
 function renderProject(x){
   {const nw=wallSync(x);if(nw)setTimeout(()=>toast(nw>1?`${nw} new observations joined the wall.`:"A new observation joined the wall."),40)}
   const ths=projThreads(x),ws=projWeeks(x),rooms=projRooms(x);
@@ -11206,7 +11401,8 @@ function renderProject(x){
       <label class="cnt">Status <select data-pstatus="1" style="width:auto">${Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <div id="pplan-pick"></div>
     <label class="fld-label">Project name<input type="text" data-pf="name" value="${esc(x.name)}" style="font-size:20px;font-family:var(--display)"></label>
-    <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div></div>`;
+    <div class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}${ws.length?` · seen in plans from ${fmtDate(ws[0])} to ${fmtDate(ws[ws.length-1])}`:""}. A project can rest and resume. It has no end date and nothing to complete.</div>
+    ${(()=>{const ps=[...new Set(projNotices(x).flatMap(obsPlaces))];return ps.length?`<div class="chips placechips">${ps.slice(0,10).map(p=>`<button type="button" class="chip" data-placego="${esc(p)}">${esc(p)}</button>`).join("")}</div>`:""})()}</div>`;
   if(x.status==="closed")h+=`<section class="card"><div class="lbl">Summary of closure</div><div class="hint">How the team came to name this project closed, and what stays open for later.</div><textarea data-pf="closure" rows="3">${esc(x.closure||"")}</textarea>${projStrHtml(x,"closure")}</section>`;
 
   const earlierHtml=key=>{const e=projEarlier(x,key);return e.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier ${key==="intent"?"intents":"readings"}, ${e.length}</summary><div class="evid" style="margin-top:8px">${e.map(r=>`<div>${esc(r.text)}<span class="src">${shortDate(r.at)}${r.by?" · "+esc(r.by):""}</span>${has(r.why)?`<div class="muted">What changed our thinking. ${esc(r.why)}</div>`:""}</div>`).join("")}</div></details>`:""};
@@ -11218,7 +11414,8 @@ function renderProject(x){
     <div class="hint">The deeper question or understanding the team thinks children are working on. Write it as a hypothesis, and revise it as documentation comes in.</div>
     <textarea data-pf="underneath" rows="2" placeholder="Ex. Perhaps children are working out whether something can go away and still exist">${esc(projUnder(x))}</textarea>
     ${projStrHtml(x,"underneath")}
-    ${projKeepHtml(x,"underneath")}${earlierHtml("underneath")}</section>
+    ${projKeepHtml(x,"underneath")}${projRemarksHtml(x)}${earlierHtml("underneath")}</section>
+  ${projQuestionHtml(x)}
   <section class="card"><div class="lbl">Our intent as educators</div>
     <div class="hint">What we hope children may come to understand, and what we want to learn ourselves. It is held loosely and it changes with the work.</div>
     <textarea data-pf="intent" rows="2">${esc(projIntent(x))}</textarea>
@@ -11228,6 +11425,7 @@ function renderProject(x){
 
   // the observations TREE found for a project are listed once, with its threads' suggestions, under Observations
   const foldAt=h.length;
+  if(isDirector()&&!VIEW_AS)h+=projThreadSuggestHtml(x)+projObsSuggestHtml(x);
   {const ss=projSlides(x);if(ss.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Slides</h3><span class="cnt">${ss.length} made from this project's observations</span></div><div class="actions" style="flex-wrap:wrap">${ss.map(x=>`<button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled slide")}</button>`).join("")}</div></section>`}
   {const sts=projStories(x);h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length?sts.length+" to read aloud with children":"Read aloud with children"}</span></div>${sts.length?`<div class="actions" style="flex-wrap:wrap">${sts.map(y=>`<button class="linkbtn" data-story="${esc(y.id)}">${esc(stTitle(y))}${stReviewed(y)?"":", draft"}</button>`).join("")}</div>`:""}<div class="actions"><button class="btn small ghost" data-storyproj="${esc(x.id)}">Make a story</button></div></section>`}
   h+=projGrowHtml(x)+projWordsHtml(x)+(isDirector()?projWallHtml(x):"");
@@ -11302,7 +11500,7 @@ function renderProject(x){
   if(!isDirector())lockProjectPage();
 }
 // an educator reads a project, adds a thread to it, keeps observations for it and plans from it. Changing it is the director's.
-const PROJ_OPEN=["iqopen","pplan","pplango","pplanno","print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
+const PROJ_OPEN=["iqopen","obsgo","pqpick","pplan","pplango","pplanno","print","word","tsee","popen","pback","slide","open","mjump","kid","pgrow","tplan","mopen","kmopen","navback","tview","lensgo"];
 function lockProjectPage(){const m=$("#main");if(!m)return;
   m.querySelectorAll("textarea,input:not([type=search])").forEach(el=>{el.readOnly=true;el.setAttribute("aria-readonly","true")});
   m.querySelectorAll("select").forEach(el=>{if(!el.dataset.ptadd)el.disabled=true});
@@ -11530,6 +11728,7 @@ async function projectsClick(t){
 }
 document.addEventListener("input",e=>{
   const t=e.target;if(view!=="projects")return;const x=projId&&projects.get(projId);if(!x)return;
+  if(t.dataset.pf==="childQuestionText"){x.childQuestion=Object.assign({},x.childQuestion||{},{text:t.value});autoGrow(t);saveProjectSoon(x);return}
   if(t.dataset.pf){x[t.dataset.pf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);if(t.dataset.pf==="underneath"||t.dataset.pf==="name"){const el=$("#pwebprev");if(el)el.innerHTML=webPreviewSvg(projWeb(x))}saveProjectSoon(x);return}
   if(t.dataset.ws){const [id,k]=t.dataset.ws.split("|");const sh=wallSheet(x,id);if(sh){sh[k]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveProjectSoon(x)}return}
   if(t.dataset.pd){x.decision=x.decision||{};x.decision[t.dataset.pd]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveProjectSoon(x);return}
@@ -12090,7 +12289,7 @@ function projWallHtml(x){
   const w=x.wall;const ms=wallPhotoMoments(x);
   if(!wallOpen[x.id])return `<section class="card"><div class="secthead"><h3 style="font-size:17px">The wall</h3>${w?`<span class="cnt">${w.sheets.filter(s=>s.include).length} sheets${(()=>{const e=w.sheets.filter(s=>s.include&&!has(s.text)).length;return e?`, ${e} still need the team's words`:" ready"})()}</span>`:""}</div>
     <div class="hint">A run of sheets that hang in order and tell the project as it grew, each with a photo, the children's words, and a few lines from the team.</div>
-    <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF"):""}</div></section>`;
+    <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF")+printBtns("wallkids",x.id,"Print for the classroom"):""}</div></section>`;
   const sheets=w.sheets;
   const sheetHtml=(sh,i)=>{const sel=wallPhotos(sh);const n=notices.get(sel[0]);const sg=wallSug[sh.id];
     const pool=projChildWords(x);const chosen=new Set((sh.quotes||[]).map(q=>q.words.toLowerCase()));
@@ -12114,7 +12313,7 @@ function projWallHtml(x){
   return `<section class="card" id="pwall"><div class="secthead"><h3 style="font-size:17px">The wall</h3><span class="cnt">${sheets.filter(s=>s.include).length} of ${sheets.length} sheets will hang</span></div>
     <div class="hint">Each sheet prints on its own page, in this order. Every word on it comes from the children or from the team.</div>
     <div class="prow" style="border-top:none;padding-top:0"><span class="cnt">Children's names on the wall</span><div class="seg" role="group" aria-label="Children's names on the wall">${NAME_MODES.map(([k,l])=>`<button data-wnames="${k}" aria-pressed="${wallNames(x)===k}">${l}</button>`).join("")}</div></div>
-    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}${sample?(()=>{const empty=sheets.filter(s=>s.include&&!has(s.text)&&!(wallSug[s.id]&&/working|ready/.test(wallSug[s.id].status))).length,ready=sheets.filter(s=>wallSug[s.id]&&wallSug[s.id].status==="ready").length,busy=!!wallAll[x.id];
+    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}${printBtns("wallkids",x.id,"Print for the classroom")}${sample?(()=>{const empty=sheets.filter(s=>s.include&&!has(s.text)&&!(wallSug[s.id]&&/working|ready/.test(wallSug[s.id].status))).length,ready=sheets.filter(s=>wallSug[s.id]&&wallSug[s.id].status==="ready").length,busy=!!wallAll[x.id];
       return (busy?`<span class="hint"><span class="spin"></span> Drafting ${wallAll[x.id]}</span>`:empty?`<button class="btn small" data-wsdraftall="1">Draft every empty sheet (${empty})</button>`:"")+(ready>1&&!busy?`<button class="btn small" data-wsuseall="1">Use all ${ready} drafts</button>`:"")})():""}<button class="btn small ghost" data-wsadd="1">Add a sheet</button><button class="linkbtn" data-wsfresh="1">Start again from the timeline</button><button class="linkbtn" data-pwallshut="1">Close</button></div>
     <div style="display:grid;gap:14px">${sheets.map(sheetHtml).join("")}</div></section>`;
 }
@@ -12175,6 +12374,35 @@ function wallSheetDoc(x,sh){
   return {centered:true,display:true,type:"report",acc:"story",title:displayText(sh.title||x.name,mode,all),details,photos:ns.flatMap(momentPhotos),blocks};
 }
 function wallDocs(x){return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>wallSheetDoc(x,sh))}
+/* Print for the classroom. The sheets at child height, half letter, two to each letter page turned sideways, made through
+   the print kit from the same centred layout as the wall, then set two to a page (November 4, 2026) */
+async function halfSheets(docs,name){
+  if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
+  const blob=await makePdf(docs,"",'quiet');if(!blob)return;
+  let L;try{L=await TREE_KIT.pdfLib()}catch(e){toast("The PDF tool did not load.");return}
+  const src=await L.PDFDocument.load(await blob.arrayBuffer());const out=await L.PDFDocument.create();const pages=await out.embedPages(src.getPages());
+  const H=TREE_KIT.SIZES.half;
+  for(let i=0;i<pages.length;i+=2){const sh=out.addPage([H.h,H.w]);for(const k of [0,1]){const pg=pages[i+k];if(!pg)continue;const s=Math.min(H.w/pg.width,H.h/pg.height);sh.drawPage(pg,{x:k*H.w+(H.w-pg.width*s)/2,y:(H.h-pg.height*s)/2,xScale:s,yScale:s})}}
+  out.setTitle(name);out.setCreator("Fulton Community School");out.setProducer("TREE");
+  await saveFile(new Blob([await out.save()],{type:"application/pdf"}),safeFile(name)+".pdf")}
+// a thread's sheets for the classroom. Each photo observation with the children's words on it, as the wall shows a moment
+function threadKidDocs(th){const ns=threadNotices(th).filter(n=>n.photo&&!inqHolds(n.id)).sort((a,b)=>(a.at||0)-(b.at||0));
+  const posts=ns.filter((n,i)=>ns.findIndex(o=>(o.group||o.id)===(n.group||n.id))===i);const mode=PRINT.names;
+  return posts.map(n=>{const grp=noteGroup(n).filter(g=>g.photo).slice(0,3);const qs=childLines(n.noticed,true).filter(childsWords).slice(0,4);
+    const all=qs.map(q=>q.name+" - "+q.words).join("\n")+"\n"+grp.map(m=>m.noticed).join("\n");
+    const blocks=qs.map(q=>({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
+    if(!blocks.length)blocks.push({t:"para",text:displayText(firstLine(momentBody(n)||n.noticed,200),mode,all)});
+    return {centered:true,display:true,type:"report",acc:"story",title:displayText(momentHeading(n)||th.name,mode,all),details:momentDetails(n),photos:grp.flatMap(momentPhotos),blocks}})}
+/* The weekly place sheet, from /api/place-sheet. What is alive on site this week, the animals and the bin, on one centred
+   letter page through the print kit. Read defensively, each missing part left out (November 4, 2026) */
+function placeSheetDoc(j){if(!j||typeof j!=="object")return null;const S=k=>{const v=j[k];return Array.isArray(v)?v:v&&Array.isArray(v.items)?v.items:[]};
+  const name=x=>typeof x==="string"?x:x?[x.name||x.common||x.title,x.where||x.place||x.bed,x.note||x.state||x.stage].filter(Boolean).join(", "):"";
+  const alive=S("alive").concat(S("plants"),S("growing")).map(name).filter(Boolean),animals=S("animals").map(name).filter(Boolean),bin=S("bin").map(name).filter(Boolean);
+  const blocks=[];if(alive.length)blocks.push({t:"sect",label:"Alive on site this week",lines:alive.slice(0,24)});if(animals.length)blocks.push({t:"sect",label:"Animals",lines:animals.slice(0,12)});if(bin.length)blocks.push({t:"sect",label:"The bin",lines:bin.slice(0,16)});
+  if(has(j.note))blocks.push({t:"para",text:String(j.note)});
+  if(!blocks.length)return null;
+  const wk=j.week||mondayOf(new Date());
+  return {centered:true,display:true,type:"report",acc:"classroom",title:"Our place this week",details:["Week of "+fmtDate(wk),j.room?j.room+" class":"Fulton Community School"],photos:[],blocks}}
 // the project as a record for the team and colleagues. The summary is short enough for a meeting, with the threads, where the
 // project is now and a few photos. The full set is the whole record in the order it happened, every observation with its wonder,
 // photos where there are photos, each week's final remarks, and each thread with its evidence. It is built fresh at every print
@@ -12980,6 +13208,12 @@ async function printsClick(t){
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton Community School projects ${mondayOf(new Date())}`);return true}
   if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  // child height. The wall's sheets, or a thread's moments with the children's words, at half letter, two to a letter page
+  if(kind==="wallkids"){const x=projects.get(t.dataset.id);if(!x)return true;const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}if(word){await out(docs,`For the classroom ${x.name}`);return true}await halfSheets(docs,`For the classroom ${x.name}`);return true}
+  if(kind==="threadkids"){const th=threads.get(t.dataset.id);if(!th)return true;const docs=threadKidDocs(th);if(!docs.length){toast("No photo observation with the children's words in this thread yet.");return true}if(word){await out(docs,`For the classroom ${th.name}`);return true}await halfSheets(docs,`For the classroom ${th.name}`);return true}
+  // the week's place sheet, from the server, one centred letter page
+  if(kind==="placesheet"){let j=null;try{j=await window.FP_API("/api/place-sheet",{week:mondayOf(new Date()),room:t.dataset.id||""})}catch(e){toast(e&&e.message||"The place sheet could not be read.");return true}
+    const d=placeSheetDoc(j);if(!d){toast("Nothing is on the place sheet this week yet.");return true}await out([d],`Place sheet ${mondayOf(new Date())}`);return true}
   if(kind==="kdiet"){await kDietLoad();await out([kDietDoc()],"Allergies and dietary needs "+iso(new Date()));return true}
   if(kind==="classlist"){await out([classListDoc(t.dataset.id||"All")],(t.dataset.id&&t.dataset.id!=="All"?t.dataset.id+" class list ":"Class lists ")+iso(new Date()));return true}
   if(kind==="kmenu"){const [m,k]=t.dataset.id.split("|");await kMonthMenu(m,k,word);return true}
@@ -13080,7 +13314,7 @@ function renderThreads(){
 
   // Threads
   h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Threads</h2>
-    <span class="actions">${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads"}</button>`:""}</span></div>
+    <span class="actions">${isDirector()&&!VIEW_AS?`<button class="btn small ghost" data-readings="1">Readings</button>`:""}${printTwo("threads","")}${sample&&isDirector()?`<button class="btn small" id="scan" ${scanBusy||!ps.length?"disabled":""}>${scanBusy?"Reading plans":"Find threads"}</button>`:""}</span></div>
     <div class="hint muted" style="font-size:13.5px;max-width:72ch">For what children have pursued over several weeks. Find threads reads the plans and observations together. A thread is a question children keep returning to across several sittings or weeks. ${isDirector()?"TREE reads the saved plans in this range, finds the threads, and points to the plans they came from.":"The director asks TREE to read the saved plans and find the threads, which then appear here with the plans they came from."} Follow the ones worth following and they stay here for the whole team.</div>`;
   if(tracked.length)h+=`<div class="chiprow-label">Threads we are following</div><div class="threads">${tracked.map(t=>threadCard(t,true,weeks)).join("")}</div>`;
   if(stoppedNow.length)h+=`<details ${tOpenStopped?"open":""} data-tstopwrap="now"><summary class="chiprow-label" style="cursor:pointer">No longer following, ${stoppedNow.length} this school year</summary><div class="stopped">${stoppedNow.map(t=>stoppedCard(t)).join("")}</div></details>`;
@@ -13092,6 +13326,7 @@ function renderThreads(){
     if(scan.summary)h+=`<div class="ref" style="background:var(--moss-soft)"><div>${esc(scan.summary)}</div></div>`;
     {const jn=(scan.joined||[]).filter(j=>threads.has(j.id));if(jn.length)h+=`<div class="hint">Already threads you follow, so TREE added the new evidence to them. ${jn.map(j=>`<button class="linkbtn" data-tsee="${esc(j.id)}">${esc(j.name)}</button> (${j.n}${j.closed?", closed, children have returned to it":""})`).join(", ")}</div>`}
     if(fresh.length)h+=`<div class="threads">${fresh.map((x,i)=>threadCard(x,false,weeks,scan.threads.indexOf(x),scan)).join("")}</div>`;
+    h+=onePairHtml(scan,fresh,tracked);
     if(nDis)h+=`<div class="actions"><button class="linkbtn" data-tshowdis="1">${tShowDismissed?"Hide dismissed suggestions":`Show ${nDis} dismissed suggestion${nDis>1?"s":""}`}</button></div>`;
   }else if(!tracked.length)h+=`<div class="empty">${ps.length?(sample?(isDirector()?"No threads found yet. Press Find threads.":"No threads found yet. The director's next thread search will show here."):"Use Recurring ideas and Search below to spot threads, then follow them in your plans."):"No plans saved in this range yet. Threads appear once educators save a few weeks of plans."}</div>`;
   h+=`</section>`;
@@ -13168,7 +13403,7 @@ function originHtml(t,isTracked){
     const wks=new Set(ps.map(p=>p.weekOf)).size;
     rows.push(`<div><b>Seen in</b> ${ps.length} plan${ps.length>1?"s":""} over ${wks} week${wks>1?"s":""}. ${esc(types)}${rooms.length?". "+esc(rooms.join(" and "))+(rooms.length>1?" classes":" class"):""}${people.length?". "+esc(people.slice(0,6).join(", "))+(people.length>6?` and ${people.length-6} more`:""):""}</div>`)}
   if(isTracked){
-    const how=t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" class":" across all classes"}`:"";
+    const how=t.origin&&t.origin.hand?"from an observation":t.origin?`after TREE found it in ${t.origin.range==="all"||!RANGE_LABEL[t.origin.range]?"all saved plans":"plans from "+RANGE_LABEL[t.origin.range]}${t.origin.room&&t.origin.room!=="All"?" in the "+esc(t.origin.room)+" class":" across all classes"}`:"";
     rows.push(`<div><b>Followed</b> ${t.followedBy?"by "+esc(t.followedBy)+" ":""}on ${shortDate(t.createdAt)}${how?" "+how:""}${t.refollowed?`. Followed again by ${esc(t.refollowed.by)} on ${shortDate(t.refollowed.at)}`:""}</div>`);
   }
   return rows.length?`<div class="origin">${rows.join("")}</div>`:"";
@@ -13201,6 +13436,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
   if(t.question)h+=`<div class="q">${esc(t.question)}</div>`;
   h+=originHtml(t,isTracked);
   if(t.classroom||(t.groups||[]).length)h+=`<div class="cnt">${[t.classroom&&t.classroom+" class",(t.groups||[]).join(", ")].filter(Boolean).map(esc).join(" · ")}</div>`;
+  if(isTracked&&t.id){const ps=[...new Set(threadNotices(t).flatMap(obsPlaces))];if(ps.length)h+=`<div class="chips placechips">${ps.slice(0,8).map(x=>`<button type="button" class="chip" data-placego="${esc(x)}">${esc(x)}</button>`).join("")}</div>`}
   if(weeks.length)h+=`<div class="tl" aria-label="Weeks this thread appears">${weeks.map(w=>`<i class="${on.has(w)?"on":""}" title="${fmtDate(w)}"></i>`).join("")}</div>`;
   if(isTracked&&t.id&&(t.evidence||[]).length)h+=`<div class="chiprow-label" style="margin-top:10px">In educators' words</div>`;
   h+=evidenceHtml(t);
@@ -13219,7 +13455,7 @@ function threadCard(t,isTracked,weeks,scanIdx,scan){
       <div class="actions"><button class="btn small ghost" data-tplan="${esc(t.id)}">Start an Individual Plan from it</button>
       ${moreMenu(`<label class="cnt">Status <select data-tstatus="${esc(t.id)}" style="width:auto">${Object.entries(TSTATUS).map(([k,v])=>`<option value="${k}" ${t.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
       ${has(t.notes)?"":`<div style="flex-basis:100%">${notesBox}</div>`}
-      <button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button><span id="tinq-${esc(t.id)}"><button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button></span>
+      <button class="btn small ghost" data-tcplan="${esc(t.id)}">Bring it into the Classroom Plan</button><button class="btn small ghost" data-storythread="${esc(t.id)}">Make a story</button>${threadNotices(t).some(n=>n.photo)?printBtns("threadkids",t.id,"Print for the classroom"):""}<span id="tinq-${esc(t.id)}"><button class="linkbtn" data-tinq="${esc(t.id)}">Open a team inquiry with it</button></span>
       ${pr?"":`<button class="btn small ghost" data-pstart="${esc(t.id)}">Start a project from it</button>${openProjects.length?`<select data-padd="${esc(t.id)}" style="width:auto;max-width:100%" aria-label="Add this thread to a project"><option value="">Add to a project</option>${openProjects.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`:""}`}
       ${sample&&(!pr||t.story)?`<span id="tsrw-${t.id}"><button class="btn small ghost" data-tstory="${esc(t.id)}" ${storyBusy[t.id]?"disabled":""}>${storyBusy[t.id]?"Writing":t.story?"Rewrite project story":"Write project story"}</button></span>`:""}
       ${t.story?`${printBtns("tstory",t.id,"Project story PDF",true)}<span id="tsrm-${t.id}"><button class="linkbtn" data-tstoryrm="${esc(t.id)}">Remove story</button></span>`:""}
@@ -13249,6 +13485,44 @@ function threadRecIds(t){return new Set([...(t.evidence||[]).map(e=>e&&(e.planId
 function foundOverlap(x){const ids=[...new Set((x.evidence||[]).map(e=>e.planId).filter(Boolean))];if(!ids.length)return null;let best=null,bn=0;
   for(const t of threads.values()){if(t.undone)continue;const have=threadRecIds(t);const n=ids.filter(i=>have.has(i)).length;if(n>bn){bn=n;best=t}}
   return best&&bn>=Math.min(2,ids.length)&&bn*2>=ids.length?best:null}
+/* Find threads offers a project. When two found or followed threads share evidence or a room, the result shows one card,
+   These may be one project, naming the threads, with Start a project that makes the project from both (November 4, 2026) */
+function onePairs(scan,fresh,tracked){const dir=isDirector()&&!VIEW_AS;if(!dir)return [];
+  const found=fresh.map((x,i)=>({kind:"found",idx:scan.threads.indexOf(x),x,ids:new Set((x.evidence||[]).map(e=>e.planId).filter(Boolean)),room:x.classroom||"",name:x.name}));
+  const have=tracked.filter(t=>t.status!=="closed"&&!projectOfThread(t.id)).map(t=>({kind:"thread",t,ids:threadRecIds(t),room:t.classroom||"",name:t.name}));
+  const all=[...found,...have],out=[],no=new Set(scan.oneNo||[]);
+  const key=(a,b)=>[a.kind==="found"?"f"+a.idx:a.t.id,b.kind==="found"?"f"+b.idx:b.t.id].sort().join("|");
+  for(let i=0;i<all.length;i++)for(let j=i+1;j<all.length;j++){const a=all[i],b=all[j];if(a.kind==="found"&&b.kind==="found"&&!found.length)continue;
+    if(a.kind==="thread"&&b.kind==="thread")continue;   // at least one of the pair is a thread this reading found
+    const shared=[...a.ids].filter(id=>b.ids.has(id)).length;const sameRoom=!!a.room&&a.room===b.room;
+    if(!shared&&!sameRoom)continue;if(no.has(key(a,b)))continue;out.push({a,b,shared,sameRoom,k:key(a,b)})}
+  return out.sort((p,q)=>q.shared-p.shared).slice(0,3)}
+function onePairLabel(o){return o.kind==="found"?o.name:o.t.name}
+function onePairDesc(x){return `${x.shared?`${x.shared} piece${x.shared===1?"":"s"} of evidence in common`:""}${x.shared&&x.sameRoom?", and ":""}${x.sameRoom?"both in "+x.a.room+" class":""}`}
+function onePairShow(x){return [x.a,x.b].map(o=>({name:onePairLabel(o),q:o.kind==="found"?o.x.question:o.t.question||"",room:o.room}))}
+function onePairThreads(x,scan){const made=[];
+  for(const o of [x.a,x.b]){if(o.kind==="thread"){made.push(o.t);continue}
+    const f=o.x;const prior=f.trackedId&&threads.get(f.trackedId);if(prior&&threadLive(prior)){made.push(prior);continue}
+    const nt={id:uid(),name:f.name,question:f.question||"",classroom:f.classroom||(tRoom!=="All"?tRoom:""),groups:f.groups||[],status:f.status||"emerging",weeks:[...(f.weeks||[])].sort(),lastWeek:[...(f.weeks||[])].sort().slice(-1)[0]||"",evidence:(f.evidence||[]).map(e=>Object.assign({},e,{via:"find",at:Date.now(),by:whoAmI()})),languages:f.languages||[],next:f.next||[],notes:"",createdAt:Date.now(),followedBy:whoAmI(),origin:{room:scan.room,range:scan.range,at:scan.createdAt}};
+    saveThread(nt);f.trackedId=nt.id;made.push(nt)}
+  saveScan(scan);return made}
+function onePairProject(x,scan){const ts=onePairThreads(x,scan);const now=Date.now(),by=whoAmI(),wk=mondayOf(new Date());
+  const home=ts.map(t=>t.classroom).find(Boolean)||"";const rooms=[...new Set(ts.map(t=>t.classroom).filter(Boolean))];
+  const firstWeek=ts.flatMap(t=>t.weeks||[]).sort()[0]||wk;
+  const p={id:uid(),year:yearFromTime(now),name:ts.map(t=>t.name).join(" and "),experience:"",underneath:"",intent:"",earlier:{underneath:[],intent:[]},home,classrooms:rooms.map((r,i)=>({room:r,how:i?"":"start",week:i?wk:firstWeek,by,at:now,note:""})),threads:ts.map(t=>({id:t.id,by,at:now,week:wk})),
+    decision:{who:by,by,at:now,threadId:ts[0]?ts[0].id:""},groups:[...new Set(ts.flatMap(t=>t.groups||[]))],returns:"",web:{branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}]},people:"",notes:"",status:"active",closure:"",stories:[],createdAt:now,createdBy:by};
+  saveProject(p);openProject(p.id);toast("Project started from both threads. Write what may lie underneath and your intent as educators.")}
+function onePairHtml(scan,fresh,tracked){const ps=onePairs(scan,fresh,tracked);if(!ps.length)return "";
+  return ps.map(x=>`<article class="thread oneproject"><div class="secthead"><h3>These may be one project</h3><span class="cnt">${esc(onePairDesc(x))}</span></div>
+    <div class="evid">${onePairShow(x).map(o=>`<div><b>${esc(o.name)}</b>${o.room?` <span class="cnt">${esc(o.room)} class</span>`:""}${o.q?`<div class="muted">${esc(o.q)}</div>`:""}</div>`).join("")}</div>
+    <div class="actions"><button class="btn small" data-onestart="${esc(x.k)}">Start a project</button><button class="linkbtn" data-oneno="${esc(x.k)}">Not one project</button></div></article>`).join("")}
+function onePairRecs(){const scan=scans.get(tRoom);if(!scan||!scan.threads)return null;const weeks=rangeWeeks(rangePlans());const open=x=>!x.trackedId||!threads.has(x.trackedId)||!!threads.get(x.trackedId).undone;
+  const fresh=scan.threads.filter(x=>open(x)&&!x.dismissed);const tracked=[...threads.values()].filter(t=>(tRoom==="All"||t.classroom===tRoom||!t.classroom)&&!t.unfollowed);return {scan,fresh,tracked}}
+function onePairFind(k){const r=onePairRecs();if(!r)return null;const x=onePairs(r.scan,r.fresh,r.tracked).find(p=>p.k===k);return x?{x,scan:r.scan}:null}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-onestart],[data-oneno]");if(!t||view!=="threads")return;e.preventDefault();e.stopImmediatePropagation();
+  if(!isDirector()||VIEW_AS)return;const k=t.dataset.onestart||t.dataset.oneno;const f=onePairFind(k);if(!f)return;
+  if(t.dataset.oneno){f.scan.oneNo=[...new Set([...(f.scan.oneNo||[]),k])];saveScan(f.scan);renderMain();return}
+  onePairProject(f.x,f.scan)},true);
 function stoppedCard(t){
   return `<article class="thread"><div class="secthead"><h3>${esc(t.name)}</h3><span class="cnt">Stopped by ${esc(t.unfollowed.by||"an educator")} on ${shortDate(t.unfollowed.at)}</span></div>
     ${t.question?`<div class="q">${esc(t.question)}</div>`:""}${originHtml(t,true)}
@@ -14112,11 +14386,26 @@ function allListHtml(ps){
 }
 // How it connects. Every connection across the school, newest first, with who made it or that TREE did, how, and TREE's reason in
 // its own words with the words it matched on. A thread or a project chosen above gathers everything joined to it
-function howEvents(){const ev=[];const nm=t=>t&&t.name||"a thread";const D=s=>s?parseIso(s).getTime():0;
+// the examples the director kept for PD modules, read once for How it connects. Only the director reaches them
+let pdExamples=null;
+function pdExamplesLoad(){if(pdExamples!==null||!isDirector()||VIEW_AS||!window.FP_API)return;pdExamples={};window.FP_API("/api/staff/g/modules",{}).then(r=>{pdExamples=(r&&r.examples)||{};if(!(gsPd.modules||[]).length)gsPd.modules=Object.values((r&&r.modules)||{});if(view==="connect")renderMain()}).catch(()=>{})}
+function howEvents(){const ev=[];const nm=t=>t&&t.name||"a thread";const D=s=>s?parseIso(s).getTime():0;pdExamplesLoad();
   const itemOf=id=>{const n=notices.get(id);if(n)return {kind:"obs",id,label:momentHeading(n)||firstLine(noticeText(n),60),room:n.classroom||"",at:n.at||0,by:n.by};const p=plans.get(id);return p?{kind:"plan",id,label:planTitle(p),room:p.classroom||"",at:D(p.weekOf),by:p.educator}:null};
-  const HOW={suggest:"from TREE's suggestion",pattern:"from a pattern TREE read",find:"from Find threads",search:"from a search of the evidence",weekly:"from the week's reading",hand:""};
+  const HOW={suggest:"from TREE's suggestion",pattern:"from a pattern TREE read",find:"from Find threads",search:"from a search of the evidence",weekly:"from the week's reading",lens:"by the lens, from its words and languages",hand:""};
+  // the lens. An observation the server marked with lensIds, or one a lens finds by its words, joined to each of those lenses
+  for(const n of notices.values()){const found=lensesFinding(n),ids=new Set([...(Array.isArray(n.lensIds)?n.lensIds:[]),...found.map(l=>l.id)]);
+    for(const id of ids){const L=LENSES.find(l=>l.id===id);if(!L)continue;const tr=found.some(l=>l.id===id);
+      const hits=tr?(()=>{const re=lensRegex(L);const m=re?([n.noticed,n.wonder].join(" ").match(re)||[]):[];const langs=(n.languages||[]).filter(x=>(L.languages||[]).some(y=>y.toLowerCase()===x.toLowerCase()));return [...new Set([...m.map(x=>x.toLowerCase()),...langs])].slice(0,4)})():[];
+      ev.push({item:n.id,at:n.at||0,t:threadsOfNotice(n).map(t=>t.id),room:n.classroom||"",what:`Observation <b>${esc(momentHeading(n)||firstLine(noticeText(n),60))}</b> seen through the lens <b>${esc(L.name)}</b>`,who:"",how:"lens",why:hits.length?`The lens found ${hits.join(", ")}`:"Marked by the reading",words:firstLine(noticeText(n),200),open:`data-obsgo="${esc(n.id)}"`,lens:true})}}
+  // team inquiries. Every observation and thread an inquiry holds, with who kept it, and TREE's reason where the reading brought it
+  for(const x of inqAll()){for(const id of x.obs||[]){const o=(x.obsFound||{})[id];if(o)continue;const it=itemOf(id);if(!it)continue;
+      ev.push({item:id,at:it.at,room:it.room,what:`Observation <b>${esc(it.label)}</b> kept for the team inquiry <b>${esc(x.name||"")}</b>`,who:it.by||x.createdBy||"",how:"hand",words:firstLine(noticeText(notices.get(id)),220),open:`data-iqopen="${esc(x.id)}"`,inq:true})}
+    for(const tid of x.threads||[]){const t=threads.get(tid);if(!t)continue;ev.push({at:x.createdAt||0,t:[t.id],room:x.room||t.classroom||"",what:`Thread <b>${esc(nm(t))}</b> opened the team inquiry <b>${esc(x.name||"")}</b>`,who:x.startedBy||x.createdBy||"",how:"hand",why:firstLine(x.see||"",160),open:`data-iqopen="${esc(x.id)}"`,inq:true})}}
+  // PD examples. An observation the director kept as an example for a module, with TREE's reason for suggesting it
+  for(const [slug,ex] of Object.entries(pdExamples||{}))for(const e of (ex&&ex.examples)||[]){if(!e||e.kept===false)continue;const id=String(e.id||"").replace(/^obs:/,"");const n=notices.get(id);if(!n)continue;
+    const md=(gsPd.modules||[]).find(m=>m.slug===slug);ev.push({item:id,at:ex.at||n.at||0,t:threadsOfNotice(n).map(t=>t.id),room:n.classroom||"",what:`Observation <b>${esc(momentHeading(n)||firstLine(noticeText(n),60))}</b> kept as an example for the module <b>${esc((md&&md.title)||slug)}</b>`,who:"The director",how:"suggest",why:e.why||"",words:firstLine(noticeText(n),200),open:`data-obsgo="${esc(id)}"`,pd:true})}
   for(const t of threads.values()){if(!t||t.undone)continue;
-    if(t.origin&&t.createdAt)ev.push({at:t.createdAt,t:[t.id],room:t.classroom||"",what:`Started following the thread <b>${esc(nm(t))}</b>`,who:t.followedBy||"",how:t.origin.room==="observations"?"pattern":"find",why:t.origin.why||t.question||"",open:`data-tsee="${esc(t.id)}"`});
+    if(t.origin&&t.createdAt)ev.push({at:t.createdAt,t:[t.id],room:t.classroom||"",what:`Started following the thread <b>${esc(nm(t))}</b>`,who:t.followedBy||"",how:t.origin.hand?"hand":t.origin.room==="observations"?"pattern":"find",why:t.origin.why||t.question||"",open:`data-tsee="${esc(t.id)}"`});
     const seenE=new Set();for(const e of t.evidence||[]){if(!e)continue;const it=itemOf(e.planId||e.id);if(!it||seenE.has(it.id))continue;seenE.add(it.id);const via=e.via||(e.by?"hand":"find");
       ev.push({item:it.id,at:e.at||it.at,t:[t.id],room:it.room,what:`${it.kind==="obs"?"Observation":"Plan"} <b>${esc(it.label)}</b> joined <b>${esc(nm(t))}</b>`,who:via==="find"&&!e.by?"":e.by||"",how:via,why:e.why||"",words:it.kind==="obs"?firstLine((momentBody(notices.get(it.id))||noticeText(notices.get(it.id))),220):(e.text||""),open:it.kind==="obs"?`data-obsgo="${esc(it.id)}"`:`data-open="${esc(it.id)}"`,known:!!e.at})}}
   for(const n of notices.values()){const th=n.threadId&&threads.get(n.threadId);
@@ -14144,7 +14433,7 @@ function howFiltered(){const {ev,HOW}=howEvents();const [k,id]=String(aFocus||""
 // the map. A project or a thread drawn with what is joined to it, each line solid where an educator connected it and dashed
 // where TREE did, three plain sentences read from the record, and the connections themselves folded below
 let howPick="";
-const evKind=e=>e.no?"no":/^Observation/.test(e.what)?"obs":/^Plan/.test(e.what)?"plan":/joined the project|project <b>|began$/.test(e.what)||/^The project/.test(e.what)?"project":"thread";
+const evKind=e=>e.no?"no":e.lens?"lens":e.inq?"inquiry":e.pd?"pd":/^Observation/.test(e.what)?"obs":/^Plan/.test(e.what)?"plan":/joined the project|project <b>|began$/.test(e.what)||/^The project/.test(e.what)?"project":"thread";
 const byTree=e=>!e.who&&(e.how==="find"||e.how==="suggest"||e.how==="pattern");
 function howUnits(){const out=[];for(const x of projects.values())if(x&&x.status!=="closed")out.push({k:"p",id:x.id,name:x.name,sub:"Project"+(x.home?", "+x.home+" class":"")});
   for(const t of threads.values())if(threadLive(t)&&t.status!=="closed"&&!projectOfThread(t.id))out.push({k:"t",id:t.id,name:t.name,sub:"Thread"+(t.classroom?", "+t.classroom+" class":"")});return out}
@@ -14233,8 +14522,8 @@ function howHtml(){const {ev,HOW}=howFiltered();const [k,id]=String(aFocus||"").
   const [pk,pid]=howPick.split(":");const pick=ev.filter(e=>!pk||(pk==="project"?evKind(e)==="project":pk==="thread"?(e.t.includes(pid)&&evKind(e)!=="obs"&&evKind(e)!=="plan"):e.t.includes(pid)&&evKind(e)===(pk==="plans"?"plan":"obs")));
   const label=!pk?"Every connection":pk==="project"?"How the project came together":pk==="thread"?"How "+((threads.get(pid)||{}).name||"the thread")+" joined":((pk==="plans"?"Plans in ":"Observations in ")+((threads.get(pid)||{}).name||"the thread"));
   const row=e=>`<div class="evhit" style="display:grid;gap:3px${e.no?";opacity:.85":""}"><span>${e.what}</span>
-    <span class="cnt">${[e.who?esc(e.who)+(HOW[e.how]?", "+HOW[e.how]:""):e.how==="find"?"TREE on its own, by Find threads":HOW[e.how]?"TREE, "+HOW[e.how]:"",e.known===false?"week of "+fmtDate(mondayOf(new Date(e.at))).replace(/, \d{4}$/,""):shortDate(e.at)].filter(Boolean).join(" · ")}</span>
-    ${e.why?`<span class="muted">${e.how==="suggest"||e.how==="pattern"||e.how==="find"?"TREE's reason, ":""}${esc(e.why)}</span>`:""}
+    <span class="cnt">${[e.who?esc(e.who)+(HOW[e.how]?", "+HOW[e.how]:""):e.how==="find"?"TREE on its own, by Find threads":e.how==="lens"?"TREE on its own, "+HOW.lens:HOW[e.how]?"TREE, "+HOW[e.how]:"",e.known===false?"week of "+fmtDate(mondayOf(new Date(e.at))).replace(/, \d{4}$/,""):shortDate(e.at)].filter(Boolean).join(" · ")}</span>
+    ${e.why?`<span class="muted">${e.how==="suggest"||e.how==="pattern"||e.how==="find"||e.how==="lens"||e.how==="weekly"?"TREE's reason, ":""}${esc(e.why)}</span>`:""}
     ${e.words?`<span class="evclamp" style="font-size:13.5px">“${esc(firstLine(e.words,200))}”</span>`:""}
     ${e.open?`<span><button class="linkbtn" ${e.open}>Open it</button></span>`:""}</div>`;
   h+=`<details class="card fold" id="howlist" ${pk?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${esc(label)}</span><span class="cnt">${pick.length}</span></summary><div class="foldbody" style="display:grid;gap:8px">${pick.slice(0,aConnShow).map(row).join("")||`<div class="cnt">None yet.</div>`}

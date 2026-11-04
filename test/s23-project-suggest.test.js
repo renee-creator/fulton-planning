@@ -46,14 +46,14 @@ test('the project shows its own, and the director adds a suggestion, turns one d
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.evaluate(() => openProject('x1'));
   await s.p.waitForSelector('[data-projadd="x1|n1"]', { timeout: 15000, state: 'attached' });
-  assert.deepStrictEqual(await s.p.evaluate(() => projNotices(projects.get('x1')).map(n => n.id)), ['n0'], 'the thread observations are not in the project yet');
+  assert.deepStrictEqual(await s.p.evaluate(() => projOwnNotices(projects.get('x1')).map(n => n.id)), ['n0'], 'the thread observations are not among its own yet');
   const txt = await s.p.innerText('#main');
   assert.match(txt, /Observations TREE found/); assert.doesNotMatch(txt, /rain run down the gutter/, 'one that does not fit is not suggested');
   await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
   assert.match(await s.p.innerText('#main'), /From the thread Water and mud\. They made a mud pie/);
   await s.p.click('[data-projno="x1|n3"]'); await s.p.waitForTimeout(300);
   await s.p.click('[data-projadd="x1|n1"]'); await s.p.waitForTimeout(300);
-  assert.deepStrictEqual(await s.p.evaluate(() => [projNotices(projects.get('x1')).map(n => n.id), projWaiting(projects.get('x1')).length, threadNotices(threads.get('t1')).map(n => n.id).sort()]), [['n1', 'n0'], 0, ['n1', 'n2', 'n3']], 'its thread keeps every one');
+  assert.deepStrictEqual(await s.p.evaluate(() => [projOwnNotices(projects.get('x1')).map(n => n.id), projWaiting(projects.get('x1')).length, threadNotices(threads.get('t1')).map(n => n.id).sort()]), [['n1', 'n0'], 0, ['n1', 'n2', 'n3']], 'its thread keeps every one');
   await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
   assert.match(await s.p.innerText('#main'), /Nothing is waiting\. Find observations for this project reads now/, 'the list is empty, its button stays');
   await new Promise(r => setTimeout(r, 2500));
@@ -66,7 +66,7 @@ test('the project shows its own, and the director adds a suggestion, turns one d
   assert.strictEqual(await s.p.evaluate(() => projWaiting(projects.get('x1')).length), 2);
   await s.p.evaluate(() => document.querySelectorAll('#main details').forEach(d => { d.open = true; }));
   await s.p.click('[data-projaddall="x1"]'); await s.p.waitForTimeout(300);
-  assert.deepStrictEqual(await s.p.evaluate(() => [projNotices(projects.get('x1')).map(n => n.id), projects.get('x1').found.items.length]), [['n3', 'n2', 'n1', 'n0'], 0]);
+  assert.deepStrictEqual(await s.p.evaluate(() => [projOwnNotices(projects.get('x1')).map(n => n.id), projects.get('x1').found.items.length]), [['n3', 'n2', 'n1', 'n0'], 0]);
   assert.deepStrictEqual(s.errors, []);
   // an educator sees the project's own observations, and nothing waiting
   const a = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => a.close());
