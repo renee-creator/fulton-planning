@@ -45,7 +45,7 @@ test('a visual printable is listed as Visual, builds a cols block and prints one
   assert.ok(r.d.visual && r.d.display && r.d.type === 'report' && r.d.acc === 'story');
   assert.deepStrictEqual(r.kinds, ['text', 'small', 'cols', 'small']);
   assert.ok(r.d.blocks[0].quiet); assert.match(r.d.blocks[0].text, /^A lens for wondering/); assert.strictEqual(r.d.blocks[1].text, m.title);
-  assert.match(r.d.blocks[3].text, /^From The senses and the body/);
+  assert.match(r.d.blocks[3].text, /^Adapted from the Early Learning Institute/);
   assert.strictEqual(r.cols.cols.length, 4);
   assert.deepStrictEqual(r.cols.cols.map(c => c.h), ['Active and driving', 'Highly sensitive', 'Slow to warm', 'Under responsive']);
   for (const c of r.cols.cols) { assert.deepStrictEqual(c.parts.map(p => p.label), ['What you see', 'How it may feel', 'What helps']); for (const p of c.parts) assert.doesNotMatch(p.text, /\*\*/); }
