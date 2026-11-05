@@ -1,0 +1,75 @@
+{
+ "note": "Contrast phrasing with never taken out of the new theory text, November 4, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "Most children show more than one of these in a week, and the patterns are a lens for wondering, never a diagnosis.",
+   "to": "Most children show more than one of these in a week, and the patterns are a lens for wondering."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "Most children show more than one of these in a week, and the patterns are a lens for wondering, never a diagnosis.",
+   "to": "Most children show more than one of these in a week, and the patterns are a lens for wondering."
+  },
+  {
+   "path": "staff/library/ideabank/behaviors.json",
+   "from": "and who does best invited and never pushed.",
+   "to": "and who does best when invited and given time."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "We borrow the safety world's own phrase, as safe as necessary, never as safe as possible.",
+   "to": "We borrow the safety world's own phrase, as safe as necessary."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "We borrow the safety world's own phrase, as safe as necessary, never as safe as possible.",
+   "to": "We borrow the safety world's own phrase, as safe as necessary."
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "What co-regulation never means is an adult making a child calm.",
+   "to": "Co-regulation lends steadiness, and the child's own settling follows at the child's pace."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "What co-regulation never means is an adult making a child calm.",
+   "to": "Co-regulation lends steadiness, and the child's own settling follows at the child's pace."
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "Age bands are a guide to watching, never a schedule.",
+   "to": "Age bands are a guide to watching."
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "Age bands are a guide to watching, never a schedule.",
+   "to": "Age bands are a guide to watching."
+  },
+  {
+   "path": "staff/pd/modules/07-spaces.md",
+   "from": "The phrase is his, and it is not a diagnosis.",
+   "to": "The phrase is his own, coined for families."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "The phrase is his, and it is not a diagnosis.",
+   "to": "The phrase is his own, coined for families."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "Tasting is offered and never required, since this is when wariness is highest.",
+   "to": "Tasting is offered, and a child may pass, since this is when wariness is highest."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "it is prepared simply, and it is never an art or sensory material, because a child who paints with pudding learns that food is for playing with.",
+   "to": "it is prepared simply, and it stays out of the art and sensory areas, because a child who paints with pudding learns that food is for playing with."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and offered for a child's lap at meeting time or rest, never on the head or chest.",
+   "to": "and offered for a child's lap at meeting time or rest, resting on the lap only."
+  }
+ ]
+}
