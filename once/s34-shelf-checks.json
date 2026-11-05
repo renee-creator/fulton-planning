@@ -1,0 +1,681 @@
+{
+ "name": "s34ShelfChecks",
+ "note": "Eleven books on our shelf checked against catalog records, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].title",
+   "value": "Reflecting Children's Lives: A Handbook for Planning Child-Centered Curriculum"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].author",
+   "value": "Deb Curtis and Margie Carter"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].cite",
+   "value": "Curtis, D., & Carter, M. (2011). Reflecting children's lives: A handbook for planning child-centered curriculum (2nd ed.). Redleaf Press."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].source",
+   "value": "Deb Curtis and Margie Carter, Redleaf Press, 2011"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].year",
+   "value": "2011"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].url",
+   "value": "https://redleafpress.org/Reflecting-Childrens-Lives-2nd-Edition-A-Handbook-for-Planning-Child-Centered-Curriculum-P2351.aspx"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].supports",
+   "value": "Planning curriculum from children's lives"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].areas",
+   "value": [
+    "cur",
+    "obs"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].why",
+   "value": "Tools for observing, documenting and designing environments while planning curriculum from children's lives, for ages three to five."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-reflecting-children-s-lives].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].title",
+   "value": "Learning Together with Young Children: A Curriculum Framework for Reflective Teachers"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].author",
+   "value": "Deb Curtis and Margie Carter"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].cite",
+   "value": "Curtis, D., & Carter, M. (2017). Learning together with young children: A curriculum framework for reflective teachers (2nd ed.). Redleaf Press."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].source",
+   "value": "Deb Curtis and Margie Carter, Redleaf Press, 2017"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].year",
+   "value": "2017"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].url",
+   "value": "https://search.worldcat.org/search?q=learning+together+with+young+children+curtis+carter"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].supports",
+   "value": "A curriculum framework for reflective educators"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].areas",
+   "value": [
+    "cur",
+    "refl"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].why",
+   "value": "A curriculum framework built on observation, reflection, inquiry and action, with classroom stories and photographs."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-learning-together-with-young-children].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].title",
+   "value": "The Five Commitments of Optimistic Leaders for Children: A Reflective Practice Journal"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].author",
+   "value": "Judy Jablon and Nichole Parks"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].cite",
+   "value": "Jablon, J., & Parks, N. (2023). The five commitments of optimistic leaders for children: A reflective practice journal. Leading for Children."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].source",
+   "value": "Judy Jablon and Nichole Parks, Leading for Children, 2023"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].year",
+   "value": "2023"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].url",
+   "value": "https://newsouthbooks.com.au/books/the-five-commitments-of-optimistic-leaders-for-children"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].supports",
+   "value": "A reflective journal for adults who work with children"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].areas",
+   "value": [
+    "refl",
+    "team"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].why",
+   "value": "Five commitments for adults who work with children, with reflection exercises on identity, relationships and group work."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].title",
+   "value": "Children of 2020: Creating a Better Tomorrow"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].author",
+   "value": "Valora Washington and J. D. Andrews"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].cite",
+   "value": "Washington, V., & Andrews, J. D. (Eds.). (2010). Children of 2020: Creating a better tomorrow. Council for Professional Recognition; National Association for the Education of Young Children."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].source",
+   "value": "Valora Washington and J. D. Andrews, Council for Professional Recognition and NAEYC, 2010"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].year",
+   "value": "2010"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].url",
+   "value": "https://search.library.wisc.edu/catalog/9910101141902121"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].supports",
+   "value": "The future of early childhood in the United States"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].areas",
+   "value": [
+    "refl"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].why",
+   "value": "Writing on the future of early childhood education and child welfare in the United States."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-children-of-2020].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].author",
+   "value": "Joanne Sorte, Inge Daeschel and Carolina Amador"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].cite",
+   "value": "Sorte, J., Daeschel, I., & Amador, C. (2013). Nutrition, health, and safety for young children: Promoting wellness (2nd ed.). Pearson."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].source",
+   "value": "Joanne Sorte, Inge Daeschel and Carolina Amador, Pearson, 2013"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].year",
+   "value": "2013"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].supports",
+   "value": "Nutrition, health and safety from birth through school age"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].areas",
+   "value": [
+    "cur",
+    "fam"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].why",
+   "value": "Supporting children's nutrition, health and safety from birth through school age, with case studies from many kinds of programs."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-nutrition-health-and-safety-for-young-children].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].author",
+   "value": "Stanley Schuler"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].cite",
+   "value": "Schuler, S. (1974). The gardener's basic book of flowers. Simon and Schuster."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].source",
+   "value": "Stanley Schuler, Simon and Schuster, 1974"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].year",
+   "value": "1974"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].url",
+   "value": "https://search.worldcat.org/search?q=gardeners+basic+book+of+flowers+schuler"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].supports",
+   "value": "Choosing and growing flowers"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].areas",
+   "value": [
+    "env"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].why",
+   "value": "A reference on choosing and growing flowers."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-gardener-s-basic-book-of-flowers].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].title",
+   "value": "Teacher Resource Guide: A Guide to Educational Materials about Agriculture"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].author",
+   "value": "California Foundation for Agriculture in the Classroom"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].cite",
+   "value": "California Foundation for Agriculture in the Classroom. (2011). Teacher resource guide: A guide to educational materials about agriculture."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].source",
+   "value": "California Foundation for Agriculture in the Classroom, 2011"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].year",
+   "value": "2011"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].url",
+   "value": "https://eric.ed.gov/?id=ED467463"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].supports",
+   "value": "Agriculture teaching materials and where to find them"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].areas",
+   "value": [
+    "cur"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].why",
+   "value": "A directory of agriculture teaching materials and the organizations that offer them, published each year by the California Foundation for Agriculture in the Classroom."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-teacher-resource-guide].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].title",
+   "value": "Building Sustaining Leading: A Guide for Developing Child Care Facilities with Affordable Housing"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].author",
+   "value": "Lihbin Shiao, ed."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].cite",
+   "value": "Shiao, L. (Ed.). (2006). Building sustaining leading: A guide for developing child care facilities with affordable housing. BRIDGE Housing Corporation."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].source",
+   "value": "BRIDGE Housing Corporation, 2006"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].year",
+   "value": "2006"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].url",
+   "value": "https://www.liifund.org/app/uploads/2023/08/BRIDGE-Child-Care-Handbook.pdf"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].supports",
+   "value": "Child care facilities within affordable housing"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].areas",
+   "value": [
+    "env"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].why",
+   "value": "Planning, financing and designing child care facilities within affordable housing developments."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-we-care].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].title",
+   "value": "All Children Flourishing: Igniting the Greatness of Our Children"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].author",
+   "value": "Howard Glasser and Melissa Lynn Block"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].cite",
+   "value": "Glasser, H., & Block, M. L. (2008). All children flourishing: Igniting the greatness of our children. Nurtured Heart Publications."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].source",
+   "value": "Howard Glasser and Melissa Lynn Block, Nurtured Heart Publications, 2008"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].year",
+   "value": "2008"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].url",
+   "value": "https://search.worldcat.org/search?q=all+children+flourishing+glasser"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].supports",
+   "value": "The Nurtured Heart Approach for families"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].areas",
+   "value": [
+    "fam",
+    "lang"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].why",
+   "value": "The Nurtured Heart Approach written for parents."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-all-children-flourishing].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].author",
+   "value": "California Collaborative on the Social and Emotional Foundations for Early Learning (CA CSEFEL)"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].cite",
+   "value": "California Collaborative on the Social and Emotional Foundations for Early Learning. (2021). The California Teaching Pyramid framework: Promoting the social-emotional competence of young children [Training materials]."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].source",
+   "value": "CA CSEFEL, 2021"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].year",
+   "value": "2021"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].url",
+   "value": "https://cainclusion.org/teachingpyramid/about/"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].supports",
+   "value": "Social and emotional competence of young children"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].areas",
+   "value": [
+    "lang",
+    "team"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].why",
+   "value": "California's training materials for the Teaching Pyramid, a framework for promoting children's social and emotional competence."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-the-california-teaching-pyramid-framework].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].author",
+   "value": "National Association for the Education of Young Children"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].cite",
+   "value": "National Association for the Education of Young Children. Self-study kit for program quality improvement through NAEYC early childhood program accreditation."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].source",
+   "value": "NAEYC"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].url",
+   "value": "https://search.worldcat.org/search?q=naeyc+self-study+kit+program+quality+improvement+accreditation"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].supports",
+   "value": "Program self-study toward NAEYC accreditation"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].areas",
+   "value": [
+    "refl",
+    "team"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].why",
+   "value": "NAEYC's kit for a program's self-study toward accreditation."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].check",
+   "value": false
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].confirmed",
+   "value": "2026-11-05"
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].note",
+   "value": null,
+   "expect": "Details not yet checked against the title page."
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-shelf-self-study-kit-for-program-quality-improvement-thr].note",
+   "value": "Year not yet confirmed."
+  }
+ ]
+}

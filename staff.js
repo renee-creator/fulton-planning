@@ -1214,6 +1214,7 @@ module.exports = function staffModule(o) {
     s31IndoorPiazza: ['code:once/s31-indoor-piazza.json', 'Movement and risky play leave the indoor piazza, November 5, 2026'],
     s32Identity: ['code:once/s32-identity-of-self.json', 'Identity of self card, photo people and worn book puppets, November 5, 2026'],
     s33OurLibrary: ['code:once/s33-our-library.json', 'Books on our own shelves marked In our library, with the books our PD modules cite and the rest of our shelf added to the Readings library, November 5, 2026'],
+    s34ShelfChecks: ['code:once/s34-shelf-checks.json', 'Eleven books on our shelf checked against catalog records, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
