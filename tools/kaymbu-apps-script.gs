@@ -173,7 +173,133 @@ function doPost(e) {
     if (!inFolder) return reply_({ error: 'That file is not a TREE photo' });
     return reply_({ data: Utilities.base64Encode(file.getBlob().getBytes()), type: file.getMimeType() });
   }
+  // video clips, read by TREE in pieces, their Drive thumbnail, and their sharing for signed-in school accounts
+  if (/^video-/.test(String(body.op || ''))) return reply_(videoOp_(body));
   return reply_({ error: 'Unknown request' });
+}
+
+/*
+  Video clips for observations.
+  An educator records a clip of up to three minutes on the class phone and either drops it in the Video folder of this
+  account's Drive, named with the class and their first name, such as North Ann, or emails it to the TREE address with
+  the class and their first name in the subject, the way a Kaymbu moment is sent. An email can carry the clip as an
+  attachment or hold a Drive link to it. Every ten minutes this script finds the new ones, saves an emailed clip into
+  the Video folder, lets anyone signed in to a school Google account watch the file from its link, and tells TREE
+  about it. TREE then reads the clip and leaves the educator a draft observation. The clip itself stays here in Drive.
+  A clip is told to TREE once, kept in the script's own list, and its Drive description says when it was sent.
+
+  Setup, once, after the photos web app above
+  1. Paste this whole file over the old one and save.
+  2. Choose Deploy, then Manage deployments, the pencil, New version, Deploy. The address does not change.
+  3. Choose setupVideoClips in the toolbar and press Run, and allow the access Google asks for. It makes the Video
+     folder, named in the log, and sets the ten minute check.
+  4. In TREE, Settings, turn on Video clips.
+*/
+const VIDEO_FOLDER = 'Video';
+const VIDEO_TYPES = /^video\/(mp4|quicktime|x-m4v|webm|3gpp|mpeg|x-msvideo)$/i;
+const VIDEO_NAMES = /\.(mp4|mov|m4v|webm|3gp|mpeg|mpg|avi)$/i;
+const VIDEO_PIECE = 4 * 1024 * 1024;
+
+function setupVideoClips() {
+  for (const t of ScriptApp.getProjectTriggers()) if (t.getHandlerFunction() === 'checkVideoClips') ScriptApp.deleteTrigger(t);
+  ScriptApp.newTrigger('checkVideoClips').timeBased().everyMinutes(10).create();
+  const folder = videoFolder_();
+  Logger.log('The Video folder is ' + folder.getName() + ', id ' + folder.getId() + '. Clips are checked every ten minutes.');
+  checkVideoClips();
+}
+
+function videoFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('videoFolder');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  const found = DriveApp.getFoldersByName(VIDEO_FOLDER);
+  const folder = found.hasNext() ? found.next() : DriveApp.createFolder(VIDEO_FOLDER);
+  props.setProperty('videoFolder', folder.getId());
+  return folder;
+}
+
+function isVideoFile_(file) { return VIDEO_TYPES.test(file.getMimeType() || '') || VIDEO_NAMES.test(file.getName() || ''); }
+
+// anyone signed in to a school Google account can watch the clip from its link. Nothing is made public.
+function shareVideo_(file) {
+  try { file.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW); return true; }
+  catch (e) { Logger.log('The clip ' + file.getName() + ' could not be shared with the school domain. ' + e); return false; }
+}
+
+// tells TREE about one clip. Answers true when TREE kept it, so it is never told twice.
+function postVideo_(file, by, subject) {
+  const url = TREE_SERVER.replace(/\/inbound\/kaymbu$/, '/inbound/video');
+  const payload = { key: TREE_KEY, fileId: file.getId(), name: file.getName(), mimeType: file.getMimeType(), size: file.getSize(), by: by || '', subject: subject || '', createdAt: file.getDateCreated().toISOString() };
+  try {
+    const res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { 'X-Tree-Key': TREE_KEY }, payload: JSON.stringify(payload) });
+    const code = res.getResponseCode();
+    console.log('Clip ' + file.getName() + ', TREE answered ' + code + ', ' + res.getContentText().slice(0, 200));
+    // 200 kept it, 400 means TREE will never take it (not a video, or too large), so neither is sent again
+    return code === 200 || code === 400;
+  } catch (e) { console.log('Clip ' + file.getName() + ', TREE did not answer in time, trying again next check'); return false; }
+}
+
+function checkVideoClips() {
+  const props = PropertiesService.getScriptProperties();
+  let done = []; try { done = JSON.parse(props.getProperty('videoDone') || '[]'); } catch (e) {}
+  const folder = videoFolder_();
+  const stamp = Utilities.formatDate(new Date(), 'America/Los_Angeles', 'MMMM d, yyyy h:mm a');
+  const sent = (file, by, subject) => { if (done.indexOf(file.getId()) >= 0) return; shareVideo_(file);
+    if (postVideo_(file, by, subject)) { done.push(file.getId()); try { file.setDescription('Sent to TREE ' + stamp); } catch (e) {} } };
+  // clips dropped in the Video folder. The file's name carries the class and the educator's first name.
+  const files = folder.getFiles();
+  while (files.hasNext()) { const f = files.next(); if (isVideoFile_(f)) sent(f, '', f.getName().replace(/\.[a-z0-9]+$/i, '')); }
+  // clips emailed to the TREE address, as an attachment or as a Drive link, with the class and the educator's first name in the subject
+  const label = GmailApp.getUserLabelByName('TREE clip kept') || GmailApp.createLabel('TREE clip kept');
+  const threads = GmailApp.search('to:' + TREE_ADDRESS + ' newer_than:7d -from:kaymbu.com -label:"TREE clip kept" {has:attachment "drive.google.com"}', 0, 30);
+  for (const thread of threads) {
+    let all = true, any = false;
+    for (const msg of thread.getMessages()) {
+      const from = msg.getFrom() || '', subject = msg.getSubject() || '';
+      const by = from.replace(/<[^>]*>/, '').trim().replace(/^"|"$/g, '').split(/\s+/)[0] || from.replace(/^.*<|>.*$/g, '').split('@')[0];
+      for (const a of msg.getAttachments({ includeInlineImages: false })) {
+        if (!(VIDEO_TYPES.test(a.getContentType() || '') || VIDEO_NAMES.test(a.getName() || ''))) continue;
+        any = true;
+        // the attachment is kept in the Video folder, so the clip has one home in Drive
+        const same = folder.getFilesByName(a.getName()); let file = null;
+        while (same.hasNext()) { const f = same.next(); if (f.getSize() === a.getBytes().length) file = f; }
+        if (!file) file = folder.createFile(a.copyBlob().setName(a.getName()));
+        if (done.indexOf(file.getId()) < 0) { sent(file, by, subject); if (done.indexOf(file.getId()) < 0) all = false; }
+      }
+      const links = (msg.getPlainBody() + ' ' + msg.getBody()).match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([A-Za-z0-9_-]{10,})/g) || [];
+      const ids = []; links.forEach(l => { const id = l.replace(/^.*(?:\/d\/|id=)/, ''); if (ids.indexOf(id) < 0) ids.push(id); });
+      for (const id of ids) {
+        let file; try { file = DriveApp.getFileById(id); } catch (e) { continue; }
+        if (!isVideoFile_(file)) continue;
+        any = true;
+        if (done.indexOf(id) < 0) { sent(file, by, subject); if (done.indexOf(id) < 0) all = false; }
+      }
+    }
+    if (any && all) thread.addLabel(label);
+  }
+  props.setProperty('videoDone', JSON.stringify(done.slice(-500)));
+}
+
+// TREE asks for a clip's bytes in pieces of 4 MB through Drive's own download, since a whole clip is larger than a script
+// may hold at once. It also asks for the Drive thumbnail when no still frame can be taken, and for the sharing to be set again.
+function videoOp_(body) {
+  let file; try { file = DriveApp.getFileById(String(body.id || '')); } catch (x) { return { error: 'That clip is not in Drive' }; }
+  if (!isVideoFile_(file)) return { error: 'That file is not a video' };
+  if (body.op === 'video-info') return { id: file.getId(), name: file.getName(), type: file.getMimeType(), size: file.getSize(), parts: Math.ceil(file.getSize() / VIDEO_PIECE) };
+  if (body.op === 'video-share') return { ok: shareVideo_(file) };
+  if (body.op === 'video-thumb') { const t = file.getThumbnail(); if (!t) return { error: 'Drive has no thumbnail for this clip yet' }; return { data: Utilities.base64Encode(t.getBytes()), type: t.getContentType() }; }
+  if (body.op === 'video-get') {
+    const size = file.getSize(), part = Math.max(0, Math.floor(Number(body.part) || 0)), from = part * VIDEO_PIECE;
+    if (from >= size) return { error: 'That piece is past the end of the clip' };
+    const to = Math.min(size, from + VIDEO_PIECE) - 1;
+    const res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(file.getId()) + '?alt=media&supportsAllDrives=true', {
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken(), Range: 'bytes=' + from + '-' + to }, muteHttpExceptions: true });
+    const code = res.getResponseCode();
+    if (code !== 200 && code !== 206) return { error: 'Drive answered ' + code + ' for the clip' };
+    const bytes = res.getContent();
+    return { part, parts: Math.ceil(size / VIDEO_PIECE), size, type: file.getMimeType(), name: file.getName(), data: Utilities.base64Encode(code === 206 ? bytes : bytes.slice(from, to + 1)) };
+  }
+  return { error: 'Unknown video request' };
 }
 
 /*

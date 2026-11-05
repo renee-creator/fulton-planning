@@ -73,6 +73,10 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 #combpanel .cbrow img,#combpanel .cbnone{width:56px;height:56px;object-fit:cover;border-radius:6px;background:var(--line);display:block}
 #combpanel .cbtwo{display:grid;grid-template-columns:1fr 1fr;gap:10px}#combpanel ul{margin:6px 0 10px;padding-left:20px}#combpanel li{margin:3px 0}
 .combshade{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:71}
+#clipsheet{position:fixed;z-index:72;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 32px));background:var(--card,#fff);box-shadow:var(--shadow);border-radius:12px;padding:12px 14px}
+#clipsheet iframe{display:block;width:100%;aspect-ratio:16/9;max-height:70vh;border:0;border-radius:8px;background:#000}
+#clipsheet .cliptop{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+@media (max-width:760px){#clipsheet{left:0;top:auto;bottom:0;transform:none;width:100vw;border-radius:12px 12px 0 0}}
 @media (max-width:760px){#combpanel{left:0;top:auto;bottom:0;transform:none;width:100vw;max-height:88vh;border-radius:12px 12px 0 0}#combpanel .cbtwo{grid-template-columns:1fr}}
 #proofpanel{position:fixed;z-index:130;right:16px;top:120px;width:min(420px,calc(100vw - 32px));max-height:min(70vh,640px);overflow:auto;box-shadow:var(--shadow);border-radius:12px}#proofpanel .proof{margin:0}@media (max-width:640px){#proofpanel{top:auto;bottom:0;right:0;width:100vw;max-height:60vh;border-radius:12px 12px 0 0}}.proofhl{outline:3px solid var(--marigold);outline-offset:2px}.proof{border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:10px 12px;margin-top:10px;display:grid;gap:8px}.proofrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.proof del{background:var(--clay-soft);color:var(--clay)}.proof ins{background:var(--moss-soft);color:var(--moss);text-decoration:none;font-weight:700}.pill,.chip{min-height:34px}@media (pointer:coarse){.pill,.chip{min-height:40px}}
 .pill[aria-pressed="true"]{background:var(--moss);border-color:var(--moss);color:var(--paper)}
@@ -1145,6 +1149,7 @@ async function boot(){
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{noticesSeen=true;const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain();else{try{evSync()}catch(e){}}},()=>{});
     db.collection("drafts").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;m.set(d.id,v)}});drafts=m;if((view==="moments"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("clips").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;m.set(d.id,v)}});clips=m;if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("lens").onSnapshot(snap=>{let m={};snap.docs.forEach(d=>{if(d.id==="passages"){const v=d.data();if(v&&typeof v==="object")m=v}});lensPassages=m;if(view==="lens"&&!lensBusy&&!lensReadingNow&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     draftBoot();
@@ -4262,6 +4267,29 @@ document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#nf
    Observations and on Today. It leaves the drafts only when it is kept as an observation, or thrown away on purpose. Every
    photo waiting after it in the same choosing belongs to the same draft, so they come back together. */
 let drafts=new Map(),sdT=null;
+/* ---------- Video clips ----------
+   A clip recorded on the class phone and dropped in the Video folder of the TREE Drive, or emailed to the TREE address,
+   is read once by Google's Gemini API and comes back as a draft observation with the children's words, what they did,
+   two or three stills and the clip to watch. The clip stays in Drive and plays from there, inside TREE, for anyone
+   signed in to a school Google account. The director turns the feature on in Settings. Clips never reach prints,
+   slides, newsletters, the display or the family page. */
+let clips=new Map();
+const clipsOn=()=>!!(PROGRAM_DOC&&PROGRAM_DOC.videoClipsOn);
+const CLIP_FILE=/^[A-Za-z0-9_-]{10,}$/;
+// a Drive file id, or a Drive link with the id inside it
+function clipFileId(v){v=String(v||"").trim();if(CLIP_FILE.test(v))return v;const m=v.match(/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{10,})/);return m?m[1]:""}
+const clipBtn=(n,cls)=>n&&n.clip&&n.clip.fileId&&clipsOn()?`<button class="${cls||"linkbtn"}" type="button" data-clipwatch="${esc(n.clip.fileId)}" data-clipname="${esc(n.clip.name||"")}">Watch the clip</button>`:"";
+function clipSheet(fileId,name){const id=clipFileId(fileId);if(!id)return;clipClose();
+  const sh=document.createElement("div");sh.className="combshade";sh.id="clipshade";sh.addEventListener("click",clipClose);document.body.appendChild(sh);
+  const d=document.createElement("div");d.id="clipsheet";d.setAttribute("role","dialog");d.setAttribute("aria-label","Watch the clip");
+  d.innerHTML=`<div class="cliptop"><b>${esc(name||"The clip")}</b><button class="btn small ghost" type="button" id="clipclose">Close</button></div><iframe src="https://drive.google.com/file/d/${esc(id)}/preview" allow="autoplay; fullscreen" allowfullscreen title="${esc(name||"The clip")}"></iframe><div class="cnt" style="margin-top:6px">Plays from the school's Drive for signed-in school accounts.</div>`;
+  document.body.appendChild(d);d.querySelector("#clipclose").addEventListener("click",clipClose)}
+function clipClose(){for(const id of ["clipshade","clipsheet"]){const el=document.getElementById(id);if(el)el.remove()}}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-clipwatch]");if(!t)return;e.preventDefault();e.stopPropagation();clipSheet(t.dataset.clipwatch,t.dataset.clipname)},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElementById("clipsheet"))clipClose()});
+// the line under an observation form or card that came from a clip, with anything TREE wants the educator to know about it
+function clipLineHtml(n){if(!n||!n.clip||!n.clip.fileId)return"";const c=n.clip;
+  return `<div class="cnt clipline" style="margin:4px 0 8px">From the clip ${esc(c.name||"")}${clipsOn()?" "+clipBtn(n):""}${c.error?`<div class="hint warnline" style="margin-top:4px">${esc(c.error)}</div>`:""}${c.note?`<div class="muted" style="margin-top:2px">${esc(c.note)}</div>`:""}</div>`}
 const draftIsMine=d=>!!d&&!!me()&&String(d.by||"").toLowerCase()===String(whoAmI()||"").toLowerCase();
 function sdClean(x){const c=jclone(Object.assign({},x,{pick:undefined,siblings:undefined,restored:undefined}));if(c&&c.photo){delete c.photo.status;delete c.photo.error;delete c.photo.data}return c}
 function serverDraftSoon(){clearTimeout(sdT);sdT=setTimeout(serverDraftNow,1200)}
@@ -4297,8 +4325,8 @@ function draftCardHtml(d,dir){const f=d.form||{},n=1+(f.siblings||[]).length+(d.
   const words=String(f.noticed||"").trim();const img=f.photo&&f.photo.id?photoThumb(f):"";
   return `<div class="origin" style="display:flex;gap:12px;align-items:center">${img?`<img src="${esc(img)}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none">`:""}
     <div style="flex:1;min-width:0"><div>${words?esc(words.length>120?words.slice(0,120)+"…":words):`<span class="muted">No words written yet</span>`}</div>
-    <div class="cnt">${d.editOf?"Changes to a kept observation, ":""}${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
-    <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button><button class="linkbtn" data-draftdel="${esc(d.id)}">Delete</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
+    <div class="cnt">${d.editOf?"Changes to a kept observation, ":""}${f.clip?"From a video clip, ":""}${dir&&!mine?esc(d.by||"")+", ":""}started ${esc(shortDate(d.startedAt||d.updatedAt||Date.now()))}${n>1?`, ${n} photos`:""}</div></div>
+    <span class="actions" style="margin:0;flex:none">${mine?`<button class="btn small" data-draftopen="${esc(d.id)}">Finish it</button>`:""}${clipBtn(f)}${mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Delete</button>`:""}${dir&&!mine?`<button class="linkbtn" data-draftdel="${esc(d.id)}">Remove</button>`:""}</span></div>`}
 /* ---------- Words kept as drafts in the records ----------
    A box whose words reach the records only when a button is pressed, such as Start a project, Final remarks on Today,
    a note to families or a book suggestion, keeps what is typed in the person's own draft record as they type. Coming back
@@ -4759,7 +4787,7 @@ function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.tr
   return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
     <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}${view==="today"?sortLinesHtml(n):""}</div></div>
-    <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
+    <span class="actions" style="margin:0;flex:none"><button class="linkbtn" data-mopen="${esc(n.id)}">Open</button>${clipBtn(n)}</span></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first, with Show all.
 let todayAll=false;
 const WAIT_KIND=w=>/^Waiting for your review, /.test(w.t)?["review","plans waiting for your review"]:w.t==="Final remarks still to write"?["remarks","final remarks to write"]:w.t==="Check a copied photo"?["photo","copied photos to check"]:w.t==="Tag the children on a Kaymbu observation"?["kaymbu","Kaymbu observations to tag"]:w.t==="Who shared this from Kaymbu?"?["kby","Kaymbu emails with no educator named"]:w.t==="Just shared from Kaymbu"?["kmail","Kaymbu emails with photos filed in earlier weeks"]:w.t==="Check who is in a Kaymbu photo"?["kaymbuwho","Kaymbu photos to check"]:w.t==="Might belong in a thread"?["tsuggest","observations that might belong in a thread"]:/^Finish your/.test(w.t)?["finish","plans to finish"]:/^Conference with/.test(w.t)?["conf","family conferences coming up"]:/ turns three on /.test(w.t)?["three","children turning three soon"]:null;
@@ -8086,7 +8114,8 @@ function noticeFormCard(){
       :ph?`<div class="nf-photo"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="The photo kept with this observation"></a></div>${photoStatusHtml(n)}`
       :editing?`<div class="actions" style="margin:0 0 10px">${addBtn}<span class="cnt">This observation has no photo yet.</span></div>`:`<label class="nf-photobtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Take or add a photo</b><small>A sheet of children's words, a drawing, or the scene itself</small></span><input type="file" id="nf-photo" accept="image/*" multiple hidden></label>
         <details class="nfwhat"><summary class="cnt">What is an observation?</summary><div class="cnt" style="margin-top:4px">An observation is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
-    <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
+    ${clipLineHtml(n)}
+    <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${n.clip?"The children's words and what they did, from the clip. Trim it to what matters.":ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. A question it raises, or a note for the team">${esc(n.wonder)}</textarea></label>
     <div class="actions" style="margin-top:2px;flex-wrap:wrap" role="group" aria-label="Class"><span class="cnt">Class</span>${CLASSROOMS.map(r=>`<label class="radio" style="display:inline-flex"><input type="checkbox" data-nfroomck="${esc(r)}" ${obsRoomsChosen(n).includes(r)?"checked":""}><span>${esc(r)}</span></label>`).join("")}</div>
     <div class="fld-label" id="nf-kids">${kidsAreaHtml(n)}</div>
@@ -8220,7 +8249,7 @@ function noticeCard(n){
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}${noticeAttachHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
-    <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
+    <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${clipBtn(n)}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
       ${moreMenu(`${VIEW_AS?"":`<button class="linkbtn" data-nwplan="${esc(n.id)}">Start a plan</button>`}${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button>${canRemoveObs(n)?`<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`:""}`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
@@ -15682,6 +15711,17 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-keepsave],
   if(d.keepno){keepAsk={};renderMain();return}
   if(d.keepyes){const sel=document.querySelector(`[data-keepfor="${CSS.escape(d.keepyes)}"]`);const n=+(sel&&sel.value||1);keepCall("/api/keeping/keep",Object.assign(it(d.keepyes),{years:n}),`Kept ${n} more year${n>1?"s":""}. Today asks again then.`);return}
   if(d.keeprmyes){keepCall("/api/keeping/remove",Object.assign(it(d.keeprmyes),{sure:true}),"Removed. The removal is noted in Settings, Keeping records.");return}});
+// Video clips, the director's switch. Off to start. Clips that arrive while it is off wait, and are read when it turns on.
+function videoClipsHtml(){if(!isDirector())return"";const on=clipsOn(),st=(window.FP_CLIPS&&window.FP_CLIPS())||null;const all=[...clips.values()];
+  const waiting=all.filter(x=>x.status==="waiting"||x.status==="reading").length,done=all.filter(x=>x.status==="done").length,failed=all.filter(x=>x.status==="failed").length;
+  const recent=all.sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,5);
+  const word={waiting:"waiting",reading:"being read",done:"read",failed:"could not be read"};
+  return `<section class="card" id="clips-card"><div class="lbl">Video clips</div><div class="hint">An educator records a clip of up to three minutes on the class phone and drops it in the Video folder of the TREE Drive, or emails it to the TREE address, with the class and their first name in the file name or the subject, such as North Ann. TREE reads the clip once with Google's Gemini API and leaves the educator a draft observation with the children's exact words, what they did, two or three stills and Watch the clip. The clip stays in Drive. Clips never reach prints, slides, newsletters, the display or the family page.</div>
+    <div class="prow"><div><b>Video clips</b><div class="cnt">${on?"On. Clips are read as they arrive.":"Off. Clips that arrive wait here until it is on."}${st&&on&&!st.key?" GEMINI_API_KEY is not set on Render, so clips wait.":""}${st&&on&&!st.drive?" DRIVE_PHOTOS_URL is not set on Render, so clips cannot be fetched.":""}${st&&on&&st.key&&st.drive?` Read with ${esc(st.model||"")}${st.ffmpeg?"":", without ffmpeg, so stills come from the Drive thumbnail"}.`:""}</div></div>
+      <div class="seg" role="group" aria-label="Video clips"><button data-videoclips="1" aria-pressed="${on}">On</button><button data-videoclips="0" aria-pressed="${!on}">Off</button></div></div>
+    ${all.length?`<div class="cnt">${waiting} waiting, ${done} read, ${failed} could not be read.</div><div style="display:grid;gap:4px;margin-top:6px">${recent.map(x=>`<div class="cnt">${esc(x.name||x.fileId)}, ${esc(word[x.status]||x.status)}${x.educator?", for "+esc(x.educator):""}${x.seconds?", "+Math.round(x.seconds)+" seconds":""}${x.error?". "+esc(x.error):""} ${clipsOn()?`<button class="linkbtn" data-clipwatch="${esc(x.fileId)}" data-clipname="${esc(x.name||"")}">Watch</button>`:""}</div>`).join("")}</div>`:`<div class="cnt">No clips have arrived yet.</div>`}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-videoclips]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const on=t.dataset.videoclips==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoClipsOn:on,videoClipsAt:Date.now()});saveProgram();renderSettings();toast(on?"Video clips are on. Clips that waited are read now.":"Video clips are off. Clips that arrive wait.")});
 let progTimer=null;
 function saveProgram(){
   // what Program settings keeps that this page does not change, such as the Where it happens list it kept before the
@@ -15970,6 +16010,7 @@ function renderSettings(){
   <section class="card"><div class="lbl">Proofreading</div><div class="hint">With this on, pressing Save or Send on a plan, project, thread, team inquiry, story or conference form also proofreads it first. Observations save straight away. You have it already, so you can try it before educators do. Everyone keeps the Proofread button at the bottom of pages with writing either way.</div>
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
+  ${videoClipsHtml()}
   <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
     <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
     <div class="actions"><input type="text" id="c-new" placeholder="A new class" style="width:200px"><button class="btn small" id="c-add">Add a class</button></div>${oneListsNote()}</section>

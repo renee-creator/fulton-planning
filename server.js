@@ -34,7 +34,9 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips'];
+// a clip record, clips/<id>.json, is written by the server alone as a video clip arrives and is read. The educator it is for and the director receive it.
+const OWN_KINDS = ['drafts', 'clips'];
 // a record's path, kind/id.json, for any kind
 const KIND_RE = new RegExp('^(' + KINDS.join('|') + ')\\/([^/]+)\\.json$');
 // records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
@@ -491,7 +493,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -513,6 +515,9 @@ async function mailText(to, subject, body) {
 const familyPage = require('./family.js')({ mailText, community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => { queueThreadSuggest(id); placeSoon(id); queueSort(id, 'kaymbu'); } });
+// video clips from the Video folder or the TREE address become draft observations, read once by Google's Gemini API, when the director has turned Video clips on
+const videoClips = require('./video.js')({ store, log, drive: photosDrive, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), accountFor: n => accountFor(n), readSubject: s => kaymbuInbox.readSubject(s), photoSize: b => kaymbuInbox.size(b), isDirector: n => isDirector(n),
+  directors: () => [...new Set([...roles.directors, ...accounts.list.filter(a => a.director && !isFormerAccount(a)).map(a => a.name), ...TEACHERS.map(t => t.name).filter(n => DIRECTORS.includes(n.toLowerCase()))].map(String).filter(Boolean))] });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -2373,7 +2378,8 @@ async function sizedPhoto(id, buf, w) {
 }
 // an observation still being written is a draft. It is kept in the records as the educator types, so it survives a
 // change of phone, signing out or closing TREE, and only the educator who started it and the director see it.
-const draftSeen = (kind, doc, name, director) => kind !== 'drafts' || director || (!!doc && nameKey(doc.by) === nameKey(name));
+// a draft is the educator's own, and so is a clip record, which names the educator its draft is for. The director receives every one.
+const draftSeen = (kind, doc, name, director) => !OWN_KINDS.includes(kind) || director || (!!doc && (nameKey(doc.by) === nameKey(name) || nameKey(doc.educator) === nameKey(name)));
 /* The records TREE loads when it opens, written out as JSON. Everything but the drafts is the same for every sign-in
    of the same shape, director, kitchen or office, so that part is written out once per shape and kept thirty seconds
    while the records do not change, and only the drafts, which each educator sees their own of, are written per name.
@@ -2383,11 +2389,11 @@ function snapshotText(director, kitchen, office, name) {
   const key = [director ? 'd' : '', kitchen ? 'k' : '', office ? 'o' : ''].join('');
   let c = snapCache.get(key);
   if (!c || c.rev !== rev || Date.now() - c.at > 30000) {
-    const out = {}; for (const k of KINDS) { if (k === 'drafts') continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
+    const out = {}; for (const k of KINDS) { if (OWN_KINDS.includes(k)) continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
     c = { rev, at: Date.now(), text: JSON.stringify(out) }; snapCache.set(key, c);
   }
-  const drafts = {}; for (const [id, r] of store.recs.drafts) if (!r.deleted && (!kitchen || kitchenSees('drafts', id)) && draftSeen('drafts', r.doc, name, director)) drafts[id] = forViewer('drafts', r.doc, director);
-  return c.text.slice(0, -1) + ',"drafts":' + JSON.stringify(drafts) + '}';
+  const own = {}; for (const k of OWN_KINDS) { own[k] = {}; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && draftSeen(k, r.doc, name, director)) own[k][id] = forViewer(k, r.doc, director); }
+  return c.text.slice(0, -1) + ',"drafts":' + JSON.stringify(own.drafts) + ',"clips":' + JSON.stringify(own.clips) + '}';
 }
 // the server's status, in full for the director in Settings, and without any counts on the page anyone can open
 function statusLines() {
@@ -2398,6 +2404,7 @@ function statusLines() {
   ];
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
+  lines.push(videoClips.statusLine());
   lines.push(feedBin.statusLine());
   lines.push(menuIntake.statusLine());
   { const st = storageNow(); lines.push([true, photosDrive.on() ? `Photos kept in Google Drive, ${st.inDrive}. Still in the records, ${st.photos}.` : 'Photos are kept in the records. Google Drive is not set up.']); }
@@ -2707,6 +2714,15 @@ async function handle(req, res) {
     send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE backup ${bundle.manifest.date}.json.gz"`, 'Cache-Control': 'no-store' }, gz);
     return;
   }
+  // a video clip the mailbox script found in the Video folder or the inbox. The script sends its Drive id, never the clip itself.
+  if (path === '/inbound/video') {
+    let b; try { b = await readBody(req, 64 * 1024); } catch (e) { err(req, res, 400, 'The clip notice could not be read.'); return; }
+    const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
+    if (!key || !sameText(cleanKey(b.key), key)) { log('Clip refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
+    if (!store.ready) await loadAll();
+    if (!store.ready) { err(req, res, 503, 'Records are still loading. The clip will be tried again.'); return; }
+    videoClips.handle(b, (status, obj) => json(req, res, status, obj)); return;
+  }
   if (path === '/inbound/feed-order') {
     let b; try { b = await readBody(req, INBOUND_MAX_BYTES); } catch (e) { err(req, res, 400, 'The email could not be read.'); return; }
     const key = cleanKey(process.env.KAYMBU_INBOX_KEY);
@@ -2904,10 +2920,10 @@ async function handle(req, res) {
   if (path === '/api/drdp-levels') { await ensureDrdp(); const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
-  if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, cycleHealth: isDirector(me.name) ? cycleHealthCached() : undefined, photoSizes: sharpLib ? [1200, 1920] : [] }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
+  if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, cycleHealth: isDirector(me.name) ? cycleHealthCached() : undefined, photoSizes: sharpLib ? [1200, 1920] : [], clips: isDirector(me.name) ? videoClips.status() : undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (c.kind === 'drafts' && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (OWN_KINDS.includes(c.kind) && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -2916,6 +2932,7 @@ async function handle(req, res) {
     let { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     if (kind === 'lens') { err(req, res, 403, 'The lens passages are kept by the reading and changed from the Lens page.'); return; }
+    if (kind === 'clips') { err(req, res, 403, 'A clip record is written by the server as the clip arrives and is read.'); return; }
     // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
     const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
     // every save from a device carries a save id. A save already here is never made twice, and its answer says whether
@@ -3111,6 +3128,8 @@ async function handle(req, res) {
     if (sid) { sidsWaiting.set(sid, fpath); sidsByPath.set(fpath, [...(sidsByPath.get(fpath) || []), sid]); }
     if (kind === 'plans' && op !== 'delete' && isDirector(me.name)) { const r1 = map.get(id); if (r1 && !r1.deleted) reminders.planReviewed(id, planBefore, r1.doc); }
     if (kind === 'settings' && (id === 'educators' || id === 'main') && onceDone('educatorList')) syncEducators();
+    // turning Video clips on reads the clips that waited while it was off
+    if (kind === 'settings' && id === 'program') videoClips.kick();
     // an observation's words, new or changed, are checked against the threads a little later
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id);

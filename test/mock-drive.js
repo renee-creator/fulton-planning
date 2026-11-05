@@ -14,10 +14,13 @@ function start(opt) {
   const add = (o) => { const id = 'drv' + String(++n).padStart(8, '0') + 'x'; nodes.set(id, Object.assign({ id, trashed: false }, o)); return id; };
   const kids = (pid, folder) => [...nodes.values()].filter(x => x.parent === pid && !!x.folder === folder && !x.trashed);
   const iter = l => { l = l.slice(); return { hasNext: () => l.length > 0, next: () => l.shift() }; };
-  const blob = (bytes, type, name) => ({ bytes: Buffer.from(bytes), type: type || 'application/octet-stream', name: name || '', getBytes() { return this.bytes; }, setName(x) { this.name = x; return this; }, setContentType(t) { this.type = t; return this; }, copyBlob() { return blob(this.bytes, this.type, this.name); }, getDataAsString() { return this.bytes.toString('utf8'); } });
+  const blob = (bytes, type, name) => ({ bytes: Buffer.from(bytes), type: type || 'application/octet-stream', name: name || '', getBytes() { return this.bytes; }, getContentType() { return this.type; }, setName(x) { this.name = x; return this; }, setContentType(t) { this.type = t; return this; }, copyBlob() { return blob(this.bytes, this.type, this.name); }, getDataAsString() { return this.bytes.toString('utf8'); } });
   const isTrashed = id => { for (let x = nodes.get(id); x; x = nodes.get(x.parent)) if (x.trashed) return true; return false; };
   function fileObj(id) { const x = nodes.get(id); return { getId: () => id, getName: () => x.name, getSize: () => x.bytes.length, getMimeType: () => x.type, isTrashed: () => isTrashed(id), setTrashed: t => { x.trashed = !!t; },
     getBlob: () => blob(x.bytes, x.type, x.name), getParents: () => iter(x.parent ? [folderObj(x.parent)] : []),
+    // a video clip's created date, Drive thumbnail, sharing and description, as the clip script uses them
+    getDateCreated: () => new Date(x.at || 0), getThumbnail: () => opt.thumb ? blob(opt.thumb, 'image/jpeg', 'thumb.jpg') : null,
+    setSharing: (a, p) => { x.sharing = a + '|' + p; }, setDescription: d => { x.description = d; }, getDescription: () => x.description || '',
     makeCopy: (nm, f) => fileObj(add({ name: nm, parent: f.getId(), bytes: Buffer.from(x.bytes), type: x.type })) }; }
   function folderObj(id) { const x = nodes.get(id); return { getId: () => id, getName: () => x.name, isTrashed: () => isTrashed(id), setTrashed: t => { x.trashed = !!t; },
     getFolders: () => iter(kids(id, true).map(k => folderObj(k.id))), getFiles: () => iter(kids(id, false).map(k => fileObj(k.id))),
@@ -28,7 +31,7 @@ function start(opt) {
     console, Logger: { log: () => {} },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props.get(k) || null, setProperty: (k, v) => props.set(k, v) }) },
     CacheService: { getScriptCache: () => ({ get: k => cache.get(k) || null, put: (k, v) => cache.set(k, v), remove: k => cache.delete(k) }) },
-    DriveApp: { getFolderById: id => { if (!nodes.has(id)) throw new Error('No item with the given ID could be found'); return folderObj(id); }, getFileById: id => { if (!nodes.has(id)) throw new Error('No item with the given ID could be found'); return fileObj(id); },
+    DriveApp: { Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK', ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' }, Permission: { VIEW: 'VIEW' }, getFolderById: id => { if (!nodes.has(id)) throw new Error('No item with the given ID could be found'); return folderObj(id); }, getFileById: id => { if (!nodes.has(id)) throw new Error('No item with the given ID could be found'); return fileObj(id); },
       getFoldersByName: nm => folderObj(root).getFoldersByName(nm), createFolder: nm => folderObj(root).createFolder(nm) },
     Utilities: { base64Decode: s => Buffer.from(String(s), 'base64'), base64Encode: b => Buffer.from(b).toString('base64'), newBlob: (b, t, nm) => blob(b, t, nm), sleep: () => {}, formatDate: () => '' },
     ScriptApp: { getOAuthToken: () => 'token', getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({}) },
@@ -43,6 +46,9 @@ function start(opt) {
         if (!m || Number(m[1]) !== got) return reply(400, 'bad range');
         ss.parts.push(Buffer.from(o.payload)); if (got + o.payload.length < ss.total) return reply(308, '');
         const id = add({ name: ss.name, parent: ss.parent, bytes: Buffer.concat(ss.parts), type: ss.type }); sessions.delete(url); return reply(200, JSON.stringify({ id })); }
+      // Drive's own download of a clip, one range of bytes at a time
+      { const m = url.match(/googleapis\.com\/drive\/v3\/files\/([A-Za-z0-9_-]+)\?alt=media/); if (m && nodes.has(m[1])) { const x = nodes.get(m[1]); const r = String((o.headers || {}).Range || '').match(/bytes=(\d+)-(\d+)/);
+        const bytes = r ? x.bytes.subarray(+r[1], +r[2] + 1) : x.bytes; return { getResponseCode: () => r ? 206 : 200, getContent: () => Array.from(bytes), getContentText: () => '', getAllHeaders: () => ({}) }; } }
       if (/googleapis\.com\/drive\/v3\/files\//.test(url)) return reply(200, '{}');
       return reply(404, 'not in the mock'); } }
   };
@@ -64,6 +70,9 @@ function start(opt) {
       tree: () => [...nodes.values()].filter(x => !x.folder && !isTrashed(x.id)).map(x => pathOf(x.id)).sort(),
       trashed: () => [...nodes.values()].filter(x => x.folder && x.trashed).map(x => pathOf(x.id)),
       file: p => { const x = [...nodes.values()].find(y => !y.folder && !isTrashed(y.id) && pathOf(y.id) === p); return x ? x.bytes : null; },
+      // a clip placed in a Video folder by a test, as the mailbox script would find it. Gives its Drive id.
+      addVideo: (name, bytes, type) => { let v = kids(root, true).find(k => k.name === 'Video'); const vid = v ? v.id : add({ name: 'Video', parent: root, folder: true }); return add({ name, parent: vid, bytes: Buffer.from(bytes), type: type || 'video/mp4', at: Date.now() }); },
+      node: id => nodes.get(id),
       close: () => new Promise(r => server.close(r)) });
   }));
 }
