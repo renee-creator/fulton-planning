@@ -356,6 +356,33 @@ test('the indoor piazza step moves movement lines out and runs once', async () =
   const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s31IndoorPiazza', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
 });
 
+// November 5, 2026. The Identity of self card arrives, and photo people and worn book puppets join the cards they belong on.
+test('the identity step adds the card and the new lines once', async () => {
+  const list = require('../once/s32-identity-of-self.json');
+  const card = list.changes.find(c => c.add === 'cards').value;
+  assert.strictEqual(card.id, 'identity-of-self'); assert.strictEqual(card.group, "Children's interests");
+  assert.doesNotMatch(JSON.stringify(list.changes), /[—–;]|\bteacher|\btoddler|\bClaude\b/);
+  // a cards file holding what each change expects to find
+  const cards = [];
+  for (const c of list.changes) {
+    const m = c.set && c.set.match(/^cards\[id=([^\]]+)\]\.(.+)$/); if (!m) continue;
+    let k = cards.find(x => x.id === m[1]); if (!k) { k = { id: m[1], title: m[1], sections: [], connected: [] }; cards.push(k); }
+    const ks = m[2].split('.'); if (ks[0] === 'connected') k.connected = JSON.parse(JSON.stringify(c.expect));
+    else { const i = Number(ks[1]); while (k.sections.length <= i) k.sections.push({ h: 'S' + k.sections.length, style: 'bullets', items: [] }); k.sections[i].items = JSON.parse(JSON.stringify(c.expect)); }
+  }
+  const books = cards.find(x => x.id === 'books') || (cards.push({ id: 'books', title: 'Books', sections: [], connected: [] }), cards[cards.length - 1]);
+  books.sections.push({ h: 'Good to know', style: 'text', text: list.changes.find(c => c.from).from });
+  const h = make(PEOPLE);
+  h.files.set('staff/library/ideabank/cards.json', { doc: { id: 'ideabank-cards', cards, removed: [], sources: [], history: [] }, sha: 'c' });
+  await h.staff.load();
+  assert.notStrictEqual(await h.staff.once.edits('s32Identity', () => false), false);
+  const d = h.staff.dump()['staff/library/ideabank/cards.json'].cards;
+  assert.ok(d.find(x => x.id === 'identity-of-self'), 'card added');
+  assert.match(JSON.stringify(d.find(x => x.id === 'puppets-and-storytelling')), /Photo people, each child's photograph[\s\S]*Identity of self/);
+  assert.match(JSON.stringify(d.find(x => x.id === 'books')), /second life/);
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s32Identity', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+});
+
 // November 4, 2026. The sensory integration training is logged once as a PD day with its hours.
 test('the training step adds the PD day and the hours once', async () => {
   const list = require('../once/s25-sensory-training.json');

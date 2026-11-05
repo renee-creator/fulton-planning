@@ -1,0 +1,529 @@
+{
+ "name": "s32-identity-of-self",
+ "note": "Identity of self card, photo people and worn book puppets, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=puppets-and-storytelling].sections.1.items",
+   "expect": [
+    "A basket of hand puppets of real local animals, such as a goat, a crow, a heron and a hawk, beside a low puppet theater.",
+    "A puppet theater made from a large cardboard box, a table turned on its side or a sheet hung between two chairs.",
+    "Story stones with small drawings or real photos sealed onto them, kept in a cloth bag and pulled out one at a time.",
+    "Story dictation, where a child tells a story, an educator writes every word and the group acts it out on a taped stage at meeting time.",
+    "Stick puppets children make from cardboard, fabric scraps, feathers, leaves and twigs.",
+    "Shadow puppets cut from card and held between a lamp and a sheet or a wall.",
+    "A story basket holding a book and real objects from the story, ready for retelling.",
+    "Finger puppets sewn from felt or made from old glove fingers.",
+    "A tabletop small world of natural materials, blocks and small figures for building a story scene.",
+    "Puppets made from socks, paper bags or wooden spoons with yarn hair.",
+    "Storytelling in the willow dome or the Log yard, where the place becomes part of the story.",
+    "A felt board with pieces children cut themselves.",
+    "A puppet that visits meeting time to wonder aloud about a problem the group is working through.",
+    "Retelling a walk or a garden morning with puppets and things found along the way.",
+    "Black card silhouette puppets on a white screen beside puppets cut from colored transparent film, so children compare solid and colored shadows.",
+    "A limited palette for puppet making, with fabric, paper and yarn in one color family, so a whole cast of characters shares one color.",
+    "Puppet making with materials of many kinds, such as socks, wooden spoons, felt, paper bags, sticks, feathers from our chickens and fabric scraps.",
+    "Puppet tools in a basket, such as brads for joints, dowels, clothespins, tape, a hole punch and low-temp glue guns with an adult.",
+    "A small puppet basket in each class atelier with two puppets and a cloth for a stage.",
+    "Storytelling outdoors in the willow dome with puppets and objects found on the way."
+   ],
+   "value": [
+    "A basket of hand puppets of real local animals, such as a goat, a crow, a heron and a hawk, beside a low puppet theater.",
+    "A puppet theater made from a large cardboard box, a table turned on its side or a sheet hung between two chairs.",
+    "Story stones with small drawings or real photos sealed onto them, kept in a cloth bag and pulled out one at a time.",
+    "Story dictation, where a child tells a story, an educator writes every word and the group acts it out on a taped stage at meeting time.",
+    "Stick puppets children make from cardboard, fabric scraps, feathers, leaves and twigs.",
+    "Shadow puppets cut from card and held between a lamp and a sheet or a wall.",
+    "A story basket holding a book and real objects from the story, ready for retelling.",
+    "Finger puppets sewn from felt or made from old glove fingers.",
+    "A tabletop small world of natural materials, blocks and small figures for building a story scene.",
+    "Puppets made from socks, paper bags or wooden spoons with yarn hair.",
+    "Storytelling in the willow dome or the Log yard, where the place becomes part of the story.",
+    "A felt board with pieces children cut themselves.",
+    "A puppet that visits meeting time to wonder aloud about a problem the group is working through.",
+    "Retelling a walk or a garden morning with puppets and things found along the way.",
+    "Black card silhouette puppets on a white screen beside puppets cut from colored transparent film, so children compare solid and colored shadows.",
+    "A limited palette for puppet making, with fabric, paper and yarn in one color family, so a whole cast of characters shares one color.",
+    "Puppet making with materials of many kinds, such as socks, wooden spoons, felt, paper bags, sticks, feathers from our chickens and fabric scraps.",
+    "Puppet tools in a basket, such as brads for joints, dowels, clothespins, tape, a hole punch and low-temp glue guns with an adult.",
+    "A small puppet basket in each class atelier with two puppets and a cloth for a stage.",
+    "Storytelling outdoors in the willow dome with puppets and objects found on the way.",
+    "Photo people, each child's photograph laminated and stood up with a binder clip, or glued to a block, so children put themselves and their friends into the story.",
+    "Figures cut from a tattered book past mending, laminated, and stood up with binder clips, so a loved book lives on as puppets.",
+    "A story starter basket of laminated pictures from worn books, pulled out one at a time to begin a tale."
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=puppets-and-storytelling].sections.8.items",
+   "expect": [
+    "Begin with a single puppet at meeting time that wonders aloud and listens to children.",
+    "For twos and threes, offer soft animal puppets of real local animals to hold, hug and wave.",
+    "Add a basket of puppets and a simple theater for open play.",
+    "Offer story dictation and acting on a steady rhythm so every child who wants a turn gets one.",
+    "Make story stones with children from smooth stones and their own photos or drawings.",
+    "Invite children to design and build their own puppets over several days.",
+    "Explore shadow puppets on a sheet, with children moving the light to change the size of the shadow.",
+    "Add story baskets for familiar books, with real objects in each one.",
+    "Retell a book many times and invite children to move the story to our own site.",
+    "Use a taped stage on the floor for acting out stories, with the audience sitting around its edges.",
+    "Watch silhouette films made with cut paper figures, then try jointed shadow puppets held together with paper fasteners.",
+    "Record children's stories and play them back as audio stories in the reading nook.",
+    "Invite families to share stories told in their homes and in their home languages.",
+    "Plan a puppet show for another class or for families, with children making the tickets and programs.",
+    "Make black silhouette and colored film puppets and compare their shadows.",
+    "Build a puppet cast in one color family.",
+    "Model moving a puppet slowly and giving it a quiet voice, then hand it over.",
+    "For fours, fives and TK, write a program and tickets for a puppet show.",
+    "Collect dictated stories into a class book that children illustrate and keep in the reading nook."
+   ],
+   "value": [
+    "Begin with a single puppet at meeting time that wonders aloud and listens to children.",
+    "For twos and threes, offer soft animal puppets of real local animals to hold, hug and wave.",
+    "Add a basket of puppets and a simple theater for open play.",
+    "Offer story dictation and acting on a steady rhythm so every child who wants a turn gets one.",
+    "Make story stones with children from smooth stones and their own photos or drawings.",
+    "Invite children to design and build their own puppets over several days.",
+    "Explore shadow puppets on a sheet, with children moving the light to change the size of the shadow.",
+    "Add story baskets for familiar books, with real objects in each one.",
+    "Retell a book many times and invite children to move the story to our own site.",
+    "Use a taped stage on the floor for acting out stories, with the audience sitting around its edges.",
+    "Watch silhouette films made with cut paper figures, then try jointed shadow puppets held together with paper fasteners.",
+    "Record children's stories and play them back as audio stories in the reading nook.",
+    "Invite families to share stories told in their homes and in their home languages.",
+    "Plan a puppet show for another class or for families, with children making the tickets and programs.",
+    "Make black silhouette and colored film puppets and compare their shadows.",
+    "Build a puppet cast in one color family.",
+    "Model moving a puppet slowly and giving it a quiet voice, then hand it over.",
+    "For fours, fives and TK, write a program and tickets for a puppet show.",
+    "Collect dictated stories into a class book that children illustrate and keep in the reading nook.",
+    "Make photo people of the class and watch who children choose to put in the story.",
+    "When a loved book is past mending, cut and laminate its pictures with the children for puppets and story starters."
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=blocks].sections.1.items",
+   "expect": [
+    "A full set of hardwood unit blocks on low shelves with outlines showing where each shape lives.",
+    "Large hollow blocks and planks outdoors in the outdoor piazza for building things children can climb into.",
+    "Tree blocks and branch rounds cut from our own fallen limbs, with bark still on.",
+    "Blocks with a basket of people figures, animals from our animal yards and small vehicles.",
+    "Blocks with fabric, scarves and cardboard tubes for roofs, rivers and tunnels.",
+    "Blocks beside real photos of bridges, towers, barns and homes in Sonoma County at children's eye level.",
+    "Clipboards and pencils in the block area for drawing plans and finished builds.",
+    "A work in progress sign so builds can stay overnight and grow the next day.",
+    "Blocks on a mirror or a light table to see builds from new angles.",
+    "Blocks with painter's tape roads and a map on the floor.",
+    "A small set of blocks at a table for a child who wants to build alone.",
+    "Blocks and natural loose parts such as stones, acorns and pinecones to decorate and fill.",
+    "For twos and threes, lighter blocks and baskets for carrying, filling, dumping and lining up.",
+    "Black and white paper with white pencils and black pencils on clipboards in the block area, for drawing builds.",
+    "Blocks on surfaces of many kinds, such as a wooden floor, a rug, a mirror, a black cloth and grass.",
+    "A small set of painted blocks in only red, yellow and blue, beside natural wooden blocks.",
+    "Colored transparent blocks on the light table and in a sunny window, so light mixes their colors.",
+    "Blocks in each class atelier with photos of structures from our site, such as the willow dome and the art shed.",
+    "For threes and fours, blocks and baskets of figures, with clipboards for building plans.",
+    "For fours, fives and TK, blueprints, graph paper, rulers and tape measures for measuring builds."
+   ],
+   "value": [
+    "A full set of hardwood unit blocks on low shelves with outlines showing where each shape lives.",
+    "Large hollow blocks and planks outdoors in the outdoor piazza for building things children can climb into.",
+    "Tree blocks and branch rounds cut from our own fallen limbs, with bark still on.",
+    "Blocks with a basket of people figures, animals from our animal yards and small vehicles.",
+    "Blocks with fabric, scarves and cardboard tubes for roofs, rivers and tunnels.",
+    "Blocks beside real photos of bridges, towers, barns and homes in Sonoma County at children's eye level.",
+    "Clipboards and pencils in the block area for drawing plans and finished builds.",
+    "A work in progress sign so builds can stay overnight and grow the next day.",
+    "Blocks on a mirror or a light table to see builds from new angles.",
+    "Blocks with painter's tape roads and a map on the floor.",
+    "A small set of blocks at a table for a child who wants to build alone.",
+    "Blocks and natural loose parts such as stones, acorns and pinecones to decorate and fill.",
+    "For twos and threes, lighter blocks and baskets for carrying, filling, dumping and lining up.",
+    "Black and white paper with white pencils and black pencils on clipboards in the block area, for drawing builds.",
+    "Blocks on surfaces of many kinds, such as a wooden floor, a rug, a mirror, a black cloth and grass.",
+    "A small set of painted blocks in only red, yellow and blue, beside natural wooden blocks.",
+    "Colored transparent blocks on the light table and in a sunny window, so light mixes their colors.",
+    "Blocks in each class atelier with photos of structures from our site, such as the willow dome and the art shed.",
+    "For threes and fours, blocks and baskets of figures, with clipboards for building plans.",
+    "For fours, fives and TK, blueprints, graph paper, rulers and tape measures for measuring builds.",
+    "Photo people of the class on blocks, so children build homes and places for themselves and their friends."
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "ses, such as a collage picture book beside the collage tray.",
+   "to": "ses, such as a collage picture book beside the collage tray. A book too worn to mend gets a second life, its pictures cut out, laminated and stood up with binder clips as puppets and story starters."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=puppets-and-storytelling].connected",
+   "expect": [
+    "Books",
+    "Bookmaking",
+    "Light and shadow",
+    "Fabric",
+    "Sewing and embroidery",
+    "Cardboard",
+    "Real objects for dramatic play",
+    "Home and dramatic play area",
+    "Reading nook",
+    "Meeting time",
+    "Monsters and fear",
+    "Faces and feelings",
+    "Book collection",
+    "The Image of the Child lens",
+    "Art of Presence and Language",
+    "Lotte Reiniger on the Artists page, for silhouette films made with jointed cut paper figures.",
+    "Listening for the Story PD module"
+   ],
+   "value": [
+    "Books",
+    "Bookmaking",
+    "Light and shadow",
+    "Fabric",
+    "Sewing and embroidery",
+    "Cardboard",
+    "Real objects for dramatic play",
+    "Home and dramatic play area",
+    "Reading nook",
+    "Meeting time",
+    "Monsters and fear",
+    "Faces and feelings",
+    "Book collection",
+    "The Image of the Child lens",
+    "Art of Presence and Language",
+    "Lotte Reiniger on the Artists page, for silhouette films made with jointed cut paper figures.",
+    "Listening for the Story PD module",
+    "Identity of self"
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=mirrors].connected",
+   "expect": [
+    "Light and shadow",
+    "Light table",
+    "Loose parts",
+    "Blocks",
+    "Pencil",
+    "Faces and feelings",
+    "Our bodies and growing",
+    "Home and dramatic play area",
+    "Block area",
+    "Seeing Ourselves",
+    "The Image of the Child lens",
+    "Monir Shahroudy Farmanfarmaian on the Artists page, for mosaics made from many small pieces of cut mirror.",
+    "Yayoi Kusama on the Artists page, for Infinity Mirror Rooms where mirrors repeat lights without end.",
+    "Seeing Ourselves PD module"
+   ],
+   "value": [
+    "Light and shadow",
+    "Light table",
+    "Loose parts",
+    "Blocks",
+    "Pencil",
+    "Faces and feelings",
+    "Our bodies and growing",
+    "Home and dramatic play area",
+    "Block area",
+    "Seeing Ourselves",
+    "The Image of the Child lens",
+    "Monir Shahroudy Farmanfarmaian on the Artists page, for mosaics made from many small pieces of cut mirror.",
+    "Yayoi Kusama on the Artists page, for Infinity Mirror Rooms where mirrors repeat lights without end.",
+    "Seeing Ourselves PD module",
+    "Identity of self"
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=faces-and-feelings].connected",
+   "expect": [
+    "Mirrors",
+    "Pencil",
+    "Ink and pens",
+    "Oil pastel",
+    "Clay",
+    "Color mixing",
+    "Puppets and storytelling",
+    "Quiet and cozy space",
+    "Family and babies",
+    "Monsters and fear",
+    "Our bodies and growing",
+    "Vincent van Gogh on the Artists page, for painting his own face many times with bold brushstrokes.",
+    "Frida Kahlo on the Artists page, for self-portraits that show her feelings, animals and plants around her.",
+    "Edvard Munch on the Artists page, for The Scream, a face and sky full of a big feeling.",
+    "Seeing Ourselves PD module",
+    "Art of Presence and Language PD module",
+    "The Image of the Child lens",
+    "Book collection",
+    "Beyond Discipline PD module"
+   ],
+   "value": [
+    "Mirrors",
+    "Pencil",
+    "Ink and pens",
+    "Oil pastel",
+    "Clay",
+    "Color mixing",
+    "Puppets and storytelling",
+    "Quiet and cozy space",
+    "Family and babies",
+    "Monsters and fear",
+    "Our bodies and growing",
+    "Vincent van Gogh on the Artists page, for painting his own face many times with bold brushstrokes.",
+    "Frida Kahlo on the Artists page, for self-portraits that show her feelings, animals and plants around her.",
+    "Edvard Munch on the Artists page, for The Scream, a face and sky full of a big feeling.",
+    "Seeing Ourselves PD module",
+    "Art of Presence and Language PD module",
+    "The Image of the Child lens",
+    "Book collection",
+    "Beyond Discipline PD module",
+    "Identity of self"
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=family-and-babies].connected",
+   "expect": [
+    "Home and dramatic play area",
+    "Real objects for dramatic play",
+    "Fabric",
+    "Puppets and storytelling",
+    "Animal yards",
+    "Eggs and chicks",
+    "The goats through the year",
+    "Our bodies and growing",
+    "Faces and feelings",
+    "Song book, for Los Pollitos Dicen, Lavender's Blue and Five Little Ducks",
+    "Mary Cassatt on the Artists page, for paintings of children bathed and held by caregivers.",
+    "Elizabeth Catlett on the Artists page, for sculptures of mothers holding their children.",
+    "Seeing Ourselves",
+    "Development and Anti-Bias PD module",
+    "Families in Partnership PD module"
+   ],
+   "value": [
+    "Home and dramatic play area",
+    "Real objects for dramatic play",
+    "Fabric",
+    "Puppets and storytelling",
+    "Animal yards",
+    "Eggs and chicks",
+    "The goats through the year",
+    "Our bodies and growing",
+    "Faces and feelings",
+    "Song book, for Los Pollitos Dicen, Lavender's Blue and Five Little Ducks",
+    "Mary Cassatt on the Artists page, for paintings of children bathed and held by caregivers.",
+    "Elizabeth Catlett on the Artists page, for sculptures of mothers holding their children.",
+    "Seeing Ourselves",
+    "Development and Anti-Bias PD module",
+    "Families in Partnership PD module",
+    "Identity of self"
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=blocks].connected",
+   "expect": [
+    "Block area",
+    "Loose parts",
+    "Cardboard",
+    "Ramps and moving things",
+    "Building tall",
+    "Knocking down and crashing",
+    "Castles, houses and homes",
+    "Maps and journeys",
+    "Clipboards everywhere",
+    "Observation to Project",
+    "The Study of Play PD module"
+   ],
+   "value": [
+    "Block area",
+    "Loose parts",
+    "Cardboard",
+    "Ramps and moving things",
+    "Building tall",
+    "Knocking down and crashing",
+    "Castles, houses and homes",
+    "Maps and journeys",
+    "Clipboards everywhere",
+    "Observation to Project",
+    "The Study of Play PD module",
+    "Identity of self"
+   ]
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "add": "cards",
+   "value": {
+    "id": "identity-of-self",
+    "type": "interest",
+    "group": "Children's interests",
+    "title": "Identity of self",
+    "summary": "Ways to follow children who say \"that's me,\" want their name written, notice who looks like them and tell who is in their family.",
+    "sections": [
+     {
+      "h": "What it might look like",
+      "style": "text",
+      "text": "Children find themselves in every photo and say \"that's me.\" They ask whose cubby, whose name, whose shoes. They want their name written on everything they make and begin to write it themselves. They notice skin, hair, eyes and size, and ask who looks like them. They tell long stories about their family, their pets and their house, and carry a photo people figure of themselves into the blocks, the small world and the puppet theater."
+     },
+     {
+      "h": "Invitations",
+      "style": "bullets",
+      "items": [
+       "Photo people, each child's photograph laminated and stood up with a binder clip, or glued to a block, kept in a basket for stories, building and small worlds.",
+       "A name card for each child with their photo, their name and their name in their home language, at the sign-in table and on their cubby.",
+       "A Me basket in the class atelier with a hand mirror, the child's photo people figure and paper and pencil for a self-portrait.",
+       "Self-portraits at a mirror, offered again and again through the year, with each one dated and kept.",
+       "Skin, hair and eye color paints mixed with each child, each color named by the child.",
+       "An All About Me book made over weeks, with a photo, a self-portrait, a handprint, favorite things and family words.",
+       "Family photos at children's eye level, chosen and sent by families, with the names of everyone in them.",
+       "Each child's baby photo beside a photo of them now, with guesses and stories.",
+       "A measuring wall where each child's height is marked and dated with their photo beside it.",
+       "A class book of \"who I am,\" one page each in the child's own words, kept in the reading nook.",
+       "Songs with each child's name, and the class names clapped in beats at meeting time.",
+       "A portrait of a friend drawn face to face, then the pair shown together.",
+       "Real photos of children and families from many places and cultures at eye level.",
+       "Books about names, families, bodies and belonging from the Book collection."
+      ]
+     },
+     {
+      "h": "Together or alone",
+      "style": "text",
+      "text": "Both. A self-portrait at the mirror is quiet personal work. Photo people in the blocks and the class book of names draw children into noticing each other."
+     },
+     {
+      "h": "Good to know",
+      "style": "text",
+      "text": "Photos of children's faces stay inside our walls and never go online or in public. Ask families before sharing a photo beyond the class. Honor every skin color, feature, name and family shape, and answer questions about differences plainly and warmly. Say each child's name the way their family says it. Keep every self-portrait so children and families can see the year's change."
+     },
+     {
+      "h": "The child's role",
+      "style": "bullets",
+      "items": [
+       "Decide what their photo people figure does and where it goes.",
+       "Write or trace their own name.",
+       "Mix and name their own colors.",
+       "Choose what goes in their All About Me book and what stays private.",
+       "Tell who is in their family and in their house.",
+       "Help put the family photos and name cards where everyone can see them."
+      ]
+     },
+     {
+      "h": "Closing it together",
+      "style": "text",
+      "text": "Photo people go back in their basket and name cards back on the table or cubby. Mirrors are wiped with the soft cloth. Self-portraits go on the drying rack or into the child's own folder. Photo labels show each thing's home."
+     },
+     {
+      "h": "Your presence",
+      "style": "text",
+      "text": "Sit beside the child and let them name what they see. Describe without judging looks, such as Your hair curls at the ends. Use the child's name the way their family says it and learn how it is written in their home language. When a child asks why a friend looks different, answer plainly and warmly."
+     },
+     {
+      "h": "Wondering alongside",
+      "style": "lines",
+      "items": [
+       "Tell me about you.",
+       "I wonder who is in your family.",
+       "What do you notice about your face today?",
+       "What do you see that makes you say that?"
+      ]
+     },
+     {
+      "h": "Ways it can grow",
+      "style": "numbered",
+      "items": [
+       "Begin with name cards with photos at the sign-in table.",
+       "For twos and threes, offer a floor mirror, their photo on their cubby and their name sung at meeting time.",
+       "Make photo people with the children and set the basket by the blocks.",
+       "Offer self-portraits at a mirror and keep each one dated.",
+       "Mix skin, hair and eye color paints with each child.",
+       "Invite families to send photos and family words for a wall at eye level.",
+       "Start All About Me books, a page at a time.",
+       "Add baby photos beside photos now and talk about change.",
+       "Learn each child's name in their home language and how it is written.",
+       "For fours, fives and TK, write their own page for the class book of who I am.",
+       "Return to the self-portraits in spring and set them side by side."
+      ]
+     }
+    ],
+    "feeds": [
+     "Belonging and having a place (attachment and belonging)",
+     "Power and being capable (competence)"
+    ],
+    "setting": {
+     "level": "Open to all",
+     "why": "Mirrors, photos and name cards are open to everyone, and paint mixing is an adult at the table."
+    },
+    "supports": [
+     "Hand strength and grasp (fine motor)",
+     "Noticing body signals (interoception)"
+    ],
+    "seeks": "For a child who seeks more, offer pounding and pressing clay into a face, a big floor mirror for whole-body faces, and hard pressing with oil pastels.",
+    "avoids": "For a child who finds it too much, offer a hand mirror and their own photo to look at alone, and a pencil drawing over paint.",
+    "connected": [
+     "Mirrors",
+     "Faces and feelings",
+     "Family and babies",
+     "Our bodies and growing",
+     "Puppets and storytelling",
+     "Bookmaking",
+     "Blocks",
+     "Seeing Ourselves PD module",
+     "The Image of the Child lens",
+     "Book collection"
+    ],
+    "home": {
+     "title": "Identity of self at Home",
+     "sections": [
+      {
+       "h": "What you need",
+       "style": "text",
+       "text": "A mirror, paper, a pencil and a few family photos."
+      },
+      {
+       "h": "Ways to try it",
+       "style": "bullets",
+       "items": [
+        "Look in the mirror together and name what you see.",
+        "Draw a self-portrait and write the date on it.",
+        "Make a photo person of your child with a photo, a piece of card and a clothespin.",
+        "Tell the story of your child's name.",
+        "Look at baby photos together."
+       ]
+      },
+      {
+       "h": "Your child's role",
+       "style": "text",
+       "text": "Your child chooses what to draw and what to say, and puts the photos away."
+      },
+      {
+       "h": "Wonder together",
+       "style": "lines",
+       "items": [
+        "Tell me about you.",
+        "Who is in our family?",
+        "What was your name as a baby?"
+       ]
+      },
+      {
+       "h": "What your child is learning",
+       "style": "text",
+       "text": "Your child is learning that they belong and that who they are is seen and named with care (identity and belonging)."
+      },
+      {
+       "h": "Bring it to school",
+       "style": "text",
+       "text": "Send a family photo or your child's self-portrait for the family wall. This counts toward your family participation hours."
+      },
+      {
+       "h": "Good to know",
+       "style": "text",
+       "text": "Keep photos of your child off public pages, and let your child decide what to share."
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
