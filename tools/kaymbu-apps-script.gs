@@ -251,7 +251,7 @@ function checkVideoClips() {
   while (files.hasNext()) { const f = files.next(); if (isVideoFile_(f)) sent(f, '', f.getName().replace(/\.[a-z0-9]+$/i, '')); }
   // clips emailed to the TREE address, as an attachment or as a Drive link, with the class and the educator's first name in the subject
   const label = GmailApp.getUserLabelByName('TREE clip kept') || GmailApp.createLabel('TREE clip kept');
-  const threads = GmailApp.search('to:' + TREE_ADDRESS + ' newer_than:7d -from:kaymbu.com -label:"TREE clip kept" {has:attachment "drive.google.com" "icloud.com/attachment"}', 0, 30);
+  const threads = GmailApp.search('to:' + TREE_ADDRESS + ' newer_than:7d -from:kaymbu.com -label:"TREE clip kept" {has:attachment "drive.google.com" "Click to Download"}', 0, 30);
   for (const thread of threads) {
     let all = true, any = false;
     for (const msg of thread.getMessages()) {
