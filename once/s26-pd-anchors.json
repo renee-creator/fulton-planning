@@ -1,0 +1,45 @@
+{
+ "note": "Two newer anchors, Moffitt 2011 on self-control and Mesman 2009 on the still face, November 4, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "The research found that these skills at preschool entry predict later reading and math, and that practice strengthens them.",
+   "to": "The research found that these skills at preschool entry predict later reading and math, and that practice strengthens them. Terrie Moffitt and colleagues followed about a thousand children in Dunedin, New Zealand from age three to thirty two and reported in 2011 that children with lower self-control, allowing for family background and intelligence, had more health problems, less money and more criminal records as adults, so the stakes reach well past school."
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "- [Building the Brain's Air Traffic Control System, How Early Experiences Shape the Development of Executive Function, Working Paper 11, Center on the Developing Child, Harvard University, 2011](https://developingchild.harvard.edu/resources/building-the-brains-air-traffic-control-system/)\n",
+   "to": "- [Building the Brain's Air Traffic Control System, How Early Experiences Shape the Development of Executive Function, Working Paper 11, Center on the Developing Child, Harvard University, 2011](https://developingchild.harvard.edu/resources/building-the-brains-air-traffic-control-system/)\n- [A Gradient of Childhood Self-Control Predicts Health, Wealth, and Public Safety, Terrie E. Moffitt and colleagues, Proceedings of the National Academy of Sciences, 2011](https://doi.org/10.1073/pnas.1010076108)\n"
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "The research found that these skills at preschool entry predict later reading and math, and that practice strengthens them.",
+   "to": "The research found that these skills at preschool entry predict later reading and math, and that practice strengthens them. Terrie Moffitt and colleagues followed about a thousand children in Dunedin, New Zealand from age three to thirty two and reported in 2011 that children with lower self-control, allowing for family background and intelligence, had more health problems, less money and more criminal records as adults, so the stakes reach well past school."
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "- [Building the Brain's Air Traffic Control System, How Early Experiences Shape the Development of Executive Function, Working Paper 11, Center on the Developing Child, Harvard University, 2011](https://developingchild.harvard.edu/resources/building-the-brains-air-traffic-control-system/)\n",
+   "to": "- [Building the Brain's Air Traffic Control System, How Early Experiences Shape the Development of Executive Function, Working Paper 11, Center on the Developing Child, Harvard University, 2011](https://developingchild.harvard.edu/resources/building-the-brains-air-traffic-control-system/)\n- [A Gradient of Childhood Self-Control Predicts Health, Wealth, and Public Safety, Terrie E. Moffitt and colleagues, Proceedings of the National Academy of Sciences, 2011](https://doi.org/10.1073/pnas.1010076108)\n"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "An adult who is in the room and absent in attention is felt as absent.",
+   "to": "An adult who is in the room and absent in attention is felt as absent. Judi Mesman and colleagues reviewed more than eighty still-face studies in 2009 and found the effect again and again, less positive feeling and gaze and more distress while the adult is blank, with infants whose mothers were more responsive showing more positive feeling through it."
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "- [Serve and Return, Center on the Developing Child, Harvard University](https://developingchild.harvard.edu/science/key-concepts/serve-and-return/)\n",
+   "to": "- [Serve and Return, Center on the Developing Child, Harvard University](https://developingchild.harvard.edu/science/key-concepts/serve-and-return/)\n- [The Many Faces of the Still-Face Paradigm, A Review and Meta-Analysis, Judi Mesman, Marinus H. van IJzendoorn and Marian J. Bakermans-Kranenburg, Developmental Review, 2009](https://doi.org/10.1016/j.dr.2009.02.001)\n"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "An adult who is in the room and absent in attention is felt as absent.",
+   "to": "An adult who is in the room and absent in attention is felt as absent. Judi Mesman and colleagues reviewed more than eighty still-face studies in 2009 and found the effect again and again, less positive feeling and gaze and more distress while the adult is blank, with infants whose mothers were more responsive showing more positive feeling through it."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "- [Serve and Return, Center on the Developing Child, Harvard University](https://developingchild.harvard.edu/science/key-concepts/serve-and-return/)\n",
+   "to": "- [Serve and Return, Center on the Developing Child, Harvard University](https://developingchild.harvard.edu/science/key-concepts/serve-and-return/)\n- [The Many Faces of the Still-Face Paradigm, A Review and Meta-Analysis, Judi Mesman, Marinus H. van IJzendoorn and Marian J. Bakermans-Kranenburg, Developmental Review, 2009](https://doi.org/10.1016/j.dr.2009.02.001)\n"
+  }
+ ]
+}
