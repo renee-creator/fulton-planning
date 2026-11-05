@@ -21,6 +21,7 @@
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="print-kit.js?v=bc482e6246"></script>
 <script src="wording.js?v=2f5e2c3af2"></script>
+<script src="lens-text.js?v=2793a1eb27"></script>
 <script src="sitemap.js?v=da4b12e1c1"></script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
@@ -1485,6 +1486,7 @@ async function boot(){
     db.collection("stories").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;const loc=stories.get(d.id);m.set(d.id,loc&&(loc.updatedAt||0)>=(v.updatedAt||0)?loc:v)}});for(const [id,loc] of stories)if(!m.has(id)&&storyTimers[id]&&Date.now()-(loc.updatedAt||0)<5000)m.set(id,loc);stories=m;if((view==="stories"||view==="child"||view==="projects"||view==="moments")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="story"&&!document.activeElement?.closest?.("#main")&&!stBusy)renderMain()},()=>{});
     db.collection("notices").onSnapshot(snap=>{noticesSeen=true;const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});for(const r of draftMem.values())if(r.kind==="obs"&&r.doc)m.set(r.id,r.doc);notices=m;if(!window.__thumbAsked){window.__thumbAsked=true;setTimeout(()=>fillThumbs(),20000)}if(!document.activeElement?.closest?.("#main"))renderMain();else{try{evSync()}catch(e){}}},()=>{});
     db.collection("drafts").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;m.set(d.id,v)}});drafts=m;if((view==="moments"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("lens").onSnapshot(snap=>{let m={};snap.docs.forEach(d=>{if(d.id==="passages"){const v=d.data();if(v&&typeof v==="object")m=v}});lensPassages=m;if(view==="lens"&&!lensBusy&&!lensReadingNow&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("scans").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});scans=m;if(((view==="threads"&&!scanBusy)||(view==="lens"&&!lensBusy)||(view==="moments"&&!mBusy))&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     draftBoot();
   }else setConn("Saving on this device");
@@ -4822,7 +4824,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="1ea8f6128c5a";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="e2ca87da0ecc";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8960,6 +8962,7 @@ function whySet(key,v){const [k,a,b]=String(key||"").split("|");v=String(v||"").
   if(k==="tev"){const t=threads.get(a);if(!t)return false;t.evidence=(t.evidence||[]).map(e=>e&&(e.planId||e.id)===b?Object.assign({},e,{why:v}):e);saveThread(t);return true}
   if(k==="torig"){const t=threads.get(a);if(!t)return false;t.origin=Object.assign({},t.origin||{},{why:v});saveThread(t);return true}
   if(k==="lens"){const sc=scans.get(a);if(!sc||!isDirector())return false;sc.moments=(sc.moments||[]).map(m=>m&&m.planId===b?Object.assign({},m,{why:v}):m);saveScan(sc);return true}
+  if(k==="lpass")return lensPassageSet(a,true,v);
   return false}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-whyedit],[data-whysave],[data-whyno]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
@@ -12048,11 +12051,8 @@ document.addEventListener("change",e=>{
    (drawing, marks, maps, paint, clay, wire, construction, arrangements), read with Reggio Emilia's values. The page gathers
    moments in educators' own words and reads them for the thinking they carry. It never rates how a product looks.
    The name, wording, languages, words, and questions live in Program settings, so another year can carry another lens. */
-const LENS_DEFAULT={name:"Graphic Languages",
-  description:"The many visible forms children give their thinking, such as drawing, marks, maps, paint, clay, wire, construction, and arrangements. We read each one for the thinking it carries, together with the words, tools, and materials that shaped it.",
-  languages:["Drawing and mark-making","Mapping","Painting","Clay and sculpture","Building and construction","Loose parts arrangement","Emergent writing","Recording and comparing"],
-  words:["draw","drew","drawn","sketch","mark","line","trace","map","paint","clay","wire","charcoal","chalk","pencil","pen","marker","crayon","ink","paper","collage","sculpt","sculpture","build","built","construct","construction","arrange","arrangement","symbol","sign","write","wrote","written","letter","print","stamp","represent","representation","diagram","blueprint","model"],
-  questions:["What idea was the child giving form to?","With what tool, material, and surface?","What words, story, or gesture came with it?","Did the child return to it, or rework it in another language?","How did educators respond?"]};
+// the default lens, its word patterns and the key a passage is kept under live in lens-text.js, shared with the server's nightly reading
+const LENS_DEFAULT=TREE_LENS.LENS_DEFAULT;
 function normLens(v,i){
   const d=LENS_DEFAULT,list=(a,f)=>Array.isArray(a)?a.map(x=>String(x||"").trim()).filter(Boolean):(f||[]).slice();
   return {id:String(v&&v.id||"")||(i===0?"lens1":uid()),name:String(v&&v.name||"").trim()||d.name,description:String(v&&v.description!=null?v.description:d.description),
@@ -12063,19 +12063,33 @@ function normLens(v,i){
 const BLANK_LENS={name:"New lens",description:"",languages:[],words:[],questions:LENS_DEFAULT.questions.slice()};
 let LENSES=[normLens(Object.assign({year:true},LENS_DEFAULT),0)];
 let LENS=LENSES[0], lensId=LS.get("fps.lensid","")||LENS.id;
-let lRoom=LS.get("fps.lroom","All"), lRange=LS.get("fps.lrange","year"), lLang="", lensBusy=false, lensShowAll=false;
+let lRoom=LS.get("fps.lroom","All"), lRange=LS.get("fps.lrange","year"), lLang="", lensBusy=false, lensShowAll=false, lensReadingNow=false;
+/* What the night's reading said of each sentence a lens word found, from lens/passages.json. A passage shows only once
+   the reading kept it. A sentence the reading set aside waits in a fold with its why and a Keep it button, and one not
+   yet read waits in another fold until the night, or until the director asks for the reading now. */
+let lensPassages={};
+// the reading's entry for a moment. Photos that share one note are one observation, so a sibling's entry counts
+function lensPassageOf(m){if(!m||!m.key)return null;const e=lensPassages[m.key];if(e&&typeof e==="object"&&"kept" in e)return e;
+  const n=notices.get(m.planId);if(n&&n.group){const h=m.key.split(".").pop();for(const g of noteGroup(n)){const x=lensPassages[`${LENS.id}.${g.id}.${h}`];if(x&&typeof x==="object"&&"kept" in x)return x}}return null}
+// a director's or educator's own answer on a passage, kept on the device at once and sent to the server
+function lensPassageSet(key,keep,why){if(!key||VIEW_AS)return false;const e=lensPassageOf({key})||{};
+  lensPassages=Object.assign({},lensPassages,{[key]:{lens:e.lens||LENS.id,planId:e.planId||key.split(".")[1]||"",kept:!!keep,why:String(why||"").trim(),at:Date.now(),by:whoAmI(),byHand:true}});
+  if(window.FP_API)window.FP_API("/api/lens/passage",{key,keep:!!keep,why:String(why||"").trim()}).then(r=>{if(r&&r.passages){lensPassages=r.passages;if(view==="lens")renderMain()}}).catch(err=>toast(assistError(err||"unknown")));
+  return true}
+async function lensReadNow(){if(lensReadingNow||!isDirector()||!window.FP_API)return;lensReadingNow=true;renderMain();
+  try{const r=await window.FP_API("/api/lens/read",{});if(r&&r.passages)lensPassages=r.passages;const c=r&&r.counts;
+    rToast(r&&r.busy?"The reading is already running. It will show in a moment.":c?`Read ${c.read} sentence${c.read===1?"":"s"}, kept ${c.kept}, set aside ${c.aside}${c.left?`, ${c.left} left for tonight`:""}.`:"The reading could not run.")}
+  catch(err){rToast(assistError(err||"unknown"))}
+  lensReadingNow=false;renderMain()}
 function setLens(id){const l=LENSES.find(x=>x.id===id)||LENSES.find(x=>x.year)||LENSES[0];if(!l)return;LENS=l;lensId=l.id;LS.set("fps.lensid",lensId)}
 function lensKey(room){return "lens-"+lensId+"-"+room}
 // readings made before the school held more than one lens belong to the first lens
 function lensScan(room){return scans.get(lensKey(room))||(LENSES[0]&&lensId===LENSES[0].id?scans.get("lens-"+room):null)}
 function lensRangeStart(){const cur=mondayOf(new Date());if(lRange==="4")return addDays(cur,-21);if(lRange==="8")return addDays(cur,-49);if(lRange==="year")return schoolYearStart();return "0000-00-00"}
 function lensPlans(){const s=lensRangeStart();return [...plans.values(),...noticePlans()].filter(p=>p.id!=="example"&&LENS_TYPES.includes(p.type)&&p.weekOf>=s&&(lRoom==="All"||(p.rooms?p.rooms.includes(lRoom):p.classroom===lRoom)))}
-// a lens word matches as a whole word, with the usual endings (maps, mapped, mapping, painted, writing)
-function lensRegex(L){
-  L=L||LENS;const parts=L.words.map(w=>w.toLowerCase().replace(/[^a-z' -]/g,"")).filter(w=>w.length>1).map(w=>{const last=w.slice(-1),stem=w.endsWith("e")?w.slice(0,-1):w;
-    return `${w}(?:s|es|d|ed|er|ers|ing|${last}ed|${last}ing)?`+(stem!==w?`|${stem}(?:ing|ed)`:"")});
-  return parts.length?new RegExp("\\b(?:"+parts.join("|")+")\\b","gi"):null;
-}
+// a lens word matches as a whole word, with the usual endings (maps, mapped, mapping, painted, writing). With widen, a
+// few verbs that name a graphic act join the Graphic Languages words, so the night's reading sees those sentences too
+function lensRegex(L,widen){return TREE_LENS.lensRegex(L||LENS,!!widen)}
 // the lenses of this year that find a moment, by its words or by a language an educator marked on it
 function lensesFinding(n){const text=[n.noticed,n.wonder].filter(Boolean).join(" ");const mine=new Set((n.languages||[]).map(x=>x.toLowerCase()));
   return LENSES.filter(l=>l.year&&((()=>{const re=lensRegex(l);if(!re)return false;re.lastIndex=0;return re.test(text)})()||l.languages.some(x=>mine.has(x.toLowerCase()))))}
@@ -12088,11 +12102,7 @@ function lensPlanParts(p){
   return parts.filter(([,t])=>t.trim());
 }
 // one word, with the endings lensRegex allows
-function wordRegex(w){
-  const c=String(w||"").toLowerCase().replace(/[^a-z' -]/g,"");if(c.length<2)return null;
-  const last=c.slice(-1),stem=c.endsWith("e")?c.slice(0,-1):c;
-  return new RegExp("\\b(?:"+`${c}(?:s|es|d|ed|er|ers|ing|${last}ed|${last}ing)?`+(stem!==c?`|${stem}(?:ing|ed)`:"")+")\\b","i");
-}
+function wordRegex(w){return TREE_LENS.wordRegex(w)}
 // What each word of a lens would actually find in the school's own plans, and in which parts of them.
 // This is counting, not TREE. It lets the team keep the words that find children's work and drop the rest.
 function lensWordCheck(L){
@@ -12108,7 +12118,7 @@ function lensWordCheck(L){
 }
 // moments are sentences from the plans themselves, so everything shown is in the educator's own words
 function lensMoments(ps){
-  const re=lensRegex();const out=[];if(!re)return out;
+  const re=lensRegex(LENS,true);const out=[];if(!re)return out;
   // a sentence cut inside a quotation, or a line that begins with a bullet, loses its stray marks. Photos that share one
   // note are one observation, so a passage they share is shown once.
   const tidy=t=>{let v=t.replace(/^[\s"“”‘’'•·\-–*]+/,"").replace(/[\s"“”‘’'•·\-–*]+$/,"").trim();
@@ -12119,7 +12129,7 @@ function lensMoments(ps){
       for(const raw of (text.match(/[^.!?\n]+[.!?]*["”’]?/g)||[])){const sent=tidy(raw);if(sent.length<12)continue;re.lastIndex=0;
         const hits=[...new Set((sent.match(re)||[]).map(x=>x.toLowerCase()))];if(!hits.length)continue;
         const key=sent.toLowerCase();if(seen.has(key))continue;seen.add(key);
-        out.push({planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,obs:OBSERVED_KEYS.has(pkey),text:sentFit(sent,300),hits});
+        out.push({planId:p.id,week:p.weekOf,room:p.classroom||"",section:label,obs:OBSERVED_KEYS.has(pkey),text:sentFit(sent,300),hits,key:TREE_LENS.passageKey(LENS.id,p.id,sent)});
       }}}
   return out.sort((a,b)=>b.week.localeCompare(a.week)||(a.room||"").localeCompare(b.room||""));
 }
@@ -12128,19 +12138,29 @@ function lensLinks(p){
   const cs=planThreads(p);if(!cs.length)return"";
   return `<div class="cnt">${cs.map(c=>{const pr=projectOfThread(c.t.id);return `Thread <button class="linkbtn" data-tsee="${esc(c.t.id)}">${esc(c.t.name)}</button>${pr?` in the project <button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button>`:""}`}).join(" · ")}</div>`;
 }
-function lensMomentHtml(m){
+function lensMomentHtml(m,tail){
   const p=rec(m.planId);if(!p)return"";const mk=lensMarked(p);
   const on=p.notice&&notices.get(m.planId);
-  if(on&&on.photo)return `<div class="lmoment"><div class="nw-row"><button class="nw-thumb linkbtn" data-mjump="${esc(on.id)}" title="Open this observation"><img src="${esc(photoThumb(on))}" alt="Photo kept with this observation" loading="lazy"></button><div><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}</div></div>
-    ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}</div>`;
-  return `<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}
-    ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}</div>`;
+  // a passage a person kept says so. One the reading kept shows the reading's why, and either can be changed
+  const ek=m.key?"lpass|"+m.key:"",e=m.byHand?lensPassageOf(m):null;
+  const why=m.why==null?"":m.byHand&&whyEditing!==ek?`<div class="whyline"><i>Kept by ${esc(e&&e.by||"hand")}.</i> ${esc(whyText(m.why))}${VIEW_AS?"":` <button class="linkbtn" data-whyedit="${esc(ek)}">Change</button>`}</div>`:whyLine(m.why,ek);
+  if(on&&on.photo)return `<div class="lmoment"><div class="nw-row"><button class="nw-thumb linkbtn" data-mjump="${esc(on.id)}" title="Open this observation"><img src="${esc(photoThumb(on))}" alt="Photo kept with this observation" loading="lazy"></button><div><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}</div></div>${why}
+    ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}${tail||""}</div>`;
+  return `<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}${why}
+    ${mk.length?`<div class="chips">${mk.map(l=>`<span class="chip on" style="cursor:default">${esc(l)}</span>`).join("")}</div>`:""}${lensLinks(p)}${tail||""}</div>`;
 }
+// a sentence the reading set aside, with its why and Keep it. The why line carries no Change, since Keep it is the change
+function lensAsideHtml(m){const p=rec(m.planId);if(!p)return"";
+  return `<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}<div class="whyline"><i>${m.byHand?"Set aside by "+esc(lensPassageOf(m)?.by||"hand")+".":"Why the reading set it aside."}</i> ${esc(whyText(m.why))}</div>
+    ${VIEW_AS?"":`<div class="actions"><button class="btn small ghost" data-lkeep="${esc(m.key)}">Keep it</button></div>`}</div>`}
+// the moments of a lens sorted by what the night's reading said. kept show as passages, aside wait in a fold with the
+// reading's why, and waiting have not been read yet
+function lensSorted(ps){const kept=[],aside=[],waiting=[];for(const m of lensMoments(ps)){const e=lensPassageOf(m);if(!e)waiting.push(m);else if(e.kept)kept.push(Object.assign({},m,{why:e.why||"",byHand:!!e.byHand}));else aside.push(Object.assign({},m,{why:e.why||"",byHand:!!e.byHand}))}return {kept,aside,waiting}}
 function renderLens(){
   const ps=lensPlans();
-  let moments=lensMoments(ps);
+  let {kept:moments,aside,waiting}=lensSorted(ps);
   const marked=ps.filter(p=>lensMarked(p).length);
-  if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
+  if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId));aside=aside.filter(m=>okPlan.has(m.planId));waiting=waiting.filter(m=>okPlan.has(m.planId))}
   const withMoment=new Set(moments.map(m=>m.planId));
   const silent=(lLang?marked.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===lLang.toLowerCase())):marked).filter(p=>!withMoment.has(p.id)).sort((a,b)=>b.weekOf.localeCompare(a.weekOf));
   const weeks=[...new Set(ps.map(p=>p.weekOf))].sort().reverse();
@@ -12173,12 +12193,20 @@ function renderLens(){
 
   // moments
   const cap=lensShowAll?moments.length:15;
-  h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Passages in educators' own words</h2><span class="cnt">Sentences from saved plans that name a mark, a tool, or a material of the lens</span></div>`;
-  if(!moments.length)h+=`<div class="empty">${ps.length?"No moments found in this range yet. They appear as plans describe what children drew, marked, mapped, built, or arranged.":"No plans saved in this range yet."}</div>`;
+  h+=`<section style="display:grid;gap:12px"><div class="secthead"><h2>Passages in educators' own words</h2><span class="cnt">Sentences from saved plans and observations that the night's reading found to show the lens</span></div>`;
+  if(!moments.length)h+=`<div class="empty">${ps.length?waiting.length?"No passages read yet in this range. The sentences found by a word wait below for tonight's reading.":"No passages found in this range yet. They appear as plans describe what children drew, marked, mapped, built, or arranged.":"No plans saved in this range yet."}</div>`;
   else{const shown=moments.slice(0,cap);
     for(const w of [...new Set(shown.map(m=>m.week))]){const wm=shown.filter(m=>m.week===w);
-      h+=`<div class="chiprow-label">Week of ${fmtDate(w)}</div><div class="lmoments">${wm.map(lensMomentHtml).join("")}</div>`}
+      h+=`<div class="chiprow-label">Week of ${fmtDate(w)}</div><div class="lmoments">${wm.map(m=>lensMomentHtml(m)).join("")}</div>`}
     if(moments.length>cap)h+=`<div class="actions"><button class="linkbtn" data-lmore="1">Show all ${moments.length} passages</button></div>`}
+  // what a word found and the reading set aside, each with its why, and what has not been read yet
+  if(aside.length)h+=`<details class="card tfold" id="lens-aside"><summary><b>Found by a word, set aside by the reading</b><span class="cnt">${aside.length}</span></summary>
+    <div class="hint muted prose" style="font-size:13.5px;--pw:72ch">A word of the lens is in each of these, and the reading found the word used in another sense. Keep it brings a sentence back to the passages, with your name on it, and the reading leaves it alone after that.</div>
+    <div class="lmoments" style="margin-top:8px">${aside.slice(0,60).map(lensAsideHtml).join("")}</div>${aside.length>60?`<div class="cnt">${aside.length-60} more set aside.</div>`:""}</details>`;
+  if(waiting.length)h+=`<details class="card tfold" id="lens-waiting"><summary><b>Waiting for tonight's reading</b><span class="cnt">${waiting.length}</span></summary>
+    <div class="hint muted prose" style="font-size:13.5px;--pw:72ch">Found by a word since the last reading. TREE reads them each night at 3 and keeps the ones that show the lens.${isDirector()?" Read now asks for that reading at once.":""}</div>
+    ${isDirector()&&!VIEW_AS?`<div class="actions"><button class="btn small" data-lreadnow="1" ${lensReadingNow?"disabled":""}>${lensReadingNow?"Reading":"Read now"}</button></div>`:""}
+    <div class="lmoments" style="margin-top:8px">${waiting.slice(0,60).map(m=>{const p=rec(m.planId);return p?`<div class="lmoment"><div>“${esc(m.text)}”</div>${lensSrc(p,m.section)}</div>`:""}).join("")}</div>${waiting.length>60?`<div class="cnt">${waiting.length-60} more waiting.</div>`:""}</details>`;
   h+=`</section>`;
   if(silent.length)h+=`<section style="display:grid;gap:8px"><div class="secthead"><h2>Marked, with no passage written yet</h2></div>
     <div class="hint muted prose" style="font-size:13.5px;--pw:72ch">These plans mark a language of the lens, and their writing does not yet say what children made or did with it. A sentence in Final remarks is enough.</div>
@@ -12252,6 +12280,8 @@ function lensClick(t){
   if(t.dataset.lensid&&view==="lens"){setLens(t.dataset.lensid);lensShowAll=false;lLang="";renderMain();return true}
   if(t.dataset.lroom){lRoom=t.dataset.lroom;LS.set("fps.lroom",lRoom);renderMain();return true}
   if(t.dataset.lmore){lensShowAll=true;renderMain();return true}
+  if(t.dataset.lkeep){if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return true}const e=lensPassageOf({key:t.dataset.lkeep});lensPassageSet(t.dataset.lkeep,true,e&&e.why&&!e.byHand?"The reading had set it aside, saying "+whyText(e.why).replace(/\.$/,"").replace(/^./,c=>c.toLowerCase()):"");renderMain();toast("Kept. It is a passage now.");return true}
+  if(t.dataset.lreadnow){lensReadNow();return true}
   if(t.id==="lensread"){lensRead();return true}
   // the director's lens settings
   if(t.dataset.lenslang!=null&&view==="settings"){const L=LENSES.find(x=>x.id===t.dataset.lensfor)||LENS;const l=t.dataset.lenslang;const on=L.languages.some(x=>x.toLowerCase()===l.toLowerCase());L.languages=on?L.languages.filter(x=>x.toLowerCase()!==l.toLowerCase()):[...L.languages,l];saveProgram();renderSettings();return true}
@@ -12753,7 +12783,7 @@ function storyDoc(title,fields,meta){
 function threadStoryDoc(th){return storyDoc("Project Story, "+th.name,th.story||{},[["Class",[th.classroom,(th.groups||[]).join(", ")].filter(Boolean).join(", ")||"All classes"],["Seen",weeksSpan(th.weeks)]])}
 function projectStoryDoc(x,s){return storyDoc("Project Story, "+x.name,s.fields||{},[["Classes",roomsText(x)],["Seen",weeksSpan(projWeeks(x))||shortDate(s.at)]])}
 function lensDocs(long,cap){
-  const ps=lensPlans();let moments=lensMoments(ps);
+  const ps=lensPlans();let moments=lensSorted(ps).kept;
   if(lLang){const want=lLang.toLowerCase();const okPlan=new Set(ps.filter(p=>lensMarked(p).some(l=>l.toLowerCase()===want)).map(p=>p.id));moments=moments.filter(m=>okPlan.has(m.planId))}
   const meta=[["Classes",lRoom==="All"?"All":lRoom],["Plans",RANGE_WORDS[lRange]||""]];
   const blocks=[dText("What it means here",LENS.description),dList("How we read a passage",LENS.questions,true),{t:"text",label:"",quiet:true,text:"Read for the thinking. How a product looks is never rated."}];
@@ -12767,7 +12797,8 @@ function lensDocs(long,cap){
     for(const m of shown){const p=rec(m.planId);const cs=p&&!p.notice?planThreads(p):[];
       {const on=p&&p.notice&&notices.get(m.planId);if(long&&on&&on.photo&&lph<8){lph++;blocks.push(dPhoto(on,150,false))}}
       // the part of the plan a moment came from, so a reader can tell an observation from a provocation being planned
-      blocks.push(dQuote(m.text,[whoLine(p),sectName(m.section),long&&cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join(", "),shortWeek(m.week||(p&&p.weekOf))))}
+      blocks.push(dQuote(m.text,[whoLine(p),sectName(m.section),long&&cs.length?"thread "+cs[0].t.name:""].filter(Boolean).join(", "),shortWeek(m.week||(p&&p.weekOf))));
+      {const w=whyText(m.why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})}}
     if(moments.length>shown.length)blocks.push({t:"text",label:"",quiet:true,text:`${moments.length-shown.length} more passage${moments.length-shown.length>1?"s are":" is"} on the Lens page.`})}
   else blocks.push(dText("","No passages have been written in these weeks yet."));
   const docs=[{display:true,type:"report",acc:"individual",title:LENS.name,meta,blocks}];

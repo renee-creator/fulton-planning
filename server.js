@@ -34,7 +34,9 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens'];
+// a record's path, kind/id.json, for any kind
+const KIND_RE = new RegExp('^(' + KINDS.join('|') + ')\\/([^/]+)\\.json$');
 // records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
 // reading report is the director's, and each class team reads its own class's through /api/reports/mine.
 const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports'];
@@ -489,7 +491,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -873,7 +875,7 @@ async function doLoadGraph() {
   const files = await gqlFiles(store.branch);
   const jobs = [];let accSha = '', rolesSha = '';
   for (const f of files) {
-    const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/);
+    const m = f.path.match(KIND_RE);
     if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
     if (f.path === DRDP_PATH) drdpSha = f.sha;
     if (f.path === ACCOUNTS_PATH) accSha = f.sha;
@@ -920,7 +922,7 @@ async function doLoad() {
     const files = (tree.json.tree || []).filter(t => t.type === 'blob');
     const jobs = [];
     for (const f of files) {
-      const m = f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/);
+      const m = f.path.match(KIND_RE);
       if (m) jobs.push({ kind: m[1], id: m[2], path: f.path, sha: f.sha });
       if (f.path === DRDP_PATH) drdpSha = f.sha;
       const o = f.path.match(/^originals\/([^/]+)$/);
@@ -1190,7 +1192,7 @@ async function recheckRecords() {
   if (tree.status !== 200) return;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
-    const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/); if (!m) continue;
+    const m = f.type === 'blob' && f.path.match(KIND_RE); if (!m) continue;
     const rec = store.recs[m[1]].get(m[2]);
     if (rec && (rec.local || rec.sha === f.sha || rec.deleted)) continue;   // changed here since the start, or already the same
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${f.sha}`); if (b.status !== 200) continue;
@@ -1200,7 +1202,7 @@ async function recheckRecords() {
   }
   if (n) log('Read', n, 'records again that changed while the server was starting');
   if (store.partial) {
-    const unread = (tree.json.tree || []).filter(f => { const m = f.type === 'blob' && f.path.match(/^(plans|threads|scans|settings|projects|notices|drafts|children|conferences|slides|inquiries|newsletters|bins|menus|grant|stories|posts|participation|reports)\/([^/]+)\.json$/); return m && !store.recs[m[1]].has(m[2]); });
+    const unread = (tree.json.tree || []).filter(f => { const m = f.type === 'blob' && f.path.match(KIND_RE); return m && !store.recs[m[1]].has(m[2]); });
     if (!unread.length) { store.partial = false; log('Every record is read now, so the one-time steps can run'); runOnce(); }
   }
 }
@@ -1732,7 +1734,118 @@ function nightlyDue() {
   const cur = store.recs.settings.get('nightly'); const last = cur && !cur.deleted && cur.doc ? cur.doc.lastDay : '';
   return laHourNow() === NIGHTLY_HOUR && last !== laDayOf(Date.now());
 }
-setInterval(() => { if (nightlyDue()) nightlyThreadPass().catch(e => log('Nightly thread pass could not run', e.message)); }, 10 * 60e3).unref();
+/* The nightly lens pass. The Lens page finds a sentence by a word of the lens, and a word alone misleads, so "wait in
+   line" lands under Graphic Languages. Each night every candidate sentence not yet read goes to the careful lane with
+   its context, twenty to a request, and the model says whether the sentence shows the lens and why, in one plain
+   sentence. The answers are kept in lens/passages.json under a key made from the lens, the plan and the sentence, and
+   the page shows only the kept ones. A director or educator can overrule any answer by hand, and a by-hand entry is
+   never written over. A night reads about 300 sentences and leaves the rest for the next. */
+const LT = require('./lens-text.js');
+const LENS_PASS_CAP = Number(process.env.LENS_PASS_CAP) || 300;
+let lensPassBusy = false;
+// this year's lenses as the page holds them, from Program settings, with the default lens when none is kept
+function lensesActive() {
+  const r = store.recs.settings.get('program'); const v = r && !r.deleted && r.doc ? r.doc : {};
+  const raw = Array.isArray(v.lenses) && v.lenses.length ? v.lenses : v.lens ? [Object.assign({ year: true }, v.lens)] : [];
+  const list = a => Array.isArray(a) ? a.map(x => String(x || '').trim()).filter(Boolean) : null;
+  const ls = raw.map((l, i) => ({ id: String(l && l.id || '') || (i === 0 ? 'lens1' : 'lens' + (i + 1)), name: String(l && l.name || '').trim() || LT.LENS_DEFAULT.name,
+    description: String(l && l.description != null ? l.description : LT.LENS_DEFAULT.description), words: list(l && l.words) || LT.LENS_DEFAULT.words.slice(), questions: list(l && l.questions) || LT.LENS_DEFAULT.questions.slice(), year: !!(l && l.year) }));
+  if (!ls.length) return [Object.assign({ id: 'lens1', year: true }, LT.LENS_DEFAULT)];
+  const year = ls.filter(l => l.year); return year.length ? year : [ls[0]];
+}
+function lensPassages() { const r = store.recs.lens.get('passages'); return r && !r.deleted && r.doc ? r.doc : {}; }
+function saveLensPassages(doc) { const cur = store.recs.lens.get('passages'); store.recs.lens.set('passages', { doc, sha: cur && cur.sha, path: 'lens/passages.json', local: true }); noteChange('lens', 'passages'); scheduleSave('lens', 'passages'); }
+const lensWhyClean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/;\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 220);
+// the context a sentence is read in, the whole observation or the plan part it came from, about 600 characters around it
+function lensContextOf(text, sent) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim(); if (t.length <= 600) return t;
+  const at = Math.max(0, t.toLowerCase().indexOf(sent.toLowerCase().slice(0, 40))); const from = Math.max(0, Math.min(at - 250, t.length - 600));
+  return (from ? '… ' : '') + t.slice(from, from + 600).trim() + (from + 600 < t.length ? ' …' : '');
+}
+// every sentence a lens word finds in the saved plans and observations, newest first, with what it is read against
+function lensCandidates() {
+  const out = [];
+  const plans = []; for (const [, r] of store.recs.plans) { const p = r && !r.deleted && r.doc; if (p && p.id !== 'example' && !p.blank && PLAN_KINDS.includes(p.type) && p.fields) plans.push(p); }
+  // photos that share one note are one observation, so a sentence they share is read once, under the first
+  const seenLead = new Set(), obs = [];
+  for (const [, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d) continue; const docs = noticeGroupDocs(d); const lead = docs[0] || d; if (seenLead.has(lead.id)) continue; seenLead.add(lead.id);
+    const shows = (docs.map(x => (x.drdp && x.drdp.photo) || x.photoNote).find(t => t && String(t).trim()) || '').toString().slice(0, 300);
+    obs.push({ id: lead.id, type: 'notice', weekOf: lead.week || laDayOf(lead.at || 0), fields: { noticed: lead.noticed || '', wonder: lead.wonder || '' }, at: lead.at || 0, photo: shows }); }
+  const all = [...plans.map(p => ({ p, at: p.updatedAt || p.createdAt || 0, week: p.weekOf || '' })), ...obs.map(p => ({ p, at: p.at, week: p.weekOf }))].sort((a, b) => b.week.localeCompare(a.week) || b.at - a.at);
+  for (const L of lensesActive()) {
+    const re = LT.lensRegex(L, true); if (!re) continue;
+    for (const { p } of all) { const seen = new Set();
+      const whole = p.type === 'notice' ? [p.fields.noticed, p.fields.wonder].filter(Boolean).join(' ') : '';
+      for (const [label, text] of LT.planParts(p)) for (const sent of LT.sentences(text)) {
+        re.lastIndex = 0; if (!re.test(sent)) continue;
+        const low = sent.toLowerCase(); if (seen.has(low)) continue; seen.add(low);
+        out.push({ key: LT.passageKey(L.id, p.id, sent), lens: L, planId: p.id, sentence: sent.slice(0, 300), part: label, context: lensContextOf(whole || text, sent), photo: p.photo || '' });
+      } }
+  }
+  return out;
+}
+async function nightlyLensPass(force) {
+  if (lensPassBusy || !store.ready || store.partial) return null;
+  lensPassBusy = true;
+  const counts = { found: 0, waiting: 0, read: 0, batches: 0, kept: 0, aside: 0, left: 0 };
+  try {
+    const have = lensPassages();
+    const all = lensCandidates(); counts.found = all.length;
+    const todo = all.filter(c => !have[c.key]); counts.waiting = todo.length;
+    const now = Date.now(); const take = todo.slice(0, LENS_PASS_CAP); counts.left = todo.length - take.length;
+    if (take.length && anthropicKey()) {
+      const next = Object.assign({}, lensPassages());
+      // the sentences of one lens share one request, so the lens is described once
+      const byLens = new Map(); for (const c of take) { if (!byLens.has(c.lens.id)) byLens.set(c.lens.id, []); byLens.get(c.lens.id).push(c); }
+      for (const [, list] of byLens) for (let i = 0; i < list.length; i += 20) {
+        const batch = list.slice(i, i + 20), L = batch[0].lens;
+        const t = Date.now(); while (suggestTimes.length && t - suggestTimes[0] > 3600e3) suggestTimes.shift();
+        if (suggestTimes.length >= SUGGEST_PER_HOUR) { log('Nightly lens pass stopped at the hourly allowance'); break; } suggestTimes.push(t);
+        // the educators' words go as written, and nothing about a child is added to them
+        const items = batch.map(c => Object.assign({ key: c.key, part: c.part, sentence: c.sentence, context: c.context }, c.photo ? { photo: c.photo } : {}));
+        const prompt = `Educators at a preschool wrote these sentences in their plans and observations. Each sentence was found by a word from a list, and a word alone can mislead, so read each sentence with its context and say whether it truly shows the lens.
+The lens is ${L.name}. ${L.description}
+The questions the school reads a passage with. ${L.questions.join(' ')}
+Keep a sentence when, read with its context, it shows a child or children doing what the lens describes, or an educator planning for it, inviting it or responding to it. Set it aside when the word is used in another sense, such as waiting in line, a line of children, a sign-in sheet, a paper towel or a letter to families, or when the sentence only lists a material with no one doing anything with it. The context and the photo note help you read the sentence and are never a reason on their own.
+For each sentence give its key, keep as true or false, and why as one plain short sentence in educator language naming what in the sentence or its context shows the lens, or what the word means there instead. Use no colons and no dashes in why, and do not name any child.
+Reply with only JSON like {"passages":[{"key":"","keep":true,"why":""}]}, one entry for each sentence.
+${JSON.stringify(items)}`;
+        let out = null;
+        try { const res = await askClaude([{ type: 'text', text: prompt }], true, { max_tokens: 4000 });
+          if (res.status !== 200) { log('Nightly lens pass, a batch was not answered,', res.status); continue; }
+          const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+          out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('Nightly lens pass, a batch could not be read,', e.message); continue; }
+        counts.batches++;
+        const answers = new Map((Array.isArray(out && out.passages) ? out.passages : []).filter(x => x && typeof x.key === 'string').map(x => [x.key, x]));
+        for (const c of batch) {
+          const a = answers.get(c.key); if (!a || typeof a.keep !== 'boolean') continue;   // a sentence the answer left out is read again another night
+          const cur = next[c.key]; if (cur && cur.byHand) continue;   // what a person decided stays
+          next[c.key] = { lens: L.id, planId: c.planId, kept: a.keep, why: lensWhyClean(a.why), at: now, by: 'TREE' };
+          counts.read++; if (a.keep) counts.kept++; else counts.aside++;
+        }
+      }
+      // what was read is kept, and a by-hand entry made while the model was answering stays
+      const live = lensPassages(); for (const k of Object.keys(live)) if (live[k] && live[k].byHand) next[k] = live[k];
+      if (counts.read) saveLensPassages(next);
+    }
+    log(`Nightly lens pass, ${counts.found} sentences found by a word, ${counts.waiting} not yet read, ${counts.read} read in ${counts.batches} batches, ${counts.kept} kept, ${counts.aside} set aside, ${counts.left} left for another night`);
+  } finally { lensPassBusy = false; }
+  return counts;
+}
+// a director's or educator's own answer on one passage. It stands, and the nightly pass never writes over it.
+function setLensPassageByHand(key, keep, why, name) {
+  const next = Object.assign({}, lensPassages()); const cur = next[key] || {};
+  const found = cur.planId ? cur : lensCandidates().find(c => c.key === key); if (!found) return null;
+  next[key] = { lens: cur.lens || found.lens.id, planId: cur.planId || found.planId, kept: !!keep, why: lensWhyClean(why), at: Date.now(), by: name, byHand: true };
+  saveLensPassages(next); return next[key];
+}
+// the thread pass and the lens pass run together, in the night and when the director asks
+async function nightlyPass(force) {
+  const counts = await nightlyThreadPass(force);
+  let lens = null; try { lens = await nightlyLensPass(force); } catch (e) { log('Nightly lens pass could not run', e.message); }
+  return counts ? { counts, lens } : null;
+}
+setInterval(() => { if (nightlyDue()) nightlyPass().catch(e => log('Nightly pass could not run', e.message)); }, 10 * 60e3).unref();
 
 /* ---------- where an observation happened ----------
    A place is read, never typed. The site's places are Program settings' Where it happens list and the calendar's spaces,
@@ -2690,6 +2803,7 @@ async function handle(req, res) {
     if (stopping) { err(req, res, 503, 'The server is restarting. Your change is kept on this device and sends in a minute.'); return; }
     let { op, kind, id } = body;
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
+    if (kind === 'lens') { err(req, res, 403, 'The lens passages are kept by the reading and changed from the Lens page.'); return; }
     // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
     const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
     // every save from a device carries a save id. A save already here is never made twice, and its answer says whether
@@ -2969,7 +3083,15 @@ async function handle(req, res) {
     const forRoom = d => room ? Object.assign({}, d, { threads: d.threads.filter(t => t.room === room || t.room === 'All'), joined: d.joined.filter(t => t.room === room || t.room === 'All'), patterns: d.patterns.filter(p => p.room === room || p.room === 'All'), lens: d.lens.filter(m => new RegExp('(^|-)' + room + '$').test(String(m.room || '')) || /(^|-)All$/.test(String(m.room || ''))), projects: [], inquiries: [] }) : d;
     json(req, res, 200, { room, findings: list.slice(0, 26).map(forRoom) }); return; }
   // the director runs the nightly pass now, for a check, and reads the cycle's health
-  if (path === '/api/nightly') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the nightly pass.'); return; } const counts = await nightlyThreadPass(true); json(req, res, 200, counts ? { ok: true, counts } : { busy: true }); return; }
+  if (path === '/api/nightly') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the nightly pass.'); return; } const r = await nightlyPass(true); json(req, res, 200, r ? { ok: true, counts: r.counts, lens: r.lens } : { busy: true }); return; }
+  // the director asks for tonight's lens reading now. The answer carries the passages record, so the page shows it at once
+  if (path === '/api/lens/read') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the reading.'); return; } const counts = await nightlyLensPass(true); json(req, res, 200, counts ? { ok: true, counts, passages: lensPassages() } : { busy: true }); return; }
+  // a director or educator keeps or sets aside one passage by hand, with their own why. The nightly pass never writes over it
+  if (path === '/api/lens/passage') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const key = typeof body.key === 'string' && /^[a-z0-9][a-z0-9._-]{0,200}$/i.test(body.key) ? body.key : '';
+    if (!key || typeof body.keep !== 'boolean') { err(req, res, 400, 'Say which passage, and whether to keep it.'); return; }
+    const e = setLensPassageByHand(key, body.keep, body.why, me.name); if (!e) { err(req, res, 404, 'That passage is not in the saved plans now.'); return; }
+    json(req, res, 200, { ok: true, key, entry: e, passages: lensPassages() }); return; }
   if (path === '/api/cycle-health') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the cycle\'s health.'); return; } json(req, res, 200, cycleHealth()); return; }
   // the family's copy of a transition summary, shown to the director before she shares it, with each name taken out listed
   if (path === '/api/transition/familycopy') {
