@@ -1,0 +1,870 @@
+{
+ "note": "Corrections from the fact check of the PD theory sections, November 4, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "The research found that these skills predict later learning and health, and that practice strengthens them.",
+   "to": "The research found that these skills at preschool entry predict later reading and math, and that practice strengthens them."
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "The research found that these skills predict later learning and health, and that practice strengthens them.",
+   "to": "The research found that these skills at preschool entry predict later reading and math, and that practice strengthens them."
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "Virginia Vitiello and colleagues followed children across whole preschool days in 2012 and found that children's positive engagement was lower during transitions than during free choice and small group.",
+   "to": "Virginia Vitiello and colleagues rated 283 children's engagement several times across a preschool day in 2012 and found that transitions were the hard part of the day, with less positive engagement than times of free choice."
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "Virginia Vitiello and colleagues followed children across whole preschool days in 2012 and found that children's positive engagement was lower during transitions than during free choice and small group.",
+   "to": "Virginia Vitiello and colleagues rated 283 children's engagement several times across a preschool day in 2012 and found that transitions were the hard part of the day, with less positive engagement than times of free choice."
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "describe transitions as the time of day when challenging behavior is most likely, and list what lowers it. Fewer transitions, shorter ones, a warning ahead, a clear picture of what comes next, and something to do during the wait.",
+   "to": "describe transitions as times when challenging behavior is more likely, and list what lowers it. Fewer transitions, a warning ahead, a clear picture of what comes next, and something to do during the wait."
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "describe transitions as the time of day when challenging behavior is most likely, and list what lowers it. Fewer transitions, shorter ones, a warning ahead, a clear picture of what comes next, and something to do during the wait.",
+   "to": "describe transitions as times when challenging behavior is more likely, and list what lowers it. Fewer transitions, a warning ahead, a clear picture of what comes next, and something to do during the wait."
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "(https://developingchild.harvard.edu/resources/activities-guide-enhancing-and-practicing-executive-function-skills-with-children-from-infancy-to-adolescence/)",
+   "to": "(https://developingchild.harvard.edu/resources/handouts-tools/activities-guide-enhancing-and-practicing-executive-function-skills/)"
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "(https://developingchild.harvard.edu/resources/activities-guide-enhancing-and-practicing-executive-function-skills-with-children-from-infancy-to-adolescence/)",
+   "to": "(https://developingchild.harvard.edu/resources/handouts-tools/activities-guide-enhancing-and-practicing-executive-function-skills/)"
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber, Resources for Infant Educarers, 2002 edition](https://www.rie.org/)",
+   "to": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber with Joan Weaver, Resources for Infant Educarers, second edition 2002](https://rie.org/product/dear-parent/)"
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber, Resources for Infant Educarers, 2002 edition](https://www.rie.org/)",
+   "to": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber with Joan Weaver, Resources for Infant Educarers, second edition 2002](https://rie.org/product/dear-parent/)"
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "Mary Louise Hemmeter, Michaelene Ostrosky, Kathleen Artman and Kiersten Kinder, Young Children, 2008](https://www.naeyc.org/)",
+   "to": "Mary Louise Hemmeter, Michaelene Ostrosky, Kathleen Artman and Kiersten Kinder, Young Children, 2008](https://www.bowdoin.edu/childrens-center/pdf/ProfResource_Transitions.pdf)"
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "Mary Louise Hemmeter, Michaelene Ostrosky, Kathleen Artman and Kiersten Kinder, Young Children, 2008](https://www.naeyc.org/)",
+   "to": "Mary Louise Hemmeter, Michaelene Ostrosky, Kathleen Artman and Kiersten Kinder, Young Children, 2008](https://www.bowdoin.edu/childrens-center/pdf/ProfResource_Transitions.pdf)"
+  },
+  {
+   "path": "staff/pd/modules/08-meeting.md",
+   "from": "he described the small group of two to five children as the most favorable size for learning, because in it a child meets other minds close enough to argue with, borrow from and build on.",
+   "to": "he described the small group as the most favorable way for learning to happen, because in it a child meets other minds close enough to argue with, borrow from and build on."
+  },
+  {
+   "path": "staff/pd/depth/meeting.md",
+   "from": "he described the small group of two to five children as the most favorable size for learning, because in it a child meets other minds close enough to argue with, borrow from and build on.",
+   "to": "he described the small group as the most favorable way for learning to happen, because in it a child meets other minds close enough to argue with, borrow from and build on."
+  },
+  {
+   "path": "staff/pd/modules/08-meeting.md",
+   "from": "Ageliki Nicolopoulou and colleagues tested that practice in Head Start classes in 2015 and found gains in children's narrative skill, print awareness and their ability to wait and take turns (self-regulation), which is more than Paley claimed for it herself.",
+   "to": "Ageliki Nicolopoulou and colleagues tested that practice in 2015 in preschool classes serving low income children and found gains in narrative comprehension, print awareness, pretend ability and a measure of holding back an impulse (self-regulation)."
+  },
+  {
+   "path": "staff/pd/depth/meeting.md",
+   "from": "Ageliki Nicolopoulou and colleagues tested that practice in Head Start classes in 2015 and found gains in children's narrative skill, print awareness and their ability to wait and take turns (self-regulation), which is more than Paley claimed for it herself.",
+   "to": "Ageliki Nicolopoulou and colleagues tested that practice in 2015 in preschool classes serving low income children and found gains in narrative comprehension, print awareness, pretend ability and a measure of holding back an impulse (self-regulation)."
+  },
+  {
+   "path": "staff/pd/modules/08-meeting.md",
+   "from": "she used meeting time for a yearlong conversation with five year olds about one rule, and let the children decide it.",
+   "to": "she used meeting time for a yearlong conversation with five year olds about one rule, talked it through with older classes too, and only then put it in place."
+  },
+  {
+   "path": "staff/pd/depth/meeting.md",
+   "from": "she used meeting time for a yearlong conversation with five year olds about one rule, and let the children decide it.",
+   "to": "she used meeting time for a yearlong conversation with five year olds about one rule, talked it through with older classes too, and only then put it in place."
+  },
+  {
+   "path": "staff/pd/modules/08-meeting.md",
+   "from": "- [Tools of the Mind, The Vygotskian Approach to Early Childhood Education, second edition, Elena Bodrova and Deborah Leong, Pearson, 2007](https://toolsofthemind.org/)",
+   "to": "- [Tools of the Mind, The Vygotskian Approach to Early Childhood Education, second edition, Elena Bodrova and Deborah Leong, Merrill, 2007](https://toolsofthemind.org/)"
+  },
+  {
+   "path": "staff/pd/depth/meeting.md",
+   "from": "- [Tools of the Mind, The Vygotskian Approach to Early Childhood Education, second edition, Elena Bodrova and Deborah Leong, Pearson, 2007](https://toolsofthemind.org/)",
+   "to": "- [Tools of the Mind, The Vygotskian Approach to Early Childhood Education, second edition, Elena Bodrova and Deborah Leong, Merrill, 2007](https://toolsofthemind.org/)"
+  },
+  {
+   "path": "staff/pd/modules/05-families.md",
+   "from": "and they named these funds of knowledge.",
+   "to": "and they brought the anthropologists' term for them, funds of knowledge, into teaching."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "and they named these funds of knowledge.",
+   "to": "and they brought the anthropologists' term for them, funds of knowledge, into teaching."
+  },
+  {
+   "path": "staff/pd/modules/05-families.md",
+   "from": "Epstein's surveys found that schools vary widely in which of the six they practice, and that families' involvement follows what the school invites.",
+   "to": "Epstein's surveys found that schools vary widely in which of the six they practice, and her 1986 study found that families take part more where the school invites them to."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "Epstein's surveys found that schools vary widely in which of the six they practice, and that families' involvement follows what the school invites.",
+   "to": "Epstein's surveys found that schools vary widely in which of the six they practice, and her 1986 study found that families take part more where the school invites them to."
+  },
+  {
+   "path": "staff/pd/modules/05-families.md",
+   "from": "- [Epstein's Framework of Six Types of Involvement, Joyce L. Epstein, National Network of Partnership Schools, Johns Hopkins University](https://nnps.jhucsos.com/)",
+   "to": "- [School, Family, Community Partnerships, Caring for the Children We Share, Joyce L. Epstein, Phi Delta Kappan, 1995](https://www.ebsco.com/research-starters/education/joyce-epsteins-school-family-community-partnership-model)"
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "- [Epstein's Framework of Six Types of Involvement, Joyce L. Epstein, National Network of Partnership Schools, Johns Hopkins University](https://nnps.jhucsos.com/)",
+   "to": "- [School, Family, Community Partnerships, Caring for the Children We Share, Joyce L. Epstein, Phi Delta Kappan, 1995](https://www.ebsco.com/research-starters/education/joyce-epsteins-school-family-community-partnership-model)"
+  },
+  {
+   "path": "staff/pd/modules/05-families.md",
+   "from": "Louise Boyd Cadwell, Teachers College Press, 2003](https://www.tcpress.com/)",
+   "to": "Louise Boyd Cadwell, Teachers College Press, 2003](https://www.tcpress.com/bringing-learning-to-life-9780807742969)"
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "Louise Boyd Cadwell, Teachers College Press, 2003](https://www.tcpress.com/)",
+   "to": "Louise Boyd Cadwell, Teachers College Press, 2003](https://www.tcpress.com/bringing-learning-to-life-9780807742969)"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "With Diane Marlin in 1982, Birch offered two year olds unfamiliar foods between five and twenty times and found that preference rose with the number of tastes, with eight to ten before many children accepted a food.",
+   "to": "With Diane Marlin in 1982, Birch offered two year olds unfamiliar foods between five and twenty times and found that preference rose with the number of tastes. Susan Sullivan and Birch found in 1990 that it took eight to fifteen tastes before many children accepted a food."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "With Diane Marlin in 1982, Birch offered two year olds unfamiliar foods between five and twenty times and found that preference rose with the number of tastes, with eight to ten before many children accepted a food.",
+   "to": "With Diane Marlin in 1982, Birch offered two year olds unfamiliar foods between five and twenty times and found that preference rose with the number of tastes. Susan Sullivan and Birch found in 1990 that it took eight to fifteen tastes before many children accepted a food."
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "Birch found in 1980 that preschoolers seated with friends who chose a different vegetable shifted their own choice within days, and the shift held weeks later.",
+   "to": "Birch, Zimmerman and Hind found in 1980 that preschoolers seated for four days with friends who chose a different vegetable shifted their own choice, and the shift held weeks later."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "Birch found in 1980 that preschoolers seated with friends who chose a different vegetable shifted their own choice within days, and the shift held weeks later.",
+   "to": "Birch, Zimmerman and Hind found in 1980 that preschoolers seated for four days with friends who chose a different vegetable shifted their own choice, and the shift held weeks later."
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "Birch's studies of 1980, 1982, 1984 and 1987 and her 1999 review",
+   "to": "Birch's studies of 1980, 1982, 1984, 1987 and 1990 and her 1999 review"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "Birch's studies of 1980, 1982, 1984 and 1987 and her 1999 review",
+   "to": "Birch's studies of 1980, 1982, 1984, 1987 and 1990 and her 1999 review"
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://eric.ed.gov/?id=ED057922)",
+   "to": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://doi.org/10.1086/460731)"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://eric.ed.gov/?id=ED057922)",
+   "to": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://doi.org/10.1086/460731)"
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "- [The Reflective Practitioner, How Professionals Think in Action, Donald A. Schön, Basic Books, 1983](https://www.basicbooks.com/)",
+   "to": "- [The Reflective Practitioner, How Professionals Think in Action, Donald A. Schön, Basic Books, 1983](https://www.hachettebookgroup.com/titles/donald-a-schon/the-reflective-practitioner/9780465068784/)"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "- [The Reflective Practitioner, How Professionals Think in Action, Donald A. Schön, Basic Books, 1983](https://www.basicbooks.com/)",
+   "to": "- [The Reflective Practitioner, How Professionals Think in Action, Donald A. Schön, Basic Books, 1983](https://www.hachettebookgroup.com/titles/donald-a-schon/the-reflective-practitioner/9780465068784/)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://eric.ed.gov/?id=ED057922)",
+   "to": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://doi.org/10.1086/460731)"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://eric.ed.gov/?id=ED057922)",
+   "to": "- [Developmental Stages of Preschool Teachers, Lilian G. Katz, The Elementary School Journal, 1972](https://doi.org/10.1086/460731)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "Stephanie Feeney led the writing of the first NAEYC Code of Ethical Conduct, adopted in 1989,",
+   "to": "Stephanie Feeney, with the philosopher Kenneth Kipnis, led the writing of the first NAEYC Code of Ethical Conduct, adopted in 1989,"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "Stephanie Feeney led the writing of the first NAEYC Code of Ethical Conduct, adopted in 1989,",
+   "to": "Stephanie Feeney, with the philosopher Kenneth Kipnis, led the writing of the first NAEYC Code of Ethical Conduct, adopted in 1989,"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "third edition, Stephanie Feeney and Nancy K. Freeman, National Association for the Education of Young Children, 2018](https://www.naeyc.org/resources/pubs/books/ethics-and-early-childhood-educator)",
+   "to": "third edition, Stephanie Feeney and Nancy K. Freeman, National Association for the Education of Young Children, 2018](https://www.naeyc.org/node/1931)"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "third edition, Stephanie Feeney and Nancy K. Freeman, National Association for the Education of Young Children, 2018](https://www.naeyc.org/resources/pubs/books/ethics-and-early-childhood-educator)",
+   "to": "third edition, Stephanie Feeney and Nancy K. Freeman, National Association for the Education of Young Children, 2018](https://www.naeyc.org/node/1931)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "Stephanie Feeney, Pearson, 2012](https://www.pearson.com/)",
+   "to": "Stephanie Feeney, Pearson, 2012](https://www.pearson.com/en-us/subject-catalog/p/professionalism-in-early-childhood-education-doing-our-best-for-young-children/P200000001018/9780137064700)"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "Stephanie Feeney, Pearson, 2012](https://www.pearson.com/)",
+   "to": "Stephanie Feeney, Pearson, 2012](https://www.pearson.com/en-us/subject-catalog/p/professionalism-in-early-childhood-education-doing-our-best-for-young-children/P200000001018/9780137064700)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "ninth edition, Malcolm S. Knowles, Elwood F. Holton III and Richard A. Swanson, Routledge, 2020](https://www.routledge.com/)",
+   "to": "ninth edition, Malcolm S. Knowles, Elwood F. Holton III, Richard A. Swanson and Petra A. Robinson, Routledge, 2020](https://lehmanns.de/shop/sozialwissenschaften/52380834-9780367417659-the-adult-learner)"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "ninth edition, Malcolm S. Knowles, Elwood F. Holton III and Richard A. Swanson, Routledge, 2020](https://www.routledge.com/)",
+   "to": "ninth edition, Malcolm S. Knowles, Elwood F. Holton III, Richard A. Swanson and Petra A. Robinson, Routledge, 2020](https://lehmanns.de/shop/sozialwissenschaften/52380834-9780367417659-the-adult-learner)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "Donald A. Schön, Jossey-Bass, 1987](https://www.wiley.com/)",
+   "to": "Donald A. Schön, Jossey-Bass, 1987](https://www.wiley.com/en-us/Educating+the+Reflective+Practitioner%3A+Toward+a+New+Design+for+Teaching+and+Learning+in+the+Professions-p-9781555422202)"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "Donald A. Schön, Jossey-Bass, 1987](https://www.wiley.com/)",
+   "to": "Donald A. Schön, Jossey-Bass, 1987](https://www.wiley.com/en-us/Educating+the+Reflective+Practitioner%3A+Toward+a+New+Design+for+Teaching+and+Learning+in+the+Professions-p-9781555422202)"
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "and he said that this image is a choice, since the opposite picture of a needy child is just as easy to hold.",
+   "to": "and he set that image beside the other one, a child who is fragile, weak and incomplete, and asked educators to hold the strong one."
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "and he said that this image is a choice, since the opposite picture of a needy child is just as easy to hold.",
+   "to": "and he set that image beside the other one, a child who is fragile, weak and incomplete, and asked educators to hold the strong one."
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "The phrase is also Malaguzzi's. In an interview with Lella Gandini in The Hundred Languages of Children he described the environment as a third educator alongside the two educators in each class, one that should be able to change with the children.",
+   "to": "The phrase is usually credited to Malaguzzi, who spoke of the environment as a third educator alongside the two educators in each class, one that should be able to change with the children."
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "The phrase is also Malaguzzi's. In an interview with Lella Gandini in The Hundred Languages of Children he described the environment as a third educator alongside the two educators in each class, one that should be able to change with the children.",
+   "to": "The phrase is usually credited to Malaguzzi, who spoke of the environment as a third educator alongside the two educators in each class, one that should be able to change with the children."
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "Carlina Rinaldi, who led the Reggio schools after Malaguzzi, named the practice",
+   "to": "Carlina Rinaldi, pedagogista and later pedagogical director of the Reggio municipal schools and president of Reggio Children, named the practice"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "Carlina Rinaldi, who led the Reggio schools after Malaguzzi, named the practice",
+   "to": "Carlina Rinaldi, pedagogista and later pedagogical director of the Reggio municipal schools and president of Reggio Children, named the practice"
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "The English term comes from Elizabeth Jones and John Nimmo, whose 1994 book of that name described curriculum growing from what children do.",
+   "to": "The English term was coined by Elizabeth Jones in 1970, and her 1994 book with John Nimmo, Emergent Curriculum, described curriculum growing from what children do."
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "The English term comes from Elizabeth Jones and John Nimmo, whose 1994 book of that name described curriculum growing from what children do.",
+   "to": "The English term was coined by Elizabeth Jones in 1970, and her 1994 book with John Nimmo, Emergent Curriculum, described curriculum growing from what children do."
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "Lella Gandini, Young Children, 1993](https://www.naeyc.org/resources/pubs/yc)",
+   "to": "Lella Gandini, Young Children, 1993](https://eric.ed.gov/?id=EJ474815)"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "Lella Gandini, Young Children, 1993](https://www.naeyc.org/resources/pubs/yc)",
+   "to": "Lella Gandini, Young Children, 1993](https://eric.ed.gov/?id=EJ474815)"
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "Elizabeth Jones and John Nimmo, National Association for the Education of Young Children, 1994](https://www.naeyc.org/resources/pubs/books)",
+   "to": "Elizabeth Jones and John Nimmo, National Association for the Education of Young Children, 1994](https://www.naeyc.org/resources/pubs/books/emergent-curriculum)"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "Elizabeth Jones and John Nimmo, National Association for the Education of Young Children, 1994](https://www.naeyc.org/resources/pubs/books)",
+   "to": "Elizabeth Jones and John Nimmo, National Association for the Education of Young Children, 1994](https://www.naeyc.org/resources/pubs/books/emergent-curriculum)"
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "Jones and Nimmo 1994, and Forman",
+   "to": "Jones 1970, Jones and Nimmo 1994, and Forman"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "Jones and Nimmo 1994, and Forman",
+   "to": "Jones 1970, Jones and Nimmo 1994, and Forman"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "His term for lending that steadiness is co-regulation, and it is the plain reason our rule says close the distance first.",
+   "to": "The term for lending that steadiness is co-regulation, Shanker uses it the same way, and it is the plain reason our rule says close the distance first."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "His term for lending that steadiness is co-regulation, and it is the plain reason our rule says close the distance first.",
+   "to": "The term for lending that steadiness is co-regulation, Shanker uses it the same way, and it is the plain reason our rule says close the distance first."
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "by Desiree Murray and colleagues, pulled the studies together. Co-regulation is",
+   "to": "by Desiree Murray and colleagues, set out a framework for it. Co-regulation is"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "by Desiree Murray and colleagues, pulled the studies together. Co-regulation is",
+   "to": "by Desiree Murray and colleagues, set out a framework for it. Co-regulation is"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "Edward Tronick's still-face study (1975) shows what presence does from the other side. When a parent who had been playing with a baby held a blank face for two minutes,",
+   "to": "Edward Tronick's still-face study, first presented in 1975 and published in 1978, shows what presence does from the other side. When a parent who had been playing with a baby held a blank face for about three minutes,"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Edward Tronick's still-face study (1975) shows what presence does from the other side. When a parent who had been playing with a baby held a blank face for two minutes,",
+   "to": "Edward Tronick's still-face study, first presented in 1975 and published in 1978, shows what presence does from the other side. When a parent who had been playing with a baby held a blank face for about three minutes,"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "Stuart Shanker with Teresa Barker, Penguin Press, 2016](https://self-reg.ca/)",
+   "to": "Stuart Shanker with Teresa Barker, Penguin Press, 2016](https://www.publishersweekly.com/9781594206092)"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Stuart Shanker with Teresa Barker, Penguin Press, 2016](https://self-reg.ca/)",
+   "to": "Stuart Shanker with Teresa Barker, Penguin Press, 2016](https://www.publishersweekly.com/9781594206092)"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "Daniel J. Siegel and Tina Payne Bryson, Delacorte Press, 2011](https://drdansiegel.com/)",
+   "to": "Daniel J. Siegel and Tina Payne Bryson, Delacorte Press, 2011](https://www.publishersweekly.com/9780553807912)"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Daniel J. Siegel and Tina Payne Bryson, Delacorte Press, 2011](https://drdansiegel.com/)",
+   "to": "Daniel J. Siegel and Tina Payne Bryson, Delacorte Press, 2011](https://www.publishersweekly.com/9780553807912)"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber, Resources for Infant Educarers, 1998](https://www.rie.org/)",
+   "to": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber with Joan Weaver, Resources for Infant Educarers, 1998](https://rie.org/product/dear-parent/)"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber, Resources for Infant Educarers, 1998](https://www.rie.org/)",
+   "to": "- [Dear Parent, Caring for Infants with Respect, Magda Gerber with Joan Weaver, Resources for Infant Educarers, 1998](https://rie.org/product/dear-parent/)"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "Office of Planning, Research and Evaluation, 2015](https://www.acf.hhs.gov/opre)",
+   "to": "Office of Planning, Research and Evaluation, 2015](https://fpg.unc.edu/node/3186)"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Office of Planning, Research and Evaluation, 2015](https://www.acf.hhs.gov/opre)",
+   "to": "Office of Planning, Research and Evaluation, 2015](https://fpg.unc.edu/node/3186)"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "Tronick 1975, the Center",
+   "to": "Tronick 1978, the Center"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Tronick 1975, the Center",
+   "to": "Tronick 1978, the Center"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "Loris Malaguzzi put an atelier and an atelierista, a person trained in the arts, into every Reggio Emilia school in the 1960s,",
+   "to": "Loris Malaguzzi put an atelier and an atelierista, a person trained in the arts, into the Reggio Emilia schools from 1970, and into every school by the end of that decade,"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "Loris Malaguzzi put an atelier and an atelierista, a person trained in the arts, into every Reggio Emilia school in the 1960s,",
+   "to": "Loris Malaguzzi put an atelier and an atelierista, a person trained in the arts, into the Reggio Emilia schools from 1970, and into every school by the end of that decade,"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "Lois Lord, who taught art at Bank Street College for decades, built the practice of sorting found materials into trays by color, shape and kind so that children could look before choosing,",
+   "to": "Lois Lord, who taught art at the New Lincoln School and Bank Street College, built the practice of sorting found materials into ordered piles by color, pattern and texture so that children could look before choosing,"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "Lois Lord, who taught art at Bank Street College for decades, built the practice of sorting found materials into trays by color, shape and kind so that children could look before choosing,",
+   "to": "Lois Lord, who taught art at the New Lincoln School and Bank Street College, built the practice of sorting found materials into ordered piles by color, pattern and texture so that children could look before choosing,"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "Rhoda Kellogg collected around a million drawings",
+   "to": "Rhoda Kellogg collected more than a million drawings"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "Rhoda Kellogg collected around a million drawings",
+   "to": "Rhoda Kellogg collected more than a million drawings"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "The same research found that description and questions about process keep children working longer and taking more chances. Our Effective Responses list comes from that work,",
+   "to": "What he offers in place of praise is description and questions about process. Our Effective Responses list comes from that work,"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "The same research found that description and questions about process keep children working longer and taking more chances. Our Effective Responses list comes from that work,",
+   "to": "What he offers in place of praise is description and questions about process. Our Effective Responses list comes from that work,"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "- [Analyzing Children's Art, Rhoda Kellogg, Mayfield Publishing, 1969](https://search.worldcat.org/search?q=ti:Analyzing+Children%27s+Art+Kellogg)",
+   "to": "- [Analyzing Children's Art, Rhoda Kellogg, Mayfield Publishing, 1969](https://search.library.uitm.edu.my/Record/wils-13369)"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "- [Analyzing Children's Art, Rhoda Kellogg, Mayfield Publishing, 1969](https://search.worldcat.org/search?q=ti:Analyzing+Children%27s+Art+Kellogg)",
+   "to": "- [Analyzing Children's Art, Rhoda Kellogg, Mayfield Publishing, 1969](https://search.library.uitm.edu.my/Record/wils-13369)"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "Viktor Lowenfeld and W. Lambert Brittain, Macmillan, 1987](https://search.worldcat.org/search?q=ti:Creative+and+Mental+Growth+Lowenfeld)",
+   "to": "Viktor Lowenfeld and W. Lambert Brittain, Macmillan, 1987](https://openlibrary.org/works/OL13262414W)"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "Viktor Lowenfeld and W. Lambert Brittain, Macmillan, 1987](https://search.worldcat.org/search?q=ti:Creative+and+Mental+Growth+Lowenfeld)",
+   "to": "Viktor Lowenfeld and W. Lambert Brittain, Macmillan, 1987](https://openlibrary.org/works/OL13262414W)"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "- [Collage and Construction in School, Preschool through Junior High, Lois Lord, Davis Publications, 1970](https://search.worldcat.org/search?q=ti:Collage+and+Construction+in+School+Lord)",
+   "to": "- [Collage and Construction in School, Preschool through Junior High, Lois Lord, Davis Publications, revised edition 1970](https://catalog.hathitrust.org/Record/000447993)"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "- [Collage and Construction in School, Preschool through Junior High, Lois Lord, Davis Publications, 1970](https://search.worldcat.org/search?q=ti:Collage+and+Construction+in+School+Lord)",
+   "to": "- [Collage and Construction in School, Preschool through Junior High, Lois Lord, Davis Publications, revised edition 1970](https://catalog.hathitrust.org/Record/000447993)"
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "Cathy Weisman Topal, who taught art to young children at Smith College,",
+   "to": "Cathy Weisman Topal, who taught art to young children at the Smith College Campus School and Smith's early childhood center,"
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "Cathy Weisman Topal, who taught art to young children at Smith College,",
+   "to": "Cathy Weisman Topal, who taught art to young children at the Smith College Campus School and Smith's early childhood center,"
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "and children often make a recognizable figure in clay sooner than adults expect when the request is their own.",
+   "to": "and children often make a recognizable figure in clay sooner than adults expect, especially when asked to make a person."
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "and children often make a recognizable figure in clay sooner than adults expect when the request is their own.",
+   "to": "and children often make a recognizable figure in clay sooner than adults expect, especially when asked to make a person."
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "Claire Golomb, Harvard University Press, 1974](https://search.worldcat.org/search?q=ti:Young+Children%27s+Sculpture+and+Drawing+Golomb)",
+   "to": "Claire Golomb, Harvard University Press, 1974](https://libcat.library.tamu.edu/Record/in00000278669/Description)"
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "Claire Golomb, Harvard University Press, 1974](https://search.worldcat.org/search?q=ti:Young+Children%27s+Sculpture+and+Drawing+Golomb)",
+   "to": "Claire Golomb, Harvard University Press, 1974](https://libcat.library.tamu.edu/Record/in00000278669/Description)"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "said that small groups of two to five children are the most favorable way for learning to happen,",
+   "to": "said that the small group is the most favorable way for learning to happen,"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "said that small groups of two to five children are the most favorable way for learning to happen,",
+   "to": "said that the small group is the most favorable way for learning to happen,"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "and found that most learning happens through guided participation,",
+   "to": "and described how children learn through guided participation,"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "and found that most learning happens through guided participation,",
+   "to": "and described how children learn through guided participation,"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "Harvard's Project Zero worked with the Reggio schools for several years and in 2001 published Making Learning Visible.",
+   "to": "Harvard's Project Zero worked with the Reggio schools for two years and in 2001 published Making Learning Visible."
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "Harvard's Project Zero worked with the Reggio schools for several years and in 2001 published Making Learning Visible.",
+   "to": "Harvard's Project Zero worked with the Reggio schools for two years and in 2001 published Making Learning Visible."
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "- [Making Learning Visible, Children as Individual and Group Learners, Project Zero and Reggio Children, Reggio Children, 2001](https://pz.harvard.edu/projects/making-learning-visible)",
+   "to": "- [Making Learning Visible, Children as Individual and Group Learners, edited by Claudia Giudici, Mara Krechevsky and Carlina Rinaldi, Project Zero and Reggio Children, 2001](https://pz.harvard.edu/resources/making-learning-visible-children-as-individual-and-group-learners)"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "- [Making Learning Visible, Children as Individual and Group Learners, Project Zero and Reggio Children, Reggio Children, 2001](https://pz.harvard.edu/projects/making-learning-visible)",
+   "to": "- [Making Learning Visible, Children as Individual and Group Learners, edited by Claudia Giudici, Mara Krechevsky and Carlina Rinaldi, Project Zero and Reggio Children, 2001](https://pz.harvard.edu/resources/making-learning-visible-children-as-individual-and-group-learners)"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "Lilian G. Katz, Sylvia C. Chard and Yvonne Kogan, Praeger, 2014](https://search.worldcat.org/search?q=ti:Engaging+Children%27s+Minds+Katz+Chard)",
+   "to": "Lilian G. Katz, Sylvia C. Chard and Yvonne Kogan, Praeger, 2014](https://biblioteca.izt.uam.mx/vufind/Record/EBSCO_ocn896877289/Description)"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "Lilian G. Katz, Sylvia C. Chard and Yvonne Kogan, Praeger, 2014](https://search.worldcat.org/search?q=ti:Engaging+Children%27s+Minds+Katz+Chard)",
+   "to": "Lilian G. Katz, Sylvia C. Chard and Yvonne Kogan, Praeger, 2014](https://biblioteca.izt.uam.mx/vufind/Record/EBSCO_ocn896877289/Description)"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "Barbara Rogoff, Oxford University Press, 1990](https://global.oup.com/)",
+   "to": "Barbara Rogoff, Oxford University Press, 1990](https://academic.oup.com/book/53473)"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "Barbara Rogoff, Oxford University Press, 1990](https://global.oup.com/)",
+   "to": "Barbara Rogoff, Oxford University Press, 1990](https://academic.oup.com/book/53473)"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "Lev Vygotsky, Harvard University Press, 1978](https://search.worldcat.org/oclc/3517053)",
+   "to": "Lev Vygotsky, Harvard University Press, 1978](https://www.hup.harvard.edu/books/9780674576292)"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "Lev Vygotsky, Harvard University Press, 1978](https://search.worldcat.org/oclc/3517053)",
+   "to": "Lev Vygotsky, Harvard University Press, 1978](https://www.hup.harvard.edu/books/9780674576292)"
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "She found that children work out the principles of writing on their own before anyone teaches them.",
+   "to": "She found that children work out principles of writing for themselves, often ahead of what anyone has taught them."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "She found that children work out the principles of writing on their own before anyone teaches them.",
+   "to": "She found that children work out principles of writing for themselves, often ahead of what anyone has taught them."
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "working with Spanish-speaking children in Argentina and Mexico, published",
+   "to": "working with Spanish-speaking children in Buenos Aires, published"
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "working with Spanish-speaking children in Argentina and Mexico, published",
+   "to": "working with Spanish-speaking children in Buenos Aires, published"
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "and at last to thumb and two fingers moving on their own (dynamic tripod grasp), usually between four and six. The order is steady and the ages are wide.",
+   "to": "and at last to thumb and two fingers moving on their own (dynamic tripod grasp). Nearly half of their three year olds already held a mature grip, and nine in ten did by six. The order is steady and the ages are wide."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "and at last to thumb and two fingers moving on their own (dynamic tripod grasp), usually between four and six. The order is steady and the ages are wide.",
+   "to": "and at last to thumb and two fingers moving on their own (dynamic tripod grasp). Nearly half of their three year olds already held a mature grip, and nine in ten did by six. The order is steady and the ages are wide."
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "- [What Did I Write?, Beginning Writing Behaviour, Marie M. Clay, Heinemann, 1975](https://www.heinemann.com/)",
+   "to": "- [What Did I Write?, Beginning Writing Behaviour, Marie M. Clay, Heinemann, 1975](https://essentialresources.co.nz/Store/Product/Detail/EBGE0220)"
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "- [What Did I Write?, Beginning Writing Behaviour, Marie M. Clay, Heinemann, 1975](https://www.heinemann.com/)",
+   "to": "- [What Did I Write?, Beginning Writing Behaviour, Marie M. Clay, Heinemann, 1975](https://essentialresources.co.nz/Store/Product/Detail/EBGE0220)"
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "Emilia Ferreiro and Ana Teberosky, Heinemann, 1982](https://search.worldcat.org/search?q=ti:Literacy+Before+Schooling+Ferreiro)",
+   "to": "Emilia Ferreiro and Ana Teberosky, Heinemann, 1982](https://eric.ed.gov/?id=ED263542)"
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "Emilia Ferreiro and Ana Teberosky, Heinemann, 1982](https://search.worldcat.org/search?q=ti:Literacy+Before+Schooling+Ferreiro)",
+   "to": "Emilia Ferreiro and Ana Teberosky, Heinemann, 1982](https://eric.ed.gov/?id=ED263542)"
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "Anne Haas Dyson, Teachers College Press, 1997](https://www.tcpress.com/)",
+   "to": "Anne Haas Dyson, Teachers College Press, 1997](https://libcat.library.tamu.edu/Record/in00001356289)"
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "Anne Haas Dyson, Teachers College Press, 1997](https://www.tcpress.com/)",
+   "to": "Anne Haas Dyson, Teachers College Press, 1997](https://libcat.library.tamu.edu/Record/in00001356289)"
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "- [Much More Than the ABCs, The Early Stages of Reading and Writing, Judith A. Schickedanz, National Association for the Education of Young Children, 1999](https://www.naeyc.org/resources/pubs/books)",
+   "to": "- [So Much More than the ABCs, The Early Phases of Reading and Writing, Judith A. Schickedanz and Molly F. Collins, National Association for the Education of Young Children, 2013](https://naeyc.org/node/701)"
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "- [Much More Than the ABCs, The Early Stages of Reading and Writing, Judith A. Schickedanz, National Association for the Education of Young Children, 1999](https://www.naeyc.org/resources/pubs/books)",
+   "to": "- [So Much More than the ABCs, The Early Phases of Reading and Writing, Judith A. Schickedanz and Molly F. Collins, National Association for the Education of Young Children, 2013](https://naeyc.org/node/701)"
+  },
+  {
+   "path": "staff/pd/modules/07-spaces.md",
+   "from": "Simon Nicholson, an architect, wrote in 1971",
+   "to": "Simon Nicholson, a sculptor and educator, wrote in 1971"
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Simon Nicholson, an architect, wrote in 1971",
+   "to": "Simon Nicholson, a sculptor and educator, wrote in 1971"
+  },
+  {
+   "path": "staff/pd/modules/07-spaces.md",
+   "from": "In 1999 she reported that the two things named most often were long, free time in wild or half wild places as a child and an adult who showed care for those places alongside them. These were memories looked back on, so they show a link, and a link is all we claim. Her 2007 review of the field found the same pair again and again.",
+   "to": "In 1999 she reported, from 56 people in Kentucky and Norway, that the two things named most often were time in natural areas as a child and family, mainly parents, each named by three in four. These were memories looked back on, so they show a link, and a link is all we claim. Her 2007 review of the field found the same pair again and again, free time outdoors and an adult who showed care for those places alongside the child."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "In 1999 she reported that the two things named most often were long, free time in wild or half wild places as a child and an adult who showed care for those places alongside them. These were memories looked back on, so they show a link, and a link is all we claim. Her 2007 review of the field found the same pair again and again.",
+   "to": "In 1999 she reported, from 56 people in Kentucky and Norway, that the two things named most often were time in natural areas as a child and family, mainly parents, each named by three in four. These were memories looked back on, so they show a link, and a link is all we claim. Her 2007 review of the field found the same pair again and again, free time outdoors and an adult who showed care for those places alongside the child."
+  },
+  {
+   "path": "staff/pd/modules/07-spaces.md",
+   "from": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/article/beyond-ecophobia/)",
+   "to": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/product/beyond-ecophobia-reclaiming-the-heart-in-nature-education/)"
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/article/beyond-ecophobia/)",
+   "to": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/product/beyond-ecophobia-reclaiming-the-heart-in-nature-education/)"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "Dilafruz Williams, who founded the Learning Gardens Laboratory in Portland,",
+   "to": "Dilafruz Williams, who co-founded the Learning Gardens Laboratory in Portland,"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "Louise Chawla found in 1999 that adults who care for the environment most often remembered free time in a wild or half wild place as a child and an adult who tended that place beside them.",
+   "to": "Louise Chawla found in 1999 that adults who care for the environment most often remembered time in natural places as a child and their family, and her 2007 review added the adult who tended that place beside them."
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "asked three and four year olds where seeds come from and what they become. In 1995 they reported that by four most children knew",
+   "to": "asked four and five year olds where seeds come from and what they become. In 1995 they reported that most of them knew"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "Three year olds were less sure. The full circle,",
+   "to": "The younger children were less sure. The full circle,"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/article/beyond-ecophobia/)",
+   "to": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/product/beyond-ecophobia-reclaiming-the-heart-in-nature-education/)"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "- [Benefits of Nature Contact for Children, Louise Chawla, Journal of Planning Literature, 2015](https://journals.sagepub.com/doi/10.1177/0885412215595441)",
+   "to": "- [Life Paths Into Effective Environmental Action, Louise Chawla, The Journal of Environmental Education, 1999](https://www.tandfonline.com/doi/abs/10.1080/00958969909598628)\n- [Benefits of Nature Contact for Children, Louise Chawla, Journal of Planning Literature, 2015](https://journals.sagepub.com/doi/10.1177/0885412215595441)"
+  },
+  {
+   "path": "staff/pd/modules/29-seeding-planting-and-watering.md",
+   "from": "Anne Hickling and Susan Gelman found in 1995 that most four year olds know a seed comes from a plant of its own kind and will grow into that kind of plant, while three year olds are less certain.",
+   "to": "Anne Hickling and Susan Gelman found in 1995 that most four and five year olds know a seed comes from a plant of its own kind and will grow into that kind of plant, while the younger ones are less certain."
+  },
+  {
+   "path": "staff/pd/modules/29-seeding-planting-and-watering.md",
+   "from": "Dilafruz Williams and P. Scott Dixon's 2013 review of garden based learning found the strongest results in science, and the studies that looked at eating found children more willing to taste a vegetable they had grown. Those studies were mostly with school age children and many were small, so we hold them lightly. Sheri Zidenberg-Cherr's team at the University of California, Davis reported in 2002 that fourth graders with a garden alongside nutrition lessons preferred more vegetables afterward than children with lessons alone.",
+   "to": "Dilafruz Williams and P. Scott Dixon's 2013 review of garden based learning found the strongest results in science. Separate nutrition studies found children more willing to taste a vegetable they had grown. Those studies were mostly with school age children and many were small, so we hold them lightly. Jennifer Morris and Sheri Zidenberg-Cherr at the University of California, Davis reported in 2002 that fourth graders with a garden alongside nutrition lessons came to prefer some vegetables more than children with lessons alone."
+  },
+  {
+   "path": "staff/pd/modules/29-seeding-planting-and-watering.md",
+   "from": "Anne K. Hickling and Susan A. Gelman, Child Development, 1995](https://onlinelibrary.wiley.com/journal/14678624)",
+   "to": "Anne K. Hickling and Susan A. Gelman, Child Development, 1995](https://doi.org/10.1111/j.1467-8624.1995.tb00910.x)"
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "Louise Chawla's interviews, reported in 1999, found that adults who give their lives to caring for the environment most often remembered two things from childhood, free time in a natural place and an adult who cared for that place beside them.",
+   "to": "Louise Chawla's interviews with 56 people in Kentucky and Norway, reported in 1999, found that adults who give their lives to caring for the environment most often remembered two things from childhood, time in natural places and their family, and her 2007 review added the adult who cared for that place beside them."
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "Douglas Tallamy, an entomologist at the University of Delaware, counted in 2007 how many kinds of caterpillars feed on each kind of tree and shrub in his region.",
+   "to": "Douglas Tallamy, an entomologist at the University of Delaware, ranked in 2007, from published records, how many kinds of caterpillars feed on each kind of tree and shrub in the mid-Atlantic states."
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "and is now run by the California Academy of Sciences and the National Geographic Society.",
+   "to": "grew up inside the California Academy of Sciences and the National Geographic Society, and has been an independent nonprofit since 2023."
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "Susan A. Gelman, Oxford University Press, 2003](https://global.oup.com/academic/product/the-essential-child-9780195181982)",
+   "to": "Susan A. Gelman, Oxford University Press, 2003](https://academic.oup.com/book/32747)"
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "- [Bringing Nature Home, How You Can Sustain Wildlife with Native Plants, Douglas W. Tallamy, Timber Press, 2007](https://www.timberpress.com/books/bringing_nature_home/tallamy/9780881929928)",
+   "to": "- [Bringing Nature Home, How You Can Sustain Wildlife with Native Plants, Douglas W. Tallamy, Timber Press, 2007, updated 2009](https://hachettebookgroupusdistribution.com/titles/douglas-w-tallamy/bringing-nature-home/9780881929928/)"
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "Anne Hickling and Susan Gelman found in 1995 that most four year olds know a seed grows into a plant of its own kind,",
+   "to": "Anne Hickling and Susan Gelman found in 1995 that four and five year olds already understand a good deal about seeds and how they grow,"
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "Suzanne Ashworth, Seed Savers Exchange, 2002](https://seedsavers.org/)",
+   "to": "Suzanne Ashworth, Seed Savers Exchange, second edition 2002](https://www.chelseagreen.com/?p=49599)"
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "Anne K. Hickling and Susan A. Gelman, Child Development, 1995](https://onlinelibrary.wiley.com/journal/14678624)",
+   "to": "Anne K. Hickling and Susan A. Gelman, Child Development, 1995](https://doi.org/10.1111/j.1467-8624.1995.tb00910.x)"
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "William J. Friedman, MIT Press, 1990](https://mitpress.mit.edu/)",
+   "to": "William J. Friedman, MIT Press, 1990](https://digitalcommons.oberlin.edu/faculty_schol/695/)"
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "- [The Child's Conception of Time, Jean Piaget, Routledge, 1969](https://www.routledge.com/)",
+   "to": "- [The Child's Conception of Time, Jean Piaget, translated by A. J. Pomerans, Routledge and Kegan Paul, 1969](https://openlibrary.org/books/OL4434610M)"
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "Leann Birch, a developmental psychologist, spent thirty years at the University of Illinois and Penn State studying",
+   "to": "Leann Birch, a developmental psychologist, spent four decades at the University of Illinois, Penn State and the University of Georgia studying"
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "A 2014 review by Derek Hersch and colleagues for the Centers for Disease Control found that cooking programs for school age children raised their willingness to taste and their confidence in the kitchen, and that most studies were short and could not show lasting change.",
+   "to": "A 2014 review by Derek Hersch and colleagues, published in the CDC journal Preventing Chronic Disease, found that cooking programs for school age children may raise willingness to try new foods and confidence in the kitchen, and that no study showed whether the change lasts."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "reported in 2013 that fourth graders who cooked preferred more vegetables and felt more able to cook than those who only tasted.",
+   "to": "reported in 2013 that fourth graders who cooked or tasted in class came to prefer more vegetables than classmates who did neither, and that children with no cooking experience gained the most confidence."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "- [The Division of Responsibility in Feeding, Ellyn Satter Institute](https://www.ellynsatterinstitute.org/)",
+   "to": "- [The Division of Responsibility in Feeding, Ellyn Satter Institute](https://www.ellynsatterinstitute.org/how-to-feed/division-of-responsibility/)"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "and to use them as a safe place to leave from and return to (attachment, and the secure base). Mary Ainsworth reported",
+   "to": "and to use them as a safe place to leave from and return to (attachment). Mary Ainsworth, who named that safe place the secure base, reported"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "and to use them as a safe place to leave from and return to (attachment, and the secure base). Mary Ainsworth reported",
+   "to": "and to use them as a safe place to leave from and return to (attachment). Mary Ainsworth, who named that safe place the secure base, reported"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "About fifty words at two, two word phrases soon after, and by three",
+   "to": "Two word phrases around two, fifty words or so between two and two and a half, and by three"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "About fifty words at two, two word phrases soon after, and by three",
+   "to": "Two word phrases around two, fifty words or so between two and two and a half, and by three"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "- [A Secure Base, Parent-Child Attachment and Healthy Human Development, John Bowlby, Routledge, 1988](https://www.routledge.com/A-Secure-Base/Bowlby/p/book/9780415355278)",
+   "to": "- [A Secure Base, Parent-Child Attachment and Healthy Human Development, John Bowlby, Routledge, 1988, Routledge Classics edition 2005](https://www.routledge.com/A-Secure-Base/Bowlby/p/book/9780415355278)"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "- [A Secure Base, Parent-Child Attachment and Healthy Human Development, John Bowlby, Routledge, 1988](https://www.routledge.com/A-Secure-Base/Bowlby/p/book/9780415355278)",
+   "to": "- [A Secure Base, Parent-Child Attachment and Healthy Human Development, John Bowlby, Routledge, 1988, Routledge Classics edition 2005](https://www.routledge.com/A-Secure-Base/Bowlby/p/book/9780415355278)"
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "Their review found that risky outdoor play supports children's physical activity and their social health. It found no clear evidence for other claims, so that is what we say and no more.",
+   "to": "Their review of 21 studies found that risky outdoor play goes with more physical activity and better social health, that climbing at height did not raise the rate or severity of injuries in the studies reviewed, and that rough and tumble play did not make children more aggressive. That is what we say and no more."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "Their review found that risky outdoor play supports children's physical activity and their social health. It found no clear evidence for other claims, so that is what we say and no more.",
+   "to": "Their review of 21 studies found that risky outdoor play goes with more physical activity and better social health, that climbing at height did not raise the rate or severity of injuries in the studies reviewed, and that rough and tumble play did not make children more aggressive. That is what we say and no more."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "and that they seek it on purpose, raising the challenge a little at a time until it feels just right.",
+   "to": "and that they seek it on purpose. Children tend to add risk once a challenge feels easy."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "and that they seek it on purpose, raising the challenge a little at a time until it feels just right.",
+   "to": "and that they seek it on purpose. Children tend to add risk once a challenge feels easy."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "A productive challenge is a risk a child can see, weigh and choose, and we keep it. We aim for as safe as necessary, never as safe as possible.",
+   "to": "A productive challenge is a risk a child can see, weigh and choose, and we keep it. We borrow the safety world's own phrase, as safe as necessary, never as safe as possible."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "A productive challenge is a risk a child can see, weigh and choose, and we keep it. We aim for as safe as necessary, never as safe as possible.",
+   "to": "A productive challenge is a risk a child can see, weigh and choose, and we keep it. We borrow the safety world's own phrase, as safe as necessary, never as safe as possible."
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "- [Early Learning Institute, Behavioral Consultation Project, Rohnert Park](https://www.earlylearninginstitute.com/)",
+   "to": "- [Early Learning Institute, The Consultation Project, Santa Rosa](https://www.earlylearninginstitute.com/services-2)"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "- [Early Learning Institute, Behavioral Consultation Project, Rohnert Park](https://www.earlylearninginstitute.com/)",
+   "to": "- [Early Learning Institute, The Consultation Project, Santa Rosa](https://www.earlylearninginstitute.com/services-2)"
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "- [Sensory Integration and the Child, A. Jean Ayres, Western Psychological Services, 2005 edition](https://www.wpspublish.com/sensory-integration-and-the-child)",
+   "to": "- [Sensory Integration and the Child, 25th Anniversary Edition, A. Jean Ayres, Western Psychological Services, 2005](https://www.wpspublish.com/sensory-integration-and-the-child-25th-anniversary-edition)"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "- [Sensory Integration and the Child, A. Jean Ayres, Western Psychological Services, 2005 edition](https://www.wpspublish.com/sensory-integration-and-the-child)",
+   "to": "- [Sensory Integration and the Child, 25th Anniversary Edition, A. Jean Ayres, Western Psychological Services, 2005](https://www.wpspublish.com/sensory-integration-and-the-child-25th-anniversary-edition)"
+  }
+ ]
+}

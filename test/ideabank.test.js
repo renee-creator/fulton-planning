@@ -317,3 +317,19 @@ test('the PD theory steps keep their anchors and run once', async () => {
     const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits(key, () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
   }
 });
+
+// November 4, 2026. The fact check corrections swap exact phrases in the PD pages, once.
+test('the PD corrections step swaps exact phrases once', async () => {
+  const list = require('../once/s24-pd-corrections.json');
+  assert.ok(list.changes.length > 100);
+  const texts = list.changes.map(c => c.to.replace(/\(https?:[^)]*\)/g, '')).join('\n');
+  assert.doesNotMatch(texts, /[—–;]|\btoddler\b|\bClaude\b/);
+  const h = make(PEOPLE);
+  const files = [...new Set(list.changes.map(c => c.path))];
+  for (const p of files) h.files.set(p, { text: '<!--\nstatus: draft\n-->\n# Page\n\n## Reading\n\n' + list.changes.filter(c => c.path === p).map(c => c.from).join('\n\n') + '\n', sha: p });
+  await h.staff.load();
+  assert.notStrictEqual(await h.staff.once.edits('s24PdFix', () => false), false);
+  const d = h.staff.dump();
+  for (const c of list.changes) { assert.ok(d[c.path].includes(c.to), 'applied ' + c.path); if (!c.to.includes(c.from)) assert.ok(!d[c.path].includes(c.from), 'old words gone ' + c.path); }
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s24PdFix', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+});
