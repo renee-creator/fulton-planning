@@ -1,0 +1,3740 @@
+{
+ "name": "s33OurLibrary",
+ "note": "Books on our own shelves marked In our library, with the books our PD modules cite and the rest of our shelf added to the Readings library, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl01].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl01].cites",
+   "value": [
+    "Don't Move the Muffin Tins"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl02].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl02].cites",
+   "value": [
+    "The Visionary Director"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl03].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl03].cites",
+   "value": [
+    "Designs for Living and Learning"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl06].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl06].cites",
+   "value": [
+    "The Hundred Languages of Children, Carolyn Edwards",
+    "The Hundred Languages of Children: The Reggio Emilia Experience"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl11].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl11].cites",
+   "value": [
+    "Free to Learn: Why Unleashing"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl13].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl13].cites",
+   "value": [
+    "Engaging Children's Minds"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl16].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl16].cites",
+   "value": [
+    "Beyond Discipline: From Compliance to Community"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl18].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl18].cites",
+   "value": [
+    "Visible Learners"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl22].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl22].cites",
+   "value": [
+    "The Language of Art, Inquiry-Based",
+    "The Language of Art. Redleaf"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl30].cites",
+   "value": [
+    "Working in the Reggio Way"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-roots].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-roots].cites",
+   "value": [
+    "Roots, Shoots, Buckets"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-sunflower].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-sunflower].cites",
+   "value": [
+    "Sunflower Houses"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-campgranny].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-campgranny].cites",
+   "value": [
+    "Camp Granny",
+    "Toad Cottages"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-young-coyote].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-young-coyote].cites",
+   "value": [
+    "Coyote's Guide to Connecting with Nature"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-vecchi-art].onSite",
+   "value": true
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-vecchi-art].cites",
+   "value": [
+    "Art and Creativity in Reggio Emilia"
+   ]
+  },
+  {
+   "path": "staff/readings.json",
+   "set": "list[id=rl-lovejoy-campgranny].note",
+   "value": "Our copy is the earlier edition, Toad Cottages & Shooting Stars (2009).",
+   "expect": null
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-bringing-learning-to-life",
+    "kind": "book",
+    "title": "Bringing Learning to Life: The Reggio Approach to Early Childhood Education",
+    "author": "Louise Boyd Cadwell",
+    "cite": "Cadwell, L. B. (2003). Bringing learning to life: The Reggio approach to early childhood education. Teachers College Press.",
+    "source": "Louise Boyd Cadwell, Teachers College Press, 2003",
+    "year": "2003",
+    "url": "https://search.worldcat.org/search?q=bringing+learning+to+life+the+reggio+approach+to+early+childhood+education+cadwell",
+    "check": false,
+    "supports": "the Reggio approach in an American early childhood setting",
+    "areas": [
+     "cur",
+     "refl"
+    ],
+    "modules": [
+     "families"
+    ],
+    "why": "Cadwell describes bringing the Reggio approach into practice with young children, giving our educators a close look at inquiry and documentation over time.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Bringing Learning to Life, The Reggio Approach"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-making-learning-visible",
+    "kind": "book",
+    "title": "Making Learning Visible: Children as Individual and Group Learners",
+    "author": "Project Zero and Reggio Children; edited by Claudia Giudici, Carla Rinaldi, and Mara Krechevsky",
+    "cite": "Giudici, C., Rinaldi, C., & Krechevsky, M. (Eds.). (2001). Making learning visible: Children as individual and group learners. Project Zero; Reggio Children.",
+    "source": "Claudia Giudici, Carla Rinaldi and Mara Krechevsky (Eds.), Project Zero and Reggio Children, 2001",
+    "year": "2001",
+    "url": "https://www.reggiochildren.it/en/rc/publishing/books-and-audiovisuals/making-learning-visible/",
+    "check": false,
+    "supports": "documentation of individual and group learning",
+    "areas": [
+     "obs",
+     "team"
+    ],
+    "modules": [
+     "documentation",
+     "principles"
+    ],
+    "why": "Drawn from research by Reggio Emilia educators and Harvard Project Zero, it shows how documentation makes both individual and group learning visible to children and adults.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Making Learning Visible, Children as Individual",
+     "Making Learning Visible, Reggio Children, 2001"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-emergent-curriculum",
+    "kind": "book",
+    "title": "Emergent Curriculum",
+    "author": "Elizabeth Jones and John Nimmo",
+    "cite": "Jones, E., & Nimmo, J. (1994). Emergent curriculum. National Association for the Education of Young Children.",
+    "source": "Elizabeth Jones and John Nimmo, NAEYC, 1994",
+    "year": "1994",
+    "url": "https://www.naeyc.org/resources/pubs/books/emergent-curriculum",
+    "check": false,
+    "supports": "planning curriculum from children's needs and interests",
+    "areas": [
+     "cur",
+     "team"
+    ],
+    "modules": [
+     "principles"
+    ],
+    "why": "Follows one program's educators through a school year as they talk through shaping curriculum around children's needs and interests as they arise.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Emergent Curriculum, Elizabeth Jones"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-tools-of-the-mind",
+    "kind": "book",
+    "title": "Tools of the Mind: The Vygotskian Approach to Early Childhood Education",
+    "author": "Elena Bodrova and Deborah J. Leong",
+    "cite": "Bodrova, E., & Leong, D. J. (2007). Tools of the mind: The Vygotskian approach to early childhood education (2nd ed.). Pearson/Merrill Prentice Hall.",
+    "source": "Elena Bodrova and Deborah J. Leong, Pearson/Merrill Prentice Hall, 2007",
+    "year": "2007",
+    "url": "https://search.worldcat.org/search?q=tools+of+the+mind+the+vygotskian+approach+to+early+childhood+education+bodrova",
+    "check": false,
+    "supports": "Vygotsky's theory, play, and the zone of proximal development",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [
+     "meeting"
+    ],
+    "why": "Explains Vygotsky's theory and its strategies, including the zone of proximal development, mediators, language and shared activity, with play as the leading activity in preschool.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Tools of the Mind"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-dap-third",
+    "kind": "book",
+    "title": "Developmentally Appropriate Practice in Early Childhood Programs Serving Children From Birth Through Age 8",
+    "author": "Carol Copple and Sue Bredekamp (Eds.)",
+    "cite": "Copple, C., & Bredekamp, S. (Eds.). (2009). Developmentally appropriate practice in early childhood programs serving children from birth through age 8 (3rd ed.). National Association for the Education of Young Children.",
+    "source": "Carol Copple and Sue Bredekamp (Eds.), NAEYC, 2009",
+    "year": "2009",
+    "url": "https://naeyc.org/node/1476",
+    "check": false,
+    "supports": "principles for decisions in programs from birth through eight",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Sets out principles for making decisions in early childhood programs, grounded in research on development and learning, with examples for infants and twos through the primary grades.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Developmentally Appropriate Practice in Early Childhood Programs Serving Children from Birth through Age 8, third edition"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-ca-foundations-vol2",
+    "kind": "book",
+    "title": "California Preschool Learning Foundations, Volume 2",
+    "author": "California Department of Education",
+    "cite": "California Department of Education. (2010). California preschool learning foundations (Vol. 2). CDE Press.",
+    "source": "California Department of Education, CDE Press, 2010",
+    "year": "2010",
+    "url": "https://www.cde.ca.gov/sp/cd/re/psfvol2intro.asp",
+    "check": false,
+    "supports": "arts, physical development and health foundations for preschoolers",
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "modules": [
+     "drdp-foundations"
+    ],
+    "why": "Describes the knowledge and skills most preschool children reach at around 48 and 60 months in visual and performing arts, physical development and health.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "California Preschool Learning Foundations, Volume 2"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-caring-spaces",
+    "kind": "book",
+    "title": "Caring Spaces, Learning Places: Children's Environments That Work!",
+    "author": "Jim Greenman",
+    "cite": "Greenman, J. (2017). Caring spaces, learning places: Children's environments that work! (M. Lindstrom, Ed.; 3rd ed.). Exchange Press.",
+    "source": "Jim Greenman, Exchange Press, 2017",
+    "year": "2017",
+    "url": "https://hub.exchangepress.com/shop/caring-spaces",
+    "check": false,
+    "supports": "designing indoor and outdoor environments for young children",
+    "areas": [
+     "env"
+    ],
+    "modules": [
+     "spaces",
+     "serving-two-year-olds"
+    ],
+    "why": "Gathers ideas, problems, solutions, examples, photographs and poetry about designing environments for young children, written for directors, designers and classroom educators.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Caring Spaces, Learning Places"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-analyzing-childrens-art",
+    "kind": "book",
+    "title": "Analyzing Children's Art",
+    "author": "Rhoda Kellogg",
+    "cite": "Kellogg, R. (1969). Analyzing children's art. Mayfield.",
+    "source": "Rhoda Kellogg, Mayfield, 1969",
+    "year": "1969",
+    "url": "https://search.worldcat.org/search?q=analyzing+childrens+art+kellogg",
+    "check": false,
+    "supports": "the forms and stages found in children's drawings",
+    "areas": [
+     "obs",
+     "img"
+    ],
+    "modules": [
+     "atelier"
+    ],
+    "why": "Draws on Kellogg's collection of children's drawings to classify the forms common to children's art from infancy to age eight, with many visual examples.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Analyzing Children's Art"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-developing-person",
+    "kind": "book",
+    "title": "The Developing Person Through Childhood and Adolescence",
+    "author": "Kathleen Stassen Berger",
+    "cite": "Berger, K. S. (2009). The developing person through childhood and adolescence (8th ed.). Worth Publishers.",
+    "source": "Kathleen Stassen Berger, Worth Publishers, 2009",
+    "year": "2009",
+    "url": "https://search.worldcat.org/search?q=the+developing+person+through+childhood+and+adolescence+berger",
+    "check": false,
+    "supports": "child development research from infancy through adolescence",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "A child development textbook covering how children grow from infancy through adolescence and how developmental researchers study that growth.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "The Developing Person Through Childhood and Adolescence"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-child-family-community",
+    "kind": "book",
+    "title": "Child, Family, and Community: Family-Centered Early Care and Education",
+    "author": "Janet Gonzalez-Mena",
+    "cite": "Gonzalez-Mena, J. (2013). Child, family, and community: Family-centered early care and education (6th ed.). Pearson.",
+    "source": "Janet Gonzalez-Mena, Pearson, 2013",
+    "year": "2013",
+    "url": "https://search.worldcat.org/search?q=child+family+and+community+familycentered+early+care+and+education+gonzalezmena",
+    "check": false,
+    "supports": "family-centered care, socialization and advocacy for families",
+    "areas": [
+     "fam"
+    ],
+    "modules": [
+     "development-and-anti-bias"
+    ],
+    "why": "Covers how children from birth through age eight are socialized at home, in child care and in school, with an advocacy focus and practical strategies for working with families.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Child, Family, and Community, Family-Centered"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-ethics-educator",
+    "kind": "book",
+    "title": "Ethics and the Early Childhood Educator: Using the NAEYC Code",
+    "author": "Stephanie Feeney and Nancy K. Freeman",
+    "cite": "Feeney, S., & Freeman, N. K. (2018). Ethics and the early childhood educator: Using the NAEYC code (3rd ed.). National Association for the Education of Young Children.",
+    "source": "Stephanie Feeney and Nancy K. Freeman, NAEYC, 2018",
+    "year": "2018",
+    "url": "https://www.naeyc.org/node/1931",
+    "check": false,
+    "supports": "applying the NAEYC Code of Ethical Conduct",
+    "areas": [
+     "refl",
+     "team"
+    ],
+    "modules": [
+     "professional"
+    ],
+    "why": "Uses cases from early childhood programs, reflection questions and a step by step process to apply the NAEYC Code of Ethical Conduct to workplace ethical issues.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Ethics and the Early Childhood Educator"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-nelp-report",
+    "kind": "book",
+    "title": "Developing Early Literacy: Report of the National Early Literacy Panel",
+    "author": "National Early Literacy Panel",
+    "cite": "National Early Literacy Panel. (2008). Developing early literacy: Report of the National Early Literacy Panel. National Institute for Literacy.",
+    "source": "National Early Literacy Panel, National Institute for Literacy, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=developing+early+literacy+report+of+the+national+early+literacy+panel",
+    "check": false,
+    "supports": "research on early skills linked to later literacy",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [
+     "emergent-reader"
+    ],
+    "why": "A review of published research on young children's early literacy that identifies which early skills and abilities are precursors of later reading and writing achievement.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Report of the National Early Literacy Panel"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-ramps-and-pathways",
+    "kind": "book",
+    "title": "Ramps & Pathways: A Constructivist Approach to Physics With Young Children",
+    "author": "Rheta DeVries and Christina Sales",
+    "cite": "DeVries, R., & Sales, C. (2011). Ramps & pathways: A constructivist approach to physics with young children. National Association for the Education of Young Children.",
+    "source": "Rheta DeVries and Christina Sales, NAEYC, 2011",
+    "year": "2011",
+    "url": "https://www.naeyc.org/resources/pubs/books/ramps-pathways-constructivist-approach-physics-young-children",
+    "check": false,
+    "supports": "children exploring force and motion with ramps",
+    "areas": [
+     "cur",
+     "img"
+    ],
+    "modules": [],
+    "why": "Shows through classroom examples how children build ideas about force and motion with ramps, using ten principles of constructivist teaching drawn from Piaget.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true,
+    "cites": [
+     "Ramps and Pathways",
+     "Ramps & Pathways"
+    ]
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-insights-and-inspirations-from-reggio-emilia",
+    "kind": "book",
+    "title": "Insights and Inspirations from Reggio Emilia: Stories of Teachers and Children from North America",
+    "author": "Lella Gandini, Susan Etheredge, Lynn T. Hill (Eds.)",
+    "cite": "Gandini, L., Etheredge, S., & Hill, L. T. (Eds.). (2008). Insights and inspirations from Reggio Emilia: Stories of teachers and children from North America. Davis Publications.",
+    "source": "Lella Gandini, Susan Etheredge, Lynn T. Hill, Davis Publications, 2008",
+    "year": "2008",
+    "url": "https://www.davisart.com/art-education-resources/insights-and-inspirations-from-reggio-emilia-stories-of-teachers-and-children-from-north-america/",
+    "check": false,
+    "supports": "North American stories of Reggio-inspired practice",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Stories and images from North American educators show how Reggio Emilia ideas took shape in their schools over thirty years.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-loris-malaguzzi-and-the-schools-of-reggio-emilia",
+    "kind": "book",
+    "title": "Loris Malaguzzi and the Schools of Reggio Emilia: A Selection of His Writings and Speeches, 1945-1993",
+    "author": "Paola Cagliari, Marina Castagnetti, Claudia Giudici, Carlina Rinaldi, Vea Vecchi, Peter Moss (Eds.)",
+    "cite": "Cagliari, P., Castagnetti, M., Giudici, C., Rinaldi, C., Vecchi, V., & Moss, P. (Eds.). (2016). Loris Malaguzzi and the schools of Reggio Emilia: A selection of his writings and speeches, 1945-1993. Routledge.",
+    "source": "Paola Cagliari, Marina Castagnetti, Claudia Giudici, Carlina Rinaldi, Vea Vecchi, Peter Moss, Routledge, 2016",
+    "year": "2016",
+    "url": "https://www.routledge.com/Loris-Malaguzzi-and-the-Schools-of-Reggio-Emilia-A-selection-of-his-writings-and-speeches-1945-1993/Cagliari-Castagnetti-Giudici-Rinaldi-Vecchi-Moss/p/book/9781138019829",
+    "check": false,
+    "supports": "Malaguzzi's own writings on children and schools",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Malaguzzi's letters, speeches and essays from 1945 to 1993 let our educators trace how his ideas grew over time.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-role-of-the-pedagogista-in-reggio-emilia",
+    "kind": "book",
+    "title": "The Role of the Pedagogista in Reggio Emilia: Voices and Ideas for a Dialectic Educational Experience",
+    "author": "Stefania Giamminuti, Paola Cagliari, Claudia Giudici, Paola Strozzi",
+    "cite": "Giamminuti, S., Cagliari, P., Giudici, C., & Strozzi, P. (2024). The role of the pedagogista in Reggio Emilia: Voices and ideas for a dialectic educational experience. Routledge.",
+    "source": "Stefania Giamminuti, Paola Cagliari, Claudia Giudici, Paola Strozzi, Routledge, 2024",
+    "year": "2024",
+    "url": "https://www.routledge.com/The-Role-of-the-Pedagogista-in-Reggio-Emilia-Voices-and-Ideas-for-a-Dialectic-Educational-Experience/Giamminuti-Cagliari-Giudici-Strozzi/p/book/9781032019215",
+    "check": false,
+    "supports": "How pedagogistas, atelieristas and educators work together",
+    "areas": [
+     "team",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Drawn from observations and interviews in Reggio Emilia, it shows pedagogistas, atelieristas and educators sharing documentation and progettazione as joint work.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-learning-with-the-pedagogy-of-reggio-emilia",
+    "kind": "book",
+    "title": "Learning with the Pedagogy of Reggio Emilia: Innovative Approaches to Early Childhood and Teacher Education",
+    "author": "Lori Ryan (Ed.)",
+    "cite": "Ryan, L. (Ed.). (2026). Learning with the pedagogy of Reggio Emilia: Innovative approaches to early childhood and teacher education. Teachers College Press.",
+    "source": "Lori Ryan, Teachers College Press, 2026",
+    "year": "2026",
+    "url": "https://www.tcpress.com/learning-with-the-pedagogy-of-reggio-emilia-9780807783931",
+    "check": false,
+    "supports": "Reggio-inspired educator preparation, listening and belonging",
+    "areas": [
+     "refl",
+     "img"
+    ],
+    "modules": [],
+    "why": "Graduates of a Boulder Journey School partnership write about deep listening, children's rights and belonging, with reflective prompts closing each chapter.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-powerful-children",
+    "kind": "book",
+    "title": "Powerful Children: Understanding How to Teach and Learn Using the Reggio Approach",
+    "author": "Ann Lewin-Benham",
+    "cite": "Lewin-Benham, A. (2008). Powerful children: Understanding how to teach and learn using the Reggio approach. Teachers College Press.",
+    "source": "Ann Lewin-Benham, Teachers College Press, 2008",
+    "year": "2008",
+    "url": "https://www.tcpress.com/powerful-children-9780807748831",
+    "check": false,
+    "supports": "Reggio Approach projects with Head Start-eligible children",
+    "areas": [
+     "cur",
+     "img"
+    ],
+    "modules": [],
+    "why": "Projects at a school that adapted the Reggio approach with Head Start-eligible children, connected to current questions in education.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-more-working-in-the-reggio-way",
+    "kind": "book",
+    "title": "More Working in the Reggio Way",
+    "author": "Julianne Wurm",
+    "cite": "Wurm, J. (2014). More working in the Reggio way. R3.",
+    "source": "Julianne Wurm, R3, 2014",
+    "year": "2014",
+    "url": "https://search.worldcat.org/search?q=more+working+in+the+reggio+way+wurm",
+    "check": false,
+    "supports": "Bringing Reggio practices into American programs",
+    "areas": [
+     "refl",
+     "cur"
+    ],
+    "modules": [],
+    "why": "A follow-up that names common American barriers and looks at the assemblea, projects, documentation and educator reflection.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-power-of-observation-2nd-ed",
+    "kind": "book",
+    "title": "The Power of Observation (2nd ed.)",
+    "author": "Judy R. Jablon, Amy Laura Dombro, Margo L. Dichtelmiller",
+    "cite": "Jablon, J. R., Dombro, A. L., & Dichtelmiller, M. L. (2007). The power of observation (2nd ed.). Teaching Strategies.",
+    "source": "Judy R. Jablon, Amy Laura Dombro, Margo L. Dichtelmiller, Teaching Strategies, 2007",
+    "year": "2007",
+    "url": "https://search.worldcat.org/search?q=the+power+of+observation+jablon",
+    "check": false,
+    "supports": "Observing children across early childhood settings",
+    "areas": [
+     "obs"
+    ],
+    "modules": [],
+    "why": "Shows how observing children informs educators' work, through the authors' own experiences and others'.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-observation-and-participation-in-early-childhood-s",
+    "kind": "book",
+    "title": "Observation and Participation in Early Childhood Settings: A Practicum Guide (2nd ed.)",
+    "author": "Jean Billman, Janice A. Sherman",
+    "cite": "Billman, J., & Sherman, J. A. (2003). Observation and participation in early childhood settings: A practicum guide (2nd ed.). Allyn and Bacon.",
+    "source": "Jean Billman, Janice A. Sherman, Allyn and Bacon, 2003",
+    "year": "2003",
+    "url": "https://search.worldcat.org/search?q=observation+and+participation+in+early+childhood+settings+a+practicum+guide+billman",
+    "check": false,
+    "supports": "Practicum guide to observing and participating with children",
+    "areas": [
+     "obs",
+     "refl"
+    ],
+    "modules": [],
+    "why": "A practicum guide for observing and taking part in early childhood settings.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-windows-on-learning",
+    "kind": "book",
+    "title": "Windows on Learning: Documenting Young Children's Work (2nd ed.)",
+    "author": "Judy Harris Helm, Sallee Beneke, Kathy Steinheimer",
+    "cite": "Helm, J. H., Beneke, S., & Steinheimer, K. (2007). Windows on learning: Documenting young children's work (2nd ed.). Teachers College Press.",
+    "source": "Judy Harris Helm, Sallee Beneke, Kathy Steinheimer, Teachers College Press, 2007",
+    "year": "2007",
+    "url": "https://www.tcpress.com/windows-on-learning-9780807747865",
+    "check": false,
+    "supports": "Collecting, analyzing and displaying children's work",
+    "areas": [
+     "obs"
+    ],
+    "modules": [],
+    "why": "How to collect, analyze and display children's work as documentation of their learning.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-art-of-awareness",
+    "kind": "book",
+    "title": "The Art of Awareness: How Observation Can Transform Your Teaching (2nd ed.)",
+    "author": "Deb Curtis, Margie Carter",
+    "cite": "Curtis, D., & Carter, M. (2013). The art of awareness: How observation can transform your teaching (2nd ed.). Redleaf Press.",
+    "source": "Deb Curtis, Margie Carter, Redleaf Press, 2013",
+    "year": "2013",
+    "url": "https://search.worldcat.org/search?q=the+art+of+awareness+how+observation+can+transform+your+teaching+curtis",
+    "check": false,
+    "supports": "Study sessions for close observation of children",
+    "areas": [
+     "obs",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Nine study sessions of activities and stories that build habits of close observation.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-assessing-and-guiding-young-children-s-development",
+    "kind": "book",
+    "title": "Assessing and Guiding Young Children's Development and Learning (5th ed.)",
+    "author": "Oralie McAfee, Deborah J. Leong",
+    "cite": "McAfee, O., & Leong, D. J. (2011). Assessing and guiding young children's development and learning (5th ed.). Pearson.",
+    "source": "Oralie McAfee, Deborah J. Leong, Pearson, 2011",
+    "year": "2011",
+    "url": "https://search.worldcat.org/search?q=assessing+and+guiding+young+childrens+development+and+learning+mcafee",
+    "check": false,
+    "supports": "Classroom assessment that informs curriculum planning",
+    "areas": [
+     "obs",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Carrying out assessment, interpreting what we gather and using it to plan curriculum.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-basics-of-assessment",
+    "kind": "book",
+    "title": "Basics of Assessment: A Primer for Early Childhood Professionals",
+    "author": "Oralie McAfee, Deborah Leong, Elena Bodrova",
+    "cite": "McAfee, O., Leong, D., & Bodrova, E. (2004). Basics of assessment: A primer for early childhood professionals. National Association for the Education of Young Children.",
+    "source": "Oralie McAfee, Deborah Leong, Elena Bodrova, NAEYC, 2004",
+    "year": "2004",
+    "url": "https://search.worldcat.org/search?q=basics+of+assessment+a+primer+for+early+childhood+professionals+mcafee",
+    "check": false,
+    "supports": "Core assessment ideas and shared vocabulary",
+    "areas": [
+     "obs"
+    ],
+    "modules": [],
+    "why": "A short primer on assessment terms, so educators share a vocabulary with specialists and families.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-reaching-standards-and-beyond-in-kindergarten",
+    "kind": "book",
+    "title": "Reaching Standards and Beyond in Kindergarten: Nurturing Children's Sense of Wonder and Joy in Learning",
+    "author": "Gera Jacobs, Kathleen E. Crowley",
+    "cite": "Jacobs, G., & Crowley, K. E. (2010). Reaching standards and beyond in kindergarten: Nurturing children's sense of wonder and joy in learning. Corwin; National Association for the Education of Young Children.",
+    "source": "Gera Jacobs, Kathleen E. Crowley, Corwin and NAEYC, 2010",
+    "year": "2010",
+    "url": "https://search.worldcat.org/search?q=reaching+standards+and+beyond+in+kindergarten+jacobs",
+    "check": false,
+    "supports": "Meeting kindergarten content standards through creative play",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Meeting kindergarten standards through creative play, with attention to assessment and families.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-power-of-emergent-curriculum",
+    "kind": "book",
+    "title": "The Power of Emergent Curriculum: Stories from Early Childhood Settings",
+    "author": "Carol Anne Wien (Ed.)",
+    "cite": "Wien, C. A. (Ed.). (2014). The power of emergent curriculum: Stories from early childhood settings. National Association for the Education of Young Children.",
+    "source": "Carol Anne Wien, NAEYC, 2014",
+    "year": "2014",
+    "url": "https://naeyc.org/node/787",
+    "check": false,
+    "supports": "Stories of emergent curriculum in early childhood settings",
+    "areas": [
+     "cur",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Stories of emergent curriculum in practice, each answered by experts such as Elizabeth Jones and Lella Gandini.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-emergent-curriculum-in-the-primary-classroom",
+    "kind": "book",
+    "title": "Emergent Curriculum in the Primary Classroom: Interpreting the Reggio Emilia Approach in Schools",
+    "author": "Carol Anne Wien (Ed.)",
+    "cite": "Wien, C. A. (Ed.). (2008). Emergent curriculum in the primary classroom: Interpreting the Reggio Emilia approach in schools. Teachers College Press; National Association for the Education of Young Children.",
+    "source": "Carol Anne Wien, Teachers College Press and NAEYC, 2008",
+    "year": "2008",
+    "url": "https://www.tcpress.com/emergent-curriculum-in-the-primary-classroom-9780807748879",
+    "check": false,
+    "supports": "Emergent curriculum in kindergarten to third grade",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Educators describe the emergent practices they built in kindergarten through third grade.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-reflecting-children-s-lives",
+    "kind": "book",
+    "title": "Reflecting Children's Lives: A Handbook for Planning Child-Centered Curriculum",
+    "author": "Deb Curtis and Margie Carter",
+    "cite": "Deb Curtis and Margie Carter. Reflecting Children's Lives: A Handbook for Planning Child-Centered Curriculum.",
+    "source": "Deb Curtis and Margie Carter",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=reflecting+childrens+lives+curtis",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-learning-together-with-young-children",
+    "kind": "book",
+    "title": "Learning Together with Young Children",
+    "author": "Deb Curtis and Margie Carter",
+    "cite": "Deb Curtis and Margie Carter. Learning Together with Young Children.",
+    "source": "Deb Curtis and Margie Carter",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=learning+together+with+young+children+curtis",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur",
+     "refl"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-young-investigators",
+    "kind": "book",
+    "title": "Young Investigators: The Project Approach in the Early Years (3rd ed.)",
+    "author": "Judy Harris Helm, Lilian G. Katz",
+    "cite": "Helm, J. H., & Katz, L. G. (2016). Young investigators: The project approach in the early years (3rd ed.). Teachers College Press.",
+    "source": "Judy Harris Helm, Lilian G. Katz, Teachers College Press, 2016",
+    "year": "2016",
+    "url": "https://search.worldcat.org/search?q=young+investigators+the+project+approach+in+the+early+years+helm",
+    "check": false,
+    "supports": "The project approach with young children",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "The project approach for the early years, where children investigate a topic in depth over time.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-intentional-teacher",
+    "kind": "book",
+    "title": "The Intentional Teacher: Choosing the Best Strategies for Young Children's Learning (Rev. ed.)",
+    "author": "Ann S. Epstein",
+    "cite": "Epstein, A. S. (2014). The intentional teacher: Choosing the best strategies for young children's learning (Rev. ed.). National Association for the Education of Young Children.",
+    "source": "Ann S. Epstein, NAEYC, 2014",
+    "year": "2014",
+    "url": "https://www.naeyc.org/node/196",
+    "check": false,
+    "supports": "Balancing child-guided and adult-guided learning",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Balancing child-guided and adult-guided learning across content areas.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-early-learning-theories-made-visible",
+    "kind": "book",
+    "title": "Early Learning Theories Made Visible",
+    "author": "Miriam Beloglovsky, Lisa Daly",
+    "cite": "Beloglovsky, M., & Daly, L. (2015). Early learning theories made visible. Redleaf Press.",
+    "source": "Miriam Beloglovsky, Lisa Daly, Redleaf Press, 2015",
+    "year": "2015",
+    "url": "https://search.worldcat.org/search?q=early+learning+theories+made+visible+beloglovsky",
+    "check": false,
+    "supports": "Learning theories shown through classroom vignettes",
+    "areas": [
+     "refl",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Vignettes and photos connect Piaget, Erikson, Vygotsky, Dewey, Gardner and Derman-Sparks to everyday practice.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-having-of-wonderful-ideas-and-other-essays-on-",
+    "kind": "book",
+    "title": "\"The Having of Wonderful Ideas\" and Other Essays on Teaching and Learning (3rd ed.)",
+    "author": "Eleanor Duckworth",
+    "cite": "Duckworth, E. (2006). \"The having of wonderful ideas\" and other essays on teaching and learning (3rd ed.). Teachers College Press.",
+    "source": "Eleanor Duckworth, Teachers College Press, 2006",
+    "year": "2006",
+    "url": "https://www.tcpress.com/the-having-of-wonderful-ideas-and-other-essays-on-teaching-and-learning-3rd-edition-9780807747308",
+    "check": false,
+    "supports": "Children's ideas at the center of learning",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Essays drawing on Piaget about the having of wonderful ideas as the heart of intellectual development.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-becoming-brilliant",
+    "kind": "book",
+    "title": "Becoming Brilliant: What Science Tells Us About Raising Successful Children",
+    "author": "Roberta Michnick Golinkoff, Kathy Hirsh-Pasek",
+    "cite": "Golinkoff, R. M., & Hirsh-Pasek, K. (2016). Becoming brilliant: What science tells us about raising successful children. American Psychological Association.",
+    "source": "Roberta Michnick Golinkoff, Kathy Hirsh-Pasek, American Psychological Association, 2016",
+    "year": "2016",
+    "url": "https://search.worldcat.org/search?q=becoming+brilliant+what+science+tells+us+about+raising+successful+children+golinkoff",
+    "check": false,
+    "supports": "The six Cs of children's competencies",
+    "areas": [
+     "img",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Six competencies, from collaboration to confidence, and ways adults can nurture each.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-from-play-to-practice",
+    "kind": "book",
+    "title": "From Play to Practice: Connecting Teachers' Play to Children's Learning",
+    "author": "Marcia L. Nell, Walter F. Drew, Deborah E. Bush",
+    "cite": "Nell, M. L., Drew, W. F., & Bush, D. E. (2013). From play to practice: Connecting teachers' play to children's learning. National Association for the Education of Young Children.",
+    "source": "Marcia L. Nell, Walter F. Drew, Deborah E. Bush, NAEYC, 2013",
+    "year": "2013",
+    "url": "https://naeyc.org/node/237",
+    "check": false,
+    "supports": "Adult play workshops connected to children's learning",
+    "areas": [
+     "refl",
+     "team"
+    ],
+    "modules": [],
+    "why": "Play workshops for educators that connect adults' own play to children's play-based learning.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-california-preschool-curriculum-framework-volume-2",
+    "kind": "book",
+    "title": "California Preschool Curriculum Framework, Volume 2: Visual and Performing Arts, Physical Development, Health",
+    "author": "California Department of Education",
+    "cite": "California Department of Education. (2011). California preschool curriculum framework, volume 2: Visual and performing arts, physical development, health.",
+    "source": "California Department of Education, CDE Press, 2011",
+    "year": "2011",
+    "url": "https://www.cde.ca.gov/SP/CD/re/documents/psframeworkvol2.pdf",
+    "check": false,
+    "supports": "State framework for arts, movement and health",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "The state framework for arts, physical development and health.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-prekindergarten-learning-development-guidelines",
+    "kind": "book",
+    "title": "Prekindergarten Learning & Development Guidelines",
+    "author": "California Department of Education (Janet Lundin, Ed., with Sharon Hawley)",
+    "cite": "California Department of Education. (2000). Prekindergarten learning & development guidelines.",
+    "source": "California Department of Education, CDE Press, 2000",
+    "year": "2000",
+    "url": "https://search.worldcat.org/search?q=prekindergarten+learning+and+development+guidelines+california+department+of+education",
+    "check": false,
+    "supports": "State guidelines for quality preschool programs",
+    "areas": [
+     "cur",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Earlier California guidelines on program quality, families and curriculum areas.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-creative-curriculum-for-preschool-4th-ed",
+    "kind": "book",
+    "title": "The Creative Curriculum for Preschool (4th ed.)",
+    "author": "Diane Trister Dodge, Laura J. Colker, Cate Heroman",
+    "cite": "Dodge, D. T., Colker, L. J., & Heroman, C. (2002). The creative curriculum for preschool (4th ed.). Teaching Strategies.",
+    "source": "Diane Trister Dodge, Laura J. Colker, Cate Heroman, Teaching Strategies, 2002",
+    "year": "2002",
+    "url": "https://search.worldcat.org/search?q=the+creative+curriculum+for+preschool+dodge",
+    "check": false,
+    "supports": "Environment-based curriculum linked to an assessment continuum",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "An environment-based preschool curriculum with goals linked to a developmental continuum.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-weekly-curriculum",
+    "kind": "book",
+    "title": "The Weekly Curriculum: 52 Complete Preschool Themes",
+    "author": "Barbara Backer",
+    "cite": "Backer, B. (2003). The weekly curriculum: 52 complete preschool themes. Gryphon House.",
+    "source": "Barbara Backer, Gryphon House, 2003",
+    "year": "2003",
+    "url": "https://shop.gryphonhouse.com/products/the-weekly-curriculum-book",
+    "check": false,
+    "supports": "Week-long themed activity plans for preschool",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Fifty-two week-long themes with vocabulary, activities and related books.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-early-learning-thematic-lesson-plans",
+    "kind": "book",
+    "title": "Early Learning Thematic Lesson Plans: 32 Thematic Lesson Plans for a Developmentally Appropriate Curriculum, Grades PreK-1",
+    "author": "Sherrill B. Flora",
+    "cite": "Flora, S. B. (2005). Early learning thematic lesson plans: 32 thematic lesson plans for a developmentally appropriate curriculum, grades PreK-1. Key Education Publishing.",
+    "source": "Sherrill B. Flora, Key Education Publishing, 2005",
+    "year": "2005",
+    "url": "https://search.worldcat.org/search?q=early+learning+thematic+lesson+plans+flora",
+    "check": false,
+    "supports": "Thematic lesson plans with reproducible pages",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Thirty-two thematic plans with reproducible materials.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-giant-encyclopedia-of-preschool-activities-for",
+    "kind": "book",
+    "title": "The GIANT Encyclopedia of Preschool Activities for Four-Year-Olds: Over 600 Activities Created by Teachers for Teachers",
+    "author": "Kathy Charner, Maureen Murphy",
+    "cite": "Charner, K., & Murphy, M. (2004). The GIANT encyclopedia of preschool activities for four-year-olds: Over 600 activities created by teachers for teachers. Gryphon House.",
+    "source": "Kathy Charner, Maureen Murphy, Gryphon House, 2004",
+    "year": "2004",
+    "url": "https://shop.gryphonhouse.com/products/giant-encyclopedia-of-preschool-activities-for-4-year-olds",
+    "check": false,
+    "supports": "Classroom-tested activities for four-year-olds",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Over 600 activities contributed by educators.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-transition-time",
+    "kind": "book",
+    "title": "Transition Time: Let's Do Something Different!",
+    "author": "Jean R. Feldman",
+    "cite": "Feldman, J. R. (1995). Transition time: Let's do something different! Gryphon House.",
+    "source": "Jean R. Feldman, Gryphon House, 1995",
+    "year": "1995",
+    "url": "https://shop.gryphonhouse.com/products/transition-time",
+    "check": false,
+    "supports": "Activities for transitions across the day",
+    "areas": [
+     "cur",
+     "lang"
+    ],
+    "modules": [],
+    "why": "Over 400 ideas for arrivals, gatherings and clean-up.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-loose-parts-2",
+    "kind": "book",
+    "title": "Loose Parts 2: Inspiring Play with Infants and Toddlers",
+    "author": "Lisa Daly and Miriam Beloglovsky",
+    "cite": "Daly, L., & Beloglovsky, M. (2016). Loose parts 2: Inspiring play with infants and toddlers. Redleaf Press.",
+    "source": "Lisa Daly and Miriam Beloglovsky, Redleaf Press, 2016",
+    "year": "2016",
+    "url": "https://www.redleafpress.org/Loose-Parts-2-Inspiring-Play-with-Infants-and-Toddlers-P1429.aspx",
+    "check": false,
+    "supports": "Loose parts play and safe materials for infants and twos",
+    "areas": [
+     "env",
+     "img"
+    ],
+    "modules": [],
+    "why": "Loose parts ideas for infants and twos, with safety notes by age and stories tied to research.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-loose-parts-3",
+    "kind": "book",
+    "title": "Loose Parts 3: Inspiring Culturally Sustainable Environments",
+    "author": "Lisa Daly and Miriam Beloglovsky",
+    "cite": "Daly, L., & Beloglovsky, M. (2018). Loose parts 3: Inspiring culturally sustainable environments. Redleaf Press.",
+    "source": "Lisa Daly and Miriam Beloglovsky, Redleaf Press, 2018",
+    "year": "2018",
+    "url": "https://www.redleafpress.org/Loose-Parts-3-Inspiring-Culturally-Sustainable-Environments-P1908.aspx",
+    "check": false,
+    "supports": "Designing spaces that honor children's cultural identities",
+    "areas": [
+     "env",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Designing spaces that honor children's cultural identities, built around equity, authenticity and critical reflection.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-loose-parts-4",
+    "kind": "book",
+    "title": "Loose Parts 4: Inspiring 21st-Century Learning",
+    "author": "Lisa Daly and Miriam Beloglovsky",
+    "cite": "Daly, L., & Beloglovsky, M. (2019). Loose parts 4: Inspiring 21st-century learning. Redleaf Press.",
+    "source": "Lisa Daly and Miriam Beloglovsky, Redleaf Press, 2019",
+    "year": "2019",
+    "url": "https://www.redleafpress.org/Loose-Parts-4-Inspiring-21st-Century-Learning-P2427.aspx",
+    "check": false,
+    "supports": "Loose parts, family engagement and lifelong competencies",
+    "areas": [
+     "fam",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Bringing loose parts into play and sharing them with families, linked to resilience, leadership and creativity.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-taking-back-childhood",
+    "kind": "book",
+    "title": "Taking Back Childhood: Helping Your Kids Thrive in a Fast-Paced, Media-Saturated, Violence-Filled World",
+    "author": "Nancy Carlsson-Paige",
+    "cite": "Carlsson-Paige, N. (2008). Taking back childhood: Helping your kids thrive in a fast-paced, media-saturated, violence-filled world. Hudson Street Press.",
+    "source": "Nancy Carlsson-Paige, Hudson Street Press, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=taking+back+childhood+carlssonpaige",
+    "check": false,
+    "supports": "Play, safety and relationships in a media-saturated childhood",
+    "areas": [
+     "img",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Three essentials for children, open-ended play, a sense of safety and close relationships.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-beyond-remote-controlled-childhood",
+    "kind": "book",
+    "title": "Beyond Remote-Controlled Childhood: Teaching Young Children in the Media Age",
+    "author": "Diane E. Levin",
+    "cite": "Levin, D. E. (2013). Beyond remote-controlled childhood: Teaching young children in the media age. National Association for the Education of Young Children.",
+    "source": "Diane E. Levin, NAEYC, 2013",
+    "year": "2013",
+    "url": "https://www.naeyc.org/node/811",
+    "check": false,
+    "supports": "Screen media's effects and working with families",
+    "areas": [
+     "fam",
+     "refl"
+    ],
+    "modules": [],
+    "why": "How media culture shapes play, with ways to talk with families about screens.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-their-name-is-today",
+    "kind": "book",
+    "title": "Their Name Is Today: Reclaiming Childhood in a Hostile World",
+    "author": "Johann Christoph Arnold",
+    "cite": "Arnold, J. C. (2014). Their name is today: Reclaiming childhood in a hostile world. Plough Publishing House.",
+    "source": "Johann Christoph Arnold, Plough Publishing House, 2014",
+    "year": "2014",
+    "url": "https://search.worldcat.org/search?q=their+name+is+today+reclaiming+childhood+in+a+hostile+world+arnold",
+    "check": false,
+    "supports": "Protecting time for play, nature and attention",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Interviews on pressures such as testing and screens, and a case for time to play and time in nature.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-cooperative-sports-games-book",
+    "kind": "book",
+    "title": "The Cooperative Sports & Games Book: Challenge Without Competition",
+    "author": "Terry Orlick",
+    "cite": "Orlick, T. (1978). The cooperative sports & games book: Challenge without competition. Pantheon Books.",
+    "source": "Terry Orlick, Pantheon Books, 1978",
+    "year": "1978",
+    "url": "https://search.worldcat.org/search?q=cooperative+sports+games+book+orlick",
+    "check": false,
+    "supports": "Cooperative games where children play together",
+    "areas": [
+     "team",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Games where players work together toward a shared challenge.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-before-the-basics",
+    "kind": "book",
+    "title": "Before the Basics: Creating Conversations with Children",
+    "author": "Bev Bos",
+    "cite": "Bos, B. (1983). Before the basics: Creating conversations with children. Turn the Page Press.",
+    "source": "Bev Bos, Turn the Page Press, 1983",
+    "year": "1983",
+    "url": "https://search.worldcat.org/search?q=before+the+basics+creating+conversations+with+children+bos",
+    "check": false,
+    "supports": "Conversation with young children",
+    "areas": [
+     "lang"
+    ],
+    "modules": [],
+    "why": "Bev Bos on creating conversations with young children.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-together-we-re-better",
+    "kind": "book",
+    "title": "Together We're Better: Establishing a Coactive Learning Environment",
+    "author": "Bev Bos",
+    "cite": "Bos, B. (1990). Together we're better: Establishing a coactive learning environment. Turn the Page Press.",
+    "source": "Bev Bos, Turn the Page Press, 1990",
+    "year": "1990",
+    "url": "https://search.worldcat.org/search?q=together+were+better+establishing+a+coactive+learning+environment+bos",
+    "check": false,
+    "supports": "Children learning and working together",
+    "areas": [
+     "team",
+     "env"
+    ],
+    "modules": [],
+    "why": "Children growing in their ability to work together.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-children-s-imagination",
+    "kind": "book",
+    "title": "Children's Imagination: Creativity Under Our Noses",
+    "author": "Ursula Kolbe",
+    "cite": "Kolbe, U. (2014). Children's imagination: Creativity under our noses. Peppinot Press.",
+    "source": "Ursula Kolbe, Peppinot Press, 2014",
+    "year": "2014",
+    "url": "https://search.worldcat.org/search?q=childrens+imagination+creativity+under+our+noses+kolbe",
+    "check": false,
+    "supports": "Imagination through unhurried play with everyday materials",
+    "areas": [
+     "img",
+     "env"
+    ],
+    "modules": [],
+    "why": "Children's play with everyday materials and how unhurried play feeds imaginative thinking.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-rapunzel-s-supermarket",
+    "kind": "book",
+    "title": "Rapunzel's Supermarket: All About Young Children and Their Art",
+    "author": "Ursula Kolbe",
+    "cite": "Kolbe, U. (2007). Rapunzel's supermarket: All about young children and their art. Peppinot Press.",
+    "source": "Ursula Kolbe, Peppinot Press, 2007",
+    "year": "2007",
+    "url": "https://search.worldcat.org/search?q=rapunzels+supermarket+all+about+young+children+and+their+art+kolbe",
+    "check": false,
+    "supports": "Young children's art and visual thinking",
+    "areas": [
+     "img",
+     "obs"
+    ],
+    "modules": [],
+    "why": "Young children and their art, with ways to look at textures, patterns, marks and lines.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-wonder-art-workshop",
+    "kind": "book",
+    "title": "Wonder Art Workshop: Creative Child-Led Experiences for Nurturing Imagination, Curiosity, and a Love of Learning",
+    "author": "Sally Haughey",
+    "cite": "Haughey, S. (2020). Wonder art workshop: Creative child-led experiences for nurturing imagination, curiosity, and a love of learning. Quarry Books.",
+    "source": "Sally Haughey, Quarry Books, 2020",
+    "year": "2020",
+    "url": "https://search.worldcat.org/search?q=wonder+art+workshop+haughey",
+    "check": false,
+    "supports": "Child-led art, sensory and potion play",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Twenty-five child-led invitations, including loose parts, potion trays and story landscapes.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-psychology-of-children-s-art",
+    "kind": "book",
+    "title": "The Psychology of Children's Art",
+    "author": "Rhoda Kellogg with Scott O'Dell",
+    "cite": "Kellogg, R., & O'Dell, S. (1967). The psychology of children's art. CRM Books.",
+    "source": "Rhoda Kellogg and Scott O'Dell, CRM Books, 1967",
+    "year": "1967",
+    "url": "https://search.worldcat.org/search?q=psychology+of+childrens+art+kellogg",
+    "check": false,
+    "supports": "Children's scribbles, shapes and early drawing",
+    "areas": [
+     "obs",
+     "img"
+    ],
+    "modules": [],
+    "why": "Color plates from Kellogg's study of how scribbles and shapes develop.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-first-art",
+    "kind": "book",
+    "title": "First Art: Art Experiences for Toddlers and Twos",
+    "author": "MaryAnn F. Kohl",
+    "cite": "Kohl, M. F. (2002). First art: Art experiences for toddlers and twos. Gryphon House.",
+    "source": "MaryAnn F. Kohl, Gryphon House, 2002",
+    "year": "2002",
+    "url": "https://search.worldcat.org/search?q=first+art+art+experiences+for+toddlers+and+twos+kohl",
+    "check": false,
+    "supports": "Open-ended art for infants and twos",
+    "areas": [
+     "cur",
+     "img"
+    ],
+    "modules": [],
+    "why": "Art experiences written for children under three.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-preschool-art",
+    "kind": "book",
+    "title": "Preschool Art: It's the Process, Not the Product",
+    "author": "MaryAnn F. Kohl",
+    "cite": "Kohl, M. F. (1994). Preschool art: It's the process, not the product. Gryphon House.",
+    "source": "MaryAnn F. Kohl, Gryphon House, 1994",
+    "year": "1994",
+    "url": "https://search.worldcat.org/search?q=preschool+art+its+the+process+not+the+product+kohl",
+    "check": false,
+    "supports": "Process art experiences for preschoolers",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "A large collection of process art experiences.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-children-as-illustrators",
+    "kind": "book",
+    "title": "Children as Illustrators: Making Meaning Through Art and Language",
+    "author": "Susan Conklin Thompson",
+    "cite": "Thompson, S. C. (2005). Children as illustrators: Making meaning through art and language. National Association for the Education of Young Children.",
+    "source": "Susan Conklin Thompson, NAEYC, 2005",
+    "year": "2005",
+    "url": "https://search.worldcat.org/search?q=children+as+illustrators+making+meaning+through+art+and+language+thompson",
+    "check": false,
+    "supports": "Linking children's art making with early literacy",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Making and reading pictures as part of early literacy, with over two dozen techniques.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-it-s-not-a-bird-yet",
+    "kind": "book",
+    "title": "It's Not a Bird Yet: The Drama of Drawing",
+    "author": "Ursula Kolbe",
+    "cite": "Kolbe, U. (2005). It's not a bird yet: The drama of drawing. Peppinot Press.",
+    "source": "Ursula Kolbe, Peppinot Press, 2005",
+    "year": "2005",
+    "url": "https://search.worldcat.org/search?q=its+not+a+bird+yet+the+drama+of+drawing+kolbe",
+    "check": false,
+    "supports": "Drawing as a way children think and play",
+    "areas": [
+     "img",
+     "obs"
+    ],
+    "modules": [],
+    "why": "How children use drawing to think and imagine, with ideas for adults who draw alongside them.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-interactive-art-book",
+    "kind": "book",
+    "title": "The Interactive Art Book",
+    "author": "Ron van der Meer and Frank Whitford",
+    "cite": "van der Meer, R., & Whitford, F. (2013). The interactive art book. Insight Kids.",
+    "source": "Ron van der Meer and Frank Whitford, Insight Kids, 2013",
+    "year": "2013",
+    "url": "https://search.worldcat.org/search?q=interactive+art+book+van+der+meer",
+    "check": false,
+    "supports": "Famous artworks explored through flaps and pop-ups",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "Sixty famous artworks with flaps and pop-ups that open up light, color and composition.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-365-art-craft-activities",
+    "kind": "book",
+    "title": "365 Art & Craft Activities",
+    "author": "",
+    "cite": "365 Art & Craft Activities.",
+    "source": "",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=365+art+craft+activities",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-it-s-fun-to-make-pictures",
+    "kind": "book",
+    "title": "It's Fun to Make Pictures",
+    "author": "",
+    "cite": "It's Fun to Make Pictures.",
+    "source": "",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=its+fun+to+make+pictures",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-children-s-music-studio",
+    "kind": "book",
+    "title": "The Children's Music Studio: A Reggio-Inspired Approach",
+    "author": "Wendell Hanna",
+    "cite": "Hanna, W. (2016). The children's music studio: A Reggio-inspired approach. Oxford University Press.",
+    "source": "Wendell Hanna, Oxford University Press, 2016",
+    "year": "2016",
+    "url": "https://search.worldcat.org/search?q=childrens+music+studio+a+reggio+inspired+approach+hanna",
+    "check": false,
+    "supports": "A Reggio-inspired studio for children's music",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "A children's music studio built on Reggio Emilia ideas.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-sing-a-song-of-popcorn",
+    "kind": "book",
+    "title": "Sing a Song of Popcorn: Every Child's Book of Poems",
+    "author": "Selected by Beatrice Schenk de Regniers and others",
+    "cite": "de Regniers, B. S. (Ed.). (1988). Sing a song of popcorn: Every child's book of poems. Scholastic.",
+    "source": "Beatrice Schenk de Regniers (ed.), Scholastic, 1988",
+    "year": "1988",
+    "url": "https://search.worldcat.org/search?q=sing+a+song+of+popcorn+every+childs+book+of+poems+de+regniers",
+    "check": false,
+    "supports": "Poems for read-aloud, illustrated by Caldecott artists",
+    "areas": [
+     "lang"
+    ],
+    "modules": [],
+    "why": "128 poems for reading aloud, illustrated by nine Caldecott artists.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-learn-american-sign-language",
+    "kind": "book",
+    "title": "Learn American Sign Language: Everything You Need to Start Signing Now",
+    "author": "James W. Guido",
+    "cite": "Guido, J. W. (2015). Learn American sign language: Everything you need to start signing now. Wellfleet Press.",
+    "source": "James W. Guido, Wellfleet Press, 2015",
+    "year": "2015",
+    "url": "https://search.worldcat.org/search?q=learn+american+sign+language+guido",
+    "check": false,
+    "supports": "Beginning American Sign Language vocabulary and grammar",
+    "areas": [
+     "lang"
+    ],
+    "modules": [],
+    "why": "A beginner's guide to over 800 signs.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-learning-to-listen-listening-to-learn",
+    "kind": "book",
+    "title": "Learning to Listen, Listening to Learn: Building Essential Skills in Young Children",
+    "author": "Mary Renck Jalongo",
+    "cite": "Jalongo, M. R. (2008). Learning to listen, listening to learn: Building essential skills in young children. National Association for the Education of Young Children.",
+    "source": "Mary Renck Jalongo, NAEYC, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=learning+to+listen+listening+to+learn+jalongo",
+    "check": false,
+    "supports": "Listening skills in young children",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Listening as a skill children practice and educators nurture.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-essentials-of-children-s-literature",
+    "kind": "book",
+    "title": "Essentials of Children's Literature",
+    "author": "Carol Lynch-Brown and Carl M. Tomlinson",
+    "cite": "Lynch-Brown, C., & Tomlinson, C. M. (2001). Essentials of children's literature (4th ed.). Allyn and Bacon.",
+    "source": "Carol Lynch-Brown and Carl M. Tomlinson, Allyn and Bacon, 2001",
+    "year": "2001",
+    "url": "https://search.worldcat.org/search?q=essentials+of+childrens+literature+lynchbrown",
+    "check": false,
+    "supports": "Choosing, evaluating and sharing children's books",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Children's literature by genre, with guidance on choosing and sharing books.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-tell-it-again-2",
+    "kind": "book",
+    "title": "Tell It Again! 2: Easy-to-Tell Stories with Activities for Young Children",
+    "author": "Rebecca Isbell and Shirley C. Raines",
+    "cite": "Isbell, R., & Raines, S. C. (2000). Tell it again! 2: Easy-to-tell stories with activities for young children. Gryphon House.",
+    "source": "Rebecca Isbell and Shirley C. Raines, Gryphon House, 2000",
+    "year": "2000",
+    "url": "https://shop.gryphonhouse.com/products/tell-it-again-2",
+    "check": false,
+    "supports": "Storytelling from outlines with follow-up activities",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Sixteen stories to tell from simple outlines.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-explode-the-code-book-1",
+    "kind": "book",
+    "title": "Explode the Code, Book 1",
+    "author": "Nancy Hall and Rena Price",
+    "cite": "Hall, N., & Price, R. (1984). Explode the code, book 1. Educators Publishing Service.",
+    "source": "Nancy Hall and Rena Price, Educators Publishing Service, 1984",
+    "year": "1984",
+    "url": "https://search.worldcat.org/search?q=explode+the+code+1+hall+price",
+    "check": false,
+    "supports": "Phonics workbook for beginning readers",
+    "areas": [
+     "lang"
+    ],
+    "modules": [],
+    "why": "The first workbook in a phonics series, for TK readers.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-25-just-right-plays-for-emergent-readers",
+    "kind": "book",
+    "title": "25 Just-Right Plays for Emergent Readers",
+    "author": "Carol Pugliano-Martin",
+    "cite": "Pugliano-Martin, C. (1998). 25 just-right plays for emergent readers. Scholastic.",
+    "source": "Carol Pugliano-Martin, Scholastic, 1998",
+    "year": "1998",
+    "url": "https://search.worldcat.org/search?q=25+just+right+plays+for+emergent+readers+puglianomartin",
+    "check": false,
+    "supports": "Short reproducible plays for beginning readers",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Short plays with rhyme and repetition.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-art-of-math-and-science",
+    "kind": "book",
+    "title": "The Art of Math and Science",
+    "author": "Jayanti Tambe",
+    "cite": "Tambe, J. (2016). The art of math and science. Jayanti Tambe.",
+    "source": "Jayanti Tambe, self-published, 2016",
+    "year": "2016",
+    "url": "https://search.worldcat.org/search?q=art+of+math+and+science+tambe",
+    "check": false,
+    "supports": "Famous artworks as doorways to math and science",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Nineteen artists and art forms and the math and science in their work, with questions to wonder about together.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-young-child-and-mathematics",
+    "kind": "book",
+    "title": "The Young Child and Mathematics",
+    "author": "Juanita V. Copley",
+    "cite": "Copley, J. V. (2010). The young child and mathematics (2nd ed.). National Association for the Education of Young Children.",
+    "source": "Juanita V. Copley, NAEYC, 2010",
+    "year": "2010",
+    "url": "https://search.worldcat.org/search?q=young+child+and+mathematics+copley",
+    "check": false,
+    "supports": "Math processes and concepts in early childhood",
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "modules": [],
+    "why": "Vignettes and strategies for math concepts with young children.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-science-experiences-for-the-early-childhood-years",
+    "kind": "book",
+    "title": "Science Experiences for the Early Childhood Years: An Integrated Affective Approach",
+    "author": "Jean D. Harlan and Mary S. Rivkin",
+    "cite": "Harlan, J. D., & Rivkin, M. S. (2003). Science experiences for the early childhood years: An integrated affective approach (8th ed.). Pearson.",
+    "source": "Jean D. Harlan and Mary S. Rivkin, Pearson, 2003",
+    "year": "2003",
+    "url": "https://search.worldcat.org/search?q=science+experiences+for+the+early+childhood+years+harlan+rivkin",
+    "check": false,
+    "supports": "Life, earth and physical science with young children",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Science across plants, animals, water, weather, rocks, sound and light.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-hands-on-approach-to-science",
+    "kind": "book",
+    "title": "The Hands-On Approach to Science",
+    "author": "Brashears and Werlin",
+    "cite": "Brashears and Werlin. The Hands-On Approach to Science.",
+    "source": "Brashears and Werlin",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=the+handson+approach+to+science+brashears",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-usborne-big-book-of-science-things-to-make-and",
+    "kind": "book",
+    "title": "The Usborne Big Book of Science Things to Make and Do",
+    "author": "Rebecca Gilpin and Leonie Pratt",
+    "cite": "Gilpin, R., & Pratt, L. (2007). The Usborne big book of science things to make and do. Usborne.",
+    "source": "Rebecca Gilpin and Leonie Pratt, Usborne, 2007",
+    "year": "2007",
+    "url": "https://search.worldcat.org/search?q=usborne+big+book+of+science+things+to+make+and+do+gilpin",
+    "check": false,
+    "supports": "Science projects with household materials",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Projects from household materials, each with a note on the science.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-gizmos-gadgets",
+    "kind": "book",
+    "title": "Gizmos & Gadgets: Creating Science Contraptions That Work (& Knowing Why)",
+    "author": "Jill Frankel Hauser",
+    "cite": "Hauser, J. F. (1999). Gizmos & gadgets: Creating science contraptions that work (& knowing why). Williamson.",
+    "source": "Jill Frankel Hauser, Williamson Publishing, 1999",
+    "year": "1999",
+    "url": "https://search.worldcat.org/search?q=gizmos+gadgets+creating+science+contraptions+hauser",
+    "check": false,
+    "supports": "Building simple devices that show physics ideas",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Seventy-five simple devices about friction, gravity and motion, written for older children.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-making-and-tinkering-with-stem",
+    "kind": "book",
+    "title": "Making and Tinkering with STEM: Solving Design Challenges with Young Children",
+    "author": "Cate Heroman",
+    "cite": "Heroman, C. (2017). Making and tinkering with STEM: Solving design challenges with young children. National Association for the Education of Young Children.",
+    "source": "Cate Heroman, NAEYC, 2017",
+    "year": "2017",
+    "url": "https://www.naeyc.org/node/763",
+    "check": false,
+    "supports": "Design challenges from picture books and makerspaces",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "Design challenges sparked by picture book characters.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-learning-about-weather-grades-k-1-scienceworks-for",
+    "kind": "book",
+    "title": "Learning About Weather, Grades K-1 (ScienceWorks for Kids)",
+    "author": "Jo Ellen Moore",
+    "cite": "Moore, J. E. (2000). Learning about weather, grades K-1. Evan-Moor.",
+    "source": "Jo Ellen Moore, Evan-Moor Educational Publishers, 2000",
+    "year": "2000",
+    "url": "https://search.worldcat.org/search?q=learning+about+weather+scienceworks+for+kids+evanmoor",
+    "check": false,
+    "supports": "Weather, water and the water cycle",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Lessons and picture cards on weather and the water cycle.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-life-in-the-ocean-picture-cards-24-cards",
+    "kind": "book",
+    "title": "Life in the Ocean Picture Cards (24 Cards)",
+    "author": "Jo Larson and Jo Ellen Moore",
+    "cite": "Larson, J., & Moore, J. E. (1998). Life in the ocean picture cards [Picture cards]. Evan-Moor.",
+    "source": "Jo Larson and Jo Ellen Moore, Evan-Moor Educational Publishers, 1998",
+    "year": "1998",
+    "url": "https://search.worldcat.org/search?q=life+in+the+ocean+picture+cards+evanmoor",
+    "check": false,
+    "supports": "Large photo cards of ocean life",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "Twenty-four photo cards of sea life.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-play-the-forest-school-way",
+    "kind": "book",
+    "title": "Play the Forest School Way: Woodland Games and Crafts for Adventurous Kids",
+    "author": "Jane Worroll and Peter Houghton",
+    "cite": "Worroll, J., & Houghton, P. (2016). Play the Forest School way: Woodland games and crafts for adventurous kids. Watkins Publishing.",
+    "source": "Jane Worroll and Peter Houghton, Watkins Publishing, 2016",
+    "year": "2016",
+    "url": "https://redwheelweiser.com/book/play-the-forest-school-way-9781780289298/",
+    "check": false,
+    "supports": "Forest School games, crafts, shelters and outdoor skills",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Shelter building, whittling, foraging and nature crafts.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-a-child-s-garden",
+    "kind": "book",
+    "title": "A Child's Garden: 60 Ideas to Make Any Garden Come Alive for Children",
+    "author": "Molly Dannenmaier",
+    "cite": "Dannenmaier, M. (2008). A child's garden: 60 ideas to make any garden come alive for children. Timber Press.",
+    "source": "Molly Dannenmaier, Timber Press, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=a+childs+garden+60+ideas+to+make+any+garden+come+alive+for+children+dannenmaier",
+    "check": false,
+    "supports": "Garden designs and projects shaped around children",
+    "areas": [
+     "env"
+    ],
+    "modules": [],
+    "why": "Sixty garden ideas built around what children seek out, such as water, soft earth and hideaways.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-ecology-of-imagination-in-childhood",
+    "kind": "book",
+    "title": "The Ecology of Imagination in Childhood",
+    "author": "Edith Cobb",
+    "cite": "Cobb, E. (1993). The ecology of imagination in childhood. Spring Publications.",
+    "source": "Edith Cobb, Spring Publications, 1993",
+    "year": "1993",
+    "url": "https://search.worldcat.org/search?q=the+ecology+of+imagination+in+childhood+cobb",
+    "check": false,
+    "supports": "Childhood imagination and children's bond with nature",
+    "areas": [
+     "img",
+     "refl"
+    ],
+    "modules": [],
+    "why": "How childhood experience of nature shapes imagination.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-nature-anatomy",
+    "kind": "book",
+    "title": "Nature Anatomy: The Curious Parts and Pieces of the Natural World",
+    "author": "Julia Rothman",
+    "cite": "Rothman, J. (2015). Nature anatomy: The curious parts and pieces of the natural world. Storey Publishing.",
+    "source": "Julia Rothman, Storey Publishing, 2015",
+    "year": "2015",
+    "url": "https://www.hachettebookgroup.com/titles/julia-rothman/nature-anatomy/9781612122311/",
+    "check": false,
+    "supports": "Illustrated parts and workings of the natural world",
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "modules": [],
+    "why": "How parts of the natural world are built, with activities for close looking.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-farm-anatomy",
+    "kind": "book",
+    "title": "Farm Anatomy: The Curious Parts and Pieces of Country Life",
+    "author": "Julia Rothman",
+    "cite": "Rothman, J. (2011). Farm anatomy: The curious parts and pieces of country life. Storey Publishing.",
+    "source": "Julia Rothman, Storey Publishing, 2011",
+    "year": "2011",
+    "url": "https://www.hachettebookgroup.com/titles/julia-rothman/farm-anatomy/9781603429818/",
+    "check": false,
+    "supports": "Illustrated guide to farm animals, crops and tools",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Farm life details, from squash varieties to beehives.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-flora",
+    "kind": "book",
+    "title": "Flora: Inside the Secret World of Plants",
+    "author": "DK, with the Smithsonian Institution and Royal Botanic Gardens, Kew",
+    "cite": "DK. (2018). Flora: Inside the secret world of plants. DK Publishing.",
+    "source": "DK with the Smithsonian Institution, DK Publishing, 2018",
+    "year": "2018",
+    "url": "https://search.worldcat.org/search?q=flora+inside+the+secret+world+of+plants+dk",
+    "check": false,
+    "supports": "How plants grow, function and survive",
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "modules": [],
+    "why": "A photographic botany reference on roots, leaves, flowers, seeds and plant families.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-mix-match-guide-to-companion-planting",
+    "kind": "book",
+    "title": "The Mix & Match Guide to Companion Planting: An Easy, Organic Way to Deter Pests, Prevent Disease, Improve Flavor, and Increase Yields in Your Vegetable Garden",
+    "author": "Josie Jeffery",
+    "cite": "Jeffery, J. (2014). The mix & match guide to companion planting: An easy, organic way to deter pests, prevent disease, improve flavor, and increase yields in your vegetable garden. Ten Speed Press.",
+    "source": "Josie Jeffery, Ten Speed Press, 2014",
+    "year": "2014",
+    "url": "https://search.worldcat.org/search?q=the+mix+match+guide+to+companion+planting+jeffery",
+    "check": false,
+    "supports": "Pairing vegetable crops with companion plants",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "Choosing companion plants in a vegetable garden.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-california-native-plants-for-the-garden",
+    "kind": "book",
+    "title": "California Native Plants for the Garden",
+    "author": "Carol Bornstein, David Fross and Bart O'Brien",
+    "cite": "Bornstein, C., Fross, D., & O'Brien, B. (2005). California native plants for the garden. Cachuma Press.",
+    "source": "Carol Bornstein, David Fross and Bart O'Brien, Cachuma Press, 2005",
+    "year": "2005",
+    "url": "https://search.worldcat.org/search?q=california+native+plants+for+the+garden+bornstein",
+    "check": false,
+    "supports": "Choosing and growing California native plants",
+    "areas": [
+     "env"
+    ],
+    "modules": [],
+    "why": "Selecting and growing California natives.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-habitat-garden-book",
+    "kind": "book",
+    "title": "The Habitat Garden Book: Wildlife Landscaping for the San Francisco Bay Region",
+    "author": "Nancy Bauer",
+    "cite": "Bauer, N. (2008). The habitat garden book: Wildlife landscaping for the San Francisco Bay region (2nd ed.). Coyote Ridge Press.",
+    "source": "Nancy Bauer, Coyote Ridge Press, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=the+habitat+garden+book+wildlife+landscaping+for+the+san+francisco+bay+region+bauer",
+    "check": false,
+    "supports": "Bay Area gardening for birds, butterflies and pollinators",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Garden habitat for Bay Area birds, butterflies and pollinators.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-northern-california-gardening",
+    "kind": "book",
+    "title": "Northern California Gardening: A Month-by-Month Guide",
+    "author": "Katherine Grace Endicott",
+    "cite": "Endicott, K. G. (2005). Northern California gardening: A month-by-month guide (2nd ed.). Chronicle Books.",
+    "source": "Katherine Grace Endicott, Chronicle Books, 2005",
+    "year": "2005",
+    "url": "https://search.worldcat.org/search?q=northern+california+gardening+a+month+by+month+guide+endicott",
+    "check": false,
+    "supports": "Month by month Northern California garden tasks",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "A month by month guide for our region.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-gardener-s-basic-book-of-flowers",
+    "kind": "book",
+    "title": "The Gardener's Basic Book of Flowers",
+    "author": "",
+    "cite": "The Gardener's Basic Book of Flowers.",
+    "source": "",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=the+gardeners+basic+book+of+flowers",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "env"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-floret-farm-s-cut-flower-garden",
+    "kind": "book",
+    "title": "Floret Farm's Cut Flower Garden: Grow, Harvest, and Arrange Stunning Seasonal Blooms",
+    "author": "Erin Benzakein with Julie Chai, photographs by Michele M. Waite",
+    "cite": "Benzakein, E., & Chai, J. (2017). Floret Farm's cut flower garden: Grow, harvest, and arrange stunning seasonal blooms. Chronicle Books.",
+    "source": "Erin Benzakein and Julie Chai, Chronicle Books, 2017",
+    "year": "2017",
+    "url": "https://www.chroniclebooks.com/products/floret-farm-s-cut-flower-garden",
+    "check": false,
+    "supports": "Growing, harvesting and arranging seasonal cut flowers",
+    "areas": [
+     "env",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Growing, harvesting and arranging cut flowers.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-50-mile-bouquet",
+    "kind": "book",
+    "title": "The 50 Mile Bouquet: Seasonal, Local and Sustainable Flowers",
+    "author": "Debra Prinzing, photographs by David E. Perry",
+    "cite": "Prinzing, D. (2012). The 50 mile bouquet: Seasonal, local and sustainable flowers. St. Lynn's Press.",
+    "source": "Debra Prinzing, St. Lynn's Press, 2012",
+    "year": "2012",
+    "url": "https://search.worldcat.org/search?q=the+50+mile+bouquet+seasonal+local+and+sustainable+flowers+prinzing",
+    "check": false,
+    "supports": "Locally grown seasonal flowers from field to vase",
+    "areas": [
+     "env",
+     "team"
+    ],
+    "modules": [],
+    "why": "Locally grown flowers from field to vase.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-backyard-homestead",
+    "kind": "book",
+    "title": "The Backyard Homestead: Produce All the Food You Need on Just a Quarter Acre!",
+    "author": "Carleen Madigan (Ed.)",
+    "cite": "Madigan, C. (Ed.). (2009). The backyard homestead: Produce all the food you need on just a quarter acre! Storey Publishing.",
+    "source": "Carleen Madigan (Ed.), Storey Publishing, 2009",
+    "year": "2009",
+    "url": "https://www.hachettebookgroup.com/titles/carleen-madigan/the-backyard-homestead/9781603421386",
+    "check": false,
+    "supports": "Growing food, raising animals and preserving harvests",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "Growing food, keeping animals and bees, and drying harvests.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-nature-crafts",
+    "kind": "book",
+    "title": "Nature Crafts",
+    "author": "Joy Williams",
+    "cite": "Williams, J. (2002). Nature crafts. North Light Books.",
+    "source": "Joy Williams, North Light Books, 2002",
+    "year": "2002",
+    "url": "https://search.worldcat.org/search?q=nature+crafts+williams",
+    "check": false,
+    "supports": "Crafts made from found natural materials",
+    "areas": [
+     "cur",
+     "env"
+    ],
+    "modules": [],
+    "why": "Crafts from natural materials found outdoors.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-teacher-resource-guide",
+    "kind": "book",
+    "title": "Teacher Resource Guide: Educational Materials About Agriculture",
+    "author": "California Foundation for Agriculture in the Classroom",
+    "cite": "California Foundation for Agriculture in the Classroom. Teacher Resource Guide: Educational Materials About Agriculture.",
+    "source": "California Foundation for Agriculture in the Classroom",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=teacher+resource+guide+classroom",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-more-than-graham-crackers",
+    "kind": "book",
+    "title": "More Than Graham Crackers: Nutrition Education and Food Preparation with Young Children",
+    "author": "Nancy Wanamaker, Kristin Hearn and Sherrill Richarz",
+    "cite": "Wanamaker, N., Hearn, K., & Richarz, S. (1979). More than graham crackers: Nutrition education and food preparation with young children. National Association for the Education of Young Children.",
+    "source": "Nancy Wanamaker, Kristin Hearn and Sherrill Richarz, National Association for the Education of Young Children, 1979",
+    "year": "1979",
+    "url": "https://search.worldcat.org/search?q=more+than+graham+crackers+wanamaker",
+    "check": false,
+    "supports": "Nutrition education and cooking with young children",
+    "areas": [
+     "cur",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Nutrition education and food preparation with young children.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-salad-of-the-day",
+    "kind": "book",
+    "title": "Salad of the Day: 365 Recipes for Every Day of the Year",
+    "author": "Georgeanne Brennan",
+    "cite": "Brennan, G. (2016). Salad of the day: 365 recipes for every day of the year (Rev. ed.). Weldon Owen.",
+    "source": "Georgeanne Brennan, Weldon Owen, 2016",
+    "year": "2016",
+    "url": "https://insighteditions.com/products/salad-of-the-day",
+    "check": false,
+    "supports": "Seasonal salad recipes for every day",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "365 salads organized around seasonal produce.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-lao-kitchen",
+    "kind": "book",
+    "title": "The Lao Kitchen: Lao Flavors and Stories Told Through Family Recipes",
+    "author": "Saeng Douangdara",
+    "cite": "Douangdara, S. (2026). The Lao kitchen: Lao flavors and stories told through family recipes. Ten Speed Press.",
+    "source": "Saeng Douangdara, Ten Speed Press, 2026",
+    "year": "2026",
+    "url": "https://search.worldcat.org/search?q=the+lao+kitchen+douangdara",
+    "check": false,
+    "supports": "Lao family recipes and food stories",
+    "areas": [
+     "fam",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Ninety-five Lao family recipes with stories from the Lao diaspora.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-eat-plants-every-day",
+    "kind": "book",
+    "title": "Eat Plants Every Day: 75+ Flavorful Recipes to Bring More Plants into Your Daily Meals",
+    "author": "Blair Warsham and Carolyn Warsham",
+    "cite": "Warsham, B., & Warsham, C. (2021). Eat plants every day: 75+ flavorful recipes to bring more plants into your daily meals. Weldon Owen.",
+    "source": "Blair Warsham and Carolyn Warsham, Weldon Owen, 2021",
+    "year": "2021",
+    "url": "https://search.worldcat.org/search?q=eat+plants+every+day+warsham",
+    "check": false,
+    "supports": "Family plant-based recipes for everyday meals",
+    "areas": [
+     "cur",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Family recipes built on vegetables, beans and whole grains.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-ball-complete-book-of-home-preserving",
+    "kind": "book",
+    "title": "Ball Complete Book of Home Preserving: 400 Delicious and Creative Recipes for Today",
+    "author": "Judi Kingry and Lauren Devine (Eds.)",
+    "cite": "Kingry, J., & Devine, L. (Eds.). (2006). Ball complete book of home preserving: 400 delicious and creative recipes for today. Robert Rose.",
+    "source": "Judi Kingry and Lauren Devine, Robert Rose, 2006",
+    "year": "2006",
+    "url": "https://search.worldcat.org/search?q=ball+complete+book+of+home+preserving+kingry",
+    "check": false,
+    "supports": "Safe canning and preserving methods and recipes",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "Safe preserving methods with step by step guidance.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-fundamentals-of-consumer-food-safety-and-preservat",
+    "kind": "book",
+    "title": "Fundamentals of Consumer Food Safety and Preservation: Master Handbook",
+    "author": "Lizann Powers-Hammond and Sandra M. McCurdy",
+    "cite": "Powers-Hammond, L., & McCurdy, S. M. (2019). Fundamentals of consumer food safety and preservation: Master handbook (EC002). Washington State University Extension.",
+    "source": "Lizann Powers-Hammond and Sandra M. McCurdy, Washington State University Extension, 2019",
+    "year": "2019",
+    "url": "https://pubs.extension.wsu.edu/product/fundamentals-of-consumer-food-safety-and-preservation-master-handbook/",
+    "check": false,
+    "supports": "Consumer food safety and home preservation basics",
+    "areas": [
+     "cur",
+     "refl"
+    ],
+    "modules": [],
+    "why": "The Master Food Preserver handbook.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-nutrition-health-and-safety-for-young-children",
+    "kind": "book",
+    "title": "Nutrition, Health, and Safety for Young Children: Promoting Wellness",
+    "author": "Joanne Sorte, Inge Daeschel and Carolina Amador",
+    "cite": "Joanne Sorte, Inge Daeschel and Carolina Amador. Nutrition, Health, and Safety for Young Children: Promoting Wellness.",
+    "source": "Joanne Sorte, Inge Daeschel and Carolina Amador",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=nutrition+health+and+safety+for+young+children+sorte",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "cur",
+     "fam"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-me-you-us",
+    "kind": "book",
+    "title": "Me, You, Us: Social-Emotional Learning in Preschool",
+    "author": "Ann S. Epstein",
+    "cite": "Epstein, A. S. (2009). Me, you, us: Social-emotional learning in preschool. HighScope Press.",
+    "source": "Ann S. Epstein, HighScope Press, 2009",
+    "year": "2009",
+    "url": "https://search.worldcat.org/search?q=me+you+us+social+emotional+learning+in+preschool+epstein",
+    "check": false,
+    "supports": "Social-emotional learning strategies for preschool classrooms",
+    "areas": [
+     "lang",
+     "img"
+    ],
+    "modules": [],
+    "why": "Strategies across eleven social and emotional topics.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-moral-classrooms-moral-children",
+    "kind": "book",
+    "title": "Moral Classrooms, Moral Children: Creating a Constructivist Atmosphere in Early Education",
+    "author": "Rheta DeVries and Betty Zan",
+    "cite": "DeVries, R., & Zan, B. (2012). Moral classrooms, moral children: Creating a constructivist atmosphere in early education (2nd ed.). Teachers College Press.",
+    "source": "Rheta DeVries and Betty Zan, Teachers College Press, 2012",
+    "year": "2012",
+    "url": "https://www.tcpress.com/moral-classrooms-moral-children-9780807753408",
+    "check": false,
+    "supports": "Sociomoral atmosphere, conflict resolution and rule making",
+    "areas": [
+     "lang",
+     "img"
+    ],
+    "modules": [],
+    "why": "A cooperative classroom for ages two to eight, with conflict resolution, group time and rule making.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-all-children-flourishing",
+    "kind": "book",
+    "title": "All Children Flourishing",
+    "author": "Howard Glasser and Melissa Lynn Block",
+    "cite": "Howard Glasser and Melissa Lynn Block. All Children Flourishing.",
+    "source": "Howard Glasser and Melissa Lynn Block",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=all+children+flourishing+glasser",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "lang",
+     "fam"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-practical-solutions-to-practically-every-problem",
+    "kind": "book",
+    "title": "Practical Solutions to Practically Every Problem: The Survival Guide for Early Childhood Professionals",
+    "author": "Steffen Saifer",
+    "cite": "Saifer, S. (2017). Practical solutions to practically every problem: The survival guide for early childhood professionals (3rd ed.). Redleaf Press.",
+    "source": "Steffen Saifer, Redleaf Press, 2017",
+    "year": "2017",
+    "url": "https://www.redleafpress.org/Practical-Solutions-to-Practically-Every-Problem-Third-Edition-P1551.aspx",
+    "check": false,
+    "supports": "Everyday classroom problems and practical responses",
+    "areas": [
+     "refl",
+     "team"
+    ],
+    "modules": [],
+    "why": "Practical responses to common classroom and program situations.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-1-2-3-magic",
+    "kind": "book",
+    "title": "1-2-3 Magic: Effective Discipline for Children 2-12",
+    "author": "Thomas W. Phelan",
+    "cite": "Phelan, T. W. (2016). 1-2-3 magic: Effective discipline for children 2-12 (6th ed.). Sourcebooks.",
+    "source": "Thomas W. Phelan, Sourcebooks, 2016",
+    "year": "2016",
+    "url": "https://search.worldcat.org/search?q=123+magic+effective+discipline+for+children+212+phelan",
+    "check": false,
+    "supports": "A counting method for managing children's behavior",
+    "areas": [
+     "fam",
+     "refl"
+    ],
+    "modules": [],
+    "why": "A counting method for managing behavior, for parents and caregivers.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-brain-body-parenting",
+    "kind": "book",
+    "title": "Brain-Body Parenting: How to Stop Managing Behavior and Start Raising Joyful, Resilient Kids",
+    "author": "Mona Delahooke",
+    "cite": "Delahooke, M. (2022). Brain-body parenting: How to stop managing behavior and start raising joyful, resilient kids. Harper Wave.",
+    "source": "Mona Delahooke, Harper Wave, 2022",
+    "year": "2022",
+    "url": "https://search.worldcat.org/search?q=brain+body+parenting+delahooke",
+    "check": false,
+    "supports": "Behavior as a signal of the nervous system",
+    "areas": [
+     "lang",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Reading behavior through the nervous system, with a calm adult to borrow from (co-regulation).",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-nurtureshock",
+    "kind": "book",
+    "title": "NurtureShock: New Thinking About Children",
+    "author": "Po Bronson and Ashley Merryman",
+    "cite": "Bronson, P., & Merryman, A. (2009). NurtureShock: New thinking about children. Twelve.",
+    "source": "Po Bronson and Ashley Merryman, Twelve, 2009",
+    "year": "2009",
+    "url": "https://www.hachettebookgroup.com/titles/po-bronson/nurtureshock/9780446563321/",
+    "check": false,
+    "supports": "Child development research on aggression, lying and race",
+    "areas": [
+     "refl",
+     "img"
+    ],
+    "modules": [],
+    "why": "Child development research on topics such as intelligence, lying and friendship.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-mind-in-the-making",
+    "kind": "book",
+    "title": "Mind in the Making: The Seven Essential Life Skills Every Child Needs",
+    "author": "Ellen Galinsky",
+    "cite": "Galinsky, E. (2010). Mind in the making: The seven essential life skills every child needs. HarperStudio.",
+    "source": "Ellen Galinsky, HarperStudio, 2010",
+    "year": "2010",
+    "url": "https://search.worldcat.org/search?q=mind+in+the+making+the+seven+essential+life+skills+every+child+needs+galinsky",
+    "check": false,
+    "supports": "Seven life skills from focus to self-directed learning",
+    "areas": [
+     "img",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Seven life skills, from focus and self-control to self-directed learning.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-smart-moves",
+    "kind": "book",
+    "title": "Smart Moves: Why Learning Is Not All in Your Head",
+    "author": "Carla Hannaford",
+    "cite": "Hannaford, C. (2005). Smart moves: Why learning is not all in your head (2nd ed.). Great River Books.",
+    "source": "Carla Hannaford, Great River Books, 2005",
+    "year": "2005",
+    "url": "https://search.worldcat.org/search?q=smart+moves+why+learning+is+not+all+in+your+head+hannaford",
+    "check": false,
+    "supports": "Movement, the body and learning",
+    "areas": [
+     "img",
+     "cur"
+    ],
+    "modules": [],
+    "why": "How movement and sensory experience connect to learning.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-think-of-something-quiet",
+    "kind": "book",
+    "title": "Think of Something Quiet: A Guide for Achieving Serenity in Early Childhood Classrooms",
+    "author": "Clare Cherry",
+    "cite": "Cherry, C. (1981). Think of something quiet: A guide for achieving serenity in early childhood classrooms. Pitman Learning.",
+    "source": "Clare Cherry, Pitman Learning, 1981",
+    "year": "1981",
+    "url": "https://search.worldcat.org/search?q=think+of+something+quiet+a+guide+for+achieving+serenity+in+early+childhood+classrooms+cherry",
+    "check": false,
+    "supports": "Calm, quiet spaces and moments in classrooms",
+    "areas": [
+     "env",
+     "lang"
+    ],
+    "modules": [],
+    "why": "Creating calm and quiet in early childhood classrooms.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-california-teaching-pyramid-framework",
+    "kind": "book",
+    "title": "The California Teaching Pyramid Framework: Promoting the Social-Emotional Competence of Young Children",
+    "author": "",
+    "cite": "The California Teaching Pyramid Framework: Promoting the Social-Emotional Competence of Young Children.",
+    "source": "",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=the+california+teaching+pyramid+framework",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "lang",
+     "team"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-child-and-adolescent-development-for-educators",
+    "kind": "book",
+    "title": "Child and Adolescent Development for Educators",
+    "author": "Judith L. Meece and Denise H. Daniels",
+    "cite": "Meece, J. L., & Daniels, D. H. (2008). Child and adolescent development for educators (3rd ed.). McGraw-Hill.",
+    "source": "Judith L. Meece and Denise H. Daniels, McGraw-Hill, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=child+and+adolescent+development+for+educators+meece",
+    "check": false,
+    "supports": "Research on development across childhood and adolescence",
+    "areas": [
+     "img"
+    ],
+    "modules": [],
+    "why": "A research-based introduction organized by topic.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-paving-pathways",
+    "kind": "book",
+    "title": "Paving Pathways: Child and Adolescent Development",
+    "author": "Laurel Hughes",
+    "cite": "Hughes, L. (2002). Paving pathways: Child and adolescent development. Wadsworth/Thomson Learning.",
+    "source": "Laurel Hughes, Wadsworth/Thomson Learning, 2002",
+    "year": "2002",
+    "url": "https://search.worldcat.org/search?q=paving+pathways+child+and+adolescent+development+hughes",
+    "check": false,
+    "supports": "Child and adolescent development by age stage",
+    "areas": [
+     "img"
+    ],
+    "modules": [],
+    "why": "Development in age order, with the research for each stage.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-infants-toddlers-and-caregivers",
+    "kind": "book",
+    "title": "Infants, Toddlers, and Caregivers: A Curriculum of Respectful, Responsive, Relationship-Based Care and Education",
+    "author": "Janet Gonzalez-Mena and Dianne Widmeyer Eyer",
+    "cite": "Gonzalez-Mena, J., & Eyer, D. W. (2012). Infants, toddlers, and caregivers: A curriculum of respectful, responsive, relationship-based care and education (9th ed.). McGraw-Hill.",
+    "source": "Janet Gonzalez-Mena and Dianne Widmeyer Eyer, McGraw-Hill, 2012",
+    "year": "2012",
+    "url": "https://search.worldcat.org/search?q=infants+toddlers+and+caregivers+gonzalezmena",
+    "check": false,
+    "supports": "Respectful, responsive care for infants and twos",
+    "areas": [
+     "lang",
+     "cur"
+    ],
+    "modules": [],
+    "why": "A curriculum of respectful, responsive care for infants and twos.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-extending-the-dance-in-infant-and-toddler-caregivi",
+    "kind": "book",
+    "title": "Extending the Dance in Infant and Toddler Caregiving: Enhancing Attachment and Relationships",
+    "author": "Helen H. Raikes and Carolyn Pope Edwards",
+    "cite": "Raikes, H. H., & Edwards, C. P. (2009). Extending the dance in infant and toddler caregiving: Enhancing attachment and relationships. Paul H. Brookes.",
+    "source": "Helen H. Raikes and Carolyn Pope Edwards, Paul H. Brookes, 2009",
+    "year": "2009",
+    "url": "https://search.worldcat.org/search?q=extending+the+dance+in+infant+and+toddler+caregiving+raikes",
+    "check": false,
+    "supports": "Attachment and relationships in infant and twos care",
+    "areas": [
+     "lang",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Strengthening attachment in care for infants and twos.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-caregiver-s-companion",
+    "kind": "book",
+    "title": "The Caregiver's Companion: Readings and Professional Resources",
+    "author": "Janet Gonzalez-Mena",
+    "cite": "Gonzalez-Mena, J. (2004). The caregiver's companion: Readings and professional resources. McGraw-Hill.",
+    "source": "Janet Gonzalez-Mena, McGraw-Hill, 2004",
+    "year": "2004",
+    "url": "https://search.worldcat.org/search?q=the+caregivers+companion+readings+and+professional+resources+gonzalezmena",
+    "check": false,
+    "supports": "Readings and resources for infant and twos care",
+    "areas": [
+     "refl"
+    ],
+    "modules": [],
+    "why": "Readings that accompany Infants, Toddlers, and Caregivers.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-enthusiastic-and-engaged-learners",
+    "kind": "book",
+    "title": "Enthusiastic and Engaged Learners: Approaches to Learning in the Early Childhood Classroom",
+    "author": "Marilou Hyson",
+    "cite": "Hyson, M. (2008). Enthusiastic and engaged learners: Approaches to learning in the early childhood classroom. Teachers College Press.",
+    "source": "Marilou Hyson, Teachers College Press and NAEYC, 2008",
+    "year": "2008",
+    "url": "https://www.tcpress.com/enthusiastic-and-engaged-learners-9780807748800",
+    "check": false,
+    "supports": "Children's approaches to learning, enthusiasm and engagement",
+    "areas": [
+     "img",
+     "cur"
+    ],
+    "modules": [],
+    "why": "Approaches to learning, the enthusiasm and engagement children bring.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-child-in-the-family-and-the-community",
+    "kind": "book",
+    "title": "The Child in the Family and the Community",
+    "author": "Janet Gonzalez-Mena",
+    "cite": "Gonzalez-Mena, J. (2002). The child in the family and the community (3rd ed.). Merrill/Prentice Hall.",
+    "source": "Janet Gonzalez-Mena, Merrill/Prentice Hall, 2002",
+    "year": "2002",
+    "url": "https://search.worldcat.org/search?q=the+child+in+the+family+and+the+community+gonzalezmena",
+    "check": false,
+    "supports": "Socialization of young children at home and in care",
+    "areas": [
+     "fam"
+    ],
+    "modules": [],
+    "why": "How children are socialized at home, in care and at school.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-young-child-in-the-family-and-the-community",
+    "kind": "book",
+    "title": "The Young Child in the Family and the Community",
+    "author": "Janet Gonzalez-Mena",
+    "cite": "Gonzalez-Mena, J. (2006). The young child in the family and the community (4th ed.). Pearson/Merrill Prentice Hall.",
+    "source": "Janet Gonzalez-Mena, Pearson/Merrill Prentice Hall, 2006",
+    "year": "2006",
+    "url": "https://search.worldcat.org/search?q=the+young+child+in+the+family+and+the+community+gonzalezmena",
+    "check": false,
+    "supports": "Young children within their families and communities",
+    "areas": [
+     "fam"
+    ],
+    "modules": [],
+    "why": "How children grow within families and communities.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-foundations-of-early-childhood-education",
+    "kind": "book",
+    "title": "Foundations of Early Childhood Education: Teaching Children in a Diverse Society",
+    "author": "Janet Gonzalez-Mena",
+    "cite": "Gonzalez-Mena, J. (2008). Foundations of early childhood education: Teaching children in a diverse society (4th ed.). McGraw-Hill.",
+    "source": "Janet Gonzalez-Mena, McGraw-Hill, 2008",
+    "year": "2008",
+    "url": "https://search.worldcat.org/search?q=foundations+of+early+childhood+education+gonzalezmena",
+    "check": false,
+    "supports": "Early childhood education from birth through age eight",
+    "areas": [
+     "cur",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Theories, educator skills and respect for diverse families.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-approaches-to-early-childhood-education",
+    "kind": "book",
+    "title": "Approaches to Early Childhood Education",
+    "author": "Jaipaul L. Roopnarine and James E. Johnson",
+    "cite": "Roopnarine, J. L., & Johnson, J. E. (2009). Approaches to early childhood education (5th ed.). Pearson/Merrill.",
+    "source": "Jaipaul L. Roopnarine and James E. Johnson, Pearson/Merrill, 2009",
+    "year": "2009",
+    "url": "https://search.worldcat.org/search?q=approaches+to+early+childhood+education+roopnarine",
+    "check": false,
+    "supports": "Program models and approaches in early childhood",
+    "areas": [
+     "cur"
+    ],
+    "modules": [],
+    "why": "A survey of program models, for comparing our practice with others.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-sentipensante-sensing-thinking-pedagogy",
+    "kind": "book",
+    "title": "Sentipensante (Sensing/Thinking) Pedagogy: Educating for Wholeness, Social Justice and Liberation",
+    "author": "Laura I. Rendón",
+    "cite": "Rendón, L. I. (2009). Sentipensante (sensing/thinking) pedagogy: Educating for wholeness, social justice and liberation. Stylus.",
+    "source": "Laura I. Rendón, Stylus, 2009",
+    "year": "2009",
+    "url": "https://search.worldcat.org/search?q=sentipensante+sensingthinking+pedagogy+rendon",
+    "check": false,
+    "supports": "Teaching that joins inner life and intellect",
+    "areas": [
+     "refl"
+    ],
+    "modules": [],
+    "why": "Education that balances inner life with intellectual rigor.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-developing-and-administering-a-child-care-and-educ",
+    "kind": "book",
+    "title": "Developing and Administering a Child Care and Education Program",
+    "author": "Dorothy June Sciarra, Anne G. Dorsey and Ellen M. Lynch",
+    "cite": "Sciarra, D. J., Dorsey, A. G., & Lynch, E. M. (2010). Developing and administering a child care and education program (7th ed.). Wadsworth Cengage Learning.",
+    "source": "Dorothy June Sciarra, Anne G. Dorsey and Ellen M. Lynch, Wadsworth Cengage Learning, 2010",
+    "year": "2010",
+    "url": "https://search.worldcat.org/search?q=developing+and+administering+a+child+care+and+education+program+sciarra",
+    "check": false,
+    "supports": "Starting and running a child care program",
+    "areas": [
+     "team"
+    ],
+    "modules": [],
+    "why": "Planning, staffing and directing a program.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-policies-and-procedures-for-early-childhood-direct",
+    "kind": "book",
+    "title": "Policies and Procedures for Early Childhood Directors",
+    "author": "",
+    "cite": "Policies and Procedures for Early Childhood Directors.",
+    "source": "",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=policies+and+procedures+for+early+childhood+directors",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "team"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-mentoring-in-the-early-years",
+    "kind": "book",
+    "title": "Mentoring in the Early Years",
+    "author": "Alison Robins (Ed.)",
+    "cite": "Robins, A. (Ed.). (2006). Mentoring in the early years. Paul Chapman.",
+    "source": "Alison Robins (Ed.), Paul Chapman, 2006",
+    "year": "2006",
+    "url": "https://search.worldcat.org/search?q=mentoring+in+the+early+years+robins",
+    "check": false,
+    "supports": "Mentoring students and colleagues in early years settings",
+    "areas": [
+     "team",
+     "refl"
+    ],
+    "modules": [],
+    "why": "Mentoring as an ongoing part of professional practice.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-five-commitments-of-optimistic-leaders-for-chi",
+    "kind": "book",
+    "title": "The Five Commitments of Optimistic Leaders for Children",
+    "author": "Judy Jablon and Nichole Parks",
+    "cite": "Judy Jablon and Nichole Parks. The Five Commitments of Optimistic Leaders for Children.",
+    "source": "Judy Jablon and Nichole Parks",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=the+five+commitments+of+optimistic+leaders+for+children+jablon",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "refl",
+     "team"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-reality-based-leadership",
+    "kind": "book",
+    "title": "Reality-Based Leadership: Ditch the Drama, Restore Sanity to the Workplace, and Turn Excuses into Results",
+    "author": "Cy Wakeman",
+    "cite": "Wakeman, C. (2010). Reality-based leadership: Ditch the drama, restore sanity to the workplace, and turn excuses into results. Jossey-Bass.",
+    "source": "Cy Wakeman, Jossey-Bass, 2010",
+    "year": "2010",
+    "url": "https://gov.wiley.com/WileyCDA/WileyTitle/productCd-0470613505,descCd-description.html",
+    "check": false,
+    "supports": "Leadership practices for clear roles and direct feedback",
+    "areas": [
+     "team"
+    ],
+    "modules": [],
+    "why": "Clarifying roles, direct feedback and handling conflict.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-resonant-leadership",
+    "kind": "book",
+    "title": "Resonant Leadership: Renewing Yourself and Connecting with Others Through Mindfulness, Hope, and Compassion",
+    "author": "Richard Boyatzis and Annie McKee",
+    "cite": "Boyatzis, R., & McKee, A. (2005). Resonant leadership: Renewing yourself and connecting with others through mindfulness, hope, and compassion. Harvard Business School Press.",
+    "source": "Richard Boyatzis and Annie McKee, Harvard Business School Press, 2005",
+    "year": "2005",
+    "url": "https://store.hbr.org/product/resonant-leadership-renewing-yourself-and-connecting-with-others-through-mindfulness-hope-and-compassion/5631",
+    "check": false,
+    "supports": "Leader renewal through mindfulness, hope and compassion",
+    "areas": [
+     "refl",
+     "team"
+    ],
+    "modules": [],
+    "why": "Renewal for leaders through mindfulness, hope and compassion.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-never-split-the-difference",
+    "kind": "book",
+    "title": "Never Split the Difference: Negotiating As If Your Life Depended On It",
+    "author": "Chris Voss with Tahl Raz",
+    "cite": "Voss, C., & Raz, T. (2016). Never split the difference: Negotiating as if your life depended on it. Harper Business.",
+    "source": "Chris Voss with Tahl Raz, Harper Business, 2016",
+    "year": "2016",
+    "url": "https://search.worldcat.org/search?q=never+split+the+difference+negotiating+as+if+your+life+depended+on+it+voss",
+    "check": false,
+    "supports": "Negotiation principles from hostage negotiation work",
+    "areas": [
+     "team"
+    ],
+    "modules": [],
+    "why": "Negotiation principles from a former FBI negotiator.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-we-care",
+    "kind": "book",
+    "title": "We Care: A Guide for Developing Child Care Facilities with Affordable Housing",
+    "author": "BRIDGE Housing",
+    "cite": "BRIDGE Housing. We Care: A Guide for Developing Child Care Facilities with Affordable Housing.",
+    "source": "BRIDGE Housing",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=we+care+housing",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "env"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-managing-infectious-diseases-in-child-care-and-sch",
+    "kind": "book",
+    "title": "Managing Infectious Diseases in Child Care and Schools: A Quick Reference Guide",
+    "author": "Susan S. Aronson and Timothy R. Shope (Eds.)",
+    "cite": "Aronson, S. S., & Shope, T. R. (Eds.). (2020). Managing infectious diseases in child care and schools: A quick reference guide (5th ed.). American Academy of Pediatrics.",
+    "source": "Susan S. Aronson and Timothy R. Shope, American Academy of Pediatrics, 2020",
+    "year": "2020",
+    "url": "https://search.worldcat.org/search?q=managing+infectious+diseases+in+child+care+and+schools+aronson",
+    "check": false,
+    "supports": "Preventing and managing infectious disease in group care",
+    "areas": [
+     "team"
+    ],
+    "modules": [],
+    "why": "A quick reference on preventing and managing illness in group care.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-healthy-young-children",
+    "kind": "book",
+    "title": "Healthy Young Children: A Manual for Programs",
+    "author": "Susan S. Aronson, with Patricia M. Spahr",
+    "cite": "Aronson, S. S. (Comp.). (2002). Healthy young children: A manual for programs (4th ed.). National Association for the Education of Young Children.",
+    "source": "Susan S. Aronson with Patricia M. Spahr, NAEYC, 2002",
+    "year": "2002",
+    "url": "https://search.worldcat.org/search?q=healthy+young+children+a+manual+for+programs+aronson",
+    "check": false,
+    "supports": "Health and wellbeing of children, staff and families",
+    "areas": [
+     "team",
+     "fam"
+    ],
+    "modules": [],
+    "why": "Promoting the health of children, staff and families.",
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-self-study-kit-for-program-quality-improvement-thr",
+    "kind": "book",
+    "title": "Self-Study Kit for Program Quality Improvement through NAEYC Early Childhood Program Accreditation",
+    "author": "NAEYC",
+    "cite": "NAEYC. Self-Study Kit for Program Quality Improvement through NAEYC Early Childhood Program Accreditation.",
+    "source": "NAEYC",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=selfstudy+kit+for+program+quality+improvement+through+naeyc+early+childhood+program+accreditation+naeyc",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "refl",
+     "team"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-children-of-2020",
+    "kind": "book",
+    "title": "Children of 2020: Creating a Better Tomorrow",
+    "author": "Valora Washington and J. D. Andrews, eds.",
+    "cite": "Valora Washington and J. D. Andrews, eds.. Children of 2020: Creating a Better Tomorrow.",
+    "source": "Valora Washington and J. D. Andrews, eds.",
+    "year": "",
+    "url": "https://search.worldcat.org/search?q=children+of+2020+washington",
+    "check": true,
+    "supports": "",
+    "areas": [
+     "refl"
+    ],
+    "modules": [],
+    "why": "",
+    "by": "TREE",
+    "confirmed": "",
+    "onSite": true,
+    "note": "Details not yet checked against the title page."
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-wisdom-of-the-enneagram",
+    "kind": "book",
+    "title": "The Wisdom of the Enneagram: The Complete Guide to Psychological and Spiritual Growth for the Nine Personality Types",
+    "author": "Don Richard Riso and Russ Hudson",
+    "cite": "Riso, D. R., & Hudson, R. (1999). The wisdom of the Enneagram: The complete guide to psychological and spiritual growth for the nine personality types. Bantam Books.",
+    "source": "Don Richard Riso and Russ Hudson, Bantam Books, 1999",
+    "year": "1999",
+    "url": "https://search.worldcat.org/search?q=the+wisdom+of+the+enneagram+riso",
+    "check": false,
+    "supports": "The nine Enneagram types and personal growth",
+    "areas": [
+     "refl"
+    ],
+    "modules": [],
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-enneagram-of-parenting",
+    "kind": "book",
+    "title": "The Enneagram of Parenting: The 9 Types of Children and How to Raise Them Successfully",
+    "author": "Elizabeth Wagele",
+    "cite": "Wagele, E. (1997). The Enneagram of parenting: The 9 types of children and how to raise them successfully. HarperSanFrancisco.",
+    "source": "Elizabeth Wagele, HarperSanFrancisco, 1997",
+    "year": "1997",
+    "url": "https://search.worldcat.org/search?q=the+enneagram+of+parenting+wagele",
+    "check": false,
+    "supports": "Enneagram types applied to children",
+    "areas": [
+     "fam",
+     "img"
+    ],
+    "modules": [],
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-kindness-diaries",
+    "kind": "book",
+    "title": "The Kindness Diaries: One Man's Quest to Ignite Goodwill and Transform Lives Around the World",
+    "author": "Leon Logothetis",
+    "cite": "Logothetis, L. (2015). The kindness diaries: One man's quest to ignite goodwill and transform lives around the world. Reader's Digest.",
+    "source": "Leon Logothetis, Reader's Digest, 2015",
+    "year": "2015",
+    "url": "https://search.worldcat.org/search?q=the+kindness+diaries+logothetis",
+    "check": false,
+    "supports": "A travel memoir about kindness from strangers",
+    "areas": [
+     "refl"
+    ],
+    "modules": [],
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-shelf-the-things-you-can-see-only-when-you-slow-down",
+    "kind": "book",
+    "title": "The Things You Can See Only When You Slow Down: How to Be Calm and Mindful in a Fast-Paced World",
+    "author": "Haemin Sunim",
+    "cite": "Haemin Sunim. (2017). The things you can see only when you slow down: How to be calm and mindful in a fast-paced world. Penguin Books.",
+    "source": "Haemin Sunim, Penguin Books, 2017",
+    "year": "2017",
+    "url": "https://search.worldcat.org/search?q=the+things+you+can+see+only+when+you+slow+down+haemin+sunim",
+    "check": false,
+    "supports": "Mindfulness and slowing down in daily life",
+    "areas": [
+     "refl"
+    ],
+    "modules": [],
+    "by": "TREE",
+    "confirmed": "2026-11-05",
+    "onSite": true
+   }
+  }
+ ]
+}

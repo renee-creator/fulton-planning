@@ -32,6 +32,16 @@
 </div>
 <script>
 "use strict";
+/* In our library. A citation of a book on our own shelves carries a small mark beside it, wherever staff read it. The
+   server sends the words each of our books is cited by (FP_STAFF.shelf). A list item that cites one of our books gets the
+   mark at its end, and a linked or italic title gets it right after the title. */
+window.fpShelfNorm=t=>String(t||"").toLowerCase().replace(/&amp;/g," and ").replace(/&/g," and ").replace(/&#39;|&#x27;|[‘’']/g,"").replace(/<[^>]*>/g," ").replace(/[^a-z0-9]+/g," ").trim();
+window.fpShelfHas=t=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];if(!L.length)return false;const n=" "+window.fpShelfNorm(t)+" ";return L.some(k=>n.includes(" "+k+" "))};
+window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];if(!L.length||!html)return html;
+  const MARK='<span class="fpshelf" style="display:inline-block;border-radius:999px;padding:1px 8px;margin-left:6px;font-size:12px;font-weight:600;white-space:nowrap;background:#e7f1ea;color:#2f5a43;border:1px solid #c9dccf">In our library</span>';
+  let out=String(html).replace(/<(a|i|em)\b([^>]*)>([\s\S]*?)<\/\1>/g,(m,tag,at,inner)=>window.fpShelfHas(inner)?m+MARK:m);
+  out=out.replace(/<li>((?:(?!<\/?li>)[\s\S])*)<\/li>/g,(m,inner)=>inner.includes('class="fpshelf"')||!window.fpShelfHas(inner)?m:"<li>"+inner+MARK+"</li>");
+  return out};
 /* Connects Planning Studio to its server on Render.
    Plans live in a private GitHub repository behind that server. */
 (function(){

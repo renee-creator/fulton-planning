@@ -188,7 +188,7 @@ function md(text){const L=String(text||"").replace(/\r/g,"").split("\n");let h="
     if(/^\s*[-*]\s+/.test(l)){const it=[];while(i<L.length&&/^\s*[-*]\s+/.test(L[i])){it.push(L[i].replace(/^\s*[-*]\s+/,""));i++}h+=`<ul>${it.map(x=>`<li>${inline(x)}</li>`).join("")}</ul>`;continue}
     if(/^\s*\d+\.\s+/.test(l)){const it=[];while(i<L.length&&/^\s*\d+\.\s+/.test(L[i])){it.push(L[i].replace(/^\s*\d+\.\s+/,""));i++}h+=`<ol>${it.map(x=>`<li>${inline(x)}</li>`).join("")}</ol>`;continue}
     const p=[];while(i<L.length&&L[i].trim()&&!/^(#{1,4}\s|\s*[-*]\s|\s*\d+\.\s|\s*\|)/.test(L[i])){p.push(L[i]);i++}h+=`<p>${inline(p.join(" "))}</p>`}
-  return `<div class="stmd">${h}</div>`}
+  return `<div class="stmd">${typeof window.fpShelfMark==="function"?window.fpShelfMark(h):h}</div>`}
 // the same Markdown as blocks for a printout and a Word file
 const plain=s=>String(s||"").replace(/\*\*(.+?)\*\*/g,"$1").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1$2").replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,"$1 ($2)");
 function mdBlocks(text){const L=String(text||"").replace(/\r/g,"").split("\n");const out=[];let i=0;
@@ -728,7 +728,7 @@ const PICURL=new Map();
 async function picUrl(p){if(!PICURL.has(p))PICURL.set(p,URL.createObjectURL(await picBlob(p)));return PICURL.get(p)}
 function fillPics(){document.querySelectorAll("#main img[data-pimg]").forEach(async im=>{try{im.src=await picUrl(im.dataset.pimg)}catch(e){im.replaceWith(Object.assign(document.createElement("span"),{className:"cnt",textContent:im.alt||"The picture could not be shown."}))}})}
 const pic=(src,alt)=>`<img data-pimg="${H(src)}" alt="${H(alt||"A picture from the policies")}" style="max-width:100%;height:auto;display:block;margin:8px auto">`;
-const polHtml=b=>String(b||"").trim()?PM().html(b,pic,{tree:true}):`<div class="empty">This section has no words yet. Edit it to write what belongs here.</div>`;
+const polHtml=b=>String(b||"").trim()?(typeof window.fpShelfMark==="function"?window.fpShelfMark(PM().html(b,pic,{tree:true})):PM().html(b,pic,{tree:true})):`<div class="empty">This section has no words yet. Edit it to write what belongs here.</div>`;
 const yearSpan=y=>y?y+" to "+(+y+1):"";
 
 /* proposed sections wait here for the director, and nothing changes in the document until she accepts one. Accepting

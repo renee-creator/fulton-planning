@@ -1057,8 +1057,15 @@ module.exports = function staffModule(o) {
     if (isKitchen(name)) return { records: allowed(name, 'records'), pd: false, handbook: false, newed: false, growth: false, family: false };
     if (profileOf(name).role === 'staff') { const r = allowed(name, 'records'); return { records: r, pd: false, handbook: false, newed: false, growth: false, family: allowed(name, 'family') }; }
     return { notices: isDirector(name) || !!(school().ready || {}).notices, records: allowed(name, 'records'), pd: allowed(name, 'pd'), handbook: allowed(name, 'handbook'), newed: allowed(name, 'newed'), growth: !!S.ready && (isDirector(name) || (G.takesPart(name) && !!opened().growth)), team: !!S.ready && (isDirector(name) || (G.takesPart(name) && !isNewHire(name))), presenting: !!S.ready && PR.anyFor(name), family: allowed(name, 'family') || allowed(name, 'newed') }; }
+  /* the books on our own shelves, marked In our library in the Readings library. Each gives the words a citation of it
+     carries, the book's own cites when it has them, otherwise its title, so a page can mark a citation of a book we own. */
+  const shelfNorm = t => String(t || '').toLowerCase().replace(/&/g, ' and ').replace(/[\u2018\u2019']/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  function shelf() { const all = [...(((get('staff/readings.json') || {}).list) || []), ...(((get('staff/readings-library.json') || {}).list) || [])];
+    const out = new Set(); for (const x of all) { if (!x || !x.onSite || x.kind === 'article') continue;
+      for (const c of (Array.isArray(x.cites) && x.cites.length ? x.cites : [x.title])) { const n = shelfNorm(c); if (n.length >= 8) out.add(n); } }
+    return [...out]; }
   function bootInfo(name) { if (!S.ready) return { loading: true, director: isDirector(name) };
-    return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name), fh: POL.current() }; }
+    return { director: isDirector(name), newHire: isNewHire(name), newEd: inNewEd(name), open: opened(), can: canFor(name), fh: POL.current(), shelf: shelf() }; }
   // the nightly backup holds every educator record and the handbook. Sign-ins and passcodes stay out, as before.
   // the pictures in the Policies and Procedures, the Family Handbook and the recipe library, for the nightly backup
   async function dumpImages() { const out = {}; for (const p of S.imgs.keys()) { try { out[p] = (await readImage(p)).toString('base64'); } catch (e) { log('A picture could not be added to the backup,', p, e.message); } } return out; }
@@ -1206,6 +1213,7 @@ module.exports = function staffModule(o) {
     s30Visuals: ['code:once/s30-visuals.json', 'Seven visual printables on their modules, November 4, 2026'],
     s31IndoorPiazza: ['code:once/s31-indoor-piazza.json', 'Movement and risky play leave the indoor piazza, November 5, 2026'],
     s32Identity: ['code:once/s32-identity-of-self.json', 'Identity of self card, photo people and worn book puppets, November 5, 2026'],
+    s33OurLibrary: ['code:once/s33-our-library.json', 'Books on our own shelves marked In our library, with the books our PD modules cite and the rest of our shelf added to the Readings library, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

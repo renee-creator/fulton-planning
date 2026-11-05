@@ -166,7 +166,7 @@ function ibSeeingHtml(){const B=(ib.behaviors||[]),q=ibSt.bq.trim().toLowerCase(
     <label class="lbl" for="ib-bq">Describe it in a word or two</label><input type="search" id="ib-bq" value="${esc(ibSt.bq)}" placeholder="throwing, biting, covering ears, climbing on tables" data-noproof="1">
     <div class="chips" style="margin-top:8px">${list.map(x=>`<button class="chip ${x.id===ibSt.bsel?"on":""}" type="button" data-ibbeh="${esc(x.id)}">${esc(x.label)}</button>`).join("")||`<span class="cnt">Nothing matches those words. Try another word.</span>`}</div>
     ${b?`<h3>${esc(b.label)}</h3>${ibParas(b.what_we_might_see)}<h3>What the child might be seeking</h3>${ibParas(b.might_be_seeking)}
-      ${has(b.development)?`<h3>Where it can fit in development (developmental stage)</h3>${ibParas(b.development)}${(b.sources||[]).length?`<div class="cnt">From ${(b.sources||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(", ")}</div>`:""}`:""}
+      ${has(b.development)?`<h3>Where it can fit in development (developmental stage)</h3>${ibParas(b.development)}${(b.sources||[]).length?`<div class="cnt">From ${(b.sources||[]).map(x=>{const a=`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`;return typeof window.fpShelfMark==="function"?window.fpShelfMark(a):a}).join(", ")}</div>`:""}`:""}
       <h3>First steps</h3><ul>${(b.first_steps||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul><h3>Keeping everyone safe</h3>${ibParas(b.keep_safe)}
       <div class="chips">${[...(b.needs||[]),...(b.supports||[])].map(f=>`<span class="pill" style="pointer-events:none">${esc(f)}</span>`).join("")}</div>
       ${ibFromUsHtml(b.from_us||[])}${ibTriedHtml(b)}
