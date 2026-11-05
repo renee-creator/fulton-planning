@@ -194,3 +194,30 @@ test('the page shows Watch the clip on the draft, the card and a Presenting agen
   await s.p.click('#main [data-clipwatch="' + fileId + '"]'); await s.p.waitForSelector('#clipsheet iframe', { timeout: 10000 }); await s.p.click('#clipclose');
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('Send a clip from inside TREE comes in pieces, is kept in Drive as a smaller copy and leaves the educator a draft', async t => {
+  const h = await setup(t); const clip = makeClip();
+  const ann = (await h.fx.login('Ann', '1357')).token;
+  const send = b => h.fx.as(ann, '/api/clip-send', b);
+  // while the switch is off nothing is taken
+  assert.strictEqual((await send({ step: 'start', name: 'IMG_1.MOV', type: 'video/quicktime', size: clip.bytes.length })).status, 400);
+  await h.program({ videoClipsOn: true });
+  assert.strictEqual((await send({ step: 'start', name: 'notes.pdf', type: 'application/pdf', size: 10 })).status, 400, 'only a video is taken');
+  const st = (await send({ step: 'start', name: 'IMG_1.MOV', type: 'video/quicktime', size: clip.bytes.length })).body;
+  assert.ok(st.id && st.piece > 0);
+  for (let k = 0; k < st.pieces; k++) {
+    const r = await send({ step: 'piece', id: st.id, k, data: clip.bytes.subarray(k * st.piece, (k + 1) * st.piece).toString('base64') });
+    assert.strictEqual(r.status, 200);
+    if (k === 0) assert.strictEqual((await send({ step: 'piece', id: st.id, k, data: clip.bytes.subarray(0, st.piece).toString('base64') })).body.next, 1, 'a piece sent twice is kept once');
+  }
+  const bea = (await h.fx.login('Bea', '1357')).token;
+  assert.strictEqual((await h.fx.as(bea, '/api/clip-send', { step: 'done', id: st.id })).status, 400, 'another educator cannot finish it');
+  const done = await send({ step: 'done', id: st.id });
+  assert.strictEqual(done.status, 200);
+  const rec = await until(() => { const r = h.read('clips/' + done.body.id + '.json'); return r && r.status === 'done' && r; }, 60000);
+  assert.ok(rec, 'the clip was read');
+  assert.ok(rec.fileId, 'the copy is kept in Drive');
+  assert.match(rec.name, /Ann clip/);
+  const d = h.read('drafts/' + rec.draftId + '.json'); assert.ok(d, 'a draft is left');
+  assert.strictEqual(d.by, 'Ann');
+});

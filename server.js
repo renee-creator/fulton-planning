@@ -3288,6 +3288,9 @@ async function handle(req, res) {
   }
   // the gatherings, read again when an educator opens the Gatherings page
   if (path === '/api/gatherings') { if (isKitchen(me.name)) { err(req, res, 403, 'This is not open here.'); return; } json(req, res, 200, gatheringsFor(me.name)); return; }
+  // Send a clip from inside TREE, in pieces, with no Google sign-in or Drive sharing on the phone
+  if (path === '/api/clip-send') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const r = videoClips.upload(me.name, body); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
   // the director makes, renews or turns off the staff room display's link
   if (path === '/api/display') {
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sets up the staff room display.'); return; }

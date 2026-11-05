@@ -270,6 +270,88 @@ Rules
     reply(200, { ok: true, id: rec.id, waiting: !on() });
   }
 
+  /* ---------- Send a clip from inside TREE ----------
+     An educator picks a clip from the phone's photo library in TREE, and it comes to this server in pieces, with no Google
+     sign-in or Drive sharing on the phone. The server makes a smaller copy of the first three minutes, about 480 pixels
+     tall, keeps that copy in the TREE Drive through the mailbox script, lets signed-in school accounts watch it, and then
+     reads it into a draft observation the same way as a clip from the Video folder or the TREE address. The full clip
+     never leaves the phone's library and is deleted from this server as soon as the smaller copy is made. */
+  const UP_PIECE = 3 * 1024 * 1024;          // raw bytes in one piece, about 4 MB once written as text
+  const UP_DIR = path.join(TMP, 'up');
+  const uploads = new Map();                 // id -> { file, size, got, next, by, name, type, at }
+  const SMALL_MAX = 30 * 1024 * 1024;        // the largest copy the mailbox script is sent in one request
+  setInterval(() => { for (const [id, u] of uploads) if (Date.now() - u.at > 60 * 60e3) { try { fs.unlinkSync(u.file); } catch (e) {} uploads.delete(id); } }, 10 * 60e3).unref();
+  function firstName(n) { return String(n || '').trim().split(/\s+/)[0] || ''; }
+  async function smallCopy(src) {
+    const out = src + '.mp4';
+    const r = await ffmpeg(['-hide_banner', '-y', '-i', src, '-t', String(LIMIT_S), '-vf', 'scale=-2:min(480\\,ih)', '-c:v', 'libx264', '-preset', 'veryfast',
+      '-b:v', '700k', '-maxrate', '900k', '-bufsize', '1400k', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '64k', '-ac', '1', '-movflags', '+faststart', out], 15 * 60e3);
+    if (r.code !== 0 || !fs.existsSync(out)) throw new Error('The smaller copy could not be made. ' + r.err.slice(-200));
+    return out;
+  }
+  async function prepare(u, rec) {
+    let small = null;
+    try {
+      let file = u.file, type = u.type;
+      if (ffmpegBin) { small = await smallCopy(u.file); file = small; type = 'video/mp4'; }
+      const size = fs.statSync(file).size;
+      if (size > SMALL_MAX) throw new Error('The clip is too large to keep in Drive. Keep clips to three minutes.');
+      const put = await drive.ask({ op: 'put', name: rec.name, type, data: fs.readFileSync(file).toString('base64') }, 10 * 60e3);
+      if (!put || !put.id) throw new Error((put && put.error) || 'Drive did not keep the clip');
+      try { await drive.ask({ op: 'video-share', id: put.id }, 60000); } catch (e) { log('A sent clip could not be shared with school accounts', e.message); }
+      Object.assign(rec, { fileId: put.id, size, mimeType: type, status: 'waiting', at: Date.now() }); saveRec(rec);
+      log(`Clip sent from TREE by ${rec.by}, ${Math.round(u.size / 1048576)} MB, kept in Drive at ${Math.round(size / 1048576)} MB`);
+      if (on()) kick();
+    } catch (e) {
+      const why = String(e && e.message || e).slice(0, 300);
+      log('A clip sent from TREE could not be kept', rec.by, why);
+      Object.assign(rec, { status: 'failed', error: why, failedAt: Date.now() }); saveRec(rec);
+    } finally {
+      for (const f of [u.file, small]) if (f) { try { fs.unlinkSync(f); } catch (e) {} }
+    }
+  }
+  // start, piece and done. Answers what the phone needs next.
+  function upload(me, body) {
+    if (!on()) return { error: 'Video clips are turned off. The director turns them on in Settings.' };
+    if (!drive.on()) return { error: 'Google Drive is not set up for TREE yet, so clips cannot be kept.' };
+    const step = String(body.step || '');
+    if (step === 'start') {
+      const size = Number(body.size) || 0, type = String(body.type || '').toLowerCase(), name = String(body.name || '').slice(0, 200);
+      if (!(TYPES.test(type) || /\.(mp4|mov|m4v|webm|3gp|mpeg|mpg|avi)$/i.test(name))) return { error: 'That file is not a video.' };
+      if (!size) return { error: 'That clip is empty.' };
+      if (size > MAX_BYTES) return { error: 'That clip is too large. Keep clips to three minutes.' };
+      fs.mkdirSync(UP_DIR, { recursive: true });
+      const id = 'u' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
+      const file = path.join(UP_DIR, id + '.bin'); fs.writeFileSync(file, Buffer.alloc(0));
+      uploads.set(id, { file, size, got: 0, next: 0, by: me, name, type: type || 'video/mp4', at: Date.now() });
+      return { id, piece: UP_PIECE, pieces: Math.ceil(size / UP_PIECE) };
+    }
+    const u = uploads.get(String(body.id || ''));
+    if (!u || u.by !== me) return { error: 'That clip is no longer being sent. Try sending it again.' };
+    u.at = Date.now();
+    if (step === 'piece') {
+      const k = Number(body.k);
+      if (k < u.next) return { got: u.got, next: u.next };                 // a piece sent twice is kept once
+      if (k !== u.next) return { error: 'A piece of the clip came out of order. Try sending it again.' };
+      const buf = Buffer.from(String(body.data || ''), 'base64');
+      if (!buf.length || buf.length > UP_PIECE || u.got + buf.length > u.size) return { error: 'A piece of the clip did not come through. Try sending it again.' };
+      fs.appendFileSync(u.file, buf); u.got += buf.length; u.next++;
+      return { got: u.got, next: u.next };
+    }
+    if (step === 'done') {
+      if (u.got !== u.size) return { error: 'Part of the clip is missing. Try sending it again.' };
+      uploads.delete(String(body.id));
+      const acct = accountFor(me), room = acct && acct.room ? String(acct.room) : '';
+      const day = laDay(Date.now());
+      const name = [room, firstName(me), 'clip', day].filter(Boolean).join(' ') + '.mp4';
+      const rec = { id: 'v' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'), fileId: '', name, mimeType: 'video/mp4', size: u.size, by: firstName(me), subject: '', createdAt: new Date().toISOString(), at: Date.now(), status: 'preparing', sent: 'tree', educator: me };
+      saveRec(rec);
+      prepare(u, rec);
+      return { ok: true, id: rec.id };
+    }
+    return { error: 'Unknown step.' };
+  }
+
   // the director's Settings line
   function status() {
     const all = [...store.recs.clips.values()].filter(r => !r.deleted && r.doc).map(r => r.doc);
@@ -277,5 +359,5 @@ Rules
   }
   const statusLine = () => { const s = status(); return [s.on && s.key, !s.on ? 'Video clips are off. The director turns them on in Settings.' : !s.key ? 'Video clips are on, but GEMINI_API_KEY is not set on Render, so clips wait.' : `Video clips are on, read with ${s.model}${s.ffmpeg ? '' : ', without ffmpeg for stills'}.`]; };
 
-  return { handle, run, kick, on, status, statusLine, parseAnswer, noticedLines, LIMIT_S };
+  return { handle, upload, run, kick, on, status, statusLine, parseAnswer, noticedLines, LIMIT_S };
 };

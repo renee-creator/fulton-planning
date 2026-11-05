@@ -4626,11 +4626,28 @@ let drafts=new Map(),sdT=null;
    slides, newsletters, the display or the family page. */
 let clips=new Map();
 const clipsOn=()=>!!(PROGRAM_DOC&&PROGRAM_DOC.videoClipsOn);
-// the Video folder in the TREE Drive, where an educator drops a clip from the class phone. Send a clip opens it in the Drive app.
+// the Video folder in the TREE Drive, still there for clips dropped from the Drive app. Its link stays in Settings.
 const clipFolderUrl=()=>{const id=String(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId||"").trim();return clipsOn()&&id?"https://drive.google.com/drive/folders/"+encodeURIComponent(id):""};
-function sendClipHtml(kind){const u=clipFolderUrl();if(!u||isKitchenUser())return"";
-  return kind==="quick"?`<button data-sendclip="1"><b>Send a clip</b><span>Up to three minutes, named with the class and your first name</span></button>`:`<a class="btn small ghost" href="${u}" target="_blank" rel="noopener" data-sendclip="1">Send a clip</a>`}
-document.addEventListener("click",e=>{const t=e.target.closest("button[data-sendclip]");if(!t)return;e.preventDefault();const u=clipFolderUrl();if(u)window.open(u,"_blank","noopener");toast("Name the clip with the class and your first name, such as North Ann.")});
+/* Send a clip. The educator picks a clip from the phone's photo library and TREE sends it to the server in pieces, with
+   no Google sign-in and no Drive sharing on the phone. A draft observation waits for the educator a few minutes later. */
+function sendClipHtml(kind){if(!clipsOn()||isKitchenUser()||!window.FP_API)return"";
+  return kind==="quick"?`<button data-sendclip="1"><b>Send a clip</b><span>Up to three minutes, from this phone's videos</span></button>`:`<button type="button" class="btn small ghost" data-sendclip="1">Send a clip</button>`}
+let clipSending=false;
+const clipPiece=blob=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).replace(/^data:[^,]*,/,""));r.onerror=()=>no(r.error);r.readAsDataURL(blob)});
+async function sendClipFile(f){if(clipSending){toast("A clip is already being sent.");return}clipSending=true;
+  const say=m=>{const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast._t)};
+  try{say("Getting the clip ready to send");
+    const st=await window.FP_API("/api/clip-send",{step:"start",name:f.name||"clip.mov",type:f.type||"",size:f.size});
+    for(let k=0;k<st.pieces;k++){const data=await clipPiece(f.slice(k*st.piece,Math.min(f.size,(k+1)*st.piece)));
+      let sent=false,last=null;for(let t=0;t<3&&!sent;t++){try{await window.FP_API("/api/clip-send",{step:"piece",id:st.id,k,data});sent=true}catch(e){last=e;if(e&&(e.code==="bad_request"||e.code==="not_allowed"))break;await new Promise(ok=>setTimeout(ok,1500*(t+1)))}}
+      if(!sent)throw last;say("Sending the clip, "+Math.round(100*(k+1)/st.pieces)+" percent. Keep TREE open.")}
+    await window.FP_API("/api/clip-send",{step:"done",id:st.id});
+    toast("Clip sent. A draft observation will wait for you in a few minutes.");
+  }catch(e){const t=$("#toast");t.textContent=(e&&e.message)||"The clip could not be sent. Try again.";t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,6000)}
+  finally{clipSending=false}}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-sendclip]");if(!t)return;e.preventDefault();
+  const i=document.createElement("input");i.type="file";i.accept="video/*";i.style.display="none";document.body.appendChild(i);
+  i.addEventListener("change",()=>{const f=i.files&&i.files[0];i.remove();if(f)sendClipFile(f)});i.click()});
 const CLIP_FILE=/^[A-Za-z0-9_-]{10,}$/;
 // a Drive file id, or a Drive link with the id inside it
 function clipFileId(v){v=String(v||"").trim();if(CLIP_FILE.test(v))return v;const m=v.match(/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{10,})/);return m?m[1]:""}
@@ -4867,7 +4884,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8e81f7bb8388";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="2fd70691ceb3";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -15984,9 +16001,9 @@ function videoClipsHtml(){if(!isDirector())return"";const on=clipsOn(),st=(windo
   return `<section class="card" id="clips-card"><div class="lbl">Video clips</div><div class="hint">An educator records a clip of up to three minutes on the class phone and drops it in the Video folder of the TREE Drive, or emails it to the TREE address, with the class and their first name in the file name or the subject, such as North Ann. TREE reads the clip once with Google's Gemini API and leaves the educator a draft observation with the children's exact words, what they did, two or three stills and Watch the clip. The clip stays in Drive. Clips never reach prints, slides, newsletters, the display or the family page.</div>
     <div class="prow"><div><b>Video clips</b><div class="cnt">${on?"On. Clips are read as they arrive.":"Off. Clips that arrive wait here until it is on."}${st&&on&&!st.key?" GEMINI_API_KEY is not set on Render, so clips wait.":""}${st&&on&&!st.drive?" DRIVE_PHOTOS_URL is not set on Render, so clips cannot be fetched.":""}${st&&on&&st.key&&st.drive?` Read with ${esc(st.model||"")}${st.ffmpeg?"":", without ffmpeg, so stills come from the Drive thumbnail"}.`:""}</div></div>
       <div class="seg" role="group" aria-label="Video clips"><button data-videoclips="1" aria-pressed="${on}">On</button><button data-videoclips="0" aria-pressed="${!on}">Off</button></div></div>
-    <label class="cnt" style="display:block;margin-top:8px">Video folder link, so Send a clip opens it on the class phones<input id="videofolder" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${esc(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId?"https://drive.google.com/drive/folders/"+PROGRAM_DOC.videoFolderId:"")}" style="margin-top:4px"></label>
+    <label class="cnt" style="display:block;margin-top:8px">Video folder link, for clips added from the Drive app<input id="videofolder" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${esc(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId?"https://drive.google.com/drive/folders/"+PROGRAM_DOC.videoFolderId:"")}" style="margin-top:4px"></label>
     ${all.length?`<div class="cnt">${waiting} waiting, ${done} read, ${failed} could not be read.</div><div style="display:grid;gap:4px;margin-top:6px">${recent.map(x=>`<div class="cnt">${esc(x.name||x.fileId)}, ${esc(word[x.status]||x.status)}${x.educator?", for "+esc(x.educator):""}${x.seconds?", "+Math.round(x.seconds)+" seconds":""}${x.error?". "+esc(x.error):""} ${clipsOn()?`<button class="linkbtn" data-clipwatch="${esc(x.fileId)}" data-clipname="${esc(x.name||"")}">Watch</button>`:""}</div>`).join("")}</div>`:`<div class="cnt">No clips have arrived yet.</div>`}</section>`}
-document.addEventListener("change",e=>{const t=e.target.closest("#videofolder");if(!t||!isDirector()||VIEW_AS)return;const m=String(t.value||"").match(/[-\w]{20,}/);PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoFolderId:m?m[0]:""});saveProgram();toast(m?"Send a clip now opens that folder.":"The folder link is cleared.")});
+document.addEventListener("change",e=>{const t=e.target.closest("#videofolder");if(!t||!isDirector()||VIEW_AS)return;const m=String(t.value||"").match(/[-\w]{20,}/);PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoFolderId:m?m[0]:""});saveProgram();toast(m?"The folder link is saved.":"The folder link is cleared.")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-videoclips]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const on=t.dataset.videoclips==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoClipsOn:on,videoClipsAt:Date.now()});saveProgram();renderSettings();toast(on?"Video clips are on. Clips that waited are read now.":"Video clips are off. Clips that arrive wait.")});
 let progTimer=null;
