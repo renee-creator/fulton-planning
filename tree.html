@@ -4791,7 +4791,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7afca3beb9","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=f4246b70e9","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4804,7 +4804,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=7afca3beb9","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=f4246b70e9","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4822,7 +4822,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="13d0d587a055";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="1ea8f6128c5a";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -12835,7 +12835,7 @@ const deep=c=>c.map(v=>Math.round(v*.8));
 function displayHead(doc,p,A,dry){
   const {m,w}=DG;let y=DG.top;
   if(PRINT.schoolDocs){if(!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School",m,y+8)}y+=22}
-  let ts=38,tl;for(;;){pfont(doc,"bs",ts);tl=doc.splitTextToSize(clean(p.title||""),w);if(tl.length<=(ts>30?1:2)||ts<=24)break;ts-=2}
+  let ts=p.visual?46:38,tl;for(;;){pfont(doc,"bs",ts);tl=doc.splitTextToSize(clean(p.title||""),w);if(tl.length<=(p.visual?2:ts>30?1:2)||ts<=24)break;ts-=2}
   tl=tl.slice(0,3);const tlh=ts*1.12;
   if(!dry){doc.setTextColor(...D_INK);tl.forEach((l,i)=>doc.text(l,m,y+ts*.8+i*tlh))}
   y+=tl.length*tlh+8;
@@ -12914,11 +12914,26 @@ function displayAtoms(doc,p,A,s){
         if(lab){pfont(doc,"fs",10);doc.setTextColor(...AT);doc.text(clean(b.label),m+pad,y+pad+7)}
         pfont(doc,"bm",fs);doc.setTextColor(...D_INK);ls.forEach((l,i)=>doc.text(l,m+pad,y+pad+lab+i*lh+fs*.86))}});gap(8);
       if(lrest){lines(wrap(lrest,"fr",Z.body,w),"fr",Z.body,Z.blh,m,D_INK);gap(6)}}
-    else if(b.t==="text"){if(has(b.label))heading(b.label);else gap(D_TIGHT?4:7);const i0=atoms.length;lines(wrap(b.text,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,b.quiet?D_MUTED:D_INK);holdFirst(i0)}
+    else if(b.t==="text"){if(has(b.label))heading(b.label);else gap(D_TIGHT?4:7);const i0=atoms.length;const bf=b.big?Z.body*1.2:Z.body,bl=b.big?Z.blh*1.2:Z.blh;lines(wrap(b.text,"fr",bf,cw),"fr",bf,bl,cx,b.quiet?D_MUTED:D_INK);holdFirst(i0)}
     else if(b.t==="small"){if(has(b.label))heading(b.label);else gap(6);const i0=atoms.length;(b.lines||[b.text]).filter(has).forEach(t=>lines(wrap(t,"fr",Z.small,cw),"fr",Z.small,Z.slh,cx,D_MUTED));holdFirst(i0)}
     else if(b.t==="list"){heading(b.label);const i0=atoms.length;(b.items||[]).filter(has).forEach((it,i)=>{const ls=wrap(it,"fr",Z.body,cw-18);ls.forEach((l,k)=>push({h:Z.blh,base:base(Z.blh,Z.body),keep:k<ls.length-1,draw(y){const by=y+base(Z.blh,Z.body);
         if(k===0){if(b.numbered){pfont(doc,"fs",Z.body);doc.setTextColor(...AT);doc.text(String(i+1),cx,by)}else{doc.setFillColor(...A.c);doc.circle(cx+3,by-Z.body*.3,2*s,"F")}}
         pfont(doc,"fr",Z.body);doc.setTextColor(...D_INK);doc.text(l,cx+18,by)}}));gap(3)});holdFirst(i0)}
+    else if(b.t==="cols"){const C=(b.cols||[]).filter(c=>c&&has(c.h));if(C.length){gap(10);
+      // two or three panels sit in one row, four to six in two rows of equal width, and the whole grid stays on one sheet
+      const n=C.length,per=n<=3?n:Math.ceil(n/2),rows=[];for(let i=0;i<n;i+=per)rows.push(C.slice(i,i+per));
+      const g=14,pad=14*Math.min(s,1),cwid=(w-(per-1)*g)/per,iw=cwid-pad*2;
+      const HF=15.5*s,HL=HF*1.25,LF=10*s,LL=LF*1.3,TF=11.5*s,TL=TF*1.36,PG=8*s;
+      const lay=c=>{const hl=wrap(c.h,"bs",HF,iw);const parts=(c.parts||[]).filter(x=>x&&has(x.text)).map(x=>({ll:has(x.label)?wrap(x.label,"fs",LF,iw):[],tl:wrap(x.text,"fr",TF,iw)}));
+        const h=pad*2+hl.length*HL+6*s+parts.reduce((t,x)=>t+x.ll.length*LL+x.tl.length*TL+PG,0)-PG;return {hl,parts,h}};
+      const R=rows.map(r=>{const L=r.map(lay);return {L,h:Math.max(...L.map(x=>x.h))}});
+      const H=R.reduce((t,r)=>t+r.h,0)+(R.length-1)*g;
+      push({h:H,keep:true,draw(y0){let y=y0;R.forEach(r=>{const x0=m+(w-(r.L.length*cwid+(r.L.length-1)*g))/2;
+        r.L.forEach((c,i)=>{const x=x0+i*(cwid+g);doc.setFillColor(...A.t);doc.roundedRect(x,y,cwid,r.h,12,12,"F");let ty=y+pad;
+          pfont(doc,"bs",HF);doc.setTextColor(...D_INK);c.hl.forEach(l=>{doc.text(l,x+pad,ty+HF*.85);ty+=HL});ty+=6*s;
+          c.parts.forEach(x2=>{if(x2.ll.length){pfont(doc,"fs",LF);doc.setTextColor(...AT);x2.ll.forEach(l=>{doc.text(l,x+pad,ty+LF*.85);ty+=LL})}
+            pfont(doc,"fr",TF);doc.setTextColor(...D_INK);x2.tl.forEach(l=>{doc.text(l,x+pad,ty+TF*.85);ty+=TL});ty+=PG})});
+        y+=r.h+g})}});gap(10)}}
     else if(b.t==="tags"){heading(b.label);const fs=11*s,ph=22*s;pfont(doc,"fs",fs);const rows=[[]];let x=0;
       (b.items||[]).filter(has).forEach(it=>{const t=clean(it),tw=doc.getTextWidth(t)+22*s;if(x>0&&x+tw>cw){rows.push([]);x=0}rows[rows.length-1].push({t,x,tw});x+=tw+7*s});
       rows.forEach((r,ri)=>push({h:ph+5*s,base:base(ph,fs),keep:ri<rows.length-1,draw(y){r.forEach(c=>{doc.setFillColor(...A.t);doc.roundedRect(cx+c.x,y,c.tw,ph,ph/2,ph/2,"F");pfont(doc,"fs",fs);doc.setTextColor(...D_INK);doc.text(c.t,cx+c.x+11*s,y+base(ph,fs))})}}))}
@@ -13032,6 +13047,7 @@ function displayFit(doc,p,A){
   const rn=R.F.pages.length,tn=T.F.pages.length;
   return rn>tn||(rn===tn&&R.s<1&&R.s<T.s)?T:R}
 function displayFitAt(doc,p,A){
+  if(p.visual){for(const t of [1.3,1.24,1.18,1.12,1.06,1,.96,.92,.88,.84,.8]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end<=DG.bottom)return {s:t,F:T}}return {s:.8,F:displayFlow(doc,p,A,.8)}}
   let s=1,F=displayFlow(doc,p,A,1);
   if(F.pages.length===1&&!p.noScale){const room=DG.bottom-F.top1;for(const t of p.fill?[2,1.85,1.7,1.58,1.46,1.36,1.3,1.24,1.18,1.12,1.06]:[1.3,1.24,1.18,1.12,1.06]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1&&T.end-T.top1<=room*.96){s=t;F=T;break}}}
   // a sheet made to be one page, such as the farm sheet for families, may be set a little smaller still
@@ -13392,7 +13408,7 @@ async function displayDocx(ch,p,D,A){
   const spacer=h=>para([],{spacing:{before:0,after:0,line:h,lineRule:"exact"}});
   // heading: the school, the title, a row of facts, and a rule in the page's colour
   if(PRINT.schoolDocs)ch.push(para(run("Fulton Community School","fs",9.5,dp),{spacing:{after:70}}));
-  const tpt=String(p.title||"").length>30?28:36;
+  const tpt=p.visual?40:String(p.title||"").length>30?28:36;
   ch.push(para(run(p.title||"","bs",tpt),{spacing:{after:150,line:Math.round(tpt*22.4),lineRule:"atLeast"}}));
   const facts=(p.meta||[]).map(r=>Array.isArray(r)?r:["",r]).filter(r=>has(r[1]));
   if(facts.length){let ws=facts.map(([l,v])=>Math.max(clean(v).length*132,clean(l).length*98)+520);const sum=ws.reduce((a,b)=>a+b,0);if(sum>W-200)ws=ws.map(x=>Math.floor(x*(W-200)/sum));const rest=W-ws.reduce((a,b)=>a+b,0);
@@ -13414,7 +13430,7 @@ async function displayDocx(ch,p,D,A){
       ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:noB,margins:{top:300,bottom:320,left:360,right:360},
         children:[...(has(b.label)?[para(run(b.label,"fs",10,dp),{spacing:{after:90}})]:[]),...paras(lt).map(x=>para(run(x,"bm",pt),{spacing:{line:Math.round(pt*24.8),lineRule:"atLeast"}}))]})]})]}));
       ch.push(spacer(140));if(lrest)ch.push(...body(lrest))}
-    else if(b.t==="text"){if(has(b.label))heading(b.label);ch.push(...body(b.text,b.quiet?MUT:INKH))}
+    else if(b.t==="text"){if(has(b.label))heading(b.label);ch.push(...body(b.text,b.quiet?MUT:INKH,b.big?14.5:undefined))}
     else if(b.t==="small"){if(has(b.label))heading(b.label);else ch.push(spacer(80));(b.lines||[b.text]).filter(has).forEach(t=>ch.push(...body(t,MUT,9.4)))}
     else if(b.t==="list"){heading(b.label);(b.items||[]).filter(has).forEach((it,i)=>ch.push(para([raw((b.numbered?String(i+1):"•")+"\t","fs",12*s,dp),run(String(it).trim(),"fr",12*s)],{spacing:{after:70,line:LS,lineRule:"atLeast"},indent:{left:360,hanging:360},tabStops:[{type:"left",position:360}]})))}
     else if(b.t==="tags"){heading(b.label);const kids=[];(b.items||[]).filter(has).forEach((it,i)=>{if(i)kids.push(raw("   ","fr",11*s));kids.push(new TextRun({text:"  "+clean(it)+"  ",font:F("fs"),bold:heavy("fs"),color:INKH,size:Math.round(22*s),shading:{type:ShadingType.CLEAR,fill:tn,color:"auto"}}))});
@@ -13422,6 +13438,13 @@ async function displayDocx(ch,p,D,A){
     else if(b.t==="figures"){if(has(b.label))heading(b.label);const its=(b.items||[]).filter(x=>x&&has(String(x[0])));if(its.length){const g=120,cw=Math.floor((W-(its.length-1)*g)/its.length);const cols=[];its.forEach((x,i)=>{if(i)cols.push(g);cols.push(cw)});
       ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:cols,layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({cantSplit:true,children:its.flatMap(([v,l],i)=>[...(i?[new TableCell({width:{size:g,type:WidthType.DXA},borders:noB,children:[para([])]})]:[]),
         new TableCell({width:{size:cw,type:WidthType.DXA},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:noB,margins:{top:130,bottom:130,left:150,right:120},children:[para(run(String(v),"bs",its.length>5?15:17),{spacing:{after:50}}),para(run(l,"fr",8.6,MUT),{spacing:{after:0,line:230,lineRule:"atLeast"}})]})])})]}));ch.push(spacer(120))}}
+    else if(b.t==="cols"){const C=(b.cols||[]).filter(c=>c&&has(c.h));if(C.length){const per=C.length<=3?C.length:Math.ceil(C.length/2),g=160,cw=Math.floor((W-(per-1)*g)/per);const widths=[];for(let i=0;i<per;i++){if(i)widths.push(g);widths.push(cw)}
+      const blank=wd=>new TableCell({width:{size:wd,type:WidthType.DXA},borders:noB,children:[para([])]});const rows=[];
+      for(let i=0;i<C.length;i+=per){const r=C.slice(i,i+per);const cells=[];for(let j=0;j<per;j++){if(j)cells.push(blank(g));const c=r[j];
+          cells.push(c?new TableCell({width:{size:cw,type:WidthType.DXA},shading:{fill:tn,type:ShadingType.CLEAR,color:"auto"},borders:noB,margins:{top:160,bottom:160,left:160,right:140},children:[para(run(c.h,"bs",14*s),{spacing:{after:80}}),
+            ...(c.parts||[]).filter(x=>x&&has(x.text)).flatMap(x=>[...(has(x.label)?[para(run(x.label,"fs",9.5*s,dp),{keepNext:true,spacing:{after:20}})]:[]),para(run(x.text,"fr",11*s),{spacing:{after:100,line:Math.round(11*26*s),lineRule:"atLeast"}})])]}):blank(cw))}
+        rows.push(new TableRow({cantSplit:true,children:cells}));if(i+per<C.length)rows.push(new TableRow({children:[new TableCell({columnSpan:widths.length,borders:noB,children:[spacer(160)]})]}))}
+      ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:widths,layout:TableLayoutType.FIXED,borders:noT,rows}));ch.push(spacer(120))}}
     else if(b.t==="table"){if(!b.noRule)heading(b.label);
       const rows=(b.rows||[]).filter(r=>r&&r.some(has)),cols=Math.max(1,Math.min(3,b.cols||1)),gut=cols>1?300:0,gw=Math.floor((W-(cols-1)*gut)/cols);
       const nc=Math.max(1,...rows.map(r=>r.length),(b.head||[]).length);const fr=(b.widths&&b.widths.length===nc?b.widths:Array.from({length:nc},()=>1/nc));const wd=fr.map(f=>Math.floor(f*gw));wd[nc-1]+=gw-wd.reduce((a,c)=>a+c,0);
@@ -15977,7 +16000,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=7afca3beb9","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=f4246b70e9","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}

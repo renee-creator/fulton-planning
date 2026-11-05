@@ -297,7 +297,7 @@ test('the one-time step s18Sensory puts the theory in the modules and the practi
 // November 4, 2026. PD modules gain their theory sections through one-time steps built from the live pages. Each change
 // keeps the words it hangs on, and the step is idempotent.
 test('the PD theory steps keep their anchors and run once', async () => {
-  for (const name of ['s19-pd-batch1', 's20-pd-batch2', 's21-pd-batch3', 's22-pd-batch4', 's23-pd-batch5', 's26-pd-anchors']) {
+  for (const name of ['s19-pd-batch1', 's20-pd-batch2', 's21-pd-batch3', 's22-pd-batch4', 's23-pd-batch5', 's26-pd-anchors', 's27-visual-sample']) {
     const list = require('../once/' + name + '.json');
     assert.ok(list.changes.length > 0);
     for (const c of list.changes) assert.ok(c.to.endsWith(c.from) || c.to.startsWith(c.from.split('\n')[0]), 'keeps its anchor');
@@ -310,7 +310,7 @@ test('the PD theory steps keep their anchors and run once', async () => {
       h.files.set(p, { text: '<!--\nstatus: draft\n-->\n# Page\n\n## Reading\n\nWords.\n\n' + anchors.join('\n\n') + '\n', sha: p });
     }
     await h.staff.load();
-    const key = { 's19-pd-batch1': 's19Pd1', 's20-pd-batch2': 's20Pd2', 's21-pd-batch3': 's21Pd3', 's22-pd-batch4': 's22Pd4', 's23-pd-batch5': 's23Pd5', 's26-pd-anchors': 's26Anchors' }[name];
+    const key = { 's19-pd-batch1': 's19Pd1', 's20-pd-batch2': 's20Pd2', 's21-pd-batch3': 's21Pd3', 's22-pd-batch4': 's22Pd4', 's23-pd-batch5': 's23Pd5', 's26-pd-anchors': 's26Anchors', 's27-visual-sample': 's27Visual' }[name];
     assert.notStrictEqual(await h.staff.once.edits(key, () => false), false);
     const d = h.staff.dump();
     for (const c of list.changes) assert.ok(d[c.path].includes(c.to), 'applied ' + c.path);

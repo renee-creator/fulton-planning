@@ -1201,6 +1201,7 @@ module.exports = function staffModule(o) {
     s24PdFix: ['code:once/s24-pd-corrections.json', 'Corrections from the fact check of the PD theory sections, November 4, 2026'],
     s25Training: ['code:once/s25-sensory-training.json', 'The sensory integration training of November 2, 2026 logged as a PD day with its hours'],
     s26Anchors: ['code:once/s26-pd-anchors.json', 'Two newer research anchors in Rhythms of the Day and The Present Educator, November 4, 2026'],
+    s27Visual: ['code:once/s27-visual-sample.json', 'A visual printable, Four ways children take in the world, on Beyond Discipline, November 4, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

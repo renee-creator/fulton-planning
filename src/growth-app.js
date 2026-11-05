@@ -649,7 +649,7 @@ const plainLines=t=>String(t||"").replace(/\*\*/g,"").replace(/\[([^\]]+)\]\([^)
 const firstSentences=(t,n)=>{const s2=String(t||"").replace(/\s+/g," ").match(/[^.!?]+[.!?]+/g)||[];return s2.slice(0,n).join(" ").trim()||String(t||"").slice(0,240)};
 /* ---------- a module's printables, each a card, sheet or sign, printed one, some or all, as PDF and Word ---------- */
 function printCard(m,prints,dir){const P=m.printables;if(!P||!(P.list||[]).length)return prints?card("Printables",md(prints.body)):"";
-  const KIND={card:"Card",sheet:"Sheet",sign:"Sign"};
+  const KIND={card:"Card",sheet:"Sheet",sign:"Sign",visual:"Visual"};
   return card("Printables",`<div class="hint">Tick the ones you want, or print them all. Each prints on its own page.</div>${P.list.map(x=>`<details class="strow"><summary style="cursor:pointer"><label style="display:inline-flex;gap:8px;align-items:center" onclick="event.stopPropagation()"><input type="checkbox" data-gmprpick="${H(x.id)}"> <b>${H(x.title)}</b></label> <span class="cnt">${KIND[x.kind]||"Card"}</span></summary><div class="stmd">${md(x.body)}</div><div class="actions"><button class="btn small ghost" data-gmprint="${H(m.slug)}|${H(x.id)}">PDF</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|${H(x.id)}" data-word="1">Word</button></div></details>`).join("")}
     <div class="actions"><button class="btn small" data-gmprint="${H(m.slug)}|chosen">Print the ones ticked</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|chosen" data-word="1">Word</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|all">Print all</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|all" data-word="1">All as Word</button>${dir&&P.path&&typeof peBtn==="function"?peBtn(P.path,"Edit the printables"):""}</div>`)}
 // the Markdown of a printable as print blocks, paragraphs, lists, numbered steps and a simple table
@@ -673,7 +673,26 @@ function cardBlocks(body){if(/^\s*\|/m.test(String(body||"")))return printBlocks
     if(m&&has(m[2]))out.push({t:"text",label:strip(m[1]).replace(/[.]+$/,""),text:strip(m[2].replace(/\s*\n\s*/g," "))});
     else out.push({t:"text",label:"",text:strip(p.replace(/\s*\n\s*/g," ")),strong:!!m})}
   return out}
-const printDoc=(m,x)=>x.kind==="sheet"?{display:true,type:"report",acc:"story",title:x.title,meta:[["From",m.title]],details:[],photos:[],blocks:printBlocks(x.body)}
+// a visual prints as one page, one idea, the lead under the title, each "### Heading" a tinted panel side by side with
+// its "**Label.** words" parts, and a "Footer." paragraph small at the foot
+function visualBlocks(body,sub){const strip=t=>String(t).replace(/\*\*([^*]+)\*\*/g,"$1").replace(/\*([^*]+)\*/g,"$1").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").trim();
+  const cols=[];let lead=[],footer=[];let cur=null;
+  for(const raw of String(body||"").split("\n")){const l=raw.trim();if(!l)continue;
+    if(/^#{3,}\s+/.test(l)){cur={h:strip(l.replace(/^#+\s+/,"")),parts:[]};cols.push(cur);continue}
+    if(/^footer\.\s*/i.test(l)){footer.push(strip(l.replace(/^footer\.\s*/i,"")));cur=null;continue}
+    if(footer.length&&!cur){footer.push(strip(l));continue}
+    if(!cur){lead.push(strip(l));continue}
+    const m=l.match(/^\*\*([^*]+?)\*\*\s*([\s\S]*)$/);
+    if(m&&has(m[2]))cur.parts.push({label:strip(m[1]).replace(/[.]+$/,""),text:strip(m[2])});
+    else if(cur.parts.length)cur.parts[cur.parts.length-1].text+=" "+strip(l);
+    else cur.parts.push({label:"",text:strip(l)})}
+  const out=[];if(lead.length)out.push({t:"text",label:"",text:lead.join(" "),quiet:true,big:true});
+  if(has(sub))out.push({t:"small",label:"",text:sub});
+  out.push({t:"cols",cols:cols.filter(c=>c.h&&c.parts.length)});
+  if(footer.length)out.push({t:"small",label:"",text:footer.join(" ")});
+  return out}
+const printDoc=(m,x)=>x.kind==="visual"?{display:true,visual:true,onePage:true,type:"report",acc:"story",title:x.title,meta:[],details:[],photos:[],blocks:visualBlocks(x.body,m.title)}
+  :x.kind==="sheet"?{display:true,type:"report",acc:"story",title:x.title,meta:[["From",m.title]],details:[],photos:[],blocks:printBlocks(x.body)}
   :asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:cardBlocks(x.body)},{sub:x.kind==="sign"?"":m.title});
 function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:true,display:true,type:"report",acc:"story",title,details:[],photos:[],blocks:lines.filter(Boolean).map(l=>({t:"para",text:l}))},o||{});
   const sec=h=>m.sections.find(x=>x.heading.toLowerCase().startsWith(h));const why=sec("why it matters"),rd=sec("reading"),tr=sec("try this week"),rf=sec("reflect");

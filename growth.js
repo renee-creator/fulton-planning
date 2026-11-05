@@ -162,7 +162,7 @@ module.exports = function growthModule(c) {
   const printablesOf = slug => { const p = PRINT_PRE + slug + '.md'; const r = S.files.get(p); if (!r || !r.text) return null;
     const text = r.text.replace(/^\s*<!--[\s\S]*?-->/, ''); const parts = text.split(/^##\s+/m).slice(1);
     const list = parts.map((x, i) => { const n = x.indexOf('\n'); const title = (n < 0 ? x : x.slice(0, n)).trim(); let body = n < 0 ? '' : x.slice(n + 1);
-      const k = body.match(/^\s*kind\s*:\s*(card|sheet|sign)\s*$/mi); if (k) body = body.replace(k[0], '');
+      const k = body.match(/^\s*kind\s*:\s*(card|sheet|sign|visual)\s*$/mi); if (k) body = body.replace(k[0], '');
       return { id: 'p' + i, title, kind: k ? k[1].toLowerCase() : 'card', body: body.trim() }; }).filter(x => x.title);
     return list.length ? { path: p, list } : null; };
   const modulesFor = me => { const dir = isDirector(me); const out = {};

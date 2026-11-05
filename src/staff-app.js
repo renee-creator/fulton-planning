@@ -811,6 +811,9 @@ const INK=[34,51,42],MOSS=[47,90,67],MUTED=[93,110,99],RULE=[200,210,202];
 // a character Andika cannot draw becomes the nearest one it can, so no word is lost on paper
 // a link to a place in TREE prints as its words, since it opens only inside TREE
 const webLink=u=>u&&!/^tree:/.test(u)?u:"";
+// a cols block, panels side by side on a printed visual, falls back to a plain table here, the headings first, then one row per part
+const colRows=b=>{const C=(b&&b.cols||[]).filter(Boolean);if(!C.length)return [];const n=Math.max(0,...C.map(c=>(c.parts||[]).length));
+  const rows=[C.map(c=>[{text:String(c.h||""),b:true}])];for(let i=0;i<n;i++)rows.push(C.map(c=>{const x=(c.parts||[])[i];return x?[{text:(x.label?x.label+". ":"")+String(x.text||"")}]:[]}));return rows};
 const pdfText=s=>{s=String(s||"").replace(/→/g,"->").replace(/◊/g,"•");return (typeof PF!=="undefined"&&PF.b64)?s:clean(s)};
 async function picData(p){const b=await picBlob(p);const url=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(b)});
   const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});return {url,w:im.naturalWidth,h:im.naturalHeight,type:/png/.test(b.type)?"PNG":"JPEG",buf:await b.arrayBuffer()}}
@@ -846,6 +849,7 @@ function pdfWriter(doc,pics){let y=PAGE.t;const W=PAGE.w-PAGE.l-PAGE.r;const mar
     else if(b.t==="p"){words(b.runs,10.5,PAGE.l+ind,W-ind,14.5);y+=5}
     else if(b.t==="list"){for(const it of b.items){const x=PAGE.l+ind+it.level*16;room(14.5);font({},10.5);doc.setTextColor(...INK);doc.text(it.ordered?it.n+".":"•",x,y);words(it.runs,10.5,x+16,W-ind-it.level*16-16,14.5);y+=2}y+=4}
     else if(b.t==="table")table(b.rows);
+    else if(b.t==="cols")table(colRows(b));
     else if(b.t==="img")image(b.src,b.alt)}}
   return {get y(){return y},set y(v){y=v},newPage,room,words,body,W,marks,page:()=>doc.getNumberOfPages()}}
 // the parts and sections, each part on a new page. It returns the page each part and section starts on.
@@ -894,6 +898,8 @@ async function polWord(k,d,which){let X;try{X=await TREE_KIT.word()}catch(e){toa
     else if(b.t==="list"){listNo++;for(const it of b.items)out.push(it.ordered?new Paragraph({numbering:{reference:"pnum",level:Math.min(3,it.level),instance:listNo},spacing:{after:60},children:inl(it.runs,{size:21})}):new Paragraph({bullet:{level:Math.min(3,it.level)},spacing:{after:60},children:inl(it.runs,{size:21})}))}
     else if(b.t==="table"){const n=Math.max(...b.rows.map(r=>r.length));const bd={style:BorderStyle.SINGLE,size:4,color:"C8D2CA"};
       out.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:b.rows.map((r,ri)=>new TableRow({tableHeader:ri===0,children:Array.from({length:n},(_,ci)=>new TableCell({width:{size:Math.floor(100/n),type:WidthType.PERCENTAGE},borders:{top:bd,bottom:bd,left:bd,right:bd},margins:{top:60,bottom:60,left:100,right:100},children:[new Paragraph({children:inl(r[ci]||[],{size:19,bold:ri===0?true:undefined})})]}))}))}));out.push(new Paragraph({children:[]}))}
+    else if(b.t==="cols"){const rows=colRows(b);if(rows.length){const n=Math.max(...rows.map(r=>r.length));const bd={style:BorderStyle.SINGLE,size:4,color:"C8D2CA"};
+      out.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:rows.map((r,ri)=>new TableRow({tableHeader:ri===0,children:Array.from({length:n},(_,ci)=>new TableCell({width:{size:Math.floor(100/n),type:WidthType.PERCENTAGE},borders:{top:bd,bottom:bd,left:bd,right:bd},margins:{top:60,bottom:60,left:100,right:100},children:[new Paragraph({children:inl(r[ci]||[],{size:19,bold:ri===0?true:undefined})})]}))}))}));out.push(new Paragraph({children:[]}))}}
     else if(b.t==="img")out.push(img(b.src,b.alt))}return out};
   const ch=[];
   if(!sec){ch.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:600,after:200},children:[new TextRun({text:"FULTON COMMUNITY SCHOOL & FARM",bold:true,size:24,color:"2F5A43",font:F})]}),
