@@ -333,3 +333,17 @@ test('the PD corrections step swaps exact phrases once', async () => {
   for (const c of list.changes) { assert.ok(d[c.path].includes(c.to), 'applied ' + c.path); if (!c.to.includes(c.from)) assert.ok(!d[c.path].includes(c.from), 'old words gone ' + c.path); }
   const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s24PdFix', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
 });
+
+// November 4, 2026. The sensory integration training is logged once as a PD day with its hours.
+test('the training step adds the PD day and the hours once', async () => {
+  const list = require('../once/s25-sensory-training.json');
+  const h = make(PEOPLE);
+  h.files.set('staff/pddays.json', { doc: { agendas: {}, manual: {}, moved: {} }, sha: 'p' });
+  for (const c of list.changes) if (c.add) h.files.set(c.path, { doc: { name: c.path, hours: [] }, sha: c.path });
+  await h.staff.load();
+  assert.notStrictEqual(await h.staff.once.edits('s25Training', () => false), false);
+  const d = h.staff.dump();
+  assert.strictEqual(d['staff/pddays.json'].agendas['2026-11-02-pdday'].blocks[0].guestMinutes, 180);
+  assert.strictEqual(d['staff/people/hannah.json'].hours.length, 1); assert.strictEqual(d['staff/people/hannah.json'].hours[0].hours, 3);
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s25Training', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+});

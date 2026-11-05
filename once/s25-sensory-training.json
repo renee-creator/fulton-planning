@@ -1,0 +1,200 @@
+{
+ "note": "The sensory integration training with the Early Learning Institute on November 2, 2026, 9 to 12, logged as a PD day with 3 hours for the ten educators who attended",
+ "changes": [
+  {
+   "path": "staff/pddays.json",
+   "set": "agendas.2026-11-02-pdday",
+   "expect": null,
+   "value": {
+    "id": "2026-11-02-pdday",
+    "date": "2026-11-02",
+    "kind": "pdday",
+    "mode": "full",
+    "title": "Sensory integration training",
+    "start": "09:00",
+    "end": "12:00",
+    "blocks": [
+     {
+      "id": "k-eli-sensory",
+      "time": "09:00",
+      "title": "Sensory integration, the senses, heavy work and the four patterns",
+      "why": "How children take in sensation and organize it, heavy work and body awareness, and four patterns an educator can read in a child, with strategies for each.",
+      "how": "whole",
+      "prepare": "",
+      "readings": [],
+      "module": "",
+      "area": "",
+      "closing": false,
+      "reading": false,
+      "ideas": [],
+      "presenting": "",
+      "guest": true,
+      "guestBy": "Pat Boblitt and April Davis",
+      "guestOrg": "Early Learning Institute",
+      "guestMinutes": 180,
+      "guestLink": "https://www.earlylearninginstitute.com/services-2",
+      "guestHandout": "",
+      "guestPeople": 2
+     },
+     {
+      "id": "k-eli-close",
+      "closing": true,
+      "title": "Plus delta",
+      "why": "Each educator writes what went well and what to change in TREE on their phone, and a few are shared aloud before leaving.",
+      "how": "quiet",
+      "prepare": "",
+      "readings": [],
+      "time": ""
+     }
+    ],
+    "logged": {
+     "at": 1793841962426,
+     "names": [
+      "Hannah",
+      "Justine",
+      "Yarely",
+      "Lauren M",
+      "Lauren F",
+      "Ahlina",
+      "Jessica",
+      "Chris",
+      "Ellie",
+      "Renee"
+     ]
+    },
+    "updatedAt": 1793841962426,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/hannah.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-hannah",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/justine.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-justine",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/yarely.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-yarely",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/lauren-m.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-lauren-m",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/lauren-f.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-lauren-f",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/ahlina.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-ahlina",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/jessica.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-jessica",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/chris.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-chris",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/ellie.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-ellie",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/people/renee.json",
+   "add": "hours",
+   "value": {
+    "id": "h-eli-20261102-renee",
+    "date": "2026-11-02",
+    "title": "PD day, Sensory integration training, with Sensory integration, the senses, heavy work and the four patterns (Early Learning Institute)",
+    "hours": 3,
+    "kind": "pdday",
+    "approved": false,
+    "by": "TREE"
+   }
+  }
+ ]
+}
