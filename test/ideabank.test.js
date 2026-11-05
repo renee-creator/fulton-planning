@@ -334,6 +334,28 @@ test('the PD corrections step swaps exact phrases once', async () => {
   const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s24PdFix', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
 });
 
+// November 5, 2026. Physical movement and risky play leave the indoor piazza, which is for cooking, eating and gathering.
+test('the indoor piazza step moves movement lines out and runs once', async () => {
+  const list = require('../once/s31-indoor-piazza.json');
+  assert.ok(list.changes.length >= 12);
+  const texts = list.changes.map(c => c.to).join('\n');
+  assert.doesNotMatch(texts, /[—–;:]|\btoddler\b|\bClaude\b/);
+  for (const c of list.changes) if (!c.to.includes('The indoor piazza is for cooking')) assert.ok(!/indoor piazza/.test(c.to), 'no movement in the indoor piazza');
+  const h = make(PEOPLE);
+  const files = [...new Set(list.changes.map(c => c.path))];
+  for (const p of files) {
+    const froms = list.changes.filter(c => c.path === p).map(c => c.from);
+    if (p.endsWith('.json')) h.files.set(p, { doc: { id: 'ideabank-cards', cards: froms.map((t, i) => ({ id: 'c' + i, title: 'Card', sections: [{ h: 'Try', style: 'text', text: t }] })), removed: [], sources: [], history: [] }, sha: p });
+    else h.files.set(p, { text: '<!--\nstatus: draft\n-->\n# Page\n\n## Reading\n\n' + froms.join('\n\n') + '\n', sha: p });
+  }
+  await h.staff.load();
+  assert.notStrictEqual(await h.staff.once.edits('s31IndoorPiazza', () => false), false);
+  const d = h.staff.dump();
+  const text = p => typeof d[p] === 'string' ? d[p] : JSON.stringify(d[p]);
+  for (const c of list.changes) { assert.ok(text(c.path).includes(JSON.stringify(c.to).slice(1, -1)), 'applied ' + c.path); if (!c.to.includes(c.from)) assert.ok(!text(c.path).includes(JSON.stringify(c.from).slice(1, -1)), 'old words gone ' + c.path); }
+  const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s31IndoorPiazza', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+});
+
 // November 4, 2026. The sensory integration training is logged once as a PD day with its hours.
 test('the training step adds the PD day and the hours once', async () => {
   const list = require('../once/s25-sensory-training.json');

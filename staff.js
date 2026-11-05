@@ -1204,6 +1204,7 @@ module.exports = function staffModule(o) {
     s27Visual: ['code:once/s27-visual-sample.json', 'A visual printable, Four ways children take in the world, on Beyond Discipline, November 4, 2026'],
     s29Credit: ['code:once/s29-visual-credit.json', 'The visual sheet credits its original source, November 4, 2026'],
     s30Visuals: ['code:once/s30-visuals.json', 'Seven visual printables on their modules, November 4, 2026'],
+    s31IndoorPiazza: ['code:once/s31-indoor-piazza.json', 'Movement and risky play leave the indoor piazza, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

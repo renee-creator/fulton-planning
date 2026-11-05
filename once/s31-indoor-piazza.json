@@ -1,0 +1,66 @@
+{
+ "name": "s31-indoor-piazza",
+ "note": "Physical movement and risky play move out of the indoor piazza, which is for cooking, eating and gathering",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A dance party in the indoor piazza, with children choosing the music and the lights.",
+   "to": "A dance party in the outdoor piazza or the class, with children choosing the music."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "In the indoor piazza and the yards moving together builds belonging.",
+   "to": "In the outdoor piazza and the yards moving together builds belonging."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "An indoor course in the class atelier or the indoor piazza from cushions,",
+   "to": "An indoor course in the class from cushions,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A rainy day course in the indoor piazza with mats, a balance board,",
+   "to": "A rainy day course in the class, or under cover in the outdoor piazza, with mats, a balance board,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "such as the small hill, the Tire swing yard or the indoor piazza, and notice what changes.",
+   "to": "such as the small hill, the Tire swing yard or the outdoor piazza, and notice what changes."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Jumping in place to music in the indoor piazza or the music shed.",
+   "to": "Jumping in place to music in the outdoor piazza or the music shed."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "across the grass or the indoor piazza floor.",
+   "to": "across the grass or the outdoor piazza."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Pushing a loaded cart of crates or blocks across the indoor piazza.",
+   "to": "Pushing a loaded cart of crates or blocks across the outdoor piazza or the large yard."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A thick mat on a gentle wedge or slope in the indoor piazza for rolling down.",
+   "to": "A thick mat on a gentle wedge or slope in the large yard for rolling down."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and every pan and pot cools before it is washed and dried fully.",
+   "to": "and every pan and pot cools before it is washed and dried fully. Physical movement and risky play belong in the classes, the outdoor piazza and the large yard. The indoor piazza is for cooking, eating and gathering."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "Children use milk crates and giant spools to build their own climbing challenges.",
+   "to": "Children use milk crates and giant spools to build their own climbing challenges. Physical movement and risky play belong in the classes, the outdoor piazza and the large yard. The indoor piazza is for cooking, eating and gathering."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "They use milk crates and giant spools to build their own climbing challenges.",
+   "to": "They use milk crates and giant spools to build their own climbing challenges. Physical movement and risky play belong in the classes, the outdoor piazza and the large yard. The indoor piazza is for cooking, eating and gathering."
+  }
+ ]
+}
