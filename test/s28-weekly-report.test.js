@@ -43,7 +43,7 @@ test('the week\'s reading ends with a report for the school and each class, and 
   // every followed thread's status follows its observations, a quiet one rests, a closed one is left, and each change is listed
   const th = id => JSON.parse(fs.readFileSync(path.join(fx.dir, `threads/${id}.json`), 'utf8')).status;
   assert.deepStrictEqual([th('t1'), th('t2'), th('t3')], ['growing', 'resting', 'closed']);
-  assert.deepStrictEqual(w.changes.map(x => [x.thread, x.from, x.to]).sort(), [['Shadows', 'growing', 'resting'], ['Water and mud', 'deepening', 'growing']]); assert.strictEqual(w.threads[0].name, 'Water and mud'); assert.strictEqual(w.obs.length, 6);
+  assert.deepStrictEqual(w.changes.map(x => [x.thread, x.from, x.to]).sort(), [['Shadows', 'growing', 'resting'], ['Water and mud', 'deepening', 'growing']]); assert.deepStrictEqual(w.threads.map(t => t.name).sort(), ['Shadows', 'Water and mud'], 'the class report names its own open threads'); assert.strictEqual(w.obs.length, 6);
   // the director's page, every scope
   await s.p.evaluate(() => goView('wreport')); await s.p.waitForSelector('.wrrep');
   const all = await s.p.innerText('#main');
