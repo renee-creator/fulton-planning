@@ -22,7 +22,10 @@ test('TREE in the browser', async t => {
     const s = await signedIn(fx, b, 'Bea', '1357');
     await s.p.evaluate(() => goView('stci')); await s.p.waitForFunction(() => /My next check-in/.test(document.querySelector('#main').innerText), null, { timeout: 15000 });
     const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
-    assert.match(text, /Monday, November 2, 10:15 am/);
+    // the next first Monday of a month, counted from today in local time
+    const nextFirstMonday = () => { const t = new Date(); t.setHours(0, 0, 0, 0); for (let k = 0; k < 3; k++) { const d = new Date(t.getFullYear(), t.getMonth() + k, 1); while (d.getDay() !== 1) d.setDate(d.getDate() + 1); if (d >= t) return d; } };
+    const want = nextFirstMonday().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    assert.ok(text.includes(want + ', 10:15 am'), 'expected ' + want + ' in ' + text.slice(0, 300));
     assert.doesNotMatch(text, /quarter past|o'clock|\d:\d\d ?(AM|PM)/);
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
