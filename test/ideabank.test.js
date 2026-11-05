@@ -293,3 +293,27 @@ test('the one-time step s18Sensory puts the theory in the modules and the practi
   const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.ok(src.indexOf("ONCE.push(['s18Sensory'") > src.indexOf("ONCE.push(['s17Ages'"));
 });
+
+// November 4, 2026. PD modules gain their theory sections through one-time steps built from the live pages. Each change
+// keeps the words it hangs on, and the step is idempotent.
+test('the PD theory steps keep their anchors and run once', async () => {
+  for (const name of ['s19-pd-batch1']) {
+    const list = require('../once/' + name + '.json');
+    assert.ok(list.changes.length > 0);
+    for (const c of list.changes) assert.ok(c.to.endsWith(c.from) || c.to.startsWith(c.from.split('\n')[0]), 'keeps its anchor');
+    const texts = list.changes.map(c => c.to.replace(/\(https?:[^)]*\)/g, '')).join('\n');
+    assert.doesNotMatch(texts, /[—–;]|\btoddler\b|\bClaude\b/);
+    const h = make(PEOPLE);
+    const files = [...new Set(list.changes.map(c => c.path))];
+    for (const p of files) {
+      const anchors = list.changes.filter(c => c.path === p).map(c => c.from);
+      h.files.set(p, { text: '<!--\nstatus: draft\n-->\n# Page\n\n## Reading\n\nWords.\n\n' + anchors.join('\n\n') + '\n', sha: p });
+    }
+    await h.staff.load();
+    const key = name === 's19-pd-batch1' ? 's19Pd1' : name;
+    assert.notStrictEqual(await h.staff.once.edits(key, () => false), false);
+    const d = h.staff.dump();
+    for (const c of list.changes) assert.ok(d[c.path].includes(c.to), 'applied ' + c.path);
+    const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits(key, () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
+  }
+});

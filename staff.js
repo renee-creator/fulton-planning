@@ -1193,6 +1193,7 @@ module.exports = function staffModule(o) {
     s15Materials: ['code:once/s15-materials.json', 'About this material on the Idea bank cards, November 4, 2026'],
     s17Ages: ['code:once/s17-ages.json', 'Idea bank cards name children by age rather than by class, November 4, 2026'],
     s18Sensory: ['code:once/s18-sensory-risk.json', 'The senses and the body, the six kinds of risky play and the research, heavy work guidelines, November 4, 2026'],
+    s19Pd1: ['code:once/s19-pd-batch1.json', 'Rhythms of the Day, Meeting Time, Families in Partnership and The Communal Table carry their theory and research, November 4, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
