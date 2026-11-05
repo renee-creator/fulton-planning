@@ -512,7 +512,7 @@ async function mailText(to, subject, body) {
 }
 const familyPage = require('./family.js')({ mailText, community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
-const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => { queueThreadSuggest(id); placeSoon(id); } });
+const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => { queueThreadSuggest(id); placeSoon(id); queueSort(id, 'kaymbu'); } });
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -1839,11 +1839,123 @@ function setLensPassageByHand(key, keep, why, name) {
   next[key] = { lens: cur.lens || found.lens.id, planId: cur.planId || found.planId, kept: !!keep, why: lensWhyClean(why), at: Date.now(), by: name, byHand: true };
   saveLensPassages(next); return next[key];
 }
-// the thread pass and the lens pass run together, in the night and when the director asks
+/* ---------- sorting noticed from wondered ----------
+   An observation has What I noticed and What I wonder. A Kaymbu moment arrives as one caption in the noticed box, and an
+   educator sometimes types both into it. TREE reads the sentences on the quick lane and says which ones are the
+   educator wondering, interpreting or planning. Only whole sentences move, in their order, and no word changes, since
+   the move is made here from the numbered sentences the model answered with. A Kaymbu caption is sorted as it arrives,
+   with the original kept so Put it back restores it. Typed words are never moved without the educator's tap, so a typed
+   observation gets an offer, sortOffer, and the same offer is made in the night for older observations. */
+const SORT_NIGHT_CAP = Number(process.env.SORT_NIGHT_CAP) || 200;
+const sortWhyClean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/;\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 240);
+const sortSpans = text => LT.sentenceSpans(text);
+const sortEnough = d => !!d && !String(d.wonder || '').trim() && sortSpans(d.noticed).length >= 2;
+// the sentences of a noticed box, numbered, read once by the quick model. The answer is the numbers of the sentences
+// that move and one plain sentence on why. Nothing moves unless the numbers exist and at least one sentence stays.
+async function sortNoticed(text) {
+  const spans = sortSpans(text); if (spans.length < 2) return null;
+  if (!anthropicKey()) throw new Error('no key');
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  if (suggestTimes.length >= SUGGEST_PER_HOUR) throw new Error('hourly allowance'); suggestTimes.push(now);
+  const prompt = `An educator at a preschool wrote this observation in the box What I noticed. The form has a second box, What I wonder. Read each numbered sentence and say which ones belong in What I wonder.
+A sentence moves when it is the educator wondering, interpreting or planning. Signs are I wonder, maybe, perhaps, it seems, I think, could it be, might, next time we could, a question mark, and a sentence that interprets what a child meant or felt rather than describing what happened.
+A sentence that describes what happened stays. A sentence that does both stays. When you are not sure, leave it where it is. Never reword a sentence. At least one sentence must stay in What I noticed.
+${spans.map((p, i) => `${i + 1}. ${p.text}`).join('\n')}
+Reply with only JSON like {"wonder":[3],"why":""} where wonder holds the numbers of the sentences that move, an empty list when none does, and why is one plain short sentence in educator language saying which sentences read as wondering and why, with no colons and no dashes.`;
+  let out = null;
+  const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 300 });
+  if (res.status !== 200) throw new Error('not answered, ' + res.status);
+  try { const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join(''); out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { throw new Error('could not be read'); }
+  const idx = [...new Set((Array.isArray(out && out.wonder) ? out.wonder : []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= spans.length).map(n => n - 1))].sort((a, b) => a - b);
+  if (!idx.length || idx.length >= spans.length) return null;
+  return Object.assign({ wonderIdx: idx, why: sortWhyClean(out.why) }, applySort(text, idx));
+}
+// the move itself, from the numbers. Each box keeps its sentences in the order they were written.
+function applySort(text, idx) {
+  const spans = sortSpans(text), set = new Set(idx);
+  return { noticed: LT.joinSpans(spans.filter((p, i) => !set.has(i))), wonder: LT.joinSpans(spans.filter((p, i) => set.has(i))) };
+}
+// the numbers an offer holds are good only while the words are the ones it was made for
+const sortOfferOk = d => !!(d && d.sortOffer && Array.isArray(d.sortOffer.wonderIdx) && d.sortOffer.wonderIdx.length && d.sortOffer.wonderIdx.length < sortSpans(d.noticed).length && d.sortOffer.wonderIdx.every(i => Number.isInteger(i) && i >= 0 && i < sortSpans(d.noticed).length));
+// the sort is written on the observation, a Kaymbu caption moved as it arrived or a typed one the educator said yes to
+function writeSorted(id, d, r, why) {
+  d.sorted = { at: Date.now(), by: 'TREE', why: why || '', from: { noticed: d.noticed, wonder: d.wonder || '' } };
+  d.noticed = r.noticed; d.wonder = r.wonder; delete d.sortOffer;
+  keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id);
+}
+// one queue for the sorts and offers asked after an import or a save, run one at a time, asked once more after a wait
+// when the model did not answer, and never more often than the hourly allowance
+const sortQueue = []; let sortRunning = false; const sortWait = new Map();
+const SORT_DELAY_MS = Number(process.env.SORT_DELAY_MS) || 20000;
+function queueSort(id, mode) {
+  const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
+  clearTimeout(sortWait.get(id));
+  sortWait.set(id, setTimeout(() => { sortWait.delete(id); sortQueue.push({ id, mode, tries: 0 }); runSortQueue(); }, mode === 'kaymbu' ? 0 : SORT_DELAY_MS));
+}
+async function runSortQueue() {
+  if (sortRunning) return; sortRunning = true;
+  try { while (sortQueue.length) { const job = sortQueue.shift();
+    try { await sortOne(job.id, job.mode); }
+    catch (e) { if (job.tries < 1) { job.tries++; setTimeout(() => { sortQueue.push(job); runSortQueue(); }, 30000); } else log('Sorting skipped for', job.id, e.message); } } }
+  finally { sortRunning = false; }
+}
+// a Kaymbu caption is sorted and kept. A typed observation is offered its sort and nothing moves.
+async function sortOne(id, mode) {
+  const rec = store.recs.notices.get(id); const d = rec && !rec.deleted && rec.doc; if (!d || !sortEnough(d) || d.sorted || d.sortDismissed || !anthropicKey()) return;
+  if (mode !== 'kaymbu' && d.sortOffer) return;
+  const text = d.noticed;
+  const r = await sortNoticed(text);
+  const now = store.recs.notices.get(id); const d2 = now && !now.deleted && now.doc; if (!d2 || d2.noticed !== text || String(d2.wonder || '').trim()) return;   // the words changed while the model read them
+  if (!r) { if (mode !== 'kaymbu') { d2.sortChecked = Date.now(); noteChange('notices', id); scheduleSave('notices', id); } return; }
+  if (mode === 'kaymbu') { writeSorted(id, d2, r, r.why); log('Kaymbu caption sorted into noticed and wondered', id); return; }
+  d2.sortOffer = { wonderIdx: r.wonderIdx, why: r.why, at: Date.now() }; delete d2.sortChecked;
+  keepRecent(`notices/${id}.json`, d2, 'TREE'); noteChange('notices', id); scheduleSave('notices', id); log('Sort offered on', id);
+}
+// the night's pass over older observations with no wonder, up to a couple of hundred, each asked once
+async function nightlySortPass() {
+  if (!store.ready || store.partial) return null;
+  const counts = { looked: 0, asked: 0, offered: 0, none: 0 };
+  const todo = [];
+  for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d) continue;
+    if (!sortEnough(d) || d.sorted || d.sortOffer || d.sortDismissed || d.sortChecked) continue; counts.looked++; todo.push(id); }
+  const take = todo.sort((a, b) => ((store.recs.notices.get(b).doc.at || 0) - (store.recs.notices.get(a).doc.at || 0))).slice(0, SORT_NIGHT_CAP);
+  if (anthropicKey()) for (const id of take) {
+    const d = store.recs.notices.get(id).doc; const text = d.noticed;
+    let r; try { r = await sortNoticed(text); } catch (e) { log('Nightly sort pass, an observation was not answered,', e.message); if (/allowance/.test(e.message)) break; continue; }
+    counts.asked++;
+    if (d.noticed !== text || String(d.wonder || '').trim()) continue;
+    if (r) { d.sortOffer = { wonderIdx: r.wonderIdx, why: r.why, at: Date.now() }; counts.offered++; } else { d.sortChecked = Date.now(); counts.none++; }
+    keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id);
+  }
+  log(`Nightly sort pass, ${counts.looked} observations with no wonder, ${counts.asked} read, ${counts.offered} offered a sort, ${counts.none} left as they are`);
+  return counts;
+}
+// Yes, No and Put it back on one observation, and the director's Accept all for a class
+function sortAction(action, id, name, classroom) {
+  const may = d => isDirector(name) || [d.by, d.keptBy].some(n => n && nameKey(n) === nameKey(name));
+  const accept = (id, d) => { if (!sortOfferOk(d)) return false; const r = applySort(d.noticed, d.sortOffer.wonderIdx); writeSorted(id, d, r, d.sortOffer.why); return true; };
+  if (action === 'acceptAll') {
+    if (!isDirector(name)) return { status: 403, error: 'Only the director accepts every offer for a class.' };
+    let n = 0; for (const [nid, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || !d.sortOffer || (classroom && d.classroom !== classroom)) continue; if (accept(nid, d)) n++; }
+    log('Sort offers accepted for', classroom || 'every class', n, 'by', name); return { status: 200, body: { ok: true, moved: n } };
+  }
+  const rec = store.recs.notices.get(id); const d = rec && !rec.deleted && rec.doc;
+  if (!d) return { status: 404, error: 'That observation is not here.' };
+  if (!may(d)) return { status: 403, error: 'Only the educator who kept this observation or the director can change it.' };
+  if (action === 'accept') { if (!accept(id, d)) return { status: 409, error: 'The words have changed since the sort was offered.' }; }
+  else if (action === 'dismiss') { delete d.sortOffer; d.sortDismissed = true; keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id); }
+  else if (action === 'undo') { if (!d.sorted || !d.sorted.from) return { status: 409, error: 'There is nothing to put back.' };
+    d.noticed = String(d.sorted.from.noticed || ''); d.wonder = String(d.sorted.from.wonder || ''); delete d.sorted; d.sortDismissed = true;
+    keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id); }
+  else return { status: 400, error: 'Say what to do.' };
+  log('Sort', action, 'on', id, 'by', name); return { status: 200, body: { ok: true, doc: d } };
+}
+// the thread pass, the lens pass and the sort pass run together, in the night and when the director asks
 async function nightlyPass(force) {
   const counts = await nightlyThreadPass(force);
   let lens = null; try { lens = await nightlyLensPass(force); } catch (e) { log('Nightly lens pass could not run', e.message); }
-  return counts ? { counts, lens } : null;
+  let sort = null; try { sort = await nightlySortPass(); } catch (e) { log('Nightly sort pass could not run', e.message); }
+  return counts ? { counts, lens, sort } : null;
 }
 setInterval(() => { if (nightlyDue()) nightlyPass().catch(e => log('Nightly pass could not run', e.message)); }, 10 * 60e3).unref();
 
@@ -2979,6 +3091,7 @@ async function handle(req, res) {
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); delete body.patch.by; }
     }
     const recent = (op === 'set' || op === 'update') && cur && !cur.deleted ? recentOf(fpath, cur) : null;
+    const wordsBefore = kind === 'notices' ? { noticed: cur && !cur.deleted && cur.doc ? String(cur.doc.noticed || '') : '', wonder: cur && !cur.deleted && cur.doc ? String(cur.doc.wonder || '') : '' } : null;
     const planBefore = kind === 'plans' && cur && !cur.deleted && cur.doc ? { status: cur.doc.status, feedback: cur.doc.feedback || '' } : null;
     if (op === 'create') {   // start a record only if nobody else has, and hand back whichever exists
       if (cur && !cur.deleted) { json(req, res, 200, { ok: true, rev, doc: forViewer(kind, cur.doc, isDirector(me.name), isOffice(me.name)), existed: true, ...sidNow() }); return; }
@@ -3001,6 +3114,10 @@ async function handle(req, res) {
     // an observation's words, new or changed, are checked against the threads a little later
     // a proofread fixes spelling and punctuation only, so the thread suggestion is not asked again for it
     if (kind === 'notices' && op !== 'delete' && !kitchenOnly) { const p0 = body.patch || body.data || {}; if (op !== 'update' || (('noticed' in p0 || 'wonder' in p0 || 'group' in p0 || 'threadNo' in p0) && !('proofread' in p0))) queueThreadSuggest(id);
+      // an offer to sort the noticed box is made for the words as saved, and words that changed are offered again. Typed sentences never move without a tap.
+      { const r1 = map.get(id); const d1 = r1 && !r1.deleted && r1.doc; const w0 = wordsBefore;
+        if (d1 && w0 && (d1.noticed !== w0.noticed || (d1.wonder || '') !== w0.wonder)) { delete d1.sortOffer; delete d1.sortChecked; delete d1.sortDismissed; if (d1.sorted && !d1.kaymbu) delete d1.sorted; }
+        if (d1 && sortEnough(d1) && !d1.sorted && !d1.sortOffer && !d1.sortDismissed && !d1.sortChecked) queueSort(id, 'offer'); }
       // the place is read from the words and what the observation was kept with, whenever those change
       if (op !== 'update' || ['noticed', 'wonder', 'planId', 'smallGroup', 'bin', 'kaymbu', 'classroom'].some(k => k in p0)) placeSoon(id); }
     // a plan's reflection flows into each thread the plan follows or quotes from, through its observations too
@@ -3083,10 +3200,16 @@ async function handle(req, res) {
     const forRoom = d => room ? Object.assign({}, d, { threads: d.threads.filter(t => t.room === room || t.room === 'All'), joined: d.joined.filter(t => t.room === room || t.room === 'All'), patterns: d.patterns.filter(p => p.room === room || p.room === 'All'), lens: d.lens.filter(m => new RegExp('(^|-)' + room + '$').test(String(m.room || '')) || /(^|-)All$/.test(String(m.room || ''))), projects: [], inquiries: [] }) : d;
     json(req, res, 200, { room, findings: list.slice(0, 26).map(forRoom) }); return; }
   // the director runs the nightly pass now, for a check, and reads the cycle's health
-  if (path === '/api/nightly') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the nightly pass.'); return; } const r = await nightlyPass(true); json(req, res, 200, r ? { ok: true, counts: r.counts, lens: r.lens } : { busy: true }); return; }
+  if (path === '/api/nightly') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the nightly pass.'); return; } const r = await nightlyPass(true); json(req, res, 200, r ? { ok: true, counts: r.counts, lens: r.lens, sort: r.sort } : { busy: true }); return; }
   // the director asks for tonight's lens reading now. The answer carries the passages record, so the page shows it at once
   if (path === '/api/lens/read') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the reading.'); return; } const counts = await nightlyLensPass(true); json(req, res, 200, counts ? { ok: true, counts, passages: lensPassages() } : { busy: true }); return; }
   // a director or educator keeps or sets aside one passage by hand, with their own why. The nightly pass never writes over it
+  // Yes, No and Put it back on a sorted observation, by the educator who kept it or the director, and the director's Accept all for a class
+  if (path === '/api/notices/sort') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const action = String(body.action || ''), id = typeof body.id === 'string' && ID_RE.test(body.id) ? body.id : '';
+    if (!['accept', 'dismiss', 'undo', 'acceptAll'].includes(action) || (action !== 'acceptAll' && !id)) { err(req, res, 400, 'Say which observation, and what to do.'); return; }
+    const r = sortAction(action, id, me.name, String(body.classroom || '').slice(0, 60));
+    if (r.error) { err(req, res, r.status, r.error); return; } json(req, res, 200, r.body); return; }
   if (path === '/api/lens/passage') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
     const key = typeof body.key === 'string' && /^[a-z0-9][a-z0-9._-]{0,200}$/i.test(body.key) ? body.key : '';
     if (!key || typeof body.keep !== 'boolean') { err(req, res, 400, 'Say which passage, and whether to keep it.'); return; }

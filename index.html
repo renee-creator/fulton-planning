@@ -21,7 +21,7 @@
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="print-kit.js?v=bc482e6246"></script>
 <script src="wording.js?v=2f5e2c3af2"></script>
-<script src="lens-text.js?v=2793a1eb27"></script>
+<script src="lens-text.js?v=8135e88451"></script>
 <script src="sitemap.js?v=da4b12e1c1"></script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
@@ -4824,7 +4824,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="e2ca87da0ecc";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="f0cf3c0724bf";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5099,7 +5099,7 @@ function todayWaiting(){
 function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.trim());const more=ls.length>4;
   return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
-    <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}</div></div>
+    <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}${view==="today"?sortLinesHtml(n):""}</div></div>
     <button class="linkbtn" data-mopen="${esc(n.id)}">Open</button></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first, with Show all.
 let todayAll=false;
@@ -5657,7 +5657,7 @@ function renderToday(){
   ${keepTodayHtml()}${todayConfHtml()}${todayAttachedHtml()}${tidyTodayHtml()}
   ${staffNotesHtml()}${meetTodayHtml()}${walkTodayHtml()}${gardenTodayHtml()}${setupTodayHtml()}${hardSavesHtml()}
   ${todayBinHtml()}
-  ${wonderTodayHtml()}${grewTodayHtml()}${cycleTodayHtml()}
+  ${wonderTodayHtml()}${sortTodayHtml()}${grewTodayHtml()}${cycleTodayHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3>${waiting.length?`<span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)}</span>`:""}</div>
@@ -8980,7 +8980,7 @@ function noticeCard(n){
     ${(()=>{const ls=lensesFinding(n);return ls.length?`<div class="cnt">Found by ${ls.map(l=>`<button class="linkbtn" data-lensgo="${esc(l.id)}">${esc(l.name)}</button>`).join(", ")}</div>`:""})()}${whyLine(lensWhyOf(n))}
     ${inqLinksHtml(inqsOfNotice(n.id),"Kept for the team inquiry")}${inqsOfNotice(n.id).map(x=>whyLine(((x.obsFound||{})[n.id]||{}).why)).join("")}
     ${pr?`<div class="origin"><div><b>Project</b><button class="linkbtn" data-popen="${esc(pr.id)}">${esc(pr.name)}</button></div></div>`:""}
-    ${threadLineHtml(n)}${threadsOfNotice(n).map(t=>whyLine(threadObsWhy(t,n))).join("")}${threadSuggestHtml(n)}
+    ${threadLineHtml(n)}${threadsOfNotice(n).map(t=>whyLine(threadObsWhy(t,n))).join("")}${threadSuggestHtml(n)}${sortLinesHtml(n)}
     ${(()=>{const ps=obsPlans(n),ss=slidesWith(n.id),ws=obsWalls(n);const bits=[
         ...ps.slice(0,4).map(p=>`<button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):(p.educator?p.educator+"'s ":"an ")+FORMS[p.type].short+" plan")}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>`),
         ...ss.map(x=>`the slide <button class="linkbtn" data-slide="${esc(x.id)}">${esc(String(x.title||"").trim()||"Untitled")}</button>`),
@@ -9467,6 +9467,29 @@ function threadsOfNotice(n){if(!n)return [];const ix=obsIndex(),out=new Map();
 function threadSuggestsOf(n){if(!n)return [];const grp=noteGroup(n),have=new Set(threadsOfNotice(n).map(t=>t.id)),no=new Set(grp.flatMap(x=>x.threadNo||[])),out=new Map();
   for(const x of grp)for(const s of x.threadSuggest||[]){const t=threads.get(s.id);if(t&&threadLive(t)&&t.status!=="closed"&&!have.has(t.id)&&!no.has(t.id)&&!out.has(t.id))out.set(t.id,{t,why:s.why||""})}
   return [...out.values()]}
+/* Noticed and wondered, sorted. A Kaymbu caption TREE sorted shows one quiet line with Put it back. An observation whose
+   typed sentences read as wondering shows the offer, and only Yes moves them. Only the educator who kept it and the
+   director see the lines (November 5, 2026) */
+function sortLinesHtml(n){if(VIEW_AS||!n||!canRemoveObs(n))return "";
+  if(n.sorted&&n.sorted.from)return `<div class="whyline"><i>TREE sorted this into noticed and wondered.</i> ${esc(whyText(n.sorted.why))} <button class="linkbtn" data-sortundo="${esc(n.id)}">Put it back</button></div>`;
+  const o=n.sortOffer;if(!o||!Array.isArray(o.wonderIdx)||!o.wonderIdx.length)return "";const k=o.wonderIdx.length;
+  return `<div class="nfsuggest"><span>${k===1?"One of these sentences reads":k+" of these sentences read"} as wondering. Move ${k===1?"it":"them"} to What I wonder?${has(o.why)?" "+esc(whyText(o.why)):""}</span><span class="actions"><button class="btn small" data-sortyes="${esc(n.id)}">Yes</button><button class="linkbtn" data-sortno="${esc(n.id)}">No</button></span></div>`}
+// the director's Today, one line a class with open offers, and Accept all for that class
+function sortTodayHtml(){if(!isDirector()||VIEW_AS)return "";const by=new Map();
+  for(const n of notices.values()){const o=n.sortOffer;if(!o||!Array.isArray(o.wonderIdx)||!o.wonderIdx.length)continue;const r=n.classroom||"No class";by.set(r,(by.get(r)||0)+1)}
+  if(!by.size)return "";
+  return `<section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">Wondering in the noticed box</h3></div><div class="tlist">${[...by.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([r,k])=>`<div class="titem"><div style="min-width:0">Observations with wondering in the noticed box, ${k} in ${esc(r)}</div><button class="btn small ghost" data-sortall="${esc(r)}">Accept all</button></div>`).join("")}</div></section>`}
+async function sortPost(body,done){if(!window.FP_API){toast("TREE is not connected.");return}
+  try{const r=await window.FP_API("/api/notices/sort",body);if(r&&r.doc&&r.doc.id){const n=notices.get(r.doc.id);if(n)Object.assign(n,r.doc,{sortOffer:r.doc.sortOffer,sorted:r.doc.sorted})}
+    if(body.action==="acceptAll")for(const n of notices.values())if(n.sortOffer&&(!body.classroom||n.classroom===body.classroom)){delete n.sortOffer}
+    obsIdx=null;renderMain();toast(done)}catch(e){toast(e&&e.message||"That could not be changed. Check your connection.")}}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-sortyes],[data-sortno],[data-sortundo],[data-sortall]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const d=t.dataset;
+  if(d.sortall){sortPost({action:"acceptAll",classroom:d.sortall==="No class"?"":d.sortall},"Moved to What I wonder.");return}
+  const id=d.sortyes||d.sortno||d.sortundo;const n=notices.get(id);if(!n)return;
+  if(d.sortyes){n.sortOffer=undefined;sortPost({id,action:"accept"},"Moved to What I wonder.");return}
+  if(d.sortno){n.sortOffer=undefined;n.sortDismissed=true;sortPost({id,action:"dismiss"},"Left as written.");return}
+  n.sorted=undefined;sortPost({id,action:"undo"},"Put back as it arrived.")},true);
 function threadSuggestHtml(n){if(VIEW_AS)return "";const ss=threadSuggestsOf(n);if(!ss.length)return "";
   return ss.map(({t,why})=>`<div class="nfsuggest"><span>Might belong in the thread <b>${esc(t.name)}</b>.${why?" "+esc(/[.!?]$/.test(why)?why:why+"."):""}</span><span class="actions"><button class="btn small" data-tsadd="${esc(n.id)}|${esc(t.id)}">Add it</button><button class="linkbtn" data-tsno="${esc(n.id)}|${esc(t.id)}">Not this</button></span></div>`).join("")}
 function threadLineHtml(n,plain){const ts=threadsOfNotice(n);if(!ts.length)return "";

@@ -28,6 +28,15 @@
     const opens = (v.match(/[“"]/g) || []).length, closes = (v.match(/[”]/g) || []).length; if (opens > closes && /^[“"]/.test(v)) v = v.slice(1); return v; }
   // the sentences of one part of a plan, tidied, the very short ones left out
   function sentences(text) { return (String(text || '').match(/[^.!?\n]+[.!?]*["”’]?/g) || []).map(tidy).filter(s => s.length >= 12); }
+  // the same split, with each sentence kept as written and the space or line break that came before it, so sentences can
+  // be sorted between two boxes whole, with no word changed. Joined back in order, the pieces give the text again.
+  function sentenceSpans(text) {
+    const t = String(text || ''), re = /[^.!?\n]+[.!?]*["”’]?/g, out = []; let m, end = 0;
+    while ((m = re.exec(t))) { const raw = m[0], lead = t.slice(end, m.index) + (raw.match(/^\s*/) || [''])[0], s = raw.trim(); end = m.index + raw.length; if (s) out.push({ text: s, lead }); }
+    return out;
+  }
+  // the pieces of one box put back together, the first with no space before it
+  const joinSpans = spans => spans.map((p, i) => (i ? (p.lead || ' ') : '') + p.text).join('').trim();
   // the parts of a plan that carry writing, by label, the same sections TREE's forms show
   const PARTS = {
     classroom: [['observation', 'Observation'], ['intentions', 'Intentions and questions for the week'], ['meeting', 'Meeting time questions, concepts and ideas'], ['interests', 'Expressed interests of individual and small group'], ['indoor', 'Provocations and environmental changes, indoor'], ['outdoor', 'Provocations and environmental changes, outdoor'], ['brainstorm', 'Curriculum brainstorm'], ['remarks', 'Final remarks']],
@@ -42,6 +51,6 @@
   // a short hash of a sentence, the same on the server and on the page, so one sentence has one key
   function hash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); }
   const passageKey = (lensId, planId, sent) => `${lensId}.${planId}.${hash(String(sent || '').toLowerCase())}`;
-  const api = { LENS_DEFAULT, GRAPHIC_VERBS, isGraphic, widenWords, lensRegex, wordRegex, tidy, sentences, planParts, hash, passageKey };
+  const api = { LENS_DEFAULT, GRAPHIC_VERBS, isGraphic, widenWords, lensRegex, wordRegex, tidy, sentences, sentenceSpans, joinSpans, planParts, hash, passageKey };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.TREE_LENS = api;
 })(typeof window !== 'undefined' ? window : this);
