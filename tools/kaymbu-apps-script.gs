@@ -251,7 +251,7 @@ function checkVideoClips() {
   while (files.hasNext()) { const f = files.next(); if (isVideoFile_(f)) sent(f, '', f.getName().replace(/\.[a-z0-9]+$/i, '')); }
   // clips emailed to the TREE address, as an attachment or as a Drive link, with the class and the educator's first name in the subject
   const label = GmailApp.getUserLabelByName('TREE clip kept') || GmailApp.createLabel('TREE clip kept');
-  const threads = GmailApp.search('to:' + TREE_ADDRESS + ' newer_than:7d -from:kaymbu.com -label:"TREE clip kept" {has:attachment "drive.google.com"}', 0, 30);
+  const threads = GmailApp.search('to:' + TREE_ADDRESS + ' newer_than:7d -from:kaymbu.com -label:"TREE clip kept" {has:attachment "drive.google.com" "icloud.com/attachment"}', 0, 30);
   for (const thread of threads) {
     let all = true, any = false;
     for (const msg of thread.getMessages()) {
@@ -273,6 +273,27 @@ function checkVideoClips() {
         if (!isVideoFile_(file)) continue;
         any = true;
         if (done.indexOf(id) < 0) { sent(file, by, subject); if (done.indexOf(id) < 0) all = false; }
+      }
+      // a clip sent from an iPhone comes as a Mail Drop link once it is more than a few megabytes. The link carries the
+      // download address with the file name and key left to fill in. The clip is fetched and kept in the Video folder.
+      const drops = (msg.getBody() + ' ' + msg.getPlainBody()).match(/https:\/\/www\.icloud\.com\/attachment\/\?[^"'\s<]+/g) || [];
+      const names = [];
+      for (let raw of drops) {
+        const q = {};
+        raw.replace(/&amp;/g, '&').split('?')[1].split('&').forEach(p => { const i = p.indexOf('='); if (i > 0) q[decodeURIComponent(p.slice(0, i))] = decodeURIComponent(p.slice(i + 1).replace(/\+/g, ' ')); });
+        if (!q.u || !q.f || names.indexOf(q.f) >= 0 || !VIDEO_NAMES.test(q.f)) continue;
+        names.push(q.f);
+        any = true;
+        const same = folder.getFilesByName(q.f); let file = null;
+        while (same.hasNext()) { const f = same.next(); if (!q.sz || String(f.getSize()) === String(q.sz)) file = f; }
+        if (!file) {
+          if (Number(q.sz) > 45 * 1024 * 1024) { all = false; continue; }
+          const url = q.u.split('${f}').join(encodeURIComponent(q.f)).split('${uk}').join(encodeURIComponent(q.uk || ''));
+          let res; try { res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true }); } catch (e) { all = false; continue; }
+          if (res.getResponseCode() !== 200) { all = false; continue; }
+          file = folder.createFile(res.getBlob().setName(q.f));
+        }
+        if (done.indexOf(file.getId()) < 0) { sent(file, by, subject); if (done.indexOf(file.getId()) < 0) all = false; }
       }
     }
     if (any && all) thread.addLabel(label);
