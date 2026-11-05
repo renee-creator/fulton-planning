@@ -4277,7 +4277,7 @@ let clips=new Map();
 const clipsOn=()=>!!(PROGRAM_DOC&&PROGRAM_DOC.videoClipsOn);
 // the Video folder in the TREE Drive, where an educator drops a clip from the class phone. Send a clip opens it in the Drive app.
 const clipFolderUrl=()=>{const id=String(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId||"").trim();return clipsOn()&&id?"https://drive.google.com/drive/folders/"+encodeURIComponent(id):""};
-function sendClipHtml(kind){const u=clipFolderUrl();if(!u||isKitchen())return"";
+function sendClipHtml(kind){const u=clipFolderUrl();if(!u||isKitchenUser())return"";
   return kind==="quick"?`<button data-sendclip="1"><b>Send a clip</b><span>Up to three minutes, named with the class and your first name</span></button>`:`<a class="btn small ghost" href="${u}" target="_blank" rel="noopener" data-sendclip="1">Send a clip</a>`}
 document.addEventListener("click",e=>{const t=e.target.closest("button[data-sendclip]");if(!t)return;e.preventDefault();const u=clipFolderUrl();if(u)window.open(u,"_blank","noopener");toast("Name the clip with the class and your first name, such as North Ann.")});
 const CLIP_FILE=/^[A-Za-z0-9_-]{10,}$/;
