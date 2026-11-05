@@ -1196,6 +1196,7 @@ module.exports = function staffModule(o) {
     s19Pd1: ['code:once/s19-pd-batch1.json', 'Rhythms of the Day, Meeting Time, Families in Partnership and The Communal Table carry their theory and research, November 4, 2026'],
     s20Pd2: ['code:once/s20-pd-batch2.json', 'Educator as Mentor, The Professional Educator, Principles We Share and The Present Educator carry their theory and research, November 4, 2026'],
     s21Pd3: ['code:once/s21-pd-batch3.json', 'The Class Atelier, The Language of Clay, Small Group and The Emergent Writer carry their theory and research, November 4, 2026'],
+    s22Pd4: ['code:once/s22-pd-batch4.json', 'Garden and Beyond the Gate, Planning the Garden Year, Seeding, Planting and Watering and Garden Habitat carry their theory and research, November 4, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
