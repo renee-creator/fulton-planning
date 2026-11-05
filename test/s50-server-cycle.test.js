@@ -13,7 +13,7 @@ const { start } = require('./fixture.js');
 const day = 864e5;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 async function until(fn, ms) { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = await fn(); if (v) return v; await wait(200); } return false; }
-const mondayOf = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };
+const mondayOf = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 const mon = mondayOf(new Date()), lastMon = mondayOf(new Date(Date.now() - 7 * day));
 
 const more = put => {
@@ -74,6 +74,7 @@ test('the nightly pass reads every observation in no thread, ten to a request, a
   const n1 = read('notices/n1.json'); assert.deepStrictEqual([n1.threadSuggest[0].id, n1.threadSuggest[0].why, !!n1.threadSuggestKey], ['t1', 'They mixed water into mud.', true]);
   assert.ok(await until(() => read('notices/n2.json') && read('notices/n2.json').threadSuggestKey && !read('notices/n2.json').threadSuggest, 10000), 'one that fits none keeps the key and no suggestion');
   // places, read from the words against the site's places, the garden's beds and the animal yards, never typed
+  assert.ok(await until(() => ['n1', 'n2', 'n3', 'n5'].every(k => read(`notices/${k}.json`) && Array.isArray(read(`notices/${k}.json`).place)), 15000), 'every observation has its place read');
   assert.deepStrictEqual(read('notices/n1.json').place, ['Garden', 'Raised beds']);
   assert.deepStrictEqual(read('notices/n3.json').place, ['Goat yard']);
   assert.deepStrictEqual(read('notices/n5.json').place, ['Indoor piazza', 'Creek', 'Piazza']);
@@ -141,7 +142,7 @@ test('a reflection flows to a thread through the observation the plan quotes, a 
   assert.deepStrictEqual((await fx.as(dee, '/api/inquiries/gather', { id: 'q1' })).body.suggest, [], 'one already waiting is not asked about again');
   assert.strictEqual(asked.filter(b => /team inquiry about a child/.test(b)).length, 1);
   // the week's findings are kept by week
-  assert.ok(await until(() => read(`reports/${mon}-findings.json`), 10000), 'findings kept');
+  assert.ok(await until(() => read(`reports/${mon}-findings.json`), 20000), 'findings kept');
   const f = read(`reports/${mon}-findings.json`);
   assert.deepStrictEqual([f.kind, f.week, f.lens.map(m => m.id), f.inquiries.map(q => q.found.map(i => i.id))], ['findings', mon, ['n5', 'p1'], [['n4']]]);
   const fl = (await fx.as(dee, '/api/findings', {})).body; assert.strictEqual(fl.findings[0].week, mon);

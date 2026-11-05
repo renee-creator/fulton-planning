@@ -8,7 +8,7 @@ const assert = require('node:assert');
 const fs = require('fs'), path = require('path');
 const { start, browser, signedIn } = require('./fixture.js');
 
-const monday = n => { const x = new Date(); x.setDate(x.getDate() - (x.getDay() + 6) % 7 - 7 * n); return x.toISOString().slice(0, 10); };
+const monday = n => { const x = new Date(); x.setDate(x.getDate() - (x.getDay() + 6) % 7 - 7 * n); return new Date(x.getTime() - x.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const plan = (id, wk) => ({ id, type: 'individual', weekOf: wk, classroom: 'North', educator: 'Bea', focus: 'smallgroup', fields: { rationale: 'Written.' }, status: 'draft', createdAt: 1, updatedAt: 1 });
 const more = put => {
   put('settings/main.json', { id: 'main', groups: [{ name: 'Marigold', room: 'North', educator: 'Bea' }, { name: 'Poppy', room: 'North', educator: 'Bea' }, { name: 'Zinnia', room: 'West', educator: 'Ann' }] });

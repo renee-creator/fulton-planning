@@ -80,7 +80,7 @@ test('suggested questions are labelled, kept to our rules, added only with a tap
       { from: 'observation', text: 'We wonder what the children are testing each time they add one more stick to the rail.', why: 'They kept adding sticks until the row fell.' }] });
     r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); }); });
   await new Promise(ok => ai.listen(0, '127.0.0.1', ok));
-  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
   const fx = await start({ env: { ANTHROPIC_API_KEY: 'sk-ant-test', ANTHROPIC_API_BASE: 'http://127.0.0.1:' + ai.address().port }, more: put => {
     put('staff/library/prompts/provocations.md', BANK); put('staff/library/prompts/artists.md', ARTISTS);
     put('plans/pq.json', { id: 'pq', type: 'individual', weekOf: monday, classroom: 'West', educator: 'Ann', focus: 'area', fields: { area: 'Balance at the fence', observation: 'Several children spent the morning balancing sticks across the fence rail and adding more until the whole row fell, then they started again.' } });

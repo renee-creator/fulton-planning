@@ -9,7 +9,7 @@ const fs = require('fs'), path = require('path');
 const { start, browser, signedIn } = require('./fixture.js');
 const fam = require('../family.js');
 
-const monday = d => { const x = new Date(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x.toISOString().slice(0, 10); };
+const monday = d => { const x = new Date(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return new Date(x.getTime() - x.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 const lastWeek = monday(Date.now() - 7 * 864e5);
 const more = put => {
   put('settings/main.json', { id: 'main', groups: [{ name: 'Marigold', room: 'North', educator: 'Bea' }] });

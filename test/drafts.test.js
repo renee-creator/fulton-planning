@@ -77,7 +77,7 @@ test('Drafts on the phone', async t => {
 
   await t.test('words being written come back after the page closes, and a plan waits and sends once', async () => {
     const tok = (await fx.login('Ann', '1357')).token;
-    const monday = await (async () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+    const monday = await (async () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
     await fx.as(tok, '/api/write', { op: 'set', kind: 'plans', id: 'pdraft1', data: { id: 'pdraft1', type: 'individual', weekOf: monday, educator: 'Ann', classroom: 'West', status: 'draft', fields: {}, updatedAt: Date.now() } });
     const s = await signedIn(fx, b, 'Ann', '1357', 390);
     await openForm(s.p); await s.p.fill('#nf-noticed', 'Tamsin sorted the seeds by size.'); await s.p.waitForTimeout(900);

@@ -16,7 +16,7 @@ test('the slide set to show is a PDF only', () => {
 test('a plan whose typed words differ from its calendar space uses the typed words', async t => {
   const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
   const b = await chromium.launch();
-  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
   const fx = await start({ more: put => {
     put('plans/pwhere.json', { id: 'pwhere', type: 'individual', weekOf: monday, classroom: 'West', educator: 'Ann', focus: 'smallgroup', groups: [], where: 'The piazza then to the art shed',
       space: { spaceId: 'studio', spaceName: 'Tire swing studio', days: [2, 3], start: '09:00', end: '10:30', booked: [{ day: 2 }], skipped: [] }, fields: {}, status: 'draft' });

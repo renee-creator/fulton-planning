@@ -90,7 +90,7 @@ test('a Shown from image shows on the screen with no referrer, and hides itself 
 
 test('a print reads a Shown from image only through our server, never from the page, and a Picture still prints', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
-  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
   const fx = await start({ more: put => {
     put('staff/library/prompts/artists.md', ARTISTS);
     put('plans/pw.json', { id: 'pw', type: 'individual', weekOf: monday, classroom: 'West', educator: 'Ann', focus: 'area', fields: { area: 'Wire', observation: 'Wire and string.' },

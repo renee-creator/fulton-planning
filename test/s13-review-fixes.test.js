@@ -91,7 +91,7 @@ test('on a Classroom plan, adding a question costs no new reading, keeps the oth
       { from: 'observation', text: 'We wonder what the children are testing each time they let the wheelbarrow roll back.', why: 'They pushed the wheelbarrow up the hill again and again.' }] });
     r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' })); }); });
   await new Promise(ok => ai.listen(0, '127.0.0.1', ok));
-  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
   const OBS = 'Two children pushed the wheelbarrow up the hill again and again this morning and let it roll back down, laughing each time it tipped over at the bottom.';
   const fx = await start({ env: { ANTHROPIC_API_KEY: 'sk-ant-test', ANTHROPIC_API_BASE: 'http://127.0.0.1:' + ai.address().port }, more: put => {
     put('staff/library/prompts/provocations.md', BANK); put('staff/library/prompts/artists.md', ARTISTS);
@@ -141,7 +141,7 @@ test('on a Classroom plan, adding a question costs no new reading, keeps the oth
 
 test('an attached artist prints its picture with the plan, and a draft module\'s link stays with the director', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
-  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
   const fx = await start({ more: put => {
     put('staff/library/prompts/provocations.md', BANK); put('staff/library/prompts/artists.md', ARTISTS);
     put('plans/pa.json', { id: 'pa', type: 'individual', weekOf: monday, classroom: 'West', educator: 'Ann', focus: 'area', fields: { area: 'Water', observation: 'Water play.' }, attached: [{ kind: 'artist', id: 'a-painter-water-study', title: 'A painter, Water Study' }] });

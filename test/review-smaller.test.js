@@ -36,7 +36,7 @@ test('the smaller review items', async t => {
   await t.test('someone who does not work Mondays is never put on a Monday', async () => {
     const set = await fx.as(dee, '/api/staff/profile', { name: 'Ann', profile: { noMondays: true } });
     assert.strictEqual(set.status, 200);
-    const mon = (() => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
+    const mon = (() => { const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); })();
     const b = await fx.as(dee, '/api/staff/g/checkin/book', { name: 'Ann', date: mon, time: '09:00' });
     assert.strictEqual(b.status, 400); assert.match(b.body.error, /does not work Mondays/);
   });
