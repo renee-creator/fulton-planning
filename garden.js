@@ -129,7 +129,7 @@ module.exports = function garden(o) {
   }
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
-    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, wanted: s.wantedSpaces || [],
+    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, eduHide: s.eduHide || [], wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null, nochemicals: s.nochemicals || '' };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
@@ -204,6 +204,9 @@ module.exports = function garden(o) {
     }
     if (!dir) { err(req, res, 403, 'Only the director changes the Garden.'); return; }
     if (P === 'garden/ready') { saveS({ ready: !!body.on }); return back(); }
+    // the director chooses which Garden sections educators see, every section on until switched off
+    if (P === 'garden/edu') { const K = ['placesheet', 'volunteer', 'premises', 'map', 'today', 'plants', 'plan', 'tend', 'harvests', 'preserving', 'compost', 'seeds', 'trays', 'wild', 'guides', 'prints', 'animals', 'agree', 'beds']; if (!K.includes(body.key)) { err(req, res, 400, 'Choose a section.'); return; }
+      const hide = new Set((s.eduHide || []).filter(k => K.includes(k))); if (body.on) hide.delete(body.key); else hide.add(body.key); saveS({ eduHide: [...hide] }); return back(); }
     // our site project on iNaturalist, where every observation from our yards gathers, with locations obscured
     if (P === 'garden/inat') { const u = String(body.url || '').trim(); if (u && !/^https:\/\/(www\.)?inaturalist\.org\/projects\/[A-Za-z0-9_-]+\/?$/.test(u)) { err(req, res, 400, 'Paste the project\'s address from iNaturalist.'); return; } saveS({ inat: Object.assign({}, s.inat || {}, { url: u.slice(0, 200) }) }); return back(); }
     // the director chooses one season sheet and some recipes from the library to share with families
