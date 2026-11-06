@@ -726,6 +726,7 @@ ONCE.push(['s34ShelfChecks', () => staff.once.edits('s34ShelfChecks', recsEdit)]
 ONCE.push(['s35OnCampus', () => staff.once.edits('s35OnCampus', recsEdit)]);
 ONCE.push(['s36FireVisit', () => staff.once.edits('s36FireVisit', recsEdit)]);
 ONCE.push(['s37FamilyEvenings', () => staff.once.edits('s37FamilyEvenings', recsEdit)]);
+ONCE.push(['s38Toolkits', () => staff.once.edits('s38Toolkits', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
@@ -2472,7 +2473,7 @@ function gatheringsFor(who) {
   const list = all.filter(x => x.kind === 'item' && GATHERING_KINDS.includes(x.gathering) && (planner || gthReleased(x, conf))).sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'))
     .map(x => ({ id: x.id, gathering: x.gathering, title: x.title || '', date: x.date || '', start: x.start || '', end: x.end || '', gardenDay: !!x.gardenDay, ready: x.open !== false, plan: x.plan || '', toolkit: x.toolkit || '', documentation: x.documentation || '', docLink: x.docLink || '',
       coming: (x.signups || []).length, released: gthReleased(x, conf), jobs: jobs.filter(j => j.gatheringId === x.id).map(j => ({ title: j.title || '', spots: Number(j.spots) || 0, taken: (j.signups || []).length, pointPerson: j.pointPerson || '' })) }));
-  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '', 'garden-visit': '', 'work-day': '' }, conf.toolkits || {}), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
+  return { toolkits: Object.assign({ 'second-saturday': '', 'play-garden': '', 'garden-visit': '', 'work-day': '' }, conf.toolkits || {}), toolkitPages: staff.toolkits(), list, page: !!(conf.release || {}).page, open: planner || !!(conf.release || {}).page || list.length > 0 };
 }
 async function displayFeed() {
   const live = k => { const out = []; for (const [id, r] of store.recs[k]) if (r && !r.deleted && r.doc) out.push(Object.assign({ id }, r.doc)); return out; };

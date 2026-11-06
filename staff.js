@@ -1218,6 +1218,7 @@ module.exports = function staffModule(o) {
     s35OnCampus: ['code:once/s35-on-campus.json', 'Idea bank cards keep children on our campus, apart from the creek walks, November 5, 2026'],
     s36FireVisit: ['code:once/s36-fire-visit.json', 'The fire card\'s visit stays on our campus, November 5, 2026'],
     s37FamilyEvenings: ['code:once/s37-family-evenings.json', 'Family evenings follow what our community needs, November 5, 2026'],
+    s38Toolkits: ['code:once/s38-toolkits.json', 'A toolkit in TREE for each of our gatherings, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
@@ -1335,7 +1336,14 @@ module.exports = function staffModule(o) {
     const out = []; if (L('Ingredients').length) out.push('Ingredients\n' + L('Ingredients').join('\n')); if (L('Steps').length) out.push('Steps\n' + L('Steps').map((l, i) => (i + 1) + '. ' + l).join('\n'));
     for (const k of ['Dairy free', 'Gluten free']) if (L(k).length) out.push(k + '\n' + L(k).join('\n'));
     return { id: x.id, title: x.title, kind: /^sensory$/i.test(x.meta.kind || '') ? 'sensory' : 'food', source: x.meta.source || '', text: out.join('\n\n') }; }
-  return { ideabank: { forFamily: () => (S.ready ? IB.forFamily() : null), familyOn: () => (S.ready ? IB.familyOn() : false), canOpen: (b, r) => (S.ready ? IB.canOpen(b, r) : false), behaviorFor: id => (S.ready ? IB.behaviorFor(id) : null), NEEDS: IB.NEEDS, SUPPORTS: IB.SUPPORTS, US: IB.US }, dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, // the museums and the plants on our site for the whole community, each part only once the director turns its switch on
+  // the toolkits for our gatherings, one page each in staff/library/gatherings, in the order the Gatherings page shows them
+  const TOOLKIT_ORDER = ['second-saturday', 'play-garden', 'garden-visit', 'work-day', 'open-house', 'orientation', 'class-evening', 'welcome-play-date', 'community-welcome', 'ice-cream-social', 'graduation', 'first-friday'];
+  function toolkits() { if (!S.ready) return [];
+    const out = []; for (const [p, r] of S.files) { const m = p.match(/^staff\/library\/gatherings\/([a-z0-9-]+)\.md$/); if (!m || typeof r.text !== 'string') continue;
+      const pp = pageParts(r.text); if (pp) out.push({ id: m[1], path: p, title: pp.title, lead: pp.lead, parts: pp.parts }); }
+    const at = id => { const i = TOOLKIT_ORDER.indexOf(id); return i < 0 ? 99 : i; };
+    return out.sort((x, y) => at(x.id) - at(y.id) || x.title.localeCompare(y.title)); }
+  return { toolkits, ideabank: { forFamily: () => (S.ready ? IB.forFamily() : null), familyOn: () => (S.ready ? IB.familyOn() : false), canOpen: (b, r) => (S.ready ? IB.canOpen(b, r) : false), behaviorFor: id => (S.ready ? IB.behaviorFor(id) : null), NEEDS: IB.NEEDS, SUPPORTS: IB.SUPPORTS, US: IB.US }, dumpImages, useRecsEdit: f => { RECS_EDIT = f; }, playgarden: PGA, recipeForFamily, library: LIB, gardenEducators, wordingDoc, wordingAll, walksForFamily, familyPiecesForFamily, // the museums and the plants on our site for the whole community, each part only once the director turns its switch on
     community: who => { if (!S.ready) return null; const sw = LIB.placeSwitches(); const fam = who === 'family';
       const places = (fam ? sw.family : sw.public) ? LIB.placesOut() : null; const parks = (fam ? sw.family : sw.public) ? LIB.parksOut() : null; const plants = (fam ? sw.plantsFamily : sw.public) ? GD.community() : null;
       return places || parks || plants ? { places, parks, plants } : null; },

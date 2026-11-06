@@ -129,7 +129,7 @@ test('gatherings stay with the staff until the director marks them ready, and fa
       const s = await signedIn(fx, b, who, pass, w);
       await s.p.evaluate(() => goView('gatherings')); await wait(800);
       const txt = await s.p.evaluate(() => document.getElementById('main').innerText);
-      assert.match(txt, /Second Saturday/); assert.match(who === 'Dee' ? await s.p.evaluate(() => document.querySelector('[data-gthf="plan"]').value) : txt, /Plant garlic/); assert.match(txt, /A place for the Second Saturday toolkit/);
+      assert.match(txt, /Second Saturday/); assert.match(who === 'Dee' ? await s.p.evaluate(() => document.querySelector('[data-gthf="plan"]').value) : txt, /Plant garlic/); assert.match(txt, /Toolkits/);
       if (who === 'Dee') { assert.match(txt, /turned on and off in Settings, Releases/); await s.p.evaluate(() => goView('settings')); await wait(1200); assert.match(await s.p.evaluate(() => document.getElementById('main').innerText), /Releases/); await s.p.evaluate(() => goView('gatherings')); await wait(600); }
       if (who === 'Dee') {
         // the director plans a Second Saturday in March, adds a job and marks it ready
