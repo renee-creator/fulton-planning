@@ -81,19 +81,31 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   const clockImg=()=>timer?timer.data:demoClock();
   const sheets=[{n:1,text:"Wash our hands.",pics:[{img:wash?wash.data:demoWash(),w:1.2,drawn:!wash}],words:[],adult:false}];
   const measured=new Set();
+  // an item's head word, such as apple for 6 apples, cream for cream of tartar or color for color from our dye bed, found
+  // in a step in its singular or plural (November 5, 2026)
+  const DEMO_GENERIC=/^(small|large|handful|pinch|piece|bunch|cup|spoon|bowl|some|our|the|and)$/;
+  const headOf=k=>{const w=String(k||"").split("_").filter(Boolean);const i=w.findIndex(x=>/^(of|from|with|for)$/.test(x));const h=(i>0?w.slice(0,i):w).filter(x=>!DEMO_GENERIC.test(x));return h.length?h[h.length-1]:""};
+  const says=(s,word)=>{if(!word||word.length<3)return false;const st=word.replace(/(ies)$/,"y").replace(/(oes|ses|xes|ches|shes)$/,m=>m.slice(0,-2)).replace(/s$/,"");const root=st.replace(/y$/,"");const fv=/(fe|f)$/.test(st)?"|"+st.replace(/(fe|f)$/,"")+"ves":"";return new RegExp("\\b("+(st.endsWith("y")?root+"(y|ies)":st+"(e|es|s)?")+fv+")\\b","i").test(s)};
   for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];
-    for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).map(w=>w.replace(/[^A-Za-z-]/g,"")).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
-      if(!keys.length||!keys.every(k=>new RegExp("\\b"+k.replace(/(es|s)$/,"")+"(e?s)?\\b","i").test(s)))continue;
-      const first=!measured.has(line);measured.add(line);const key=demoKey(q?q.item:line);const label=name.replace(/\s*\(.*\)$/,"");
-      // the measure first, the right cup or spoon repeated for how many, with the amount in large type
+    // water for washing, such as a basin for scrubbing, is never the water the recipe measures
+    const washing=/\b(scrub|wash|rinse|basin)\b/i.test(s);
+    for(const {q,line} of qs){const key=demoKey(q?q.item:line);if(!says(s,headOf(key))||(washing&&headOf(key)==="water"))continue;
+      const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const label=name.replace(/\s*\(.*\)$/,"");
+      const first=!measured.has(line);measured.add(line);
+      // the amount once, the first time the item is used, with the right cup or spoon shown once beside it
       const amount=first&&q&&q.n?demoFracText(q.n)+(q.unit?" "+q.unit+(q.n>1?"s":""):""):"";
-      if(first&&q&&q.unit){const mk=q.unit==="cup"?"measuring_cup":q.unit;const mp=await demoPicData(demoPicOf(mk));if(mp)demoFills(q).forEach(f=>pics.push({img:mp.data,w:.6,cap:demoFracText(f)+" "+q.unit}))}
-      const pd=await demoPicData(demoPicOf(key,demoKeyOld(q?q.item:line)));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true,credit:pd.credit||""});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
-    if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/[^A-Za-z-]/g,"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t),demoKeyOld(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true,credit:pd.credit||""});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
-    const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:clockImg(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:clockImg(),w:.7,cap:"wait",drawn:true});
+      let measure=null;if(first&&q&&q.unit){const mp=await demoPicData(demoPicOf(q.unit==="cup"?"measuring_cup":q.unit));if(mp)measure={img:mp.data,text:amount}}
+      const pd=await demoPicData(demoPicOf(key,demoKeyOld(q?q.item:line)));const cap=[amount,label].filter(Boolean).join(" ");
+      if(pd)pics.push({img:pd.data,w:.85,cap,label,amount,big:true,credit:pd.credit||"",measure});else words.push({big:cap,small:"",measure})}
+    if(!pics.length&&!words.length)for(const t of tools){if(!says(s,headOf(demoKey(t))))continue;const pd=await demoPicData(demoPicOf(demoKey(t),demoKeyOld(t)));const lb=t.replace(/^(a|an|the)\s+/i,"").split(",")[0];if(pd)pics.push({img:pd.data,w:.85,cap:lb,label:lb,big:true,credit:pd.credit||""});else words.push({big:lb,small:""});break}
+    // a cooking or waiting time shows the timer, for minutes, hours, overnight or a wait, and never for cool water
+    const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*(minutes?|hours?)/i);
+    if(tm)pics.push({img:clockImg(),w:.7,cap:tm[1]+(tm[2]?" to "+tm[2]:"")+" "+tm[3].toLowerCase().replace(/s?$/,(+(tm[2]||tm[1])===1?"":"s")),timer:true,drawn:!timer});
+    else if(/\b(wait|overnight|let (it|them) (rest|cool|sit|rise)|until (it is |they are )?cool)\b/i.test(s))pics.push({img:clockImg(),w:.7,cap:/overnight/i.test(s)?"overnight":"wait",timer:true,drawn:!timer});
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
   const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t),demoKeyOld(q?q.item:t)));return {text:t,img:pd?pd.data:null,credit:(pd&&pd.credit)||""}};
-  const overview={title:x.title,ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
+  const fin=await demoPicData(demoPicOf("finished_"+String(x.id||"").replace(/-/g,"_")));
+  const overview={title:x.title,finished:fin?fin.data:null,ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
   return {overview,sheets,hand:hand?hand.data:demoHand()}}
 // the set as a PDF, letter or poster, Andika throughout
 const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
@@ -102,22 +114,26 @@ const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
    at a glance. The letter set keeps one step to a sheet for the table. */
 async function demoPosterPdf(x){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES.poster;const doc=TREE_KIT.pdf({size:"poster",orientation:"portrait"});
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};const M=54,W=S.w-M*2;
-  font(true);doc.setTextColor(47,59,47);doc.setFontSize(72);doc.text(doc.splitTextToSize(P.overview.title,W)[0],M,M+64);
-  // what we need, in one band of pictures or words
-  let y=M+110;font(true);doc.setFontSize(30);doc.text("What we need",M,y);y+=18;
-  const need=[...P.overview.ings,...P.overview.tools];const cell=Math.min(150,W/Math.max(6,Math.ceil(need.length/2)));let nx=M;
-  for(const it of need){if(nx+cell>M+W){nx=M;y+=cell+44}if(it.img)doc.addImage(it.img,demoFmt(it.img),nx+10,y+6,cell-20,cell-20);font(false);doc.setFontSize(17);doc.text(doc.splitTextToSize(it.text,cell-6).slice(0,it.img?2:5),nx+4,y+(it.img?cell+8:24));nx+=cell}
-  y+=cell+60;doc.setDrawColor(200,190,170);doc.setLineWidth(2);doc.line(M,y-24,M+W,y-24);
-  // the steps in panels, two or three across
-  const st=P.sheets;const cols=st.length<=4?2:3;const rows=Math.ceil(st.length/cols);const gap=24;const pw=(W-gap*(cols-1))/cols,ph=Math.min(520,(S.h-M-y-gap*(rows-1))/rows);
+  // the title, with the finished picture beside it, so children see what we are making
+  const fin=P.overview.finished,fw=fin?190:0;font(true);doc.setTextColor(47,59,47);doc.setFontSize(72);const tl=doc.splitTextToSize(P.overview.title,W-fw-24).slice(0,2);doc.text(tl,M,M+64);
+  if(fin)doc.addImage(fin,demoFmt(fin),M+W-fw,M,fw,fw);
+  // what we need, in one band of pictures with their names
+  let y=Math.max(M+64+tl.length*76,M+40)+20;font(true);doc.setFontSize(30);doc.text("What we need",M,y);y+=16;
+  const need=[...P.overview.ings,...P.overview.tools];const per=Math.max(8,Math.ceil(need.length/2));const cell=W/per;let nx=M;
+  for(const it of need){if(nx+cell>M+W+1){nx=M;y+=cell+40}if(it.img)doc.addImage(it.img,demoFmt(it.img),nx+8,y+6,cell-16,cell-16);font(false);const fz=Math.max(11,Math.min(16,cell/8));doc.setFontSize(fz);doc.text(doc.splitTextToSize(it.text,cell-6).slice(0,it.img?2:5),nx+4,y+(it.img?cell+fz:24));nx+=cell}
+  y+=cell+56;doc.setDrawColor(200,190,170);doc.setLineWidth(2);doc.line(M,y-22,M+W,y-22);
+  // the steps in numbered panels, two, three or four across by how many steps there are
+  const st=P.sheets;const cols=st.length<=4?2:st.length<=9?3:4;const rows=Math.ceil(st.length/cols);const gap=22;const pw=(W-gap*(cols-1))/cols,ph=Math.min(560,(S.h-M-y-gap*(rows-1))/rows);
   st.forEach((sh,i)=>{const cx=M+(i%cols)*(pw+gap),cy=y+Math.floor(i/cols)*(ph+gap);doc.setFillColor(248,245,238);doc.roundedRect(cx,cy,pw,ph,18,18,"F");
-    doc.setFillColor(47,59,47);doc.circle(cx+40,cy+40,26,"F");font(true);doc.setTextColor(255,255,255);doc.setFontSize(30);doc.text(String(sh.n),cx+40,cy+51,{align:"center"});doc.setTextColor(47,59,47);
-    if(sh.adult)doc.addImage(P.hand,demoFmt(P.hand),cx+pw-74,cy+12,60,60);
-    const fs=ph>360?30:24;doc.setFontSize(fs);const tl=doc.splitTextToSize(sh.text,pw-40).slice(0,3);doc.text(tl,cx+20,cy+96);let ty=cy+96+tl.length*fs*1.2+8;
-    const room=cy+ph-ty-16;const pics=sh.pics.slice(0,4);
-    if(pics.length){const n=pics.length,w=Math.min(room-(pics.some(p=>p.cap)?34:0),(pw-40-(n-1)*12)/n);let px=cx+20+(pw-40-(n*w+(n-1)*12))/2;
-      for(const pc of pics){if(w>30)doc.addImage(pc.img,demoFmt(pc.img),px,ty,w,w);if(pc.cap){font(!!pc.big);doc.setFontSize(18);doc.text(doc.splitTextToSize(pc.cap,Math.max(w+10,120)).slice(0,2),px+w/2,ty+w+22,{align:"center"})}px+=w+12}}
-    else if(sh.words.length){font(true);doc.setFontSize(Math.min(28,fs));for(const wd of sh.words.slice(0,4)){doc.text(doc.splitTextToSize(wd.big,pw-40)[0],cx+20,ty+24);ty+=34}}});
+    doc.setFillColor(47,59,47);doc.circle(cx+36,cy+36,24,"F");font(true);doc.setTextColor(255,255,255);doc.setFontSize(28);doc.text(String(sh.n),cx+36,cy+46,{align:"center"});doc.setTextColor(47,59,47);
+    if(sh.adult)doc.addImage(P.hand,demoFmt(P.hand),cx+pw-66,cy+10,52,52);
+    const fs=ph>380?(cols>3?24:28):22;doc.setFontSize(fs);const tlines=doc.splitTextToSize(sh.text,pw-36).slice(0,4);doc.text(tlines,cx+18,cy+84);let ty=cy+84+tlines.length*fs*1.15+6;
+    // one picture for each item, with its amount and name once beneath it, never crowding into the next
+    const pics=sh.pics.slice(0,4);const n=pics.length;
+    if(n){const capF=Math.max(12,Math.min(18,(pw-36)/n/7));font(true);doc.setFontSize(capF);const caps=pics.map(pc=>pc.cap?doc.splitTextToSize(pc.cap,(pw-36-(n-1)*10)/n).slice(0,3):[]);const capH=Math.max(0,...caps.map(c=>c.length))*capF*1.15+6;
+      const room=cy+ph-ty-14-capH;const w=Math.max(0,Math.min(room,(pw-36-(n-1)*10)/n));let px=cx+18+(pw-36-(n*w+(n-1)*10))/2;
+      pics.forEach((pc,j)=>{if(w>24)doc.addImage(pc.img,demoFmt(pc.img),px,ty,w,w);if(caps[j].length){font(!!pc.big);doc.setFontSize(capF);doc.text(caps[j],px+w/2,ty+w+capF,{align:"center"})}px+=w+10})}
+    else if(sh.words.length){font(true);doc.setFontSize(Math.min(26,fs));for(const wd of sh.words.slice(0,4)){doc.text(doc.splitTextToSize(wd.big,pw-36)[0],cx+18,ty+24);ty+=32}}});
   {const c=demoCredits(P.sheets.flatMap(s=>s.pics));if(c){font(false);doc.setFontSize(12);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,W),M,S.h-M/2)}}
   return doc.output("blob")}
 async function demoPosterWord(x){const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);
@@ -130,22 +146,37 @@ async function demoPosterWord(x){const D=await TREE_KIT.word();await TREE_KIT.fo
   const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,60,true)]}),new D.Paragraph({children:[run("What we need",26,true)]}),new D.Paragraph({children:need.map(it=>run(it.text+"     ",18))}),
     new D.Table({width:{size:tw,type:D.WidthType.DXA},columnWidths:Array(cols).fill(Math.floor(tw/cols)),rows}),...(demoCredits(P.sheets.flatMap(s=>s.pics))?[new D.Paragraph({spacing:{before:240},children:[run(demoCredits(P.sheets.flatMap(s=>s.pics)),12)]})]:[])]}];
   const docx=TREE_KIT.wordFile(D,{size:"poster",sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}
-async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k;
+async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k,W=S.w-M*2;
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};
-  // the overview, for setting up, with a picture where the library has one and the words always
-  font(true);doc.setFontSize(34*k);doc.text(P.overview.title,M,M+30*k);doc.setFontSize(20*k);doc.text("What we need",M,M+70*k);
-  let y=M+86*k;const row=(it)=>{if(it.img)doc.addImage(it.img,demoFmt(it.img),M,y,44*k,44*k);font(false);doc.setFontSize(16*k);doc.text(doc.splitTextToSize(it.text,S.w-M*2-60*k),M+(it.img?56*k:0),y+27*k);y+=50*k;if(y>S.h-M-50*k){doc.addPage([S.w,S.h]);y=M}};
-  P.overview.ings.forEach(row);if(P.overview.tools.length){font(true);doc.setFontSize(20*k);doc.text("Tools",M,y+20*k);y+=34*k;P.overview.tools.forEach(row)}
-  const credit=list=>{const c=demoCredits(list);if(!c)return;font(false);doc.setFontSize(8*k);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,S.w-M*2),M,S.h-M/2-8*k);doc.setTextColor(47,59,47)};
-  credit([...P.overview.ings,...P.overview.tools]);
-  for(const sh of P.sheets){doc.addPage([S.w,S.h]);font(true);doc.setFillColor(47,59,47);doc.circle(M+28*k,M+28*k,28*k,"F");doc.setTextColor(255,255,255);doc.setFontSize(28*k);doc.text(String(sh.n),M+28*k,M+38*k,{align:"center"});doc.setTextColor(47,59,47);
-    doc.setFontSize(44*k);const lines=doc.splitTextToSize(sh.text,S.w-M*2-(sh.adult?130*k:0));doc.text(lines,M,M+110*k);let top=M+110*k+lines.length*50*k;
-    if(sh.adult){doc.addImage(P.hand,demoFmt(P.hand),S.w-M-90*k,M,90*k,90*k);font(false);doc.setFontSize(14*k);doc.text("An adult does this step",S.w-M,M+104*k,{align:"right"})}
-    if(sh.photo&&window.FP_ORIGINAL_URL){try{const b=await (await fetch(window.FP_ORIGINAL_URL(sh.photo))).blob();const u=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});doc.addImage(u,"JPEG",M,top,S.w-M*2,(S.w-M*2)*.6);top+=(S.w-M*2)*.6+16*k}catch(e){}}
-    // the amounts and the items with no picture yet, in large type
-    for(const w of sh.words){if(top>S.h-M-60*k)break;font(true);doc.setFontSize(30*k);const wl=doc.splitTextToSize(w.big,S.w-M*2);doc.text(wl,M,top+30*k);top+=wl.length*36*k+6*k}
-    if(sh.words.length)top+=10*k;
-    let x0=M,lineH=0;for(const p of sh.pics){const w=150*k*p.w,h=w;if(x0+w>S.w-M){x0=M;top+=lineH+(p.big?44:30)*k;lineH=0}if(top+h>S.h-M)break;doc.addImage(p.img,demoFmt(p.img),x0,top,w,h);if(p.cap){font(!!p.big);doc.setFontSize((p.big?24:15)*k);doc.text(doc.splitTextToSize(p.cap,w+10*k),x0+w/2,top+h+(p.big?26:16)*k,{align:"center"})}x0+=w+14*k;lineH=Math.max(lineH,h)}
+  const credit=list=>{const c=demoCredits(list);if(!c)return;font(false);doc.setFontSize(8*k);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,W),M,S.h-M/2-8*k);doc.setTextColor(47,59,47)};
+  // the setup page, on one page. The title and the finished picture, then what we need in two columns, ingredients and tools
+  {doc.setTextColor(47,59,47);const fin=P.overview.finished,fw=fin?150*k:0;font(true);doc.setFontSize(34*k);const tl=doc.splitTextToSize(P.overview.title,W-fw-16*k);doc.text(tl,M,M+30*k);
+    if(fin)doc.addImage(fin,demoFmt(fin),S.w-M-fw,M,fw,fw);
+    const top=Math.max(M+30*k+tl.length*38*k,M+fw)+24*k;const colW=(W-20*k)/2;const avail=S.h-M-24*k-top-34*k;
+    const n=Math.max(P.overview.ings.length,P.overview.tools.length,1);const rh=Math.min(62*k,avail/n);const ps=rh-8*k;
+    const col=(title,list,x0)=>{font(true);doc.setFontSize(20*k);doc.text(title,x0,top);let y=top+14*k;
+      for(const it of list){if(it.img)doc.addImage(it.img,demoFmt(it.img),x0,y,ps,ps);font(false);const fz=Math.min(16*k,Math.max(10*k,rh*.3));doc.setFontSize(fz);doc.text(doc.splitTextToSize(it.text,colW-ps-12*k).slice(0,2),x0+(it.img?ps+10*k:0),y+ps/2+fz*.35);y+=rh}};
+    col("What we need",P.overview.ings,M);if(P.overview.tools.length)col("Tools",P.overview.tools,M+colW+20*k);
+    credit([...P.overview.ings,...P.overview.tools])}
+  for(const sh of P.sheets){doc.addPage([S.w,S.h]);doc.setTextColor(47,59,47);
+    // the band across the top, the step's number, and the adult hand with its words when only an adult does the step
+    font(true);doc.setFillColor(47,59,47);doc.circle(M+28*k,M+28*k,28*k,"F");doc.setTextColor(255,255,255);doc.setFontSize(28*k);doc.text(String(sh.n),M+28*k,M+38*k,{align:"center"});doc.setTextColor(47,59,47);
+    if(sh.adult){doc.addImage(P.hand,demoFmt(P.hand),S.w-M-64*k,M-4*k,64*k,64*k);font(false);doc.setFontSize(13*k);doc.text("An adult does this step",S.w-M-72*k,M+34*k,{align:"right"})}
+    font(true);doc.setFontSize(40*k);const lines=doc.splitTextToSize(sh.text,W);doc.text(lines,M,M+104*k);let top=M+104*k+(lines.length-1)*46*k+28*k;
+    if(sh.photo&&window.FP_ORIGINAL_URL){try{const b=await (await fetch(window.FP_ORIGINAL_URL(sh.photo))).blob();const u=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});const ph=Math.min((S.h-M-top)*.5,W*.6);doc.addImage(u,"JPEG",M,top,ph/.6,ph);top+=ph+16*k}catch(e){}}
+    // one row for each item, its picture large, its amount and name in big type, and the cup or spoon once beside them
+    const rows=[...sh.pics.filter(p=>!p.timer),...sh.words.map(w=>Object.assign({word:true},w)),...sh.pics.filter(p=>p.timer)];
+    const avail=S.h-M-14*k-top;
+    // one item fills the sheet, its picture large, with its amount and the cup or spoon beneath it
+    if(rows.length===1&&!rows[0].word){const r=rows[0];const s=Math.min(avail-60*k,W*.7);doc.addImage(r.img,demoFmt(r.img),M+(W-s)/2,top,s,s);
+      if(r.cap){font(true);doc.setFontSize(32*k);const c=doc.splitTextToSize(r.cap,W-(r.measure?90*k:0))[0];const cw=doc.getTextWidth(c)+(r.measure?82*k:0);const cx=S.w/2-cw/2;doc.text(c,cx,top+s+38*k);if(r.measure)doc.addImage(r.measure.img,demoFmt(r.measure.img),cx+cw-70*k,top+s+2*k,70*k,70*k)}}
+    else if(rows.length){const rh=Math.min(rows.length<=2?290*k:200*k,avail/rows.length);const s=rh-14*k;
+      for(const r of rows){const tx=M+(r.word?0:s+22*k);
+        if(!r.word)doc.addImage(r.img,demoFmt(r.img),M,top,s,s);
+        const fz=Math.min(34*k,Math.max(16*k,rh*.2));font(true);doc.setFontSize(fz);const tw=W-(tx-M)-(r.measure?Math.min(s*.6,110*k)+12*k:0);
+        const t=r.word?r.big:(r.timer?r.cap:(r.amount?r.amount+" ":"")+(r.label||r.cap||""));const tlines=doc.splitTextToSize(t,tw).slice(0,3);doc.text(tlines,tx,top+s/2-((tlines.length-1)*fz*1.15)/2+fz*.35);
+        if(r.measure){const ms=Math.min(s*.6,110*k);doc.addImage(r.measure.img,demoFmt(r.measure.img),S.w-M-ms,top+(s-ms)/2,ms,ms)}
+        top+=rh}}
     credit(sh.pics)}
   return doc.output("blob")}
 // the same set as a Word file, one page for each sheet

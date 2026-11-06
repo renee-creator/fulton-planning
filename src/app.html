@@ -5534,7 +5534,13 @@ const recKindOf=x=>/^sensory$/i.test((x.meta||{}).kind||"")?"sensory":"food";
 const recCanEdit=()=>(isDirector()||isKitchenUser())&&!VIEW_AS;
 const SENSORY_NOTE="Sensory recipes use pantry staples only, such as flour, salt, cornstarch and oil, never fresh food or produce. We color with garden plants and use no glitter.";
 // a library page's own photo, from its opening comment, photo: <image> | <credit> | <its page>
-function libPhoto(x){const v=String(((x&&x.meta)||{}).photo||"");if(!v)return null;const [src,credit,link]=v.split("|").map(s=>s.trim());return /^https:\/\//.test(src||"")?{src,credit:credit||"",link:/^https:\/\//.test(link||"")?link:"",key:"lp-"+x.id}:null}
+// a recipe's finished picture from our own picture set, kept as finished_<recipe> in the picture library, stands in
+// place of any photo line, read once with the sign-in and kept for the session (November 5, 2026)
+const libFinUrls=new Map();let libFinT=0;
+function libFinished(x){const k="finished_"+String((x&&x.id)||"").replace(/-/g,"_");const P=(typeof libData!=="undefined"&&libData&&libData.pictures)||{};if(!x||x.kind!=="recipe"||!P[k]||P[k].from!=="library")return undefined;
+  if(libFinUrls.has(k))return libFinUrls.get(k);libFinUrls.set(k,"");
+  fetch(window.FP_SERVER+"/api/staff/library/img",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+(localStorage.getItem("fp-token")||"")},body:JSON.stringify({name:k})}).then(r=>r.ok?r.blob():null).then(b=>{if(!b||!b.size)return;libFinUrls.set(k,URL.createObjectURL(b));clearTimeout(libFinT);libFinT=setTimeout(()=>{if(typeof renderMain==="function"&&(view==="recipes"||view==="kitchen"))renderMain()},250)}).catch(()=>{});return ""}
+function libPhoto(x){const fin=libFinished(x);if(fin!==undefined)return fin?{src:fin,credit:"",link:"",key:"fin-"+x.id}:null;const v=String(((x&&x.meta)||{}).photo||"");if(!v)return null;const [src,credit,link]=v.split("|").map(s=>s.trim());return /^https:\/\//.test(src||"")?{src,credit:credit||"",link:/^https:\/\//.test(link||"")?link:"",key:"lp-"+x.id}:null}
 function libPhotoHtml(x){const p=libPhoto(x);if(!p)return "";return `<img src="${esc(p.src)}" alt="${esc(x.title)}" loading="lazy" style="width:100%;max-width:420px;border-radius:12px;display:block;margin:8px 0 4px">${p.credit?`<div class="cnt" style="margin-bottom:8px">${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.credit)}</a>`:esc(p.credit)}</div>`:""}`}
 const libPhotoBlocks=x=>{const p=libPhoto(x);return p?[{t:"photo",key:p.key,src:p.src,maxH:260},...(p.credit?[dText("",p.credit)]:[])]:[]};
 function recipeCard(x){const parts=(x.parts||[]).filter(p=>!/^(ingredients|tools|steps)$/i.test(p.key));const fr=recKindOf(x)==="food"?gdnFoodRuleText():"";
