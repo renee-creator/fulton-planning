@@ -952,7 +952,7 @@ window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];i
   }
   // the Today screen asks the calendar for today's entries, and the Conferences and Calendar pages inside TREE share this sign-in
   // while the director sees TREE as an educator, only reading is allowed, so a sign-up or passcode change is never made
-  const VA_READ=["/api/data","/api/transition/nextschool","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person","/api/staff/g/boot","/api/staff/g/mine","/api/staff/g/moments","/api/staff/g/modules","/api/staff/g/pd/list","/api/staff/g/schedule","/api/staff/g/readings","/api/staff/g/pd/today","/api/staff/g/pd/list","/api/staff/g/pd/team","/api/notes","/api/staff/ideabank","/api/staff/garden","/api/staff/sitemap","/api/staff/library"];
+  const VA_READ=["/api/data","/api/watch/page","/api/transition/nextschool","/api/changes","/api/view","/api/drdp-levels","/api/read","/api/accounts","/api/signup-feed","/api/save-now","/api/kitchen-week","/api/staff/boot","/api/staff/pd","/api/staff/handbook","/api/staff/person","/api/staff/g/boot","/api/staff/g/mine","/api/staff/g/moments","/api/staff/g/modules","/api/staff/g/pd/list","/api/staff/g/schedule","/api/staff/g/readings","/api/staff/g/pd/today","/api/staff/g/pd/list","/api/staff/g/pd/team","/api/notes","/api/staff/ideabank","/api/staff/garden","/api/staff/sitemap","/api/staff/library"];
   window.FP_API=(path,body)=>{ if(window.TREE_VIEW_AS&&!VA_READ.includes(path)) return Promise.reject(Object.assign(new Error("Nothing is saved while you see TREE as "+window.TREE_VIEW_AS.name+"."),{code:"view_as"})); return api(path,body); };
   window.FP_SERVER=SERVER;
   function notify(){ for(const l of [...Store.listeners]) try{ l(); }catch(e){ console.error(e); } }
@@ -1355,7 +1355,15 @@ const DATE_FMT=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",year:
 function fmtDate(s){if(!s)return"";const k=String(s);let v=fmtDateMemo.get(k);if(v==null){v=DATE_FMT.format(parseIso(s));if(fmtDateMemo.size>5000)fmtDateMemo.clear();fmtDateMemo.set(k,v)}return v}
 function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+/* the program watch hears of errors in this page, and of the messages that tell someone something could not be done,
+   once each for each time TREE is opened. The server counts them, and the director gets a plan of correction. */
+const watchSent=new Set();
+function watchReport(kind,text,src){try{if(!window.FP_HOSTED||!window.FP_API||!window.FP_NAME||!window.FP_NAME())return;const k=kind+"|"+text;if(!text||watchSent.has(k)||watchSent.size>40)return;watchSent.add(k);
+  window.FP_API("/api/watch/page",{kind,text:String(text).slice(0,200),src:String(src||"").slice(0,200),view:typeof view==="string"?view:""}).catch(()=>{})}catch(e){}}
+window.addEventListener("error",e=>{if(e&&e.message)watchReport("error",e.message,(e.filename||"")+":"+(e.lineno||""))});
+// a refused request is already counted by the server, so only a page's own mistakes are sent from here
+window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;if(!r||r.code)return;watchReport("error",r.message||String(r),r.stack?String(r.stack).split("\n")[1]||"":"")});
+function toast(msg){watchReport("message",msg);const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
 // a message with one button, such as Undo after a change made on several observations at once
 function toastAct(msg,label,fn){const t=$("#toast");t.textContent=msg+" ";const b=document.createElement("button");b.type="button";b.className="toastbtn";b.textContent=label;
   b.onclick=()=>{t.hidden=true;fn()};t.append(b);t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,9000)}
@@ -2292,7 +2300,7 @@ document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.sett
 const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
 function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
-  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="calendar"||REM_GO.go==="conferences"){view=REM_GO.go;currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}else if(REM_GO.go==="pdlibrary"){view="stpd";currentId=null}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="watch"&&isDirector()){view="settings";try{setOpen="Program watch"}catch(e){}}else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="calendar"||REM_GO.go==="conferences"){view=REM_GO.go;currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}else if(REM_GO.go==="pdlibrary"){view="stpd";currentId=null}
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
@@ -4884,7 +4892,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="9c25198a0956";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="12c53b000dd1";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -16082,6 +16090,24 @@ let srvStat=null,srvStatBusy=false;
 function serverStatusHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
   if(!srvStat&&!srvStatBusy){srvStatBusy=true;window.FP_API("/api/server-status",{}).then(j=>{srvStat=j},()=>{srvStat={lines:[]}}).finally(()=>{srvStatBusy=false;if(view==="settings"&&$("#srvstat"))$("#srvstat").outerHTML=serverStatusHtml()})}
   return `<section class="card" id="srvstat"><div class="lbl">Server status</div>${srvStat?(srvStat.lines||[]).map(x=>`<div class="cnt" style="color:${x.ok?"var(--ink)":"var(--clay)"}">${x.ok?"Working.":"Needs attention."} ${esc(x.text)}</div>`).join(""):`<div class="cnt">Reading</div>`}</section>`}
+/* Program watch, for the director. What TREE noticed in the last day, glitches, user errors, slow pages and jobs that
+   could not run, each with a plan of correction. Marking one handled hides it until the trouble happens again. */
+let watchInfo=null,watchBusy=false;
+const WATCH_SEV={urgent:"Urgent",high:"High",medium:"Medium",low:"Low"};
+function watchLoad(path,body){if(watchBusy)return;watchBusy=true;window.FP_API(path||"/api/watch",body||{}).then(j=>{watchInfo=j},e=>{watchInfo={findings:[],error:e&&e.message||"The program watch could not be read."}}).finally(()=>{watchBusy=false;if(view==="settings"&&$("#watchcard"))$("#watchcard").outerHTML=programWatchHtml()})}
+function programWatchHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
+  if(!watchInfo){watchLoad();return `<section class="card" id="watchcard"><div class="lbl">Program watch</div><div class="cnt">Reading</div></section>`}
+  const fs=watchInfo.findings||[];
+  const card=f=>`<details class="watchf" style="border-top:1px solid var(--line);padding:8px 0"><summary><b>${esc(f.title)}</b> <span class="cnt">${esc(f.type)}, ${esc(WATCH_SEV[f.severity]||f.severity)}. ${f.count} time${f.count===1?"":"s"}${f.people?`, ${f.people} ${f.people===1?"person":"people"}`:""}, last ${esc(f.lastText||"")}.</span></summary>
+    <div class="cnt" style="margin:6px 0">${esc(f.text)}${/[.!?]$/.test(f.text||"")?"":"."}${f.where&&f.where.length?` <span style="color:var(--mute,inherit)">On ${esc(f.where.join(", "))}.</span>`:""}</div>
+    <div class="lbl" style="margin-top:6px">Plan of correction</div><ol style="margin:4px 0 8px 20px;padding:0">${(f.plan||[]).map(x=>`<li class="cnt">${esc(x)}</li>`).join("")}</ol>
+    <div class="actions"><button class="btn small" data-watchdone="${esc(f.key)}">Mark handled</button></div></details>`;
+  return `<section class="card" id="watchcard"><div class="lbl">Program watch</div>
+    <div class="hint">TREE watches itself all day for glitches, user errors, slow pages and jobs that could not run. Each morning at 7 what it found in the last day comes to your phone with a plan of correction${watchInfo.lastReport?`, last on ${esc(new Date(watchInfo.lastReport.at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}`:""}.</div>
+    ${watchInfo.error?`<div class="cnt" style="color:var(--clay)">${esc(watchInfo.error)}</div>`:fs.length?fs.map(card).join(""):`<div class="cnt">Nothing needs correcting right now.</div>`}
+    <div class="actions"><button class="linkbtn" data-watchnow="1">Look again now</button></div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-watchdone],[data-watchnow]");if(!t||view!=="settings")return;
+  if(t.dataset.watchdone){watchLoad("/api/watch/handled",{key:t.dataset.watchdone});toast("Marked handled. It comes back only if it happens again.")}else watchLoad()});
 function keepingHtml(){if(!window.FP_HOSTED||!isDirector())return"";if(!keepInfo){keepLoad();return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">Reading</div></section>`}
   if(keepInfo.error)return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">${esc(keepInfo.error)}</div></section>`;
   const K=keepInfo,S=K.sources||{};
@@ -16347,7 +16373,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 // the Settings card left open, which another page or a link may set before Settings has loaded
 let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
-function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","bc52588af3").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","d5aa413b73").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

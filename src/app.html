@@ -1004,7 +1004,15 @@ const DATE_FMT=new Intl.DateTimeFormat("en-US",{month:"long",day:"numeric",year:
 function fmtDate(s){if(!s)return"";const k=String(s);let v=fmtDateMemo.get(k);if(v==null){v=DATE_FMT.format(parseIso(s));if(fmtDateMemo.size>5000)fmtDateMemo.clear();fmtDateMemo.set(k,v)}return v}
 function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+/* the program watch hears of errors in this page, and of the messages that tell someone something could not be done,
+   once each for each time TREE is opened. The server counts them, and the director gets a plan of correction. */
+const watchSent=new Set();
+function watchReport(kind,text,src){try{if(!window.FP_HOSTED||!window.FP_API||!window.FP_NAME||!window.FP_NAME())return;const k=kind+"|"+text;if(!text||watchSent.has(k)||watchSent.size>40)return;watchSent.add(k);
+  window.FP_API("/api/watch/page",{kind,text:String(text).slice(0,200),src:String(src||"").slice(0,200),view:typeof view==="string"?view:""}).catch(()=>{})}catch(e){}}
+window.addEventListener("error",e=>{if(e&&e.message)watchReport("error",e.message,(e.filename||"")+":"+(e.lineno||""))});
+// a refused request is already counted by the server, so only a page's own mistakes are sent from here
+window.addEventListener("unhandledrejection",e=>{const r=e&&e.reason;if(!r||r.code)return;watchReport("error",r.message||String(r),r.stack?String(r.stack).split("\n")[1]||"":"")});
+function toast(msg){watchReport("message",msg);const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
 // a message with one button, such as Undo after a change made on several observations at once
 function toastAct(msg,label,fn){const t=$("#toast");t.textContent=msg+" ";const b=document.createElement("button");b.type="button";b.className="toastbtn";b.textContent=label;
   b.onclick=()=>{t.hidden=true;fn()};t.append(b);t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,9000)}
@@ -1941,7 +1949,7 @@ document.addEventListener("change",e=>{if(view!=="settings"||!remSt||!remSt.sett
 const REM_GO=(()=>{try{const q=new URLSearchParams(location.search);return {plan:q.get("plan")||"",go:q.get("go")||""}}catch(e){return {plan:"",go:""}}})();
 function remGoNow(){if(!REM_GO.plan&&!REM_GO.go)return true;
   if(REM_GO.plan){if(!plans.has(REM_GO.plan))return false;currentId=REM_GO.plan;view="plans";week=plans.get(currentId).weekOf}
-  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="calendar"||REM_GO.go==="conferences"){view=REM_GO.go;currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}else if(REM_GO.go==="pdlibrary"){view="stpd";currentId=null}
+  else if(REM_GO.go==="moments")view="moments";else if(REM_GO.go==="reminders"&&isDirector())view="settings";else if(REM_GO.go==="watch"&&isDirector()){view="settings";try{setOpen="Program watch"}catch(e){}}else if(REM_GO.go==="plans"){view="plans";currentId=null}else if(REM_GO.go==="today"){view="today";currentId=null}else if(REM_GO.go==="calendar"||REM_GO.go==="conferences"){view=REM_GO.go;currentId=null}else if(REM_GO.go==="records"){view=isDirector()?"stteam":"strec";currentId=null}else if(REM_GO.go==="journal"){view="stjour";currentId=null}else if(REM_GO.go==="pdday"){view="stpdd";currentId=null}else if(REM_GO.go==="pdlibrary"){view="stpd";currentId=null}
   LS.set("fps.view",view);REM_GO.plan="";REM_GO.go="";try{history.replaceState(null,"",location.pathname)}catch(e){}renderAll();jumpTop();return true}
 {let tries=0;const t=setInterval(()=>{tries++;if((window.FP_NAME&&window.FP_NAME()&&remGoNow())||tries>60)clearInterval(t)},1000)}
 setInterval(()=>{try{remindersGate()}catch(e){}},15000);setTimeout(()=>{try{remindersGate()}catch(e){}},3000);
@@ -15701,6 +15709,24 @@ let srvStat=null,srvStatBusy=false;
 function serverStatusHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
   if(!srvStat&&!srvStatBusy){srvStatBusy=true;window.FP_API("/api/server-status",{}).then(j=>{srvStat=j},()=>{srvStat={lines:[]}}).finally(()=>{srvStatBusy=false;if(view==="settings"&&$("#srvstat"))$("#srvstat").outerHTML=serverStatusHtml()})}
   return `<section class="card" id="srvstat"><div class="lbl">Server status</div>${srvStat?(srvStat.lines||[]).map(x=>`<div class="cnt" style="color:${x.ok?"var(--ink)":"var(--clay)"}">${x.ok?"Working.":"Needs attention."} ${esc(x.text)}</div>`).join(""):`<div class="cnt">Reading</div>`}</section>`}
+/* Program watch, for the director. What TREE noticed in the last day, glitches, user errors, slow pages and jobs that
+   could not run, each with a plan of correction. Marking one handled hides it until the trouble happens again. */
+let watchInfo=null,watchBusy=false;
+const WATCH_SEV={urgent:"Urgent",high:"High",medium:"Medium",low:"Low"};
+function watchLoad(path,body){if(watchBusy)return;watchBusy=true;window.FP_API(path||"/api/watch",body||{}).then(j=>{watchInfo=j},e=>{watchInfo={findings:[],error:e&&e.message||"The program watch could not be read."}}).finally(()=>{watchBusy=false;if(view==="settings"&&$("#watchcard"))$("#watchcard").outerHTML=programWatchHtml()})}
+function programWatchHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
+  if(!watchInfo){watchLoad();return `<section class="card" id="watchcard"><div class="lbl">Program watch</div><div class="cnt">Reading</div></section>`}
+  const fs=watchInfo.findings||[];
+  const card=f=>`<details class="watchf" style="border-top:1px solid var(--line);padding:8px 0"><summary><b>${esc(f.title)}</b> <span class="cnt">${esc(f.type)}, ${esc(WATCH_SEV[f.severity]||f.severity)}. ${f.count} time${f.count===1?"":"s"}${f.people?`, ${f.people} ${f.people===1?"person":"people"}`:""}, last ${esc(f.lastText||"")}.</span></summary>
+    <div class="cnt" style="margin:6px 0">${esc(f.text)}${/[.!?]$/.test(f.text||"")?"":"."}${f.where&&f.where.length?` <span style="color:var(--mute,inherit)">On ${esc(f.where.join(", "))}.</span>`:""}</div>
+    <div class="lbl" style="margin-top:6px">Plan of correction</div><ol style="margin:4px 0 8px 20px;padding:0">${(f.plan||[]).map(x=>`<li class="cnt">${esc(x)}</li>`).join("")}</ol>
+    <div class="actions"><button class="btn small" data-watchdone="${esc(f.key)}">Mark handled</button></div></details>`;
+  return `<section class="card" id="watchcard"><div class="lbl">Program watch</div>
+    <div class="hint">TREE watches itself all day for glitches, user errors, slow pages and jobs that could not run. Each morning at 7 what it found in the last day comes to your phone with a plan of correction${watchInfo.lastReport?`, last on ${esc(new Date(watchInfo.lastReport.at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}`:""}.</div>
+    ${watchInfo.error?`<div class="cnt" style="color:var(--clay)">${esc(watchInfo.error)}</div>`:fs.length?fs.map(card).join(""):`<div class="cnt">Nothing needs correcting right now.</div>`}
+    <div class="actions"><button class="linkbtn" data-watchnow="1">Look again now</button></div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-watchdone],[data-watchnow]");if(!t||view!=="settings")return;
+  if(t.dataset.watchdone){watchLoad("/api/watch/handled",{key:t.dataset.watchdone});toast("Marked handled. It comes back only if it happens again.")}else watchLoad()});
 function keepingHtml(){if(!window.FP_HOSTED||!isDirector())return"";if(!keepInfo){keepLoad();return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">Reading</div></section>`}
   if(keepInfo.error)return `<section class="card"><div class="lbl">Keeping records</div><div class="cnt">${esc(keepInfo.error)}</div></section>`;
   const K=keepInfo,S=K.sources||{};
@@ -15970,7 +15996,7 @@ let setOpen="";
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Museums and cultural places","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
-  ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
+  ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status","Program watch"]]];
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
@@ -15994,6 +16020,7 @@ function setStatus(t,x){try{
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
   if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
   if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
+  if(t==="Program watch")return watchInfo&&watchInfo.findings?watchInfo.findings.length?plural(watchInfo.findings.length,"thing")+" to correct":"Nothing to correct":"";
   if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
   if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
   if(t==="Keeping records")return keepInfo&&!keepInfo.error?[keepInfo.childYears?`Children's records ${keepInfo.childYears} years`:"Children's records not set",keepInfo.staffYears?`staff ${keepInfo.staffYears} years`:"staff not set"].join(", "):"";
@@ -16034,7 +16061,7 @@ function renderSettings(){
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
-  ${keepingHtml()}${serverStatusHtml()}
+  ${keepingHtml()}${serverStatusHtml()}${programWatchHtml()}
   ${storyFramesHtml()}
   ${releasesHtml()}${displayHtml()}
   ${backupHtml()}

@@ -55,7 +55,7 @@ const forViewer = (kind, doc, director, office) => {
   return doc;
 };
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
-const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes'];
+const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy', 'byDirector'];
 // every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
@@ -84,7 +84,9 @@ const writeCids = new Map(), originalsComing = new Map();
 function cidSeen(k) { writeCids.set(k, Date.now()); if (writeCids.size > 5000) writeCids.delete(writeCids.keys().next().value); }
 
 /* ---------- helpers ---------- */
-const log = (...a) => console.log(new Date().toISOString(), ...a);
+// every line the server logs is also read by the program watch, which counts the ones that tell of trouble
+let watchLog = null;
+const log = (...a) => { console.log(new Date().toISOString(), ...a); if (watchLog) try { watchLog(a); } catch (e) {} };
 function cleanKey(raw) { return String(raw || '').replace(/[\s"'​-‍﻿]/g, ''); }
 function githubToken() { return cleanKey(process.env.GITHUB_TOKEN); }
 function anthropicKey() {
@@ -513,6 +515,27 @@ async function mailText(to, subject, body) {
   if (!r.ok) throw new Error('The mailbox answered ' + r.status);
 }
 const familyPage = require('./family.js')({ mailText, community: () => communityOut('family'), volunteer: { forFamily: () => staff.volunteer.forFamily(), job: id => staff.volunteer.job(id), slotCard: (id, signed) => staff.volunteer.slotCard(id, signed) }, released: it => gthReleased(it), recipeOf: id => staff.recipeForFamily(id), addRecipe: (who, b) => staff.library.add(who, b, 'family'), wording: id => staff.wordingDoc(id), store, log, sign, photoSrc: id => photoSrc(id), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), mailCode, keepPhoto: (id, buf) => keepOriginal(id, buf, 'image/jpeg', 'All About Me photo from the Family page'), handbook: () => staff.handbook, walks: () => staff.walksForFamily(), garden: () => staff.garden.forFamily(), siteMap: () => staff.garden.siteMap(calendar.spaces(), false), pieces: () => staff.familyPiecesForFamily(), ideasOn: () => { try { return !!staff.ideabank.familyOn(); } catch (e) { return false; } } });
+/* The program watch. It counts glitches, user errors, slow pages, failing jobs and a red server status, and each morning
+   sends the director a plan of correction, by phone and, with WATCH_EMAIL set, by email. See watch.js. */
+const watch = require('./watch.js')({
+  log, statusLines: () => statusLines(),
+  notify: async msg => { for (const d of accounts.list.filter(a => isDirector(a.name)).map(a => a.name)) await reminders.sendTo(d, msg); },
+  mail: process.env.WATCH_EMAIL ? (subject, body) => mailText(process.env.WATCH_EMAIL, subject, body) : null,
+  save: doc => { const cur = store.recs.settings.get('watch'); store.recs.settings.set('watch', { doc: Object.assign({ id: 'watch' }, doc, { updatedByName: 'Program watch', savedAt: Date.now() }), sha: cur && cur.sha, path: 'settings/watch.json', local: true }); noteChange('settings', 'watch'); scheduleSave('settings', 'watch'); },
+  scrub: text => watchScrub(text),
+});
+watchLog = a => watch.fromLog(a);
+// names of children, families and staff are taken out of anything the watch shows outside TREE
+function watchScrub(text) {
+  let t = String(text || ''); const names = new Set();
+  for (const r of store.recs.children.values()) if (r && r.doc) for (const n of [r.doc.first, r.doc.last, r.doc.preferred]) if (n && String(n).trim().length > 1) names.add(String(n).trim());
+  for (const a of accounts.list || []) for (const n of String(a.name || '').split(/\s+/)) if (n.length > 1) names.add(n);
+  for (const n of [...names].sort((a, b) => b.length - a.length)) t = t.replace(new RegExp('\\b' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), '[name]');
+  return t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email]');
+}
+// the counts kept in the records are read once the records are, and every ten minutes the watch looks again
+async function watchTick() { if (!watch.isLoaded() && store.ready) { const r = store.recs.settings.get('watch'); watch.load(r && !r.deleted ? r.doc : null); } await watch.tick(); }
+setInterval(() => { watchTick().catch(e => log('Program watch could not look', e.message)); }, 10 * 60e3).unref();
 const feedBin = require('./feed-bin.js')({ store, log, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name), digest: b => menuIntake.fromDigest(b), store, log, gh, repo: RECORDS_REPO, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), cacheFile: (id, b) => cacheFile(id, b), accountFor: n => accountFor(n), educatorNames: () => teacherNames(), keepInDrive: (id, b, t) => photosDrive.keep(id, b, t), onNotice: id => { queueThreadSuggest(id); placeSoon(id); queueSort(id, 'kaymbu'); } });
 // video clips from the Video folder or the TREE address become draft observations, read once by Google's Gemini API, when the director has turned Video clips on
@@ -2351,9 +2374,16 @@ function jsonText(req, res, status, body) {
   }
   send(req, res, status, { 'Content-Type': 'application/json; charset=utf-8' }, body);
 }
-function err(req, res, status, message) { json(req, res, status, { error: message }); }
+function err(req, res, status, message) {
+  // each refusal is counted by the program watch, so the same trouble for many people becomes a plan of correction
+  if (status !== 405 && typeof watch !== 'undefined') try { let name = ''; try { const s = readSession(req); name = s ? s.name : ''; } catch (e) {} watch.refused(req.url, status, message, name || who(req)); } catch (e) {}
+  json(req, res, status, { error: message });
+}
 // the nightly backup holds every record, so it has its own key, BACKUP_KEY on Render. Until that is set it uses the inbox key.
 let backupKeyNoted = false;
+// a page's own reports to the program watch, at most twenty a minute for each person, so a page in a loop cannot flood it
+const pageReports = new Map();
+function pageReportOk(name) { const t = Date.now(), k = String(name || '').toLowerCase(); const r = pageReports.get(k); if (!r || t - r.at > 60000) { pageReports.set(k, { at: t, n: 1 }); return true; } return ++r.n <= 20; }
 function backupKey() {
   const own = cleanKey(process.env.BACKUP_KEY); if (own) return own;
   if (!backupKeyNoted) { backupKeyNoted = true; log('The backup uses the inbox key. Set BACKUP_KEY on Render and in the backup script to give it its own.'); }
@@ -2693,6 +2723,14 @@ async function handle(req, res) {
     send(req, res, 200, Object.assign({ 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' }, open), buf);
     return;
   }
+  // the program watch's findings for the monitoring agent outside TREE, with its own key, WATCH_KEY on Render. Names are taken out.
+  if (req.method === 'GET' && path === '/watch/report') {
+    const key = cleanKey(process.env.WATCH_KEY), given = cleanKey(req.headers['x-tree-key'] || '');
+    if (!key || !given || !sameText(given, key)) { json(req, res, 403, { error: 'Not allowed' }); return; }
+    if (!store.ready) await loadAll();
+    try { await watchTick(); } catch (e) {}
+    json(req, res, 200, Object.assign(watch.view(true), { status: statusLines().map(([ok, text]) => ({ ok: !!ok, text: watchScrub(text) })), bootId: BOOT_ID, up: Math.round(process.uptime()) })); return;
+  }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
   // the mailbox script's key, when it rides in a header or the address, is checked before a large email is read
   if (path.startsWith('/inbound/')) {
@@ -2910,7 +2948,7 @@ async function handle(req, res) {
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
-    const OPEN = ['/api/data', '/api/file-key', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const OPEN = ['/api/data', '/api/watch/page', '/api/file-key', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
     // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
     const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
@@ -2919,7 +2957,7 @@ async function handle(req, res) {
   // families or other staff is sent to that sign-in, and every other request is refused here.
   const newHire = staff.isNewHire(me.name);
   if (newHire) {
-    const OPEN = ['/api/data', '/api/file-key', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
+    const OPEN = ['/api/data', '/api/watch/page', '/api/file-key', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
     if (!OPEN.includes(path) && !path.startsWith('/api/staff/')) { log('New educator sign-in refused', me.name, path); err(req, res, 403, 'This opens once the director turns on full access.'); return; }
     if (path === '/api/data') { json(req, res, 200, { bootId: BOOT_ID, rev, me: me.name, director: false, newHire: true, staff: staff.bootInfo(me.name), data: {} }); return; }
     if (path === '/api/changes') { json(req, res, 200, { bootId: BOOT_ID, rev, changes: {}, newHire: true }); return; }
@@ -2930,6 +2968,11 @@ async function handle(req, res) {
   if (path === '/api/push/subscribe') { if (!reminders.subscribe(me.name, body.sub, req.headers['user-agent'])) { err(req, res, 400, 'This phone could not turn reminders on.'); return; } json(req, res, 200, { ok: true }); return; }
   if (path === '/api/family/pacwelcome') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends the welcome.'); return; } const r = await familyPage.pacWelcome(String(body.email || '')); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
   if (path === '/api/server-status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the server status.'); return; } json(req, res, 200, { lines: statusLines().map(([ok, text]) => ({ ok: !!ok, text })) }); return; }
+  // the program watch. Any page reports its own errors and the trouble messages it showed, a few each minute at most,
+  // and the director reads the findings with their plans of correction and marks one handled once it is done
+  if (path === '/api/watch/page') { if (pageReportOk(me.name)) watch.fromPage(body, me.name); json(req, res, 200, { ok: true }); return; }
+  if (path === '/api/watch') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the program watch.'); return; } try { await watchTick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }
+  if (path === '/api/watch/handled') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director marks a finding handled.'); return; } const k = String(body.key || '').slice(0, 300); if (!k) { err(req, res, 400, 'Choose a finding first.'); return; } if (body.undo) watch.reopen(k); else watch.handle(k, me.name); try { await watch.tick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }
   if (path === '/api/notify/status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees reminders.'); return; } json(req, res, 200, reminders.status()); return; }
   if (path === '/api/notify/test') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends a test.'); return; }
     const r = await reminders.sendTo(String(body.name || me.name), { title: 'TREE', body: 'Reminders from TREE reach this phone.', url: 'tree.html', tag: 'tree-test' }); json(req, res, 200, r); return; }
@@ -3627,7 +3670,7 @@ function parseIcs(text) {
     .filter(e => e.date).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
-const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('finish', () => { const ms = Date.now() - t0; if (ms > 3000) log('Slow request', req.method, String(req.url).split('?')[0], ms + ' ms'); }); handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
+const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('finish', () => { const ms = Date.now() - t0; if (ms > 3000) { log('Slow request', req.method, String(req.url).split('?')[0], ms + ' ms'); try { watch.slow(req.url, ms); } catch (e) {} } }); handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
 server.on('clientError', (e, socket) => { try { socket.destroy(); } catch (x) {} });
 process.on('uncaughtException', e => log('Unexpected error, server kept running', e && e.stack));
 process.on('unhandledRejection', e => log('Unexpected rejection, server kept running', e));

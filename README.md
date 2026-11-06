@@ -474,12 +474,23 @@ The Kitchen, the family newsletter, the Farm to School grant and Settings load o
 | `ANTHROPIC_MODEL`, `ANTHROPIC_CAREFUL_MODEL` | Optional. The model for quick writing help and the model for careful readings, tried before TREE's own list |
 | `SUGGEST_PER_HOUR` | Optional. How many observations an hour are read for a thread they may belong to |
 | `WRITE_GAP_MS`, `FLUSH_DELAY_MS` | Optional. The pause between saves to GitHub, and the quiet time before a record is saved. A record still changing is saved at least once a minute. |
+| `WATCH_EMAIL` | Optional. Where the program watch emails its plan of correction each morning, through the same mailbox script as family email. Without it the plan comes to the director's phone and Settings only. |
+| `WATCH_KEY` | Optional. A long secret. With it the monitoring agent reads the program watch's findings at `/watch/report`, with every name taken out. |
 
 ## One-time steps
 
 Some changes to records run once, by themselves, the first time the server starts after they arrive, and each is marked done in the records under settings/once. Among them are the educator list, plan defaults, the training links, the Know Your Rights notice for 2026, and School words, the wording page for the nut free line, the family welcome letter and the staff room display's rest hours. A step that cannot run yet, such as one waiting for the educator records to load, tries again at the next start.
 
 The one-time step freeStories adds eight classic stories as draft read-alouds, from the list once/free-stories.json kept in the code, since their words are free to share. Each keeps its own words in full, names its author and year, and has our reading guide, I wonder and Connections. A page already in the records is never written over.
+
+## Program watch
+
+TREE watches itself all day, and a monitoring agent watches TREE from outside each morning. Both look for glitches, user errors, places to improve and be more efficient, and challenges, and both tell the director what needs correcting with a plan of correction.
+
+- **Inside the server**, watch.js counts errors on the server, errors in a page on someone's phone or computer, requests TREE refused with a message, the messages a page shows when something could not be done, requests slower than three seconds, background jobs that could not run, and parts of the server status that turn red. A person is counted, never named, and the counts are kept in the records as settings/watch, so a server that sleeps keeps them.
+- **Each morning at 7**, what was found in the last day becomes findings. Each says what happened, how often, for how many people and where, and carries a plan of correction. The director gets them on the phone and, with `WATCH_EMAIL` set, by email. A failing save, or the same server error five times within an hour, is sent straight away, at most once every six hours. One-offs are left out. The same refusal needs five times or three people before it becomes a finding.
+- **In Settings, Program watch**, the director reads every finding and its plan, and marks one handled once it is done. A handled finding comes back only if the trouble happens again.
+- **The monitoring agent** is a scheduled Claude Code session that follows tools/watch-agent.md every morning. It runs `node tools/watch-check.js` and the tests, reads the server's logs on Render and the program watch's report at `/watch/report` with `WATCH_KEY`, reads the last day's changes, and opens a GitHub issue labelled program-watch with a plan of correction when something needs correcting. It never changes TREE by itself, and never writes a name into an issue.
 
 ## Who can do what
 
