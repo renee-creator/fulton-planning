@@ -2063,7 +2063,7 @@ const THREAD_GUIDE="\nThis plan follows the threads below. Keep the writing conn
 function threadsForClaude(p){const ths=planThreads(p).map(c=>c.t);if(!ths.length)return"";
   return "\n\nThreads this plan follows. Each question is the educators' hypothesis, never the children's voice. Quotes, moments and reflections are educators' own words."+THREAD_GUIDE+"\n"+ths.map(t=>{const last=threadLastRemarks(t,p.id);
     return JSON.stringify({name:t.name,question:t.question||"",team_notes:tNotes(t),seen:weeksSpan(t.weeks||[])||"",quotes:(t.evidence||[]).filter(e=>e.planId!==p.id).slice(-6).map(e=>e.text),
-      moments:threadNotices(t).slice(0,8).map(n=>[String(n.noticed||"").trim(),has(n.wonder)?"I wonder. "+String(n.wonder).trim():""].filter(Boolean).join(" ")),
+      moments:threadNotices(t).slice(0,8).map(n=>[String(n.noticed||"").trim(),has(n.wonder)?"Educator wonder or note. "+String(n.wonder).trim():""].filter(Boolean).join(" ")),
       last_reflection:last?last.text:""})}).join("\n")}
 function webHasContent(w){return !!(w&&(String(w.focus||"").trim()||(w.branches||[]).some(b=>String(b.name||"").trim())))}
 function webSuggestHtml(p){
@@ -4884,7 +4884,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="2fd70691ceb3";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="377de6adc4ee";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5655,7 +5655,7 @@ function wonderTodayHtml(){if(isDirector()||isOffice()||VIEW_AS||isKitchenUser()
   const n=[...notices.values()].filter(n=>n.kaymbu&&iso(new Date(n.at||0))===day&&!has(n.wonder)&&((m&&String(n.by||"").trim().toLowerCase()===m)||(rm&&momentIn(n,rm)))).sort((a,b)=>(b.at||0)-(a.at||0))[0];
   if(!n)return "";
   return `<details class="card tfold" id="wondertoday" style="margin-top:14px"><summary><b>Add a wonder to today's photo</b><span class="cnt">${esc(firstLine(n.noticed,60))}</span></summary>
-    <div class="cnt" style="margin-top:6px">A question it raises, or a note for the team, in a line or two.</div>
+    <div class="cnt" style="margin-top:6px">I wonder, educator notes or relevant context, in a line or two.</div>
     <div class="actions"><button class="btn small" data-wonderadd="${esc(n.id)}">Add a wonder</button><button class="linkbtn" data-wonderskip="1">Not today</button></div></details>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wonderadd],[data-wonderskip]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();
   LS.set("tree.wonderask",iso(new Date()));
@@ -8660,12 +8660,9 @@ const noClassPill=()=>{const k=[...notices.values()].filter(n=>!momentRooms(n).l
 const momentRoomsText=n=>{const r=momentRooms(n);return r.length?r.join(" and ")+(r.length>1?" classes":" class"):""};
 function noticesFor(room,since){return [...notices.values()].filter(n=>momentIn(n,room)&&(!since||(n.at||0)>=since)).sort((a,b)=>(b.at||0)-(a.at||0))}
 function noticeText(n){const a=String(n.noticed||"").trim(),b=String(wonderLine(n.wonder)||"").trim();return a&&b?a+(/[.!?"”)]$/.test(a)?" ":". ")+b:a||b}
-// educators write the wonder as a fragment as often as a sentence, so the words join into one readable line either way
-function wonderLine(w){const t=String(w||"").trim();if(!t)return"";
-  if(/^i\s+wonder\b/i.test(t))return t[0].toUpperCase()+t.slice(1);
-  // a wonder already written as a question prints as written
-  if(/\?["”’)]?$/.test(t)||/^(what|why|how|when|where|who|whom|whose|which)\b/i.test(t))return t[0].toUpperCase()+t.slice(1);
-  return "I wonder "+(/^[A-Z][a-z]/.test(t)?t[0].toLowerCase()+t.slice(1):t)}
+// the What I wonder box holds I wonder, educator notes or relevant context, so it shows and prints exactly as the educator
+// wrote it, with only its first letter raised (November 5, 2026)
+function wonderLine(w){const t=String(w||"").trim();if(!t)return"";return t[0].toUpperCase()+t.slice(1)}
 /* --- A photo of children's words, such as chart paper from a group conversation or a story told together.
    The photo is kept with the moment. TREE copies the writing into What I noticed exactly as it is written, with each
    child's name, and marks what it could not read. What I wonder is never written for the educator. Several photos
@@ -8919,7 +8916,7 @@ function noticeFormCard(){
         <details class="nfwhat"><summary class="cnt">What is an observation?</summary><div class="cnt" style="margin-top:4px">An observation is not tied to this week and does not have to be used this week. It waits in the record until a thread, a project, or the lens comes round to it.</div></details>`}
     ${clipLineHtml(n)}
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${n.clip?"The children's words and what they did, from the clip. Trim it to what matters.":ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
-    <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="Optional. A question it raises, or a note for the team">${esc(n.wonder)}</textarea></label>
+    <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="I wonder, educator notes or relevant context">${esc(n.wonder)}</textarea></label>
     <div class="actions" style="margin-top:2px;flex-wrap:wrap" role="group" aria-label="Class"><span class="cnt">Class</span>${CLASSROOMS.map(r=>`<label class="radio" style="display:inline-flex"><input type="checkbox" data-nfroomck="${esc(r)}" ${obsRoomsChosen(n).includes(r)?"checked":""}><span>${esc(r)}</span></label>`).join("")}</div>
     <div class="fld-label" id="nf-kids">${kidsAreaHtml(n)}</div>
     ${ph||many?`<div class="actions" style="margin-top:0">${addBtn}<span class="cnt">Another photo of the same moment joins this observation.</span></div>`:""}
@@ -15551,7 +15548,7 @@ function tsFlush(id){clearTimeout(tsTimer[id]);const w=tsWait[id];delete tsWait[
 function tsSources(c){const seen=new Set(),obs=[];
   for(const n of kidMoments(c).filter(n=>kidTagged(c,n)&&kidInPortfolio(c,"notices",n.id)&&!inqHolds(n.id))){const k=(n.group||n.id)+"|"+String(n.noticed||"").trim();if(seen.has(k))continue;seen.add(k);
     const a=focusText(String(n.noticed||"").trim(),c),b=focusText(String(n.wonder||"").trim(),c);if(!has(a)&&!has(b))continue;
-    obs.push({at:n.at||0,text:`${longDate(iso(new Date(n.at||Date.now())))}, ${obsBy(n)||"an educator"}. ${a}${has(b)?"\nI wonder. "+b:""}`})}
+    obs.push({at:n.at||0,text:`${longDate(iso(new Date(n.at||Date.now())))}, ${obsBy(n)||"an educator"}. ${a}${has(b)?"\nEducator wonder or note. "+b:""}`})}
   const pieces=kidSlides(c).filter(s=>kidInPortfolio(c,"slides",s.id)).map(s=>{const q=(s.quotes||[]).filter(x=>String(x.name||"").replace(/ \[\?\]$/,"")===c.first&&has(x.words)).map(x=>`${c.first} said "${x.words}"`);
     return {at:s.at||0,text:[slideTitle(s),focusText(String(s.text||"").trim(),c),...q].filter(has).join("\n")}}).filter(x=>has(x.text));
   const confs=kidConfs(c).map(x=>{const f=x.fields||{};const parts=Object.entries(TS_CONF).filter(([k])=>has(f[k])).map(([k,l])=>`${l}. ${focusText(String(f[k]).trim(),c)}`);

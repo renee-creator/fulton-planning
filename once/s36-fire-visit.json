@@ -1,0 +1,12 @@
+{
+ "name": "s36FireVisit",
+ "note": "The fire card's visit stays on our campus, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A visit from the fire department or a walk to a fire station, with real gear to touch.",
+   "to": "A visit from the fire department, with real gear to touch.",
+   "all": true
+  }
+ ]
+}
