@@ -1,0 +1,11 @@
+{
+ "name": "s37FamilyEvenings",
+ "note": "Family evenings follow what our community needs, and Kindergarten and TK information may come by evening, email or the family page, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/policies/teacher/school-events.json",
+   "from": "We host four family nights every school year. They are an Orientation, a Kindergarten/TK Info night, and two Class Evenings where educators present the ongoing projects of their groups. See specific dates in the school year calendar on the website and on the google calendar each class is subscribed to.",
+   "to": "We host family evenings through the school year, shaped by what our community needs. These may include an Orientation and Class Evenings where educators present the ongoing projects of their groups. Information families need, such as Kindergarten and TK, may come as an evening, an email or a piece on the family page. See specific dates in the school year calendar on the website and on the google calendar each class is subscribed to."
+  }
+ ]
+}

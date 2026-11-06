@@ -992,7 +992,6 @@ function childPanels(c){
   const next = el? `<div class="panel"><h3>Fall ${ny}</h3><p class="small muted" style="margin:0 0 8px">Age ${ageOnSept1(c.dob,ny)} on September 1, so eligible for ${esc(el.label)}.</p>
     <div class="field"><label for="tr-plan">Plan</label><select id="tr-plan" data-ck="${esc(id)}|transition.${key}.plan" ${dis}>${PLANS.map(([v,l])=>`<option value="${v}" ${(tr.plan||"")===v?"selected":""}>${l}</option>`).join("")}</select></div>
     <div class="field" style="margin-top:8px"><label for="tr-school">Next school</label><input id="tr-school" data-ck="${esc(id)}|transition.${key}.school" value="${esc(tr.school||"")}" ${dis}></div>
-    ${ck(`transition.${key}.infoNight`,"Came to the Kindergarten and TK Info Night",tr.infoNight)}
     ${ck(`transition.${key}.recordsShared`,"Records or portfolio shared with the next school",tr.recordsShared)}
   </div>` : "";
   return onboard + portfolio + next;
@@ -1303,13 +1302,12 @@ function viewNextYear(){
       <td><span class="chip ${el.key==="tk"?"st-progress":"st-scheduled"}">${esc(el.label)}</span><div class="small muted">Age ${ageOnSept1(c.dob,ny)} on Sept 1</div></td>
       <td><select data-ck="${esc(c.id)}|transition.${key}.plan" aria-label="Plan for ${esc(childName(c))}" ${dis}>${PLANS.map(([v,l])=>`<option value="${v}" ${(tr.plan||"")===v?"selected":""}>${l}</option>`).join("")}</select></td>
       <td><input data-ck="${esc(c.id)}|transition.${key}.school" value="${esc(tr.school||"")}" placeholder="School" aria-label="Next school for ${esc(childName(c))}" ${dis} style="width:100%;min-width:120px"></td>
-      <td style="text-align:center"><input type="checkbox" data-ck="${esc(c.id)}|transition.${key}.infoNight" ${tr.infoNight?"checked":""} aria-label="Came to Info Night" ${dis}></td>
       <td style="text-align:center"><input type="checkbox" data-ck="${esc(c.id)}|transition.${key}.recordsShared" ${tr.recordsShared?"checked":""} aria-label="Records shared" ${dis}></td></tr>`; }).join("");
   return `<div class="spread" style="margin-bottom:12px"><div><div class="eyebrow">Transitions</div><h1>Fall ${ny}</h1>
-    <p class="muted small" style="margin:.3em 0 0;max-width:68ch">Children old enough for TK or Kindergarten next fall, using California's September 1 cutoffs, turning 4 for TK and 5 for Kindergarten. Confirm each family's district rules. Talk about plans at the spring conference and the Kindergarten and TK Info Night.</p></div></div>
+    <p class="muted small" style="margin:.3em 0 0;max-width:68ch">Children old enough for TK or Kindergarten next fall, using California's September 1 cutoffs, turning 4 for TK and 5 for Kindergarten. Confirm each family's district rules. Talk about plans at the spring conference.</p></div></div>
   <div class="filters" style="margin-bottom:12px"><select id="f-room" aria-label="Class"><option>All</option>${rooms.map(r=>`<option ${f.room===r?"selected":""}>${esc(r)}</option>`).join("")}</select>${eduSelect()}${sortSelect()}
     <span class="small muted">${list.length} eligible · ${PLANS.filter(([v])=>counts[v]).map(([v,l])=>`${counts[v]} ${l.toLowerCase()}`).join(" · ")}</span></div>
-  <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Eligible for</th><th>Plan</th><th>Next school</th><th>Info Night</th><th>Records shared</th></tr></thead><tbody>${rows||`<tr><td colspan="6" class="empty">No children are old enough for TK or Kindergarten next fall.</td></tr>`}</tbody></table></div>`;
+  <div class="tbl-wrap"><table class="list"><thead><tr><th>Child</th><th>Eligible for</th><th>Plan</th><th>Next school</th><th>Records shared</th></tr></thead><tbody>${rows||`<tr><td colspan="5" class="empty">No children are old enough for TK or Kindergarten next fall.</td></tr>`}</tbody></table></div>`;
 }
 /* ---------- filters binding ---------- */
 function bindFilters(){

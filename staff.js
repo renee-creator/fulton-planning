@@ -1217,6 +1217,7 @@ module.exports = function staffModule(o) {
     s34ShelfChecks: ['code:once/s34-shelf-checks.json', 'Eleven books on our shelf checked against catalog records, November 5, 2026'],
     s35OnCampus: ['code:once/s35-on-campus.json', 'Idea bank cards keep children on our campus, apart from the creek walks, November 5, 2026'],
     s36FireVisit: ['code:once/s36-fire-visit.json', 'The fire card\'s visit stays on our campus, November 5, 2026'],
+    s37FamilyEvenings: ['code:once/s37-family-evenings.json', 'Family evenings follow what our community needs, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
