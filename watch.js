@@ -159,6 +159,8 @@ module.exports = function watch(o) {
       if (Object.keys(st.items).length >= MAX_KEYS) return;
       it = st.items[key] = { key, kind, text: norm(text), where: [], count: 0, people: [], first: t, last: t, ms: 0, max: 0, status: detail.status || 0 };
     }
+    // the same trouble reported again, an observation still waiting, raises how long it lasted without counting it twice
+    if (detail.again) { it.last = t; if (detail.ms) it.max = Math.max(it.max, detail.ms); dirty = true; return; }
     it.count++; it.last = t;
     if (detail.where && !it.where.includes(detail.where) && it.where.length < 5) it.where.push(detail.where);
     if (detail.who) { const h = require('crypto').createHash('sha256').update(String(detail.who).toLowerCase()).digest('hex').slice(0, 10); if (!it.people.includes(h) && it.people.length < 50) it.people.push(h); }
@@ -216,7 +218,9 @@ module.exports = function watch(o) {
     const o = b.obs && typeof b.obs === 'object' ? b.obs : {};
     for (let i = 0; i < Math.round(num(o.opened, 50)); i++) note('obsopen', 'Keep an observation opened', { who });
     for (let i = 0; i < Math.round(num(o.left, 50)); i++) note('abandon', 'Keep an observation left without keeping', { who });
-    for (const m of (Array.isArray(b.stuck) ? b.stuck : []).slice(0, 10)) if (num(m, 864e5) >= 30 * 60000) note('stuck', 'An observation waited on a phone with a connection', { ms: num(m, 864e5), who });
+    // a number is an observation first found waiting half an hour, and { ms, again } the same one still waiting later
+    for (const m of (Array.isArray(b.stuck) ? b.stuck : []).slice(0, 10)) { const again = !!(m && typeof m === 'object' && m.again), ms = num(m && typeof m === 'object' ? m.ms : m, 864e5);
+      if (ms >= 30 * 60000) note('stuck', 'An observation waited on a phone with a connection', { ms, who, again }); }
   }
 
   // the items of the last day, today's and yesterday's, the window each report reads
@@ -240,9 +244,9 @@ module.exports = function watch(o) {
     const list = [];
     const push = (it, severity, title) => {
       const f = { key: it.key, kind: it.kind, type: KINDS[it.kind], severity, title, text: it.text, where: it.where, count: it.count, people: it.people.length, first: it.first, last: it.last, avg: it.count ? it.ms / it.count : 0, max: it.max, opened: it.opened || 0, lastText: timeText(it.last) };
-      // a red status line stays handled while it stays red. Anything else comes back when it happens again.
+      // a red status line, and the same set of unused pages, stays handled while it stays so. Anything else comes back when it happens again.
       const h = st.handled[it.key];
-      if (h && (it.kind === 'status' || h.at >= it.last)) return;
+      if (h && (it.kind === 'status' || it.kind === 'unused' || h.at >= it.last)) return;
       f.plan = planFor(f); list.push(f);
     };
     const all = recent(), opens = all.filter(i => i.kind === 'obsopen');

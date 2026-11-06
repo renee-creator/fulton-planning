@@ -140,4 +140,15 @@ test('how TREE feels to use becomes findings: slow to open, slow pages, hunting,
   for (let i = 0; i < 28; i++) { d.usage({ views: i < 14 ? { grant: 1, today: 3 } : { today: 3 } }, 'Ann'); c.add(24 * 3600e3); d.findings(); }
   const u = d.findings().find(x => x.kind === 'unused');
   assert.ok(u, 'the unused page is found'); assert.deepStrictEqual(u.where, ['the grant page']);
+  // marked handled, it stays handled while the same pages go unused
+  d.handle(u.key, 'Dee'); c.add(3600e3);
+  assert.ok(!d.findings().some(x => x.kind === 'unused'));
+
+  // one observation waiting half an hour, then still waiting at two hours, is one wait of two hours and a finding
+  const e = makeWatch({ now: c.now }); e.load(null);
+  e.usage({ stuck: [31 * 60000] }, 'Ann');
+  assert.ok(!e.findings().some(x => x.kind === 'stuck'), 'half an hour once is not yet a finding');
+  e.usage({ stuck: [{ ms: 2.1 * 3600e3, again: true }] }, 'Ann');
+  const st = e.findings().find(x => x.kind === 'stuck');
+  assert.ok(st); assert.strictEqual(st.count, 1);
 });

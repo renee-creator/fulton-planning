@@ -1843,7 +1843,8 @@ function renderMain(){
    five minutes and when TREE is put away. How long TREE took to open, pages slow to draw, someone moving through many
    pages in a minute without writing, the Keep an observation form left without keeping, and an observation waiting on
    the phone while it has a connection. Nothing anyone wrote is sent. */
-const UX={views:{},renders:[],lost:[],obs:{opened:0,left:0},stuck:[],load:0,loadDone:false,hops:[],lastInput:0,lastView:"",form:"",waiting:new Map(),told:new Set()};
+// an opening that had to ask for a sign-in first is not timed, since the time went to typing the passcode
+const UX={signedAtStart:(()=>{try{return !!localStorage.getItem("fp-token")}catch(e){return false}})(),views:{},renders:[],lost:[],obs:{opened:0,left:0},stuck:[],load:0,loadDone:false,hops:[],lastInput:0,lastView:"",form:"",waiting:new Map(),told:new Map()};
 document.addEventListener("input",()=>{UX.lastInput=Date.now()},true);
 {const draw=renderMain;renderMain=function(){const t0=performance.now();try{return draw.apply(this,arguments)}finally{try{uxAfter(performance.now()-t0)}catch(e){}}}}
 function uxAfter(ms){if(VIEW_AS)return;const v=String(view||"");if(!/^[a-z][a-z0-9-]{0,30}$/.test(v))return;
@@ -1853,10 +1854,11 @@ function uxAfter(ms){if(VIEW_AS)return;const v=String(view||"");if(!/^[a-z][a-z0
   // the observation form, opened and then closed, kept or not
   const f=noticeForm&&noticeForm.id||"";if(f!==UX.form){if(UX.form&&!notices.has(UX.form)&&!draftMem.has(draftWho()+"|o|"+UX.form))UX.obs.left++;if(f)UX.obs.opened++;UX.form=f}}
 // how long TREE took to open, from the address being opened to the records arriving
-function uxLoaded(){if(UX.loadDone)return;UX.loadDone=true;const nav=performance.getEntriesByType&&performance.getEntriesByType("navigation")[0];if(!nav||nav.type!=="back_forward")UX.load=Math.round(performance.now())}
+function uxLoaded(){if(UX.loadDone)return;UX.loadDone=true;if(!UX.signedAtStart)return;const nav=performance.getEntriesByType&&performance.getEntriesByType("navigation")[0];if(!nav||nav.type!=="back_forward")UX.load=Math.round(performance.now())}
 function uxStuck(){const t=Date.now(),keys=new Set();for(const [k,r] of draftMem)if(r&&r.kind==="obs"){keys.add(k);if(!UX.waiting.has(k))UX.waiting.set(k,t)}
   for(const k of [...UX.waiting.keys()])if(!keys.has(k)){UX.waiting.delete(k);UX.told.delete(k)}
-  if(navigator.onLine)for(const [k,at] of UX.waiting)if(t-at>=30*60000&&!UX.told.has(k)){UX.told.add(k);UX.stuck.push(t-at)}}
+  // reported at half an hour, and once more at two hours if it is still waiting, so a long wait is seen without counting twice
+  if(navigator.onLine)for(const [k,at] of UX.waiting){const w=t-at,told=UX.told.get(k)||0;if(w>=30*60000&&!told){UX.told.set(k,1);UX.stuck.push(w)}else if(w>=2*3600e3&&told===1){UX.told.set(k,2);UX.stuck.push({ms:w,again:true})}}}
 function uxSend(){try{uxStuck();if(!window.FP_HOSTED||!window.FP_API||!window.FP_NAME||!window.FP_NAME()||VIEW_AS)return;
   const b={views:UX.views,renders:UX.renders,lost:UX.lost,obs:UX.obs,stuck:UX.stuck,load:UX.load};
   if(!b.load&&!b.renders.length&&!b.lost.length&&!b.obs.opened&&!b.obs.left&&!b.stuck.length&&!Object.keys(b.views).length)return;
@@ -4917,7 +4919,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="a1610919120f";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="34e6db537ac5";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
