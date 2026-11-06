@@ -1,0 +1,36 @@
+{
+ "name": "s40Piazza",
+ "note": "The piazza and our culinary atelier are named as one place, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Hand reamers and squeezers in the piazza culinary atelier for fresh juice and lemonade for the children's café.",
+   "to": "Hand reamers and squeezers in the piazza, so children can juice lemons and mandarins from our trees and share the juice at the table."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": " in the piazza culinary atelier",
+   "to": " in the piazza"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Piazza and culinary atelier at Home",
+   "to": "The piazza at Home"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Piazza and culinary atelier",
+   "to": "The piazza, our culinary atelier"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "The Idea bank cards Piazza and culinary atelier and Cooking and food hold",
+   "to": "The Idea bank cards for the piazza and for cooking and food hold"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "The Idea bank cards Piazza and culinary atelier and Cooking and food hold",
+   "to": "The Idea bank cards for the piazza and for cooking and food hold"
+  }
+ ]
+}
