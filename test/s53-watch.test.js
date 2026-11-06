@@ -101,6 +101,7 @@ test('the server gives the director the findings, takes page reports, and gives 
   // a page error reported five times by two people, and an educator who may not read the watch
   for (let i = 0; i < 3; i++) assert.strictEqual((await fx.as(ann, '/api/watch/page', { kind: 'error', text: 'Cannot read properties of undefined', src: 'tree.html:10', view: 'plans' })).status, 200);
   assert.strictEqual((await fx.as(ann, '/api/watch')).status, 403);
+  assert.strictEqual((await fx.as(ann, '/api/watch/usage', { load: 2000, views: { today: 1 } })).status, 200);
   const r = await fx.as(dee, '/api/watch');
   assert.strictEqual(r.status, 200);
   const g = r.body.findings.find(x => x.kind === 'client');
@@ -114,4 +115,40 @@ test('the server gives the director the findings, takes page reports, and gives 
   const o = await fetch(fx.api + '/watch/report', { headers: { 'x-tree-key': 'watch-key-for-tests-1' } });
   assert.strictEqual(o.status, 200);
   const j = await o.json(); assert.ok(Array.isArray(j.findings)); assert.ok(Array.isArray(j.status));
+});
+
+test('how TREE feels to use becomes findings: slow to open, slow pages, hunting, forms left, observations waiting, pages no one opens', () => {
+  const c = clock();
+  const w = makeWatch({ now: c.now }); w.load(null);
+  for (const who of ['Ann', 'Bea', 'Cal', 'Dot', 'Eve']) w.usage({ load: 9000, renders: [{ view: 'children', ms: 2600 }], views: { today: 2, children: 1 }, obs: { opened: 2, left: 1 } }, who);
+  w.usage({ lost: [{ from: 'plans' }] }, 'Ann'); w.usage({ lost: [{ from: 'plans' }] }, 'Bea');
+  w.usage({ stuck: [3 * 3600e3] }, 'Ann');
+  // what is not a count or a page name is left out
+  w.usage({ views: { 'Ann\'s plan': 4, '<b>': 1 }, renders: [{ view: 'today', ms: 'slow' }], load: -5 }, 'Ann');
+  const f = w.findings(), by = k => f.find(x => x.kind === k);
+  assert.ok(by('pageload') && by('pageload').count === 5 && Math.round(by('pageload').avg) === 9000);
+  assert.ok(by('render') && /children/.test(by('render').plan[0]));
+  assert.ok(by('lost') && by('lost').people === 2);
+  assert.ok(by('abandon') && /opened 10 times and left without keeping 5 times/.test(by('abandon').plan[0]));
+  assert.ok(by('stuck') && by('stuck').severity === 'high');
+  assert.ok(!f.some(x => x.kind === 'obsopen'), 'opening the form is only counted');
+  for (const x of f) assert.ok(x.plan.length >= 3);
+  assert.ok(!JSON.stringify(w.snapshot().visits).includes('Ann'));
+
+  // a page opened in earlier weeks and not in the last two is offered as possibly not needed
+  const d = makeWatch({ now: c.now }); d.load(null);
+  for (let i = 0; i < 28; i++) { d.usage({ views: i < 14 ? { grant: 1, today: 3 } : { today: 3 } }, 'Ann'); c.add(24 * 3600e3); d.findings(); }
+  const u = d.findings().find(x => x.kind === 'unused');
+  assert.ok(u, 'the unused page is found'); assert.deepStrictEqual(u.where, ['the grant page']);
+  // marked handled, it stays handled while the same pages go unused
+  d.handle(u.key, 'Dee'); c.add(3600e3);
+  assert.ok(!d.findings().some(x => x.kind === 'unused'));
+
+  // one observation waiting half an hour, then still waiting at two hours, is one wait of two hours and a finding
+  const e = makeWatch({ now: c.now }); e.load(null);
+  e.usage({ stuck: [31 * 60000] }, 'Ann');
+  assert.ok(!e.findings().some(x => x.kind === 'stuck'), 'half an hour once is not yet a finding');
+  e.usage({ stuck: [{ ms: 2.1 * 3600e3, again: true }] }, 'Ann');
+  const st = e.findings().find(x => x.kind === 'stuck');
+  assert.ok(st); assert.strictEqual(st.count, 1);
 });

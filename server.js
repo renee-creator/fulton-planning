@@ -2948,7 +2948,7 @@ async function handle(req, res) {
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
-    const OPEN = ['/api/data', '/api/watch/page', '/api/file-key', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
+    const OPEN = ['/api/data', '/api/watch/page', '/api/watch/usage', '/api/file-key', '/api/changes', '/api/write', '/api/saved', '/api/notes', '/api/kitchen-week', '/api/kitchen-diets', '/api/kitchen-serve', '/api/kitchen-month', '/api/me/passcode', '/api/save-now', '/api/original', '/api/read', '/api/view'];
     // the kitchen's own records page goes through /api/staff/, which holds it to that page alone
     const bad = (!OPEN.includes(path) && !path.startsWith('/api/staff/')) || (path === '/api/write' && !kitchenSees(body.kind, body.id)) || (path === '/api/read' && body.purpose !== 'menu');
     if (bad) { log('Kitchen sign-in refused', me.name, path, body.kind || body.purpose || ''); err(req, res, 403, 'A kitchen sign-in reaches the Kitchen page, Today and the calendar.'); return; }
@@ -2957,7 +2957,7 @@ async function handle(req, res) {
   // families or other staff is sent to that sign-in, and every other request is refused here.
   const newHire = staff.isNewHire(me.name);
   if (newHire) {
-    const OPEN = ['/api/data', '/api/watch/page', '/api/file-key', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
+    const OPEN = ['/api/data', '/api/watch/page', '/api/watch/usage', '/api/file-key', '/api/changes', '/api/me/passcode', '/api/save-now', '/api/push/key', '/api/push/subscribe'];
     if (!OPEN.includes(path) && !path.startsWith('/api/staff/')) { log('New educator sign-in refused', me.name, path); err(req, res, 403, 'This opens once the director turns on full access.'); return; }
     if (path === '/api/data') { json(req, res, 200, { bootId: BOOT_ID, rev, me: me.name, director: false, newHire: true, staff: staff.bootInfo(me.name), data: {} }); return; }
     if (path === '/api/changes') { json(req, res, 200, { bootId: BOOT_ID, rev, changes: {}, newHire: true }); return; }
@@ -2970,6 +2970,7 @@ async function handle(req, res) {
   if (path === '/api/server-status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the server status.'); return; } json(req, res, 200, { lines: statusLines().map(([ok, text]) => ({ ok: !!ok, text })) }); return; }
   // the program watch. Any page reports its own errors and the trouble messages it showed, a few each minute at most,
   // and the director reads the findings with their plans of correction and marks one handled once it is done
+  if (path === '/api/watch/usage') { if (pageReportOk(me.name)) watch.usage(body, me.name); json(req, res, 200, { ok: true }); return; }
   if (path === '/api/watch/page') { if (pageReportOk(me.name)) watch.fromPage(body, me.name); json(req, res, 200, { ok: true }); return; }
   if (path === '/api/watch') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the program watch.'); return; } try { await watchTick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }
   if (path === '/api/watch/handled') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director marks a finding handled.'); return; } const k = String(body.key || '').slice(0, 300); if (!k) { err(req, res, 400, 'Choose a finding first.'); return; } if (body.undo) watch.reopen(k); else watch.handle(k, me.name); try { await watch.tick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }

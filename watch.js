@@ -25,6 +25,9 @@ const HOUR = 3600e3;
 const KINDS = {
   error: 'Glitch', client: 'Glitch', status: 'Challenge', job: 'Challenge', user: 'User error', trouble: 'User error',
   slow: 'Efficiency', signin: 'Improvement', trend: 'Challenge',
+  // how TREE feels to use, from the pages themselves. obsopen is only counted, to weigh how often the form is left.
+  pageload: 'Efficiency', render: 'Efficiency', lost: 'User experience', abandon: 'User experience', stuck: 'Glitch',
+  unused: 'Improvement', obsopen: 'Usage',
 };
 const RANK = { urgent: 0, high: 1, medium: 2, low: 3 };
 const MAX_KEYS = 400, HISTORY_DAYS = 28;
@@ -47,6 +50,7 @@ const ERROR_RE = /^(Request error|Unexpected (error|rejection))/;
 const TROUBLE_RE = /could not|couldn't|did not|didn't|try again|not allowed|too (large|long|big)|first\b|needs? |missing|no longer|has expired|isn't|is not|can't|cannot|choose |pick |fill in|add (a|an|the|at least) /i;
 const DONE_RE = /^(saved|copied|sent|added|kept|removed|done|deleted|moved|updated|marked|printed|shared|signed)\b/i;
 
+const secs = ms => Math.round((ms || 0) / 100) / 10;
 function planFor(f) {
   const where = f.where && f.where.length ? f.where.join(', ') : '';
   switch (f.kind) {
@@ -86,6 +90,33 @@ function planFor(f) {
       `Sign-ins ended ${f.count} times for ${f.people} people.`,
       'Ask whether those people were on a shared Class computer or a phone that clears its browser.',
       'If not, check the sign-in length on the server and that SESSION_SECRET on Render has not changed.'];
+    case 'pageload': return [
+      `TREE took ${secs(f.avg)} seconds on average to open, ${f.count} times, the longest ${secs(f.max)} seconds.`,
+      'Check whether the slow openings come just after the server wakes from sleep on Render. A paid instance that stays awake removes that wait.',
+      'Otherwise make the first page lighter. Move a section used rarely into a page loaded when opened, in tools/lazy.py, and send fewer records when TREE opens.',
+      'Watch the next report for the opening time to come down.'];
+    case 'render': return [
+      `${f.where.join(', ') || 'A page'} took ${secs(f.avg)} seconds on average to draw on people's phones and computers, ${f.count} times.`,
+      'Open that page with many records, as the director sees it, and time what it builds.',
+      'Build only what shows first, and the rest when it is opened, or keep what it works out instead of working it out on every draw.'];
+    case 'lost': return [
+      `${f.count} times${f.people > 1 ? `, by ${f.people} people` : ''}, someone moved through six or more pages within a minute without writing anything, starting ${f.where.join(', ') || 'from one page'}.`,
+      'That usually means looking for something. Ask an educator what they were looking for from that page.',
+      'Add a link or a button for it on that page, or name it the way educators say it so Search finds it.',
+      'Watch the next reports for this to happen less.'];
+    case 'abandon': return [
+      `The Keep an observation form was opened ${f.opened} times and left without keeping ${f.count} times${f.people > 1 ? `, by ${f.people} people` : ''}.`,
+      'Some of these are a tap by mistake. Ask one or two educators whether the form asks for something they do not have at that moment.',
+      'Make the form shorter to start, with only what is needed, and the rest under More. Check the round button is not easy to tap by mistake.',
+      'Watch the share of observations kept go up.'];
+    case 'stuck': return [
+      `An observation kept on a phone waited ${Math.round(f.max / 60000)} minutes to be sent while the phone had a connection, ${f.count} times${f.people > 1 ? `, on ${f.people} people's phones` : ''}.`,
+      'Ask the educator to open TREE with a connection and keep it open a minute, so the observation sends.',
+      'If it still waits, look for errors from that phone in the Program watch and in the server log, near draftSend in src/app.html.'];
+    case 'unused': return [
+      `No one has opened ${f.where.join(', ')} in the last two weeks, though people did before.`,
+      'Ask whether it is still needed, or whether educators cannot find it.',
+      'If it is needed, link it from the page educators use around it, or mention it in Help. If not, it can be folded away to make TREE simpler.'];
     case 'trend': return [
       `${f.text}`,
       'Look at the other findings today first, one of them is likely the cause.',
@@ -103,14 +134,15 @@ module.exports = function watch(o) {
   const scrub = o.scrub || (s => s);
   const log = o.log || (() => {});
 
-  let st = { day: dayOf(now()), items: {}, history: [], handled: {}, sentAt: {}, digestDay: '', plan: null };
+  let st = { day: dayOf(now()), items: {}, history: [], handled: {}, sentAt: {}, digestDay: '', plan: null, visits: {} };
   let dirty = false, loaded = false;
 
   function rollover() {
     const d = dayOf(now()); if (d === st.day) return;
     const items = Object.values(st.items);
     const totals = {}; for (const it of items) totals[it.kind] = (totals[it.kind] || 0) + it.count;
-    st.history.unshift({ day: st.day, totals, items: items.sort((a, b) => b.count - a.count).slice(0, 60) });
+    st.history.unshift({ day: st.day, totals, items: items.sort((a, b) => b.count - a.count).slice(0, 60), visits: st.visits || {} });
+    st.visits = {};
     st.history = st.history.slice(0, HISTORY_DAYS);
     st.day = d; st.items = {}; dirty = true;
   }
@@ -127,6 +159,8 @@ module.exports = function watch(o) {
       if (Object.keys(st.items).length >= MAX_KEYS) return;
       it = st.items[key] = { key, kind, text: norm(text), where: [], count: 0, people: [], first: t, last: t, ms: 0, max: 0, status: detail.status || 0 };
     }
+    // the same trouble reported again, an observation still waiting, raises how long it lasted without counting it twice
+    if (detail.again) { it.last = t; if (detail.ms) it.max = Math.max(it.max, detail.ms); dirty = true; return; }
     it.count++; it.last = t;
     if (detail.where && !it.where.includes(detail.where) && it.where.length < 5) it.where.push(detail.where);
     if (detail.who) { const h = require('crypto').createHash('sha256').update(String(detail.who).toLowerCase()).digest('hex').slice(0, 10); if (!it.people.includes(h) && it.people.length < 50) it.people.push(h); }
@@ -170,6 +204,25 @@ module.exports = function watch(o) {
     note('client', msg, { where: [view && 'the ' + view + ' page', src].filter(Boolean).join(', '), who }); return true;
   }
 
+  /* what a page tells of how TREE felt to use, sent every few minutes in one small batch. Only counts and times come,
+     with page names. Nothing anyone wrote is in it. */
+  const VIEW_RE = /^[a-z][a-z0-9-]{0,30}$/;
+  function usage(b, who) {
+    if (!b || typeof b !== 'object') return;
+    rollover();
+    const num = (x, max) => { const n = Number(x); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : 0; };
+    for (const [v, n] of Object.entries(b.views && typeof b.views === 'object' ? b.views : {}).slice(0, 60)) if (VIEW_RE.test(v)) { st.visits[v] = (st.visits[v] || 0) + Math.round(num(n, 500)); dirty = true; }
+    const load = num(b.load, 600000); if (load) note('pageload', 'Opening TREE', { ms: load, who });
+    for (const r of (Array.isArray(b.renders) ? b.renders : []).slice(0, 20)) if (r && VIEW_RE.test(r.view) && num(r.ms, 600000) > 1500) note('render', 'Slow to draw the ' + r.view + ' page', { where: 'the ' + r.view + ' page', ms: num(r.ms, 600000), who });
+    for (const l of (Array.isArray(b.lost) ? b.lost : []).slice(0, 5)) if (l && VIEW_RE.test(l.from)) note('lost', 'Moving through many pages without writing', { where: 'from the ' + l.from + ' page', who });
+    const o = b.obs && typeof b.obs === 'object' ? b.obs : {};
+    for (let i = 0; i < Math.round(num(o.opened, 50)); i++) note('obsopen', 'Keep an observation opened', { who });
+    for (let i = 0; i < Math.round(num(o.left, 50)); i++) note('abandon', 'Keep an observation left without keeping', { who });
+    // a number is an observation first found waiting half an hour, and { ms, again } the same one still waiting later
+    for (const m of (Array.isArray(b.stuck) ? b.stuck : []).slice(0, 10)) { const again = !!(m && typeof m === 'object' && m.again), ms = num(m && typeof m === 'object' ? m.ms : m, 864e5);
+      if (ms >= 30 * 60000) note('stuck', 'An observation waited on a phone with a connection', { ms, who, again }); }
+  }
+
   // the items of the last day, today's and yesterday's, the window each report reads
   function recent() {
     rollover();
@@ -190,13 +243,14 @@ module.exports = function watch(o) {
   function findings() {
     const list = [];
     const push = (it, severity, title) => {
-      const f = { key: it.key, kind: it.kind, type: KINDS[it.kind], severity, title, text: it.text, where: it.where, count: it.count, people: it.people.length, first: it.first, last: it.last, avg: it.count ? it.ms / it.count : 0, max: it.max, lastText: timeText(it.last) };
-      // a red status line stays handled while it stays red. Anything else comes back when it happens again.
+      const f = { key: it.key, kind: it.kind, type: KINDS[it.kind], severity, title, text: it.text, where: it.where, count: it.count, people: it.people.length, first: it.first, last: it.last, avg: it.count ? it.ms / it.count : 0, max: it.max, opened: it.opened || 0, lastText: timeText(it.last) };
+      // a red status line, and the same set of unused pages, stays handled while it stays so. Anything else comes back when it happens again.
       const h = st.handled[it.key];
-      if (h && (it.kind === 'status' || h.at >= it.last)) return;
+      if (h && (it.kind === 'status' || it.kind === 'unused' || h.at >= it.last)) return;
       f.plan = planFor(f); list.push(f);
     };
-    for (const it of recent()) {
+    const all = recent(), opens = all.filter(i => i.kind === 'obsopen');
+    for (const it of all) {
       const n = it.count, ppl = it.people.length;
       if (it.kind === 'error') push(it, n >= 5 ? 'urgent' : 'high', 'An error on the server');
       else if (it.kind === 'client' && (n >= 2 || ppl >= 2)) push(it, n >= 10 ? 'high' : 'medium', 'An error in a page');
@@ -204,6 +258,19 @@ module.exports = function watch(o) {
       else if ((it.kind === 'user' || it.kind === 'trouble') && (n >= 5 || ppl >= 3)) push(it, n >= 20 || ppl >= 5 ? 'medium' : 'low', 'The same problem for people again and again');
       else if (it.kind === 'slow' && n >= 3) push(it, it.ms / n > 10000 ? 'medium' : 'low', 'Slow for people');
       else if (it.kind === 'signin' && n >= 10 && ppl >= 3) push(it, 'low', 'Sign-ins ending often');
+      else if (it.kind === 'pageload' && n >= 5 && it.ms / n > 6000) push(it, it.ms / n > 12000 ? 'medium' : 'low', 'TREE is slow to open');
+      else if (it.kind === 'render' && n >= 3 && it.ms / n > 2000) push(it, 'low', 'A page is slow to draw');
+      else if (it.kind === 'lost' && (n >= 3 || ppl >= 2)) push(it, 'low', 'People hunting for something');
+      else if (it.kind === 'abandon') { const op = opens.reduce((m, o) => m + o.count, 0); if (n >= 5 && op && n / op >= 0.4) { it.opened = op; push(it, n / op >= 0.6 ? 'medium' : 'low', 'Observations started and not kept'); } }
+      else if (it.kind === 'stuck' && (n >= 2 || it.max >= 2 * HOUR)) push(it, 'high', 'An observation waited on a phone');
+    }
+    // a page people opened before and no one has opened in the last two weeks
+    if (st.history.length >= 21) {
+      const seen = (from, to) => { const v = {}; for (const h of st.history.slice(from, to)) for (const [k, n] of Object.entries(h.visits || {})) v[k] = (v[k] || 0) + n; return v; };
+      const lately = seen(0, 14); for (const [k, n] of Object.entries(st.visits || {})) lately[k] = (lately[k] || 0) + n;
+      const before = seen(14, 28);
+      const gone = Object.keys(before).filter(k => before[k] >= 3 && !lately[k]).sort().slice(0, 6);
+      if (gone.length) push({ key: 'unused|' + gone.join(','), kind: 'unused', text: 'Pages no one has opened in two weeks: ' + gone.join(', ') + '.', where: gone.map(g => 'the ' + g + ' page'), count: gone.length, people: [], first: now(), last: now(), ms: 0, max: 0 }, 'low', 'Parts of TREE no one is using');
     }
     for (const [ok, text] of redLines()) if (!ok) {
       const it = { key: 'status|' + norm(text), kind: 'status', text: String(text), where: [], count: 1, people: [], first: now(), last: now(), ms: 0, max: 0 };
@@ -266,12 +333,12 @@ module.exports = function watch(o) {
     return sent;
   }
 
-  function snapshot() { return { day: st.day, items: Object.values(st.items), history: st.history, handled: st.handled, sentAt: st.sentAt, digestDay: st.digestDay, plan: st.plan }; }
+  function snapshot() { return { day: st.day, items: Object.values(st.items), history: st.history, handled: st.handled, sentAt: st.sentAt, digestDay: st.digestDay, plan: st.plan, visits: st.visits }; }
   function load(doc) {
     if (doc && typeof doc === 'object') {
       const pending = st.items;
       const items = {}; for (const it of Array.isArray(doc.items) ? doc.items : []) if (it && it.key) items[it.key] = it;
-      st = { day: doc.day || st.day, items, history: Array.isArray(doc.history) ? doc.history : [], handled: doc.handled || {}, sentAt: doc.sentAt || {}, digestDay: doc.digestDay || '', plan: doc.plan || null };
+      st = { day: doc.day || st.day, items, history: Array.isArray(doc.history) ? doc.history : [], handled: doc.handled || {}, sentAt: doc.sentAt || {}, digestDay: doc.digestDay || '', plan: doc.plan || null, visits: doc.visits && typeof doc.visits === 'object' ? doc.visits : {} };
       // a day kept before the server slept moves to the history, and anything counted before the records were read is added
       rollover();
       for (const it of Object.values(pending)) { const c = st.items[it.key]; if (!c) st.items[it.key] = it; else { c.count += it.count; c.last = Math.max(c.last, it.last); c.ms += it.ms; c.max = Math.max(c.max, it.max); for (const p of it.people) if (!c.people.includes(p)) c.people.push(p); } }
@@ -291,6 +358,6 @@ module.exports = function watch(o) {
     return { at: now(), day: st.day, findings: list.map(clean), handled: Object.keys(st.handled).length, lastReport: st.plan ? { at: st.plan.at, day: st.plan.day, count: (st.plan.findings || []).length } : null, days };
   }
 
-  return { note, fromLog, refused, slow, fromPage, findings, tick, load, handle, reopen, view, letter, snapshot, isLoaded: () => loaded, _norm: norm };
+  return { note, fromLog, refused, slow, fromPage, usage, findings, tick, load, handle, reopen, view, letter, snapshot, isLoaded: () => loaded, _norm: norm };
 };
 module.exports.dayOf = dayOf;

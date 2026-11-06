@@ -12,6 +12,9 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
   say more plainly what to do.
 - **Places to improve and to be more efficient.** Slow requests, the first page growing heavy, work done again and
   again that could be kept, steps people take by hand that TREE could take for them.
+- **How TREE feels to use.** The program watch's findings on TREE slow to open, pages slow to draw, people hunting
+  for something, the observation form left unkept, observations stuck on a phone and pages no one opens any more. Look
+  at the code of the page named and propose a concrete change to the screen.
 - **Challenges.** Background jobs that could not run (the Kaymbu inbox, menus, Google Drive, backups), keys about to
   run out, a day with much more trouble than the week before.
 
