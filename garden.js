@@ -132,6 +132,8 @@ module.exports = function garden(o) {
     const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, eduHide: s.eduHide || [], eduCal: ['all', 'weekly', 'off'].includes(s.eduCal) ? s.eduCal : 'weekly', wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null, nochemicals: s.nochemicals || '' };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
+    // when the director turns garden tasks off, an educator sees none anywhere, on Today, the Garden page or the calendar
+    if (tasksOff(s, me)) { out.today = []; out.week = []; out.tasksOff = true; }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
     if (dir) Object.assign(out, { familyShare: s.familyShare || { season: '', recipes: [] }, offered: L.offered, note: s.note || '', evidence: evidence((+d.slice(5, 7) >= 8 ? +d.slice(0, 4) : +d.slice(0, 4) - 1) + '-08-01', d) });
     if (isKitchen(me)) { for (const k of ['seeds', 'trays', 'compost', 'wildlife', 'animals', 'plan', 'tending']) delete out[k]; }
@@ -358,6 +360,7 @@ Writing rules. No dashes. No colons inside sentences. Plain warm sentences. Only
   const materials = () => { const s = setup(); if (!s || !s.ready) return []; const mm = today().slice(5, 7);
     return (s.plants || []).filter(p => !isFood(p) && (p.uses || []).some(u => u === 'Dye' || u === 'Art materials') && (!(p.ready || []).length || p.ready.includes(mm))).map(p => p.common + ((p.uses || []).includes('Dye') ? ' for dye' : '')); };
   // the calendar's garden entries, the repeating tasks and the animals' care, for the reader's class or for the director
+  const tasksOff = (s, me) => { const name = typeof me === 'string' ? me : (me && me.name) || ''; return !((me && me.director) || isDirector(name) || isKitchen(name) || isKitchen(me)) && s && s.eduCal === 'off'; };
   function calendar(from, to, me) {
     const s = setup(); if (!s || !s.ready || !me) return []; const name = typeof me === 'string' ? me : me.name || ''; const out = [];
     // the director chooses what educators see on their calendars, all the tasks, the weekly and monthly ones without the
@@ -388,5 +391,5 @@ Writing rules. No dashes. No colons inside sentences. Plain warm sentences. Only
     return { kind, id: x.id, name: x.common || x.name || '', botanical: x.botanical || x.scientific || '', words: (x.words || {}).child || cardKnow(x) || x.know || x.opens || '', wonder: (x.wonder || [])[0] || '', eat: x.eat || '', photo: own ? { own: own.id } : x.photo && x.photo.url ? { url: x.photo.url, credit: [x.photo.by, x.photo.license, x.photo.source].filter(Boolean).join(', ') } : null }; }
   // the garden's setup as kept, for the server's place reading and the weekly place sheet. Nothing is changed through it.
   const setupFor = () => { const s = setup(); return s && s.ready ? s : null; };
-  return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksFor, ofTheDay, setupFor, CHEM };
+  return { handle, view, forFamily, community, siteMap, evidence, harvestsFor, materials, calendar, tasksOff: me => tasksOff(setup(), me), tasksFor, ofTheDay, setupFor, CHEM };
 };

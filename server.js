@@ -2081,7 +2081,8 @@ function placeSheet(me, mon) {
   mon = /^\d{4}-\d{2}-\d{2}$/.test(mon || '') ? mon : mondayFor(laDayOf(Date.now()));
   const mm = mon.slice(5, 7); let gs = null, tasks = [];
   try { gs = staff.garden && staff.garden.setupFor ? staff.garden.setupFor() : null; } catch (e) {}
-  try { for (let i = 0; i < 5; i++) { const d = addDay(mon, i); for (const t of staff.garden.tasksFor(d)) tasks.push({ day: d, text: t.text, bed: t.bedName || '', room: t.room || '', kind: t.kind, done: !!t.done }); } } catch (e) {}
+  // the director's switch turns the garden tasks off an educator's place sheet too
+  try { if (!(staff.garden.tasksOff && staff.garden.tasksOff(me))) for (let i = 0; i < 5; i++) { const d = addDay(mon, i); for (const t of staff.garden.tasksFor(d)) tasks.push({ day: d, text: t.text, bed: t.bedName || '', room: t.room || '', kind: t.kind, done: !!t.done }); } } catch (e) {}
   const beds = new Map(((gs && gs.beds) || []).map(b => [b.id, b]));
   const plants = ((gs && gs.plants) || []).filter(p => p && !p.planned && !p.hidden && (p.ready || []).includes(mm)).map(p => ({ name: p.common, where: p.where || (beds.get(p.bed) || {}).name || '', eat: p.eat || '' }));
   const animals = ((gs && gs.animals) || []).map(a => ({ name: a.name, names: (a.names || []).map(n => n && n.name).filter(Boolean), care: (a.care || []).map(c => c.text).filter(Boolean).slice(0, 4) }));

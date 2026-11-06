@@ -4919,7 +4919,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="26664b8ed6fb";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="97a827c292ba";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5875,7 +5875,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   const plants=g.plants||[],beds=g.beds||[],foods=plants.filter(p=>(p.eat==="food"||p.eat==="partly")&&!p.planned);
   let h=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Garden</h2><div class="sub">The garden and the yards, planned as one environment with flowers and food. Planning beds, planting, tending and watering, harvesting, saving seeds and composting, every year.</div></div>`;
   let gS=0;
-  if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div><div class="actions" style="margin:6px 0 0"><span class="cnt">Garden tasks on educators' calendars</span>${[["all","All tasks"],["weekly","Weekly and monthly only"],["off","Off"]].map(([v,l])=>`<label class="radio" style="margin:0"><input type="radio" name="gedcal" data-gedcal="${v}" ${(g.eduCal||"weekly")===v?"checked":""}><span>${l}</span></label>`).join("")}</div>${g.note?`<details class="gdraftnote" style="margin-top:6px"><summary class="linkbtn">About this draft</summary><div class="cnt" style="margin-top:4px">${esc(g.note)}</div></details>`:""}</section>`;
+  if(dir)h+=`<section class="card"><div class="actions" style="margin:0"><span class="cnt"><b>${g.ready?"Ready, educators, the kitchen and families see it":"A draft, only you see it"}</b></span><button class="btn small ghost" data-gready="${g.ready?"0":"1"}">${g.ready?"Back to draft":"Mark it ready"}</button></div><div class="actions" style="margin:6px 0 0"><span class="cnt">Garden tasks on educators' calendars</span>${[["all","All tasks"],["weekly","Weekly and monthly only"],["off","Off, educators see no garden tasks anywhere"]].map(([v,l])=>`<label class="radio" style="margin:0"><input type="radio" name="gedcal" data-gedcal="${v}" ${(g.eduCal||"weekly")===v?"checked":""}><span>${l}</span></label>`).join("")}</div>${g.note?`<details class="gdraftnote" style="margin-top:6px"><summary class="linkbtn">About this draft</summary><div class="cnt" style="margin-top:4px">${esc(g.note)}</div></details>`:""}</section>`;
   if(kit){h+=gdnHarvestCard(foods,beds);m.innerHTML=h;return}
   // the week's place sheet, what is alive on site this week, the animals and the bin, printed from the server's /api/place-sheet (November 4, 2026)
   gS=h.length;
@@ -5909,7 +5909,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   // today's tasks, one tap each
   const todayT=g.today||[];const myT=todayT.filter(t=>dir||!t.room||t.room===room);
   gS=h.length;
-  h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Today in the garden</h3><span class="cnt">${myT.filter(t=>!t.done).length} to do</span></div><div class="gtasks">${myT.map(t=>gdnTaskRow(t,day)).join("")||`<div class="empty">Nothing in the garden today.</div>`}</div>
+  if(!g.tasksOff)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Today in the garden</h3><span class="cnt">${myT.filter(t=>!t.done).length} to do</span></div><div class="gtasks">${myT.map(t=>gdnTaskRow(t,day)).join("")||`<div class="empty">Nothing in the garden today.</div>`}</div>
     ${(g.week||[]).some(w=>w.tasks.length)?`<details style="margin-top:8px"><summary class="linkbtn">The rest of the week</summary>${g.week.map(w=>w.tasks.length?`<div class="lbl" style="margin-top:6px">${esc(fmtLong(parseIso(w.day)))}</div><div class="gtasks">${w.tasks.map(t=>gdnTaskRow(t,w.day)).join("")}</div>`:"").join("")}</details>`:""}</section>`;
   h=h.slice(0,gS)+gdnSec("today",h.slice(gS));
   // beds and yards, by space

@@ -16,3 +16,13 @@ test('garden tasks on educators\' calendars follow the director\'s choice, and t
   await fx.as(dee, '/api/staff/garden/educal', { mode: 'off' }); assert.deepEqual(await evs(ann), [], 'off leaves the calendar clear');
   assert.ok((await evs(dee)).length > 0, 'the director still sees every task');
 });
+test('off means an educator sees no garden tasks anywhere, on Today, the Garden page, the calendar or the place sheet', async t => {
+  const fx = await start({ more: put => { put('staff/garden/setup.json', { id: 'garden', ready: true, eduCal: 'off', beds: [], plants: [],
+    animals: [{ id: 'a-goats', name: 'Goats', kind: 'goat', care: [{ id: 'g1', text: 'Feed the goats hay', every: 'day', weekday: 1 }] }],
+    plan: { months: {} }, tending: { home: {}, rotations: [] }, agreements: {} }); put('staff/garden/log.json', { id: 'gardenlog' }); } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  const g = (await fx.as(ann, '/api/staff/garden', {})).body; assert.equal(g.tasksOff, true); assert.deepEqual(g.today, []); assert.deepEqual(g.week, []);
+  const sheet = (await fx.as(ann, '/api/place-sheet', {})).body; assert.deepEqual(sheet.tasks || [], []);
+  const gd = (await fx.as(dee, '/api/staff/garden', {})).body; assert.ok(!gd.tasksOff);
+});
