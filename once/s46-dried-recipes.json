@@ -1,0 +1,44 @@
+{
+ "name": "s46DriedRecipes",
+ "note": "Dried fruit and dried petals, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/recipes/dried-fruit.md",
+   "create": "<!--\nlibrary: recipe\nkind: food\nsource: Ours\nmade: Piazza\nseason: all year\nproduce: Fuyu persimmons, Asian pears, figs, plums, apricots, Meyer lemons, mandarins\nchecked: our values and writing rules, November 5, 2026\n-->\n# Dried fruit\n\nFruit from our orchard sliced, laid on trays and dried in our dehydrator. Children feel each piece change from wet to leathery.\n\n## Ingredients\n\n- ripe fruit from our orchard, one kind or several\n\n## Tools\n\n- cutting boards and child knives\n- a knife for the adult\n- kitchen scales\n- the dehydrator\n\n## Steps\n\n- Wash our hands with soap and water.\n- Wash the fruit.\n- Weigh the fruit and write down the weight.\n- Slice the fruit as its part below shows.\n- Lay the pieces on the dehydrator trays without touching.\n- An adult switches on the dehydrator at 135 degrees.\n- Feel the pieces every few hours until they are leathery.\n- Weigh the dried fruit and compare the two weights.\n- Keep it in closed jars, labeled with the fruit and the day.\n\n## Fuyu persimmons\n\n- Fall. Slice them into rounds about as thick as a pencil. The star in the middle shows in every slice.\n- Dried in 8 to 12 hours.\n\n## Asian pears\n\n- Fall. Slice them into rounds about as thick as a pencil.\n- Dried in 6 to 10 hours.\n\n## Figs\n\n- Summer and fall. Cut each fig in half from stem to bottom.\n- Dried in 12 to 24 hours.\n\n## Plums and apricots\n\n- Summer. An adult cuts each one in half and takes out the pit. Children press the skin side so the fruit turns inside out and dries faster.\n- Dried in 24 to 36 hours.\n\n## Citrus wheels\n\n- Winter. An adult slices Meyer lemons and mandarins into thin rounds.\n- Dried in 6 to 10 hours, until crisp. Hold one up to the window to see the light through it.\n\n## Why we use it\n\nChildren see and weigh how much of a fruit is water, and taste one fruit fresh and dried side by side.\n\n## I wonder\n\n- I wonder where the water went.\n- I wonder why the dried fruit tastes sweeter.\n- I wonder what a dried slice looks like with the light behind it.\n\n## Connections\n\n- Dried apple rings and dried cherry tomatoes under Preserving the harvest, made the same way.\n- Fruit leather and kale chips, made in the same dehydrator.\n- Dried citrus wheels for the tea jar, beside herb tea from our dried herbs.\n\n## Cutting for our youngest\n\n- An adult cuts each fruit in half first, so it lies flat on the board. Children slice soft fruit with child knives, using the bridge grip.\n- An adult stays close beside each child who is cutting (close supervision).\n- For our youngest children, dried fruit is cut into small pieces before eating.\n\n## Clean up\n\n- Pits, stems and peels go to the compost.\n- Child knives. Washed one at a time, never left in a sink of water, dried and returned to the knife roll with the blades covered.\n- Cutting boards and scales. Washed or wiped and dried. Children may help.\n- Dehydrator trays. Washed and air dried.\n"
+  },
+  {
+   "path": "staff/library/recipes/dried-petals.md",
+   "create": "<!--\nlibrary: recipe\nkind: sensory\nsource: Ours\nmade: Piazza\nseason: summer\nproduce: calendula, lavender\nchecked: our values and writing rules, November 5, 2026\n-->\n# Dried petals\n\nCalendula and lavender from our garden dried in the dehydrator, for sensory trays and flower watercolors.\n\n## Ingredients\n\n- calendula flowers and lavender buds from our garden\n\n## Tools\n\n- baskets for gathering\n- the dehydrator\n- jars with lids\n\n## Steps\n\n- Gather the flowers together in the morning, once the dew has dried.\n- Pull the calendula petals from their centers, and strip the lavender buds from their stems.\n- Spread them on the dehydrator trays in one layer.\n- An adult dries them at 95 degrees for 2 to 4 hours, until they feel papery.\n- Keep them in closed jars, labeled with the flower and the day.\n\n## Why we use it\n\nChildren see a summer flower kept for the winter, and smell and feel the petals change as they dry.\n\n## I wonder\n\n- I wonder if the petals will smell the same once they dry.\n- I wonder why the colors stayed bright.\n\n## Connections\n\n- Flower watercolors and playdough, with the petals mixed in.\n- Sensory table in the Idea bank.\n- Summer, when the calendula and lavender bloom.\n\n## Clean up\n\n- Stems and centers go to the compost.\n- Baskets. Shaken out outdoors.\n- Dehydrator trays. Wiped and air dried.\n"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=sensory-table].connected",
+   "expect": [
+    "Water",
+    "Sand",
+    "Mud",
+    "Ice",
+    "Concoctions",
+    "Bubbles",
+    "Natural materials",
+    "Mud kitchen",
+    "Andy Goldsworthy on the Artists page, for works made from ice, water, leaves and stone that melt and change.",
+    "Garden as Educator",
+    "Recipe library, for Puffy paint and Soap foam"
+   ],
+   "value": [
+    "Water",
+    "Sand",
+    "Mud",
+    "Ice",
+    "Concoctions",
+    "Bubbles",
+    "Natural materials",
+    "Mud kitchen",
+    "Andy Goldsworthy on the Artists page, for works made from ice, water, leaves and stone that melt and change.",
+    "Garden as Educator",
+    "Recipe library, for Puffy paint, Soap foam and Dried petals"
+   ]
+  }
+ ]
+}

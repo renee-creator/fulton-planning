@@ -1,0 +1,181 @@
+{
+ "name": "s45CloseSupervision",
+ "note": "Cutting with children has no set number, only close supervision, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/guides/piazza-tools.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others wash, tear, scoop or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others wash, tear, scoop or watch."
+  },
+  {
+   "path": "staff/library/explorations/bok-choy.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others tear, wash or watch, then they trade. Tearing by hand works well for our youngest.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others tear, wash or watch. Tearing by hand works well for our youngest."
+  },
+  {
+   "path": "staff/library/explorations/broccoli-stems.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others snap, sort or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others snap, sort or watch."
+  },
+  {
+   "path": "staff/library/explorations/cilantro.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others wash, spin or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others wash, spin or watch."
+  },
+  {
+   "path": "staff/library/explorations/quinoa.md",
+   "from": "- Children prepare the fruit with the apple corer. One adult works with no more than two children cutting at once, while the others pour, rinse or watch, then they trade.",
+   "to": "- Children prepare the fruit with the apple corer. An adult stays close beside each child who is cutting (close supervision), while the others pour, rinse or watch."
+  },
+  {
+   "path": "staff/library/explorations/radishes.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others wash, sort or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others wash, sort or watch."
+  },
+  {
+   "path": "staff/library/explorations/strawberry-leaves.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others wash, mash or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others wash, mash or watch."
+  },
+  {
+   "path": "staff/library/garden/preserving.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others rinse or lay out the trays, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others rinse or lay out the trays."
+  },
+  {
+   "path": "staff/library/recipes/applesauce.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others scrub, scoop or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others scrub, scoop or watch."
+  },
+  {
+   "path": "staff/library/recipes/bean-rice-bowls.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others grate, snip or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others grate, snip or watch."
+  },
+  {
+   "path": "staff/library/recipes/broccoli-cheese-soup.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others break florets, grate or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others break florets, grate or watch."
+  },
+  {
+   "path": "staff/library/recipes/chicken-noodle-soup.md",
+   "from": "- When children help cut the carrots and celery with child knives, one adult works with no more than two children cutting at once, while the others wash or watch, then they trade.",
+   "to": "- When children help cut the carrots and celery with child knives, an adult stays close beside each child who is cutting (close supervision), while the others wash or watch."
+  },
+  {
+   "path": "staff/library/recipes/cilantro-sauce.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others wash, spin or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others wash, spin or watch."
+  },
+  {
+   "path": "staff/library/recipes/cucumber-yogurt-dip.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others scrub, snip or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others scrub, snip or watch."
+  },
+  {
+   "path": "staff/library/recipes/fresh-pasta.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others knead or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others knead or watch."
+  },
+  {
+   "path": "staff/library/recipes/fresh-peas.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others shell or count, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others shell or count."
+  },
+  {
+   "path": "staff/library/recipes/fresh-ricotta.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others rinse, juice or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others rinse, juice or watch."
+  },
+  {
+   "path": "staff/library/recipes/fruit-leather.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others rinse, spread or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others rinse, spread or watch."
+  },
+  {
+   "path": "staff/library/recipes/green-onion-pancakes.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others whisk or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others whisk or watch."
+  },
+  {
+   "path": "staff/library/recipes/herb-butter.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others wash, spin or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others wash, spin or watch."
+  },
+  {
+   "path": "staff/library/recipes/hummus.md",
+   "from": "- No cutting in the hummus. Cucumbers served beside it are cut by children with child knives, one adult with no more than two children cutting at once, while the others juice, measure or watch, then they trade.",
+   "to": "- No cutting in the hummus. Cucumbers served beside it are cut by children with child knives, with an adult close beside each child who is cutting (close supervision), while the others juice, measure or watch."
+  },
+  {
+   "path": "staff/library/recipes/lentil-soup.md",
+   "from": "- When children help cut the celery with child knives, one adult works with no more than two children cutting at once, while the others scrub or juice, then they trade.",
+   "to": "- When children help cut the celery with child knives, an adult stays close beside each child who is cutting (close supervision), while the others scrub or juice."
+  },
+  {
+   "path": "staff/library/recipes/minestrone-soup.md",
+   "from": "- When children cut, one adult works with no more than two children cutting at once, while the others wash, tear or watch, then they trade.",
+   "to": "- When children cut, an adult stays close beside each child who is cutting (close supervision), while the others wash, tear or watch."
+  },
+  {
+   "path": "staff/library/recipes/oat-crackers.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others roll or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others roll or watch."
+  },
+  {
+   "path": "staff/library/recipes/pancakes.md",
+   "from": "- No cutting in this recipe. Children who add bananas can slice soft bananas with a child knife, one adult with no more than two children cutting at once, while the others whisk or watch, then they trade.",
+   "to": "- No cutting in this recipe. Children who add bananas can slice soft bananas with a child knife, with an adult close beside each child who is cutting (close supervision), while the others whisk or watch."
+  },
+  {
+   "path": "staff/library/recipes/pear-slices-cheese.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others scrub, lay out the plate or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others scrub, lay out the plate or watch."
+  },
+  {
+   "path": "staff/library/recipes/pickled-radishes.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others scrub, pack the jar or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others scrub, pack the jar or watch."
+  },
+  {
+   "path": "staff/library/recipes/potato-leek-soup.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others wash or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others wash or watch."
+  },
+  {
+   "path": "staff/library/recipes/quinoa-porridge.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others rinse, juice or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others rinse, juice or watch."
+  },
+  {
+   "path": "staff/library/recipes/radish-toast.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others scrub, brush butter or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others scrub, brush butter or watch."
+  },
+  {
+   "path": "staff/library/recipes/salsa-fresca.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others wash, snip cilantro, juice or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others wash, snip cilantro, juice or watch."
+  },
+  {
+   "path": "staff/library/recipes/sauteed-bok-choy.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others wash, spin or tear, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others wash, spin or tear."
+  },
+  {
+   "path": "staff/library/recipes/strawberry-lemonade.md",
+   "from": "- One adult works with no more than two children snipping at once, while the others wash, mash or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is snipping (close supervision), while the others wash, mash or watch."
+  },
+  {
+   "path": "staff/library/recipes/tempeh-tacos.md",
+   "from": "- One adult works with no more than two children cutting at once, while the others crumble, scoop or watch, then they trade.",
+   "to": "- An adult stays close beside each child who is cutting (close supervision), while the others crumble, scoop or watch."
+  },
+  {
+   "path": "staff/pd/printables/cooking-from-the-garden.md",
+   "from": "**Cutting.** One adult works with no more than two children cutting at once.",
+   "to": "**Cutting.** An adult stays close beside each child who is cutting (close supervision)."
+  }
+ ]
+}

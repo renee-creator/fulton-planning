@@ -1225,6 +1225,8 @@ module.exports = function staffModule(o) {
     s42SimpleInvitations: ['code:once/s42-simple-invitations.json', 'Hard days becomes Simple invitations, ready to offer, November 5, 2026'],
     s43SensoryRecipes: ['code:once/s43-sensory-recipes.json', 'Eight sensory recipes, each linked from its Idea bank cards, November 5, 2026'],
     s44FoodRecipes: ['code:once/s44-food-recipes.json', 'Nine food recipes, November 5, 2026'],
+    s45CloseSupervision: ['code:once/s45-close-supervision.json', 'Cutting with children has no set number, only close supervision, November 5, 2026'],
+    s46DriedRecipes: ['code:once/s46-dried-recipes.json', 'Dried fruit and dried petals, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
