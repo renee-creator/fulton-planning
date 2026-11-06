@@ -4884,7 +4884,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="95c1814a9af3";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="ab16b7496acc";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6990,6 +6990,8 @@ function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.re
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(q?q.item:l),name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
     for(const l of libLines(recPart(x,"Tools"))){const k=demoKey(l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(l),name:k.replace(/_/g," "),kind:"tool",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);if(q&&q.unit){const k=q.unit==="cup"?"measuring_cup":q.unit;if(!out.has(k))out.set(k,{key:k,name:q.unit==="cup"?"measuring cup":q.unit,kind:"measure",recipes:new Set()});out.get(k).recipes.add(x.title)}}}
+  // the three pictures every demonstration set uses, washing hands, the timer and the adult hand
+  for(const [k,name] of [["washing_hands","washing hands"],["kitchen_timer","kitchen timer"],["adult_hand","adult hand"]])if(!out.has(k))out.set(k,{key:k,name,kind:"every demonstration set",recipes:new Set(((libData&&libData.recipes)||[]).filter(r=>!r.draft).map(r=>r.title))});
   return [...out.values()]}
 // the adult hand, for a step only an adult does
 function demoHand(){return demoCanvas(300,300,(g)=>{g.fillStyle="#f3d7c7";g.beginPath();g.moveTo(90,280);g.lineTo(90,150);for(const [x,h] of [[90,90],[125,60],[160,55],[195,75]]){g.lineTo(x,h);g.arc(x+17,h,17,Math.PI,0);g.lineTo(x+34,150)}
@@ -7004,7 +7006,10 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   // the washing sheet is always first, so a recipe's own first step about washing is not shown twice
   if(steps.length&&/^wash our hands\b/i.test(steps[0]))steps=steps.slice(1);
   const qs=ings.map(l=>({line:l,q:demoQty(l)}));const photos={};String((x.meta||{}).photos||"").split(/[;,]\s*/).forEach(p=>{const m=p.match(/^(\d+)=(.+)$/);if(m)photos[+m[1]]=m[2].trim()});
-  const sheets=[{n:1,text:"Wash our hands.",pics:[{img:demoWash(),w:1.2,drawn:true}],words:[],adult:false}];
+  // washing hands, the timer and the adult hand show our own pictures once the library has them, and a drawing until then
+  const wash=await demoPicData(demoPicOf("washing_hands")),timer=await demoPicData(demoPicOf("kitchen_timer")),hand=await demoPicData(demoPicOf("adult_hand"));
+  const clockImg=()=>timer?timer.data:demoClock();
+  const sheets=[{n:1,text:"Wash our hands.",pics:[{img:wash?wash.data:demoWash(),w:1.2,drawn:!wash}],words:[],adult:false}];
   const measured=new Set();
   for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];
     for(const {q,line} of qs){const name=(q?q.item:line).split(",")[0].toLowerCase().replace(/^(a|an|the)\s+/,"");const keys=name.split(/[\s,]+/).map(w=>w.replace(/[^A-Za-z-]/g,"")).filter(w=>w.length>=3&&!/^(the|and|for|our|you|use)$/i.test(w)&&!/^(like|each|child|from|some|more|with|your|they|that|large|small|fresh|dried|ground|boiling|warm|school)$/i.test(w));
@@ -7015,11 +7020,11 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
       if(first&&q&&q.unit){const mk=q.unit==="cup"?"measuring_cup":q.unit;const mp=await demoPicData(demoPicOf(mk));if(mp)demoFills(q).forEach(f=>pics.push({img:mp.data,w:.6,cap:demoFracText(f)+" "+q.unit}))}
       const pd=await demoPicData(demoPicOf(key,demoKeyOld(q?q.item:line)));if(pd)pics.push({img:pd.data,w:.85,cap:[amount,label].filter(Boolean).join(" "),big:true,credit:pd.credit||""});else words.push({big:[amount,label].filter(Boolean).join(" "),small:""});if(pics.length>10)break}
     if(!pics.length&&!words.length)for(const t of tools){const last=(t.split(/\s+/).slice(-1)[0]||"").replace(/[^A-Za-z-]/g,"").replace(/s$/,"");if(!last||!new RegExp("\\b"+last+"s?\\b","i").test(s))continue;const pd=await demoPicData(demoPicOf(demoKey(t),demoKeyOld(t)));if(pd)pics.push({img:pd.data,w:.85,cap:t.replace(/^(a|an|the)\s+/i,""),big:true,credit:pd.credit||""});else words.push({big:t.replace(/^(a|an|the)\s+/i,""),small:""});break}
-    const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:demoClock(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:demoClock(),w:.7,cap:"wait",drawn:true});
+    const tm=s.match(/(\d+)(?:\s*(?:to|or)\s*(\d+))?\s*minutes?/i);if(tm)pics.push({img:clockImg(),w:.7,cap:tm[2]?tm[1]+" to "+tm[2]+" minutes":tm[1]+" minutes",drawn:true});else if(/\b(wait|let it (rest|cool)|cools?)\b/i.test(s))pics.push({img:clockImg(),w:.7,cap:"wait",drawn:true});
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
   const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t),demoKeyOld(q?q.item:t)));return {text:t,img:pd?pd.data:null,credit:(pd&&pd.credit)||""}};
   const overview={title:x.title,ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
-  return {overview,sheets,hand:demoHand()}}
+  return {overview,sheets,hand:hand?hand.data:demoHand()}}
 // the set as a PDF, letter or poster, Andika throughout
 const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
 /* the poster is one sheet for the wall, 18 by 24 inches. The recipe's name and what we need across the top, then every
@@ -7037,7 +7042,7 @@ async function demoPosterPdf(x){if(!window.jspdf)await TREE_KIT.loadScript(TREE_
   const st=P.sheets;const cols=st.length<=4?2:3;const rows=Math.ceil(st.length/cols);const gap=24;const pw=(W-gap*(cols-1))/cols,ph=Math.min(520,(S.h-M-y-gap*(rows-1))/rows);
   st.forEach((sh,i)=>{const cx=M+(i%cols)*(pw+gap),cy=y+Math.floor(i/cols)*(ph+gap);doc.setFillColor(248,245,238);doc.roundedRect(cx,cy,pw,ph,18,18,"F");
     doc.setFillColor(47,59,47);doc.circle(cx+40,cy+40,26,"F");font(true);doc.setTextColor(255,255,255);doc.setFontSize(30);doc.text(String(sh.n),cx+40,cy+51,{align:"center"});doc.setTextColor(47,59,47);
-    if(sh.adult)doc.addImage(P.hand,"PNG",cx+pw-74,cy+12,60,60);
+    if(sh.adult)doc.addImage(P.hand,demoFmt(P.hand),cx+pw-74,cy+12,60,60);
     const fs=ph>360?30:24;doc.setFontSize(fs);const tl=doc.splitTextToSize(sh.text,pw-40).slice(0,3);doc.text(tl,cx+20,cy+96);let ty=cy+96+tl.length*fs*1.2+8;
     const room=cy+ph-ty-16;const pics=sh.pics.slice(0,4);
     if(pics.length){const n=pics.length,w=Math.min(room-(pics.some(p=>p.cap)?34:0),(pw-40-(n-1)*12)/n);let px=cx+20+(pw-40-(n*w+(n-1)*12))/2;
@@ -7065,7 +7070,7 @@ async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!wi
   credit([...P.overview.ings,...P.overview.tools]);
   for(const sh of P.sheets){doc.addPage([S.w,S.h]);font(true);doc.setFillColor(47,59,47);doc.circle(M+28*k,M+28*k,28*k,"F");doc.setTextColor(255,255,255);doc.setFontSize(28*k);doc.text(String(sh.n),M+28*k,M+38*k,{align:"center"});doc.setTextColor(47,59,47);
     doc.setFontSize(44*k);const lines=doc.splitTextToSize(sh.text,S.w-M*2-(sh.adult?130*k:0));doc.text(lines,M,M+110*k);let top=M+110*k+lines.length*50*k;
-    if(sh.adult){doc.addImage(P.hand,"PNG",S.w-M-90*k,M,90*k,90*k);font(false);doc.setFontSize(14*k);doc.text("An adult does this step",S.w-M,M+104*k,{align:"right"})}
+    if(sh.adult){doc.addImage(P.hand,demoFmt(P.hand),S.w-M-90*k,M,90*k,90*k);font(false);doc.setFontSize(14*k);doc.text("An adult does this step",S.w-M,M+104*k,{align:"right"})}
     if(sh.photo&&window.FP_ORIGINAL_URL){try{const b=await (await fetch(window.FP_ORIGINAL_URL(sh.photo))).blob();const u=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});doc.addImage(u,"JPEG",M,top,S.w-M*2,(S.w-M*2)*.6);top+=(S.w-M*2)*.6+16*k}catch(e){}}
     // the amounts and the items with no picture yet, in large type
     for(const w of sh.words){if(top>S.h-M-60*k)break;font(true);doc.setFontSize(30*k);const wl=doc.splitTextToSize(w.big,S.w-M*2);doc.text(wl,M,top+30*k);top+=wl.length*36*k+6*k}
