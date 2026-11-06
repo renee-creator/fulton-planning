@@ -18,7 +18,7 @@ test('the records are seeded once from the approved file', async () => {
   await wait(1500); assert.ok(h.writes.some(w => /staff\/library\/ideabank\/cards\.json$/.test(w)) && h.writes.some(w => /behaviors\.json$/.test(w)), 'both are written to the records');
   assert.strictEqual((await call(h.staff, 'Kit', 'ideabank')).status, 403, 'the kitchen does not receive it');
   // records already there are read as they are, and nothing is seeded over them
-  const h2 = make(PEOPLE); h2.files.set('staff/library/ideabank/cards.json', { doc: { cards: [{ id: 'only', type: 'ready', group: 'Ready for today', title: 'Only one', sections: [] }] }, sha: 'c' });
+  const h2 = make(PEOPLE); h2.files.set('staff/library/ideabank/cards.json', { doc: { cards: [{ id: 'only', type: 'ready', group: 'Ready to offer', title: 'Only one', sections: [] }] }, sha: 'c' });
   h2.files.set('staff/library/ideabank/behaviors.json', { doc: { behaviors: [] }, sha: 'b' }); await h2.staff.load();
   assert.deepStrictEqual((await call(h2.staff, 'Ann', 'ideabank')).body.cards.map(c => c.id), ['only']);
 });
@@ -60,7 +60,7 @@ test('the director edits a card with history and Restore this version', async ()
 
 test('a blank card of each kind, removing and putting back, and highlights', async () => {
   const h = await loaded(PEOPLE);
-  for (const [type, group] of [['medium', 'Paint'], ['area', 'Outdoor spaces'], ['interest', 'Children\'s interests'], ['year', 'Across the year on our site'], ['ready', 'Ready for today']]) {
+  for (const [type, group] of [['medium', 'Paint'], ['area', 'Outdoor spaces'], ['interest', 'Children\'s interests'], ['year', 'Across the year on our site'], ['ready', 'Ready to offer']]) {
     const r = await call(h.staff, 'Dee', 'ideabank/add', { type, group, title: 'New ' + type });
     assert.strictEqual(r.status, 200); const c = r.body.cards.find(x => x.id === r.body.id);
     assert.strictEqual(c.group, group); assert.ok(c.sections.length >= 5); assert.strictEqual(!!c.home, type !== 'ready');
@@ -78,7 +78,7 @@ test('educators suggest, and the director approves or sets aside', async () => {
   const h = await loaded(PEOPLE);
   let r = await call(h.staff, 'Ann', 'ideabank/suggest', { kind: 'change', card: 'water', field: 'summary', text: 'Water for pouring, floating and painting.', note: 'Shorter' });
   assert.strictEqual(r.status, 200); assert.strictEqual(r.body.suggestions.length, 1);
-  r = await call(h.staff, 'Ann', 'ideabank/suggest', { kind: 'new', type: 'ready', group: 'Ready for today', title: 'Leaf boats', text: 'Leaves floated in a tub.\nA tub of water and fallen leaves.' });
+  r = await call(h.staff, 'Ann', 'ideabank/suggest', { kind: 'new', type: 'ready', group: 'Ready to offer', title: 'Leaf boats', text: 'Leaves floated in a tub.\nA tub of water and fallen leaves.' });
   r = await call(h.staff, 'Bo', 'ideabank/suggest', { kind: 'inquiry', behavior: 'throwing-objects', room: 'North' });
   assert.strictEqual((await call(h.staff, 'Bo', 'ideabank')).body.suggestions.length, 1, 'each educator sees only their own');
   const all = (await call(h.staff, 'Dee', 'ideabank')).body.suggestions; assert.strictEqual(all.length, 3);

@@ -1,6 +1,6 @@
 /* ---------- The Idea bank ----------
    Plans, then Planning resources, then Idea bank. Invitations and provocations for every material, space, interest and
-   season, and ideas ready for a hard day, read from the private records through the signed-in server (ideabank.js).
+   season, and simple invitations, ready to offer, read from the private records through the signed-in server (ideabank.js).
    How We Offer Ideas and What are you seeing? open first. Cards are browsed by group, searched and filtered by what
    they feed, what they support and their setting. A card shows its educator side or its At home side with one control,
    prints one card to a page through the one print kit, attaches to a plan, and offers possibilities to a team inquiry.
@@ -10,9 +10,9 @@ let ib=null,ibBusy=null;
 const ibSt=Object.assign({group:"Paint",q:"",needs:[],sups:[],levels:[],sel:"",side:"edu",mode:"card",bq:"",bsel:"",fromPlan:"",newOpen:false,addOpen:false,sugOpen:""},LS.get("tree.ib",{})||{},{fromPlan:"",mode:"card",newOpen:false,addOpen:false,sugOpen:""});
 const ibPick=new Set();
 const ibKeep=()=>LS.set("tree.ib",{group:ibSt.group,side:ibSt.side,sel:ibSt.sel});
-const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Everyday learning",["Letters and sounds","Numbers and shapes","Time","Community of care"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Hard days",["Ready for today"]]];
-const IB_KIND={everyday:"Everyday learning",medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready for today"};
-const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["everyday","Everyday learning"],["ready","Ready for today"]];
+const IB_NAV=[["Materials",["Paint","Drawing","Color and print","Shaping","Building","Paper and joining","Textiles","Elements and mixing","Light and looking","Sound and movement","Story and play","Living things"]],["Bodies",["Movement and risky play"]],["Spaces",["Indoor spaces","Shared spaces","Outdoor spaces"]],["Everyday learning",["Letters and sounds","Numbers and shapes","Time","Community of care"]],["Children",["Children's interests"]],["Seasons",["Across the year on our site"]],["Simple invitations",["Ready to offer"]]];
+const IB_KIND={everyday:"Everyday learning",medium:"Material",area:"Space",interest:"Children's interest",year:"Across the year",ready:"Ready to offer"};
+const IB_KINDS=[["medium","A material"],["area","A space"],["interest","A children's interest"],["year","Across the year on our site"],["everyday","Everyday learning"],["ready","Ready to offer"]];
 // the seven materials guides now open these cards, from their Materials library group, their Classroom area or a plan
 // that attached a guide before
 const IB_GUIDE={slug:{atelier:"studio-and-class-ateliers",clay:"clay",dramatic:"home-and-dramatic-play-area",noticing:"photography","piazza-tools":"piazza-and-culinary-atelier",workshop:"water",writing:"writing-center"},
@@ -203,7 +203,7 @@ function ibToolsHtml(){const dir=ibDir();if(VIEW_AS)return "";const T=ib.types||
     ${(ib.removed||[]).length?`<details><summary class="linkbtn">Removed cards, ${ib.removed.length}</summary>${ib.removed.map(r=>`<div class="prow"><span>${esc(r.title)} <span class="cnt">${esc(r.by||"")}, ${esc(shortDate(r.at))}</span></span><button class="btn small ghost" data-ibrestore="${esc(r.id)}">Put it back</button></div>`).join("")}</details>`:""}`
     :`<details ${ibSt.newOpen?"open":""}><summary class="linkbtn">Suggest a new idea</summary>${form("ib-new","Send to the director")}<div class="cnt">It waits for the director, who approves it or sets it aside.</div></details>`}
 function renderIdeaBank(){const m=$("#main");if(!m)return;
-  const head=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Idea bank</h2><div class="sub">Invitations and provocations for every material, space, interest and season, and ideas ready for a hard day.</div></div>`;
+  const head=`<div class="head"><span class="eyebrow">Plans, Planning resources</span><h2 style="margin-top:4px">Idea bank</h2><div class="sub">Invitations and provocations for every material, space, interest and season, and simple invitations, ready to offer.</div></div>`;
   if(!ib){m.innerHTML=head+`<section class="card"><div class="empty">${ib===false?"The Idea bank could not be opened. Check the connection and try again.":`<span class="spin"></span> Opening the Idea bank`}</div></section>`;if(ib===null)ibLoad();else if(ib===false){ib=null}return}
   const st=ibSt;let c=st.mode==="card"&&(ibCard(st.sel)||ibShown()[0]||ibCards()[0]);if(c)st.sel=c.id;
   const counts={};for(const x of ibCards())counts[x.group]=(counts[x.group]||0)+1;
@@ -282,7 +282,7 @@ const IB_PRINT_EDU=["Invitations","A starting point","What it might look like","
 const IB_ABOUT="About this material";
 function ibDoc(c,side){const home=side==="home"&&!!c.home;const S=home?c.home.sections:c.sections||[];const by=h=>S.find(s=>s.h===h);
   const pick=home?[IB_ABOUT,"Ways to try it","Your child's role","Wonder together","What your child is learning"].map(by).filter(Boolean)
-    :[by(IB_ABOUT),S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it works on hard days"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
+    :[by(IB_ABOUT),S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it invites children in"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
   const sub=home?"To try at home":[IB_KIND[c.type],c.setting&&c.setting.level].filter(has).join(", ");const title=home?c.home.title:c.title;
   // every item of the parts it shows, and a card with more than fits continues on a second page
   const blocks=pick.map(s=>s.style==="text"?dText(s.h,s.text):dList(s.h,(s.items||[]).filter(Boolean)));

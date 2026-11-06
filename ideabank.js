@@ -1,6 +1,6 @@
 'use strict';
 /* The Idea bank, invitations and provocations for every material, space, interest and season, and ideas ready for a
-   hard day, with the behaviors educators look up under What are you seeing?
+   simple invitations ready to offer, with the behaviors educators look up under What are you seeing?
 
    The cards are kept in the private records as one record, staff/library/ideabank/cards.json, and the behaviors as
    staff/library/ideabank/behaviors.json, read and written through the signed-in server like the other libraries for
@@ -70,8 +70,8 @@ module.exports = function ideabank(o) {
     // everyday learning, the letters, numbers, time and community of care children meet in the everyday moments of our day
     everyday: { groups: ['Letters and sounds', 'Numbers and shapes', 'Time', 'Community of care'],
       sections: [['Invitations', 'bullets'], ['Together or alone', 'text'], ['Good to know', 'text'], ['The child\'s role', 'bullets'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Wondering alongside', 'lines'], ['Ways it can grow', 'numbered']] },
-    ready: { groups: ['Ready for today'],
-      sections: [['What you need', 'text'], ['Set it up', 'text'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Why it works on hard days', 'text'], ['If it takes off', 'text']] } };
+    ready: { groups: ['Ready to offer'],
+      sections: [['What you need', 'text'], ['Set it up', 'text'], ['Closing it together', 'text'], ['Your presence', 'text'], ['Why it invites children in', 'text'], ['If it takes off', 'text']] } };
   const HOME = [['What you need', 'text'], ['Ways to try it', 'bullets'], ['Your child\'s role', 'text'], ['Wonder together', 'lines'], ['What your child is learning', 'text'], ['Bring it to school', 'text'], ['Good to know', 'text']];
   const blankSec = ([h, style]) => style === 'text' ? { h, style, text: '' } : { h, style, items: [] };
   const slug = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'idea';

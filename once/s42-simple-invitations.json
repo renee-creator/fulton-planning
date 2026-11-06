@@ -1,0 +1,23 @@
+{
+ "name": "s42SimpleInvitations",
+ "note": "Hard days becomes Simple invitations, ready to offer, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Ready for today",
+   "to": "Ready to offer",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Why it works on hard days",
+   "to": "Why it invites children in",
+   "all": true
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "ideas ready for a hard day",
+   "to": "simple invitations, ready to offer"
+  }
+ ]
+}
