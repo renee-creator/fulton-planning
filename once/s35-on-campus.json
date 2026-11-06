@@ -1,0 +1,341 @@
+{
+ "name": "s35OnCampus",
+ "note": "Idea bank cards keep children on our campus, apart from the creek walks, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a musician or a performance in our community.",
+   "to": "Invite a musician to play for and with the children.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A walk or a family trip to the public library to get library cards and choose books.",
+   "to": "Public library books families borrow and bring in to share.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit the public library and invite children to choose books for the class.",
+   "to": "Bring in a basket of public library books and invite children to choose which stay for the class.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit the public library together and bring back borrowed books.",
+   "to": "Keep a basket for borrowed public library books.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a local woodworker or invite a family member who builds.",
+   "to": "Invite a woodworker or a family member who builds to work alongside children.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a sheep shearing or wool fair, or invite a spinner to visit.",
+   "to": "Invite a spinner or shearer to visit with fleece and tools.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a post office or invite a mail carrier.",
+   "to": "Invite a mail carrier to visit.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a farm or farmers market.",
+   "to": "Invite a farmer or a family who grows food to share their harvest.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A visit to a farmers market or a local farm.",
+   "to": "Produce from our FEED bin, with the name of the farm it came from.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A visit to a museum or cultural place where Pomo or Miwok people share their own acorn and basket traditions, or a visiting Native educator.",
+   "to": "A visiting Native educator who shares Pomo or Miwok acorn and basket traditions in their own words.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Learn about Pomo basket weaving here in Sonoma County, visit a local museum collection if possible, and notice the plants and patterns.",
+   "to": "Learn about Pomo basket weaving here in Sonoma County, look at photographs of Pomo baskets from a museum collection, and notice the plants and patterns.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a real place in the neighborhood and rebuild it together afterward.",
+   "to": "Look at photographs of a place children know and rebuild it together.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a real market or shop.",
+   "to": "Look at photographs of a market or shop children know, then set up our own.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A field trip or family outing idea to the Petrified Forest in Calistoga, where trees were buried in volcanic ash.",
+   "to": "Photographs of the Petrified Forest in Calistoga, where trees were buried in volcanic ash.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a museum with collections, such as the California Academy of Sciences.",
+   "to": "Look at photographs of museum collections, such as those at the California Academy of Sciences.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A family outing idea to the Hyde Street Pier at San Francisco Maritime National Historical Park or a harbor in Bodega Bay.",
+   "to": "Photographs of the ships at Hyde Street Pier and the harbor in Bodega Bay.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a harbor or historic ship with families.",
+   "to": "Look at photographs of a harbor or historic ship and build one together.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A walk around the neighborhood to look at roofs, doors, windows and walls, with clipboards for drawing.",
+   "to": "A walk around our campus to look at roofs, doors, windows and walls, with clipboards for drawing.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A neighborhood walk reading the signs we pass, such as the S on a stop sign.",
+   "to": "A walk around our campus reading the signs and labels we pass.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a seed library at a public library or a community garden.",
+   "to": "Start a class seed library with seeds saved from our garden.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Visit a creative reuse center in the Bay Area to choose materials together.",
+   "to": "Bring in materials from a creative reuse center and choose from them together.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Counting sleeps to a birthday, a field trip or a visit, with a paper chain or a calendar.",
+   "to": "Counting sleeps to a birthday, a visitor or a celebration, with a paper chain or a calendar.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Children choose and play instruments on their own with agreements about loud and quiet. A visit to a performance in our community leaves campus with hand holding.",
+   "to": "Children choose and play instruments on their own with agreements about loud and quiet.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Books are open to everyone indoors and out. Reading near the animal yards happens with an educator, and a walk to the public library leaves campus with each child holding an adult's hand.",
+   "to": "Books are open to everyone indoors and out. Reading near the animal yards happens with an educator.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Writing and sending mail are open to everyone. Walks to a real mailbox or post office leave campus with each child holding an adult's hand.",
+   "to": "Writing and sending mail are open to everyone. Families or the office mail the letters children write.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Den and block building are open to everyone. Low-temp glue guns need an adult at the table, large builds need an educator checking they are stable, and neighborhood walks mean holding hands.",
+   "to": "Den and block building are open to everyone. Low-temp glue guns need an adult at the table, and large builds need an educator checking they are stable.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Pretend campfires, stories and fire drills are open to everyone. Making willow charcoal is adult work with children watching from a marked distance, and visits to a fire station leave campus with hand holding.",
+   "to": "Pretend campfires, stories and fire drills are open to everyone. Making willow charcoal is adult work with children watching from a marked distance, and firefighters can be invited to visit.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "set": "cards[id=space-sun-and-moon].sections",
+   "value": [
+    {
+     "h": "What it might look like",
+     "style": "text",
+     "text": "Children may spot the moon in the morning sky and call everyone to see. They play rockets and astronauts, ask where the sun goes at night, and wonder how far away the stars are."
+    },
+    {
+     "h": "Invitations",
+     "style": "bullets",
+     "items": [
+      "A morning moon watch, since the moon is often visible in our sky during the day.",
+      "A moon journal where children draw the moon's shape when they see it, at school and at home.",
+      "Shadow tracing in the outdoor piazza at different times of day to follow the sun.",
+      "Sun prints on sun print paper with leaves and loose parts.",
+      "A dark tent or room with flashlights, a ball and a lamp to wonder about day and night.",
+      "Real photos of the moon, the sun, planets and Earth from space at children's eye level.",
+      "Rockets and space stations built from boxes, tubes and tape.",
+      "Craters made by dropping stones into a deep tray of flour dusted on top with colored chalk dust.",
+      "Constellation patterns poked into dark paper and held up to light.",
+      "Galileo's ink drawings of the moon and Vincent van Gogh's The Starry Night shown in books and large prints beside ink and paint.",
+      "A family evening at the Robert Ferguson Observatory in Sugarloaf Ridge State Park, or Chabot Space and Science Center in Oakland.",
+      "Books about space, the sun and the moon from the Book collection.",
+      "Night sky songs from the Song book at meeting time."
+     ]
+    },
+    {
+     "h": "Together or alone",
+     "style": "text",
+     "text": "Both. Spotting the moon together and building a rocket are shared joys. A moon journal is a child's own record over time."
+    },
+    {
+     "h": "Good to know",
+     "style": "text",
+     "text": "Never look straight at the sun, even with sunglasses. Use the light table, shadows and sun prints to explore sunlight safely. The moon's shape changes over about a month, so keep the journal going long enough to notice. Many families see the night sky from home, so invite them in."
+    },
+    {
+     "h": "The child's role",
+     "style": "bullets",
+     "items": [
+      "Spot and announce the moon when they see it.",
+      "Draw the moon's shape in the journal.",
+      "Trace shadows and mark the sun's path.",
+      "Build rockets and decide who does each job.",
+      "Make sun prints and choose the objects.",
+      "Share sky findings from home at meeting time."
+     ]
+    },
+    {
+     "h": "Closing it together",
+     "style": "text",
+     "text": "Children close sky work by returning the moon journal to its shelf and putting chalk back in its tin after shadow tracing. Sun print papers go to the drying rack, and rocket parts are sorted into their labeled baskets. Everything has a photo-labeled home, so the space closes as part of the work."
+    },
+    {
+     "h": "Your presence",
+     "style": "text",
+     "text": "Look up alongside the children with a slow, curious face and a quiet voice. Lie down on the grass or sit low together to watch the sky. Let wondering hang in the air, since big questions do not need fast answers."
+    },
+    {
+     "h": "Wondering alongside",
+     "style": "lines",
+     "items": [
+      "I wonder where the moon goes during the day.",
+      "Tell me about its shape today.",
+      "Where do you think the sun goes at night?",
+      "What do you see that makes you say that?"
+     ]
+    },
+    {
+     "h": "Ways it can grow",
+     "style": "numbered",
+     "items": [
+      "Notice the moon in the morning sky together.",
+      "Start a moon journal and invite families to add to it.",
+      "Trace shadows through the day.",
+      "Make sun prints with leaves and loose parts.",
+      "Explore day and night with a lamp and a ball in a dark space.",
+      "Build rockets and a space station in dramatic play.",
+      "Make craters by dropping stones into flour dusted with chalk dust.",
+      "Poke constellations into dark paper.",
+      "Look at Galileo's moon drawings and draw the moon from life.",
+      "Make a class book of sky theories."
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "h": "What it might look like",
+     "style": "text",
+     "text": "Children may spot the moon in the morning sky and call everyone to see. They play rockets and astronauts, ask where the sun goes at night, and wonder how far away the stars are."
+    },
+    {
+     "h": "Invitations",
+     "style": "bullets",
+     "items": [
+      "A morning moon watch, since the moon is often visible in our sky during the day.",
+      "A moon journal where children draw the moon's shape when they see it, at school and at home.",
+      "Shadow tracing in the outdoor piazza at different times of day to follow the sun.",
+      "Sun prints on sun print paper with leaves and loose parts.",
+      "A dark tent or room with flashlights, a ball and a lamp to wonder about day and night.",
+      "Real photos of the moon, the sun, planets and Earth from space at children's eye level.",
+      "Rockets and space stations built from boxes, tubes and tape.",
+      "Craters made by dropping stones into a deep tray of flour dusted on top with colored chalk dust.",
+      "Constellation patterns poked into dark paper and held up to light.",
+      "Galileo's ink drawings of the moon and Vincent van Gogh's The Starry Night shown in books and large prints beside ink and paint.",
+      "A family evening at the Robert Ferguson Observatory in Sugarloaf Ridge State Park, or Chabot Space and Science Center in Oakland.",
+      "Books about space, the sun and the moon from the Book collection.",
+      "Night sky songs from the Song book at meeting time."
+     ]
+    },
+    {
+     "h": "Together or alone",
+     "style": "text",
+     "text": "Both. Spotting the moon together and building a rocket are shared joys. A moon journal is a child's own record over time."
+    },
+    {
+     "h": "Good to know",
+     "style": "text",
+     "text": "Never look straight at the sun, even with sunglasses. Use the light table, shadows and sun prints to explore sunlight safely. The moon's shape changes over about a month, so keep the journal going long enough to notice. Many families see the night sky from home, so invite them in."
+    },
+    {
+     "h": "The child's role",
+     "style": "bullets",
+     "items": [
+      "Spot and announce the moon when they see it.",
+      "Draw the moon's shape in the journal.",
+      "Trace shadows and mark the sun's path.",
+      "Build rockets and decide who does each job.",
+      "Make sun prints and choose the objects.",
+      "Share sky findings from home at meeting time."
+     ]
+    },
+    {
+     "h": "Closing it together",
+     "style": "text",
+     "text": "Children close sky work by returning the moon journal to its shelf and putting chalk back in its tin after shadow tracing. Sun print papers go to the drying rack, and rocket parts are sorted into their labeled baskets. Everything has a photo-labeled home, so the space closes as part of the work."
+    },
+    {
+     "h": "Your presence",
+     "style": "text",
+     "text": "Look up alongside the children with a slow, curious face and a quiet voice. Lie down on the grass or sit low together to watch the sky. Let wondering hang in the air, since big questions do not need fast answers."
+    },
+    {
+     "h": "Wondering alongside",
+     "style": "lines",
+     "items": [
+      "I wonder where the moon goes during the day.",
+      "Tell me about its shape today.",
+      "Where do you think the sun goes at night?",
+      "What do you see that makes you say that?"
+     ]
+    },
+    {
+     "h": "Ways it can grow",
+     "style": "numbered",
+     "items": [
+      "Notice the moon in the morning sky together.",
+      "Start a moon journal and invite families to add to it.",
+      "Trace shadows through the day.",
+      "Make sun prints with leaves and loose parts.",
+      "Explore day and night with a lamp and a ball in a dark space.",
+      "Build rockets and a space station in dramatic play.",
+      "Make craters by dropping stones into flour dusted with chalk dust.",
+      "Poke constellations into dark paper.",
+      "Look at Galileo's moon drawings and draw the moon from life.",
+      "Visit an observatory with families.",
+      "Make a class book of sky theories."
+     ]
+    }
+   ]
+  }
+ ]
+}
