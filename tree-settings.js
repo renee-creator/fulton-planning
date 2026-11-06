@@ -3,7 +3,7 @@
    and opening one closes the others. A card not named here goes under the closest heading. */
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Museums and cultural places","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
-  ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status"]]];
+  ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status","Program watch"]]];
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
   if(t==="See TREE as an educator")return "Any page, as an educator sees it";
@@ -26,6 +26,7 @@ function setStatus(t,x){try{
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
   if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
   if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
+  if(t==="Program watch")return watchInfo&&watchInfo.findings?watchInfo.findings.length?plural(watchInfo.findings.length,"thing")+" to correct":"Nothing to correct":"";
   if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
   if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
   if(t==="Keeping records")return keepInfo&&!keepInfo.error?[keepInfo.childYears?`Children's records ${keepInfo.childYears} years`:"Children's records not set",keepInfo.staffYears?`staff ${keepInfo.staffYears} years`:"staff not set"].join(", "):"";
@@ -66,7 +67,7 @@ function renderSettings(){
   ${lensSettingsHtml()}
   ${menusHtml()}
   ${staffBdaysHtml()}
-  ${keepingHtml()}${serverStatusHtml()}
+  ${keepingHtml()}${serverStatusHtml()}${programWatchHtml()}
   ${storyFramesHtml()}
   ${releasesHtml()}${displayHtml()}
   ${backupHtml()}
