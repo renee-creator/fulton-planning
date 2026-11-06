@@ -1,0 +1,131 @@
+{
+ "name": "s39UnicornCafe",
+ "note": "The Unicorn Café kept only as the children's naming story, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Paint boxes, signs and props for dramatic play and the Unicorn Café.",
+   "to": "Paint boxes, signs and props for dramatic play and a café the children name."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "connected to our Unicorn Café in the piazza.",
+   "to": "connected to the café the children run in the piazza."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Write menus and order slips for the Unicorn Café.",
+   "to": "Write menus and order slips for the children's café."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "home of the Unicorn Café, where children cook, serve and eat together across classes.",
+   "to": "home of a café the children name and run each year (one year they named it the Unicorn Café), where children cook, serve and eat together across classes."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "take orders from guests at the Unicorn Café.",
+   "to": "take orders from guests at the children's café."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Open the Unicorn Café with a sign, menus and simple roles",
+   "to": "Open a café the children name, with a sign, menus and simple roles"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "so we can cook it in the Unicorn Café and add it",
+   "to": "so we can cook it in our piazza and add it"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "The Unicorn Café in the piazza, with menus, order pads, cloth napkins and real dishes.",
+   "to": "A café in the piazza that the children name, with menus, order pads, cloth napkins and real dishes."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Run the Unicorn Café with real menus and dishes.",
+   "to": "Run the children's café with real menus and dishes."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "The Unicorn Café with real dishes, cloth napkins,",
+   "to": "The children's café with real dishes, cloth napkins,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Run the Unicorn Café with menus, signs and real dishes.",
+   "to": "Run the children's café with menus, signs and real dishes."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "lemonade for the Unicorn Café.",
+   "to": "lemonade for the children's café."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Serve at the Unicorn Café with real cups.",
+   "to": "Serve at the children's café with real cups."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A tea gathering at the Unicorn Café where",
+   "to": "A tea gathering at the children's café where"
+  },
+  {
+   "path": "staff/library/prompts/artists.md",
+   "from": "The culinary atelier and the Unicorn Café,",
+   "to": "The culinary atelier and a café the children name,"
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "the Unicorn Café with menus and prices",
+   "to": "a café the children name, with menus and prices"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "the chef's notes on the menu and the Unicorn Café follow that plan",
+   "to": "the chef's notes on the menu and the café the children run follow that plan"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "the chef's notes on the menu and the Unicorn Café follow that plan",
+   "to": "the chef's notes on the menu and the café the children run follow that plan"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "### The Piazza and Unicorn Café, a curriculum of community",
+   "to": "### The Piazza project, a curriculum of community"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "The Piazza and Unicorn Café, a curriculum of community, began with a vision.",
+   "to": "The Piazza project, a curriculum of community, began with a vision."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "- The Piazza and Unicorn Café phases and key questions",
+   "to": "- The Piazza project phases and key questions"
+  },
+  {
+   "path": "staff/pd/restored/table.md",
+   "from": "### The Piazza and Unicorn Café, a curriculum of community",
+   "to": "### The Piazza project, a curriculum of community"
+  },
+  {
+   "path": "staff/pd/restored/table.md",
+   "from": "The Piazza and Unicorn Café, a curriculum of community, began with a vision.",
+   "to": "The Piazza project, a curriculum of community, began with a vision."
+  },
+  {
+   "path": "staff/pd/restored/table.md",
+   "from": "- The Piazza and Unicorn Café phases and key questions",
+   "to": "- The Piazza project phases and key questions"
+  },
+  {
+   "path": "staff/pd/printables/table.md",
+   "from": "## The Piazza and Unicorn Café phases and key questions",
+   "to": "## The Piazza project phases and key questions"
+  }
+ ]
+}
