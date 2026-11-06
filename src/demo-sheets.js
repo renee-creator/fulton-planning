@@ -124,7 +124,8 @@ async function demoPosterPdf(x){if(!window.jspdf)await TREE_KIT.loadScript(TREE_
   y+=cell+56;doc.setDrawColor(200,190,170);doc.setLineWidth(2);doc.line(M,y-22,M+W,y-22);
   // the steps in numbered panels, two, three or four across by how many steps there are
   const st=P.sheets;const cols=st.length<=4?2:st.length<=9?3:4;const rows=Math.ceil(st.length/cols);const gap=22;const pw=(W-gap*(cols-1))/cols,ph=Math.min(560,(S.h-M-y-gap*(rows-1))/rows);
-  st.forEach((sh,i)=>{const cx=M+(i%cols)*(pw+gap),cy=y+Math.floor(i/cols)*(ph+gap);doc.setFillColor(248,245,238);doc.roundedRect(cx,cy,pw,ph,18,18,"F");
+  st.forEach((sh,i)=>{const cx=M+(i%cols)*(pw+gap),cy=y+Math.floor(i/cols)*(ph+gap);// each step on white, so its pictures sit on the same white, with a border to mark the square
+    doc.setFillColor(255,255,255);doc.setDrawColor(200,190,170);doc.setLineWidth(3);doc.roundedRect(cx,cy,pw,ph,18,18,"FD");
     doc.setFillColor(47,59,47);doc.circle(cx+36,cy+36,24,"F");font(true);doc.setTextColor(255,255,255);doc.setFontSize(28);doc.text(String(sh.n),cx+36,cy+46,{align:"center"});doc.setTextColor(47,59,47);
     if(sh.adult)doc.addImage(P.hand,demoFmt(P.hand),cx+pw-66,cy+10,52,52);
     const fs=ph>380?(cols>3?24:28):22;doc.setFontSize(fs);const tlines=doc.splitTextToSize(sh.text,pw-36).slice(0,4);doc.text(tlines,cx+18,cy+84);let ty=cy+84+tlines.length*fs*1.15+6;
