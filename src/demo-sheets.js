@@ -32,7 +32,7 @@ function demoClean(t){let x=String(t||"").toLowerCase().replace(/\(.*?\)/g," ").
   // "dry black or pinto beans" keeps black beans, and "water for rice" keeps water
   {const o=x.split(/\s+or\s+/);if(o.length>1&&o[1].trim().split(/\s+/).length===2&&/s$/.test(o[1].trim())&&!/s$/.test(o[0].trim()))x=o[0].trim()+" "+o[1].trim().split(/\s+/).slice(-1)[0];else x=o[0]}
   x=x.split(/\s+and an?\s+|\s*\/\s*|\s+(for|to|in|on)\s+/)[0].replace(/\s+each\s*$/,"");
-  x=x.replace(/\bmeasuring (cups?|spoons?)\b/g,(m,u)=>"measuring_"+u.replace(/s$/,""));
+  x=x.replace(/\bmeasuring (cups?|spoons?)\b/g,(m,u)=>"measuring_"+u.replace(/s$/,""));x=x.replace(/\bsqueeze bottles?\b/g,"squeeze_bottle");
   x=x.replace(/[0-9½¼¾⅓⅔.\/-]+/g," ").replace(DEMO_NUM," ").replace(DEMO_UNIT," ").replace(/[^a-z_\s]/g," ").replace(/\s+/g," ").trim().replace(/^(and|or)\s+/,"");
   return x}
 const demoKey=t=>{const x0=demoClean(t);let x=x0.replace(/^(some|our|the)\s+/,"");

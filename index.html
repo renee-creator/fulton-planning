@@ -4884,7 +4884,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4e7856b98998";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="95c1814a9af3";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6962,7 +6962,7 @@ function demoClean(t){let x=String(t||"").toLowerCase().replace(/\(.*?\)/g," ").
   // "dry black or pinto beans" keeps black beans, and "water for rice" keeps water
   {const o=x.split(/\s+or\s+/);if(o.length>1&&o[1].trim().split(/\s+/).length===2&&/s$/.test(o[1].trim())&&!/s$/.test(o[0].trim()))x=o[0].trim()+" "+o[1].trim().split(/\s+/).slice(-1)[0];else x=o[0]}
   x=x.split(/\s+and an?\s+|\s*\/\s*|\s+(for|to|in|on)\s+/)[0].replace(/\s+each\s*$/,"");
-  x=x.replace(/\bmeasuring (cups?|spoons?)\b/g,(m,u)=>"measuring_"+u.replace(/s$/,""));
+  x=x.replace(/\bmeasuring (cups?|spoons?)\b/g,(m,u)=>"measuring_"+u.replace(/s$/,""));x=x.replace(/\bsqueeze bottles?\b/g,"squeeze_bottle");
   x=x.replace(/[0-9½¼¾⅓⅔.\/-]+/g," ").replace(DEMO_NUM," ").replace(DEMO_UNIT," ").replace(/[^a-z_\s]/g," ").replace(/\s+/g," ").trim().replace(/^(and|or)\s+/,"");
   return x}
 const demoKey=t=>{const x0=demoClean(t);let x=x0.replace(/^(some|our|the)\s+/,"");
