@@ -1221,6 +1221,7 @@ module.exports = function staffModule(o) {
     s38Toolkits: ['code:once/s38-toolkits.json', 'A toolkit in TREE for each of our gatherings, November 5, 2026'],
     s39UnicornCafe: ['code:once/s39-unicorn-cafe.json', 'The Unicorn Café kept only as the children\'s naming story, November 5, 2026'],
     s40Piazza: ['code:once/s40-piazza.json', 'The piazza and our culinary atelier are named as one place, November 5, 2026'],
+    s41PiazzaCafe: ['code:once/s41-piazza-cafe.json', 'The café is the piazza, named by the children each year, November 5, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

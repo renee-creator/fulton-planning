@@ -1,0 +1,87 @@
+{
+ "name": "s41PiazzaCafe",
+ "note": "The café is the piazza, named by the children each year, November 5, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "How our indoor piazza works as a shared meeting place and a real kitchen studio, home of a café the children name and run each year (one year they named it the Unicorn Café), where children cook, serve and eat together across classes.",
+   "to": "How our indoor piazza works as a shared meeting place and kitchen studio, which the children name each year (one year they named it the Unicorn Café), where children cook, serve and eat together across classes.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Paint boxes, signs and props for dramatic play and a café the children name.",
+   "to": "Paint boxes, signs and props for dramatic play and the piazza.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "connected to the café the children run in the piazza.",
+   "to": "connected to our piazza."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Write menus and order slips for the children's café.",
+   "to": "Write menus and order slips for the piazza.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "take orders from guests at the children's café.",
+   "to": "take orders from guests in the piazza."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Open a café the children name, with a sign, menus and simple roles",
+   "to": "Open the piazza to guests with a sign, menus and simple roles"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Run the children's café with real menus and dishes.",
+   "to": "Run the piazza with menus and real dishes.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "The children's café with real dishes,",
+   "to": "The piazza with real dishes,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Run the children's café with menus, signs and real dishes.",
+   "to": "Run the piazza with menus, signs and real dishes.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Serve at the children's café with real cups.",
+   "to": "Serve in the piazza with real cups.",
+   "all": true
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "A tea gathering at the children's café where",
+   "to": "A tea gathering in the piazza where"
+  },
+  {
+   "path": "staff/library/prompts/artists.md",
+   "from": "The culinary atelier and a café the children name,",
+   "to": "The piazza,"
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "a café the children name, with menus and prices",
+   "to": "the piazza with menus and prices"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "the chef's notes on the menu and the café the children run follow that plan",
+   "to": "the chef's notes on the menu and the piazza follow that plan"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "the chef's notes on the menu and the café the children run follow that plan",
+   "to": "the chef's notes on the menu and the piazza follow that plan"
+  }
+ ]
+}
