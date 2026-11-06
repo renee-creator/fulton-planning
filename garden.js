@@ -129,7 +129,7 @@ module.exports = function garden(o) {
   }
   function view(me) {
     const s = setup(); if (!s) return null; const dir = isDirector(me), L = glog(), d = today();
-    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, eduHide: s.eduHide || [], wanted: s.wantedSpaces || [],
+    const out = { ready: !!s.ready, plants: s.plants || [], beds: s.beds || [], uses: USES, wild: s.wild || [], signs: s.signs || [], fieldGuides: s.fieldGuides || [], nearUs: s.nearUs || null, safety: s.safety || null, inat: s.inat || null, stages: STAGES, agreements: s.agreements || {}, animals: s.animals || [], plan: s.plan || {}, tending: s.tending || {}, sources: s.sources || [], mapPhoto: s.mapPhoto || '', mapSpots: s.mapSpots || {}, mapReady: !!s.mapReady, mapLabels: s.mapLabels || {}, eduHide: s.eduHide || [], eduCal: ['all', 'weekly', 'off'].includes(s.eduCal) ? s.eduCal : 'weekly', wanted: s.wantedSpaces || [],
       today: mine(tasksFor(d, s), me), week: [], harvests: L.harvests.slice(-60), preserves: (L.preserves || []).slice(-80), compost: L.compost.slice(-60), seeds: L.seeds, trays: L.trays, wildlife: L.wildlife, photos: L.photos.filter(x => x.ok), years: L.years, handwash: s.handwash || null, nochemicals: s.nochemicals || '' };
     for (let i = 1; i <= 6; i++) { const day = addDays(d, i); const dow = new Date(day + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue; out.week.push({ day, tasks: mine(tasksFor(day, s), me).filter(t => t.kind === 'repeat' || t.kind === 'animal') }); }
     out.materials = materials(); out.seasons = SEASONS.map(([key, name, months]) => ({ key, name, months })); out.season = seasonOf(d.slice(5, 7)); out.library = library();
@@ -205,6 +205,7 @@ module.exports = function garden(o) {
     if (!dir) { err(req, res, 403, 'Only the director changes the Garden.'); return; }
     if (P === 'garden/ready') { saveS({ ready: !!body.on }); return back(); }
     // the director chooses which Garden sections educators see, every section on until switched off
+    if (P === 'garden/educal') { if (!['all', 'weekly', 'off'].includes(body.mode)) { err(req, res, 400, 'Choose all, weekly or off.'); return; } saveS({ eduCal: body.mode }); return back(); }
     if (P === 'garden/edu') { const K = ['placesheet', 'volunteer', 'premises', 'map', 'today', 'plants', 'plan', 'tend', 'harvests', 'preserving', 'compost', 'seeds', 'trays', 'wild', 'guides', 'prints', 'animals', 'agree', 'beds']; if (!K.includes(body.key)) { err(req, res, 400, 'Choose a section.'); return; }
       const hide = new Set((s.eduHide || []).filter(k => K.includes(k))); if (body.on) hide.delete(body.key); else hide.add(body.key); saveS({ eduHide: [...hide] }); return back(); }
     // our site project on iNaturalist, where every observation from our yards gathers, with locations obscured
@@ -359,11 +360,14 @@ Writing rules. No dashes. No colons inside sentences. Plain warm sentences. Only
   // the calendar's garden entries, the repeating tasks and the animals' care, for the reader's class or for the director
   function calendar(from, to, me) {
     const s = setup(); if (!s || !s.ready || !me) return []; const name = typeof me === 'string' ? me : me.name || ''; const out = [];
+    // the director chooses what educators see on their calendars, all the tasks, the weekly and monthly ones without the
+    // daily animal care, or none. The director and the kitchen always see every task (November 6, 2026)
+    const everyTask = !!(me && me.director) || isDirector(name) || isKitchen(name) || isKitchen(me); const mode = everyTask ? 'all' : (['all', 'weekly', 'off'].includes(s.eduCal) ? s.eduCal : 'weekly'); if (mode === 'off') return [];
     for (let d = from; d <= to; d = addDays(d, 1)) { const dow = new Date(d + 'T12:00:00Z').getUTCDay(); if (dow === 0 || dow === 6) continue;
       // a monthly task posts on the month's first school day, so a month starting on a weekend still has it
       const firstSchool = (() => { let f = d.slice(0, 8) + '01'; for (;;) { const w = new Date(f + 'T12:00:00Z').getUTCDay(); if (w > 0 && w < 6) return f; f = addDays(f, 1); } })();
       // a task marked done or passed leaves the calendar, the same as it leaves Today's garden card
-      for (const t of mine(tasksFor(d, s), name)) if (!t.done && (t.kind === 'repeat' || t.kind === 'animal' || (t.kind === 'month' && d === firstSchool)))
+      for (const t of mine(tasksFor(d, s), name)) if (!t.done && (t.kind === 'repeat' || (t.kind === 'animal' && mode === 'all') || (t.kind === 'month' && d === firstSchool)))
         out.push({ id: 'tgarden.' + t.id + '.' + d, cal: 'tgarden', title: 'Garden, ' + t.text + (t.room ? ', ' + t.room : ''), desc: (t.bedName ? t.bedName + '. ' : '') + 'Mark it done on the Garden page or Today.', allDay: true, start: d, end: d }); }
     return out;
   }
