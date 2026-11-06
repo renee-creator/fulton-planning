@@ -57,6 +57,24 @@ test('repeated trouble becomes findings with a plan, and the morning report reac
   await w.tick(); await w.tick();
   assert.strictEqual(sent.filter(m => /attention now/.test(m.title)).length, 1);
   assert.strictEqual(w.findings()[0].severity, 'urgent');
+  // once handled while still red, it sends nothing more, even after six hours
+  const save = w.findings()[0]; w.handle(save.key, 'Dee');
+  c.add(7 * 3600e3); await w.tick();
+  assert.strictEqual(sent.filter(m => /attention now/.test(m.title)).length, 1);
+  // outside TREE no key carries the message it was made from
+  assert.ok(w.view(true).findings.every(f => /^f-[0-9a-f]{16}$/.test(f.key)));
+});
+
+test('five of the same server error within any hour is urgent, even after an earlier one that day', async () => {
+  const c = clock(), sent = [];
+  const w = makeWatch({ now: c.now, notify: async m => sent.push(m) }); w.load(null);
+  w.fromLog(['Request error', 'TypeError: a']);
+  c.add(2 * 3600e3);
+  for (let i = 0; i < 4; i++) { w.fromLog(['Request error', 'TypeError: a']); c.add(60e3); }
+  assert.strictEqual(sent.length, 0, 'four in the hour is not yet urgent');
+  w.fromLog(['Request error', 'TypeError: a']);
+  await new Promise(r => setImmediate(r));
+  assert.strictEqual(sent.length, 1); assert.match(sent[0].body, /five times within an hour/);
 });
 
 test('what was counted survives a restart, and a new day moves it to the history', () => {

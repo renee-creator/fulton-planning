@@ -132,7 +132,11 @@ module.exports = function watch(o) {
     if (detail.who) { const h = require('crypto').createHash('sha256').update(String(detail.who).toLowerCase()).digest('hex').slice(0, 10); if (!it.people.includes(h) && it.people.length < 50) it.people.push(h); }
     if (detail.ms) { it.ms += detail.ms; it.max = Math.max(it.max, detail.ms); }
     dirty = true;
-    if (kind === 'error' && it.count >= 5 && t - it.first < HOUR) urgent(it, 'The server has had the same error ' + it.count + ' times within an hour.');
+    // the times of the last five errors, so five within any hour is urgent, whenever in the day they come
+    if (kind === 'error') {
+      it.hits = (Array.isArray(it.hits) ? it.hits : []).concat(t).slice(-5);
+      if (it.hits.length >= 5 && t - it.hits[0] < HOUR) urgent(it, 'The server has had the same error five times within an hour.');
+    }
   }
 
   // what the server's own log says, read as it is written
@@ -247,7 +251,7 @@ module.exports = function watch(o) {
     // a status line handled while red is forgotten once it is no longer red, so it is sent again if it comes back
     const red = new Set(redLines().map(([, text]) => 'status|' + norm(text)));
     for (const k of Object.keys(st.handled)) if (k.startsWith('status|') && !red.has(k)) { delete st.handled[k]; dirty = true; }
-    for (const [ok, text] of redLines()) if (!ok && /sav/i.test(text)) urgent({ key: 'status|' + norm(text), kind: 'status', text: String(text), where: [], people: [], count: 1, first: now(), last: now(), ms: 0, max: 0 }, 'Saves are not reaching the records.');
+    for (const [ok, text] of redLines()) if (!ok && /sav/i.test(text) && !st.handled['status|' + norm(text)]) urgent({ key: 'status|' + norm(text), kind: 'status', text: String(text), where: [], people: [], count: 1, first: now(), last: now(), ms: 0, max: 0 }, 'Saves are not reaching the records.');
     let sent = null;
     if (st.digestDay !== st.day && hourOf(now()) >= 7) {
       const list = findings();
@@ -280,7 +284,9 @@ module.exports = function watch(o) {
   // what the director sees in Settings, and what the outside monitoring agent reads, with names taken out for it
   function view(outside) {
     const list = findings();
-    const clean = f => outside ? Object.assign({}, f, { text: scrub(f.text), plan: f.plan.map(scrub) }) : f;
+    // outside TREE a finding's key is an opaque id, since the key is made from the message itself
+    const opaque = k => 'f-' + require('crypto').createHash('sha256').update(String(k)).digest('hex').slice(0, 16);
+    const clean = f => outside ? Object.assign({}, f, { key: opaque(f.key), text: scrub(f.text), plan: f.plan.map(scrub), where: (f.where || []).map(scrub) }) : f;
     const days = st.history.slice(0, 14).map(h => ({ day: h.day, totals: h.totals }));
     return { at: now(), day: st.day, findings: list.map(clean), handled: Object.keys(st.handled).length, lastReport: st.plan ? { at: st.plan.at, day: st.plan.day, count: (st.plan.findings || []).length } : null, days };
   }
