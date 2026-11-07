@@ -11,12 +11,18 @@
    Paths are kept in staff/pd/paths.json and assignments in staff/pd/assignments.json. Only the director creates, changes
    or assigns, and the server refuses it from anyone else. An educator receives only their own assignments, and only the
    steps they can already open, so a draft module stays hidden until it is marked ready. The kitchen and families never
-   reach these requests. */
+   reach these requests.
+
+   An educator can also choose a path for themselves. Every path but an onboarding path is open to choose unless the
+   director turns that off on the path (choose false, absent means open). A chosen path is kept in staff/pd/chosen.json,
+   one record for one person, and reads as an assignment everywhere else, its progress, its reminders and Assigned to
+   you, marked as their own choice. Only that educator or the director starts or stops it. */
 const crypto = require('crypto');
 
 module.exports = function pathsModule(c) {
   const { get, put, log, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder, goToName, reminders, S } = c;
-  const PATHS = 'staff/pd/paths.json', ASSIGN = 'staff/pd/assignments.json', FIRST = 'firstweeks';
+  const PATHS = 'staff/pd/paths.json', ASSIGN = 'staff/pd/assignments.json', CHOSEN = 'staff/pd/chosen.json', FIRST = 'firstweeks';
+  const AREA_KEYS = (G.AREAS || []).map(a => a[0]);
   const WAYS = ['own', 'meeting', 'pdday'];
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
   const rid = p => p + crypto.randomBytes(5).toString('hex');
@@ -46,8 +52,16 @@ module.exports = function pathsModule(c) {
   const missing = s => s.kind === 'module' ? !G.modules()[s.slug] : !partOf(s.slug);
   const stepOut = s => ({ kind: s.kind, slug: s.slug, title: stepTitle(s), waiting: waiting(s), missing: missing(s) });
 
+  // a path an educator may choose for themselves, open unless the director turned it off, and never an onboarding path
+  const choosable = p => !!p && !p.builtin && !p.onboarding && p.choose !== false;
+  const areasOf = p => (Array.isArray(p.serves) ? p.serves : []).filter(k => AREA_KEYS.includes(k));
+
   /* ---------- assignments ---------- */
-  const assignAll = () => ((get(ASSIGN) || {}).list || []).filter(a => a && a.id);
+  const assigned = () => ((get(ASSIGN) || {}).list || []).filter(a => a && a.id);
+  // the paths educators chose for themselves, each read as an assignment for that one person
+  const chosenRaw = () => ((get(CHOSEN) || {}).list || []).filter(c => c && c.id && c.person && c.path);
+  const asAssignment = c => ({ id: c.id, kind: 'path', path: c.path, people: [c.person], classes: [], ways: c.ways || {}, due: c.due || '', note: '', chosen: true, at: c.at || 0, by: c.by || '' });
+  const assignAll = () => [...assigned(), ...chosenRaw().map(asAssignment)];
   // a person can be assigned PD when they have their own sign-in and are not the director or the kitchen
   const eligible = () => staffNames().filter(n => !isDirector(n) && !isKitchen(n));
   // a class means every current educator whose class is that class, read each time, so someone who joins it later has it too
@@ -80,7 +94,7 @@ module.exports = function pathsModule(c) {
     return { name: n, room: roomOf(n), state, overdue: !!a.due && a.due < today() && state !== 'done', open: steps.length, done: st.filter(x => x.done).length };
   }
   // what the director sees of each assignment, everyone's progress included
-  const forDirector = a => { const t = targetOf(a); return { id: a.id, auto: !!a.auto, kind: a.kind, path: a.path || '', slug: a.slug || '', title: t ? t.title : 'A path removed', people: (a.people || []).slice(), classes: (a.classes || []).slice(), due: a.due || '', note: a.note || '', at: a.at || 0, by: a.by || '',
+  const forDirector = a => { const t = targetOf(a); return { id: a.id, auto: !!a.auto, chosen: !!a.chosen, kind: a.kind, path: a.path || '', slug: a.slug || '', title: t ? t.title : 'A path removed', people: (a.people || []).slice(), classes: (a.classes || []).slice(), due: a.due || '', note: a.note || '', at: a.at || 0, by: a.by || '',
     steps: ((t && t.steps) || []).map(s => Object.assign(stepOut(s), s.kind === 'module' ? { way: wayOf(a, s) } : {})), progress: whoOf(a).map(n => progressOf(n, a)) }; };
   // what one educator receives, their own assignments with the steps they can open, each with its way in and whether it is done
   function mine(n) {
@@ -89,12 +103,18 @@ module.exports = function pathsModule(c) {
       if (!whoOf(a).some(x => nameKey(x) === nameKey(n))) continue; const t = targetOf(a); if (!t) continue;
       const steps = t.steps.filter(s => canOpen(n, s)); if (!steps.length) continue;
       const pr = progressOf(n, a);
-      out.push({ id: a.id, auto: !!a.auto, title: t.title, desc: t.desc || '', note: a.note || '', due: a.due || '', overdue: pr.overdue, state: pr.state,
+      out.push({ id: a.id, auto: !!a.auto, chosen: !!a.chosen, title: t.title, desc: t.desc || '', note: a.note || '', due: a.due || '', overdue: pr.overdue, state: pr.state,
         steps: steps.map(s => { const x = stepState(n, a, s); const p = s.kind === 'newed' ? partOf(s.slug) : null;
           return Object.assign({ kind: s.kind, slug: s.slug, title: stepTitle(s), done: x.done, started: x.started }, s.kind === 'module' ? { way: wayOf(a, s) } : { body: p ? p.body : '' }); }) });
     }
     return out;
   }
+
+  // the paths one educator can choose, with the steps they can open, the areas each serves and the record if they started it
+  function chooseFor(n) {
+    const mineNow = chosenRaw().filter(c => nameKey(c.person) === nameKey(n));
+    return stored().filter(choosable).map(p => { const st = p.steps.filter(s => canOpen(n, s)); const c = mineNow.find(x => x.path === p.id);
+      return { id: p.id, title: p.title, desc: p.desc || '', areas: areasOf(p), started: c ? c.id : '', steps: st.map(s => ({ kind: s.kind, slug: s.slug, title: stepTitle(s) })) }; }).filter(p => p.steps.length); }
 
   /* ---------- the calendar and the reminder before a due date ---------- */
   // the calendar asks again once anything here changes
@@ -128,7 +148,7 @@ module.exports = function pathsModule(c) {
   /* ---------- requests ---------- */
   const steps = list => { const out = []; for (const s of (Array.isArray(list) ? list : []).slice(0, 40)) { const kind = s && s.kind === 'newed' ? 'newed' : 'module', slug = String((s && s.slug) || '');
     if (kind === 'module' ? !G.modules()[slug] : !partOf(slug)) continue; if (!out.some(x => x.kind === kind && x.slug === slug)) out.push({ kind, slug }); } return out; };
-  const directorView = () => ({ paths: allPaths().map(p => Object.assign({}, p, { steps: p.steps.map(stepOut), assigned: assignAll().filter(a => a.kind === 'path' && a.path === p.id).length })),
+  const directorView = () => ({ paths: allPaths().map(p => Object.assign({}, p, { steps: p.steps.map(stepOut), choosable: choosable(p), assigned: assignAll().filter(a => a.kind === 'path' && a.path === p.id).length })), areas: G.AREAS || [],
     assignments: [...autoAssignments(), ...assignAll()].map(forDirector),
     modules: Object.values(G.modules()).map(m => ({ slug: m.slug, title: m.title, waiting: !G.published(m.slug) })).sort((a, b) => a.title.localeCompare(b.title)),
     newed: newedParts().filter(p => p.place === 'newed').map(p => ({ slug: p.slug, title: p.title, waiting: waiting({ kind: 'newed', slug: p.slug }), audience: p.audience })),
@@ -138,7 +158,28 @@ module.exports = function pathsModule(c) {
     const dir = isDirector(me); if (P !== 'paths' && P !== 'paths/mine') rev++;
     const deny = m => err(req, res, 403, m || 'Only the director makes and assigns paths.');
     // every person reads their own assignments, the director included
-    if (P === 'paths/mine') { json(req, res, 200, { list: mine(me), goTo: goToName() || '' }); return; }
+    if (P === 'paths/mine') { json(req, res, 200, { list: mine(me), choose: chooseFor(me), areas: G.AREAS || [], goTo: goToName() || '' }); return; }
+    // an educator starts a path for themselves, or the director starts one for them. Each module step has the way in they
+    // chose, On my own unless they chose another, and a finish-by date only if they set one.
+    if (P === 'paths/choose') {
+      const who = dir && body.name ? String(body.name) : me; if (!dir && nameKey(who) !== nameKey(me)) return deny('Only you or the director can start a path for you.');
+      const n = eligible().find(x => nameKey(x) === nameKey(who)); if (!n) return err(req, res, 400, 'Paths to choose are for educators.');
+      const p = pathOf(String(body.id || '')); if (!choosable(p)) return err(req, res, 404, 'That path is not open to choose.');
+      if (!p.steps.some(s => canOpen(n, s))) return err(req, res, 404, 'That path is not open to choose.');
+      if (chosenRaw().some(c => c.path === p.id && nameKey(c.person) === nameKey(n))) return err(req, res, 400, 'You have started this path already.');
+      if (body.due && !ISO.test(body.due)) return err(req, res, 400, 'Choose the finish-by date.');
+      const ways = {}; for (const s of p.steps) if (s.kind === 'module') ways[s.slug] = WAYS.includes((body.ways || {})[s.slug]) ? body.ways[s.slug] : 'own';
+      const c = { id: rid('ch'), path: p.id, person: n, ways, due: body.due || '', at: Date.now(), by: me };
+      put(CHOSEN, { list: [...chosenRaw(), c] }); log('PD path chosen', p.id, 'for', n, 'by', me);
+      json(req, res, 200, Object.assign({ id: c.id }, dir ? directorView() : { list: mine(me), choose: chooseFor(me), areas: G.AREAS || [], goTo: goToName() || '' })); return;
+    }
+    // stopping a chosen path takes it off the list, and the layers and parts already done stay in the growth record
+    if (P === 'paths/stop') {
+      const c = chosenRaw().find(x => x.id === String(body.id || '')); if (!c) return err(req, res, 404, 'That path is not here.');
+      if (!dir && nameKey(c.person) !== nameKey(me)) return deny('Only you or the director can stop a path you chose.');
+      put(CHOSEN, { list: chosenRaw().filter(x => x.id !== c.id) }); log('PD path stopped', c.path, 'for', c.person, 'by', me);
+      json(req, res, 200, dir ? directorView() : { list: mine(me), choose: chooseFor(me), areas: G.AREAS || [], goTo: goToName() || '' }); return;
+    }
     // a part of the first weeks counts as done once it is opened
     if (P === 'paths/opened') {
       const slug = String(body.slug || ''); if (!canOpen(me, { kind: 'newed', slug })) return err(req, res, 404, 'That part is not here.');
@@ -157,17 +198,22 @@ module.exports = function pathsModule(c) {
       const st = steps(b.steps); if (!st.length) return err(req, res, 400, 'Add at least one step.');
       const all = stored(); const was = b.id ? all.find(p => p.id === b.id) : null; if (b.id && !was) return err(req, res, 404, 'That path is not here.');
       const p = Object.assign({}, was || { id: rid('pa'), at: Date.now(), by: me }, { title, desc: txt(b.desc, 600), onboarding: !!b.onboarding, steps: st, updatedAt: Date.now(), updatedBy: me });
+      // open for educators to choose unless the director turned it off, kept only as choose false
+      if (b.choose === false) p.choose = false; else delete p.choose;
+      if (Array.isArray(b.serves)) p.serves = AREA_KEYS.filter(k => b.serves.includes(k));
       put(PATHS, { list: was ? all.map(x => x.id === p.id ? p : x) : [...all, p] }); json(req, res, 200, Object.assign(directorView(), { id: p.id })); return;
     }
     if (P === 'paths/copy') {
       const src = pathOf(String(body.id || '')); if (!src) return err(req, res, 404, 'That path is not here.');
-      const p = { id: rid('pa'), title: ('Copy of ' + src.title).slice(0, 120), desc: src.builtin ? '' : src.desc || '', onboarding: !!src.onboarding, steps: src.steps.map(s => ({ kind: s.kind, slug: s.slug })), at: Date.now(), by: me, from: src.id };
+      const p = Object.assign({ id: rid('pa'), title: ('Copy of ' + src.title).slice(0, 120), desc: src.builtin ? '' : src.desc || '', onboarding: !!src.onboarding, steps: src.steps.map(s => ({ kind: s.kind, slug: s.slug })), at: Date.now(), by: me, from: src.id },
+        src.choose === false ? { choose: false } : {}, areasOf(src).length ? { serves: areasOf(src) } : {});
       put(PATHS, { list: [...stored(), p] }); json(req, res, 200, Object.assign(directorView(), { id: p.id })); return;
     }
     if (P === 'paths/remove') {
       const id = String(body.id || ''); if (id === FIRST) return err(req, res, 400, 'First weeks stays. It is the path every new educator receives.');
       if (!stored().some(p => p.id === id)) return err(req, res, 404, 'That path is not here.');
-      put(PATHS, { list: stored().filter(p => p.id !== id) }); const keep = assignAll().filter(a => !(a.kind === 'path' && a.path === id)); if (keep.length !== assignAll().length) put(ASSIGN, { list: keep });
+      put(PATHS, { list: stored().filter(p => p.id !== id) }); const keep = assigned().filter(a => !(a.kind === 'path' && a.path === id)); if (keep.length !== assigned().length) put(ASSIGN, { list: keep });
+      const ck = chosenRaw().filter(c => c.path !== id); if (ck.length !== chosenRaw().length) put(CHOSEN, { list: ck });
       log('PD path removed', id, 'by', me); json(req, res, 200, directorView()); return;
     }
     if (P === 'paths/assign') {
@@ -180,15 +226,17 @@ module.exports = function pathsModule(c) {
       const t = kind === 'path' ? pathOf(id) : { steps: [{ kind: 'module', slug }] }; const ways = {};
       for (const s of t.steps) if (s.kind === 'module') ways[s.slug] = WAYS.includes((body.ways || {})[s.slug]) ? body.ways[s.slug] : 'own';
       const a = Object.assign({ id: rid('as'), kind }, kind === 'path' ? { path: id } : { slug }, { people, classes: cls, ways, due: body.due || '', note: txt(body.note, 600), at: Date.now(), by: me });
-      put(ASSIGN, { list: [...assignAll(), a] }); log('PD assigned', kind === 'path' ? id : slug, 'by', me); json(req, res, 200, Object.assign(directorView(), { id: a.id })); return;
+      put(ASSIGN, { list: [...assigned(), a] }); log('PD assigned', kind === 'path' ? id : slug, 'by', me); json(req, res, 200, Object.assign(directorView(), { id: a.id })); return;
     }
     if (P === 'paths/unassign') {
       const id = String(body.id || ''); if (/^auto-/.test(id)) return err(req, res, 400, 'Every new educator receives their onboarding path by itself.');
-      if (!assignAll().some(a => a.id === id)) return err(req, res, 404, 'That assignment is not here.');
-      put(ASSIGN, { list: assignAll().filter(a => a.id !== id) }); json(req, res, 200, directorView()); return;
+      // a path an educator chose stops the same way, and nothing they did is lost
+      if (chosenRaw().some(c => c.id === id)) { put(CHOSEN, { list: chosenRaw().filter(c => c.id !== id) }); json(req, res, 200, directorView()); return; }
+      if (!assigned().some(a => a.id === id)) return err(req, res, 404, 'That assignment is not here.');
+      put(ASSIGN, { list: assigned().filter(a => a.id !== id) }); json(req, res, 200, directorView()); return;
     }
     err(req, res, 404, 'Not found');
   }
 
-  return { handle, calendar, tick, rev: () => rev, mine, onboardingId, onboardingOf, firstWeeks, FIRST };
+  return { handle, calendar, tick, rev: () => rev, mine, chooseFor, onboardingId, onboardingOf, firstWeeks, FIRST };
 };

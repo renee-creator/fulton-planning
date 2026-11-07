@@ -1,0 +1,524 @@
+{
+ "name": "s53Paths",
+ "note": "Fourteen PD paths for educators to choose or be assigned, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/paths.json",
+   "doc": {
+    "list": []
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pafoundations",
+    "title": "Our Foundations",
+    "desc": "The ideas we share about children, listening, language and guidance, and the steady presence we bring to each day.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "lang",
+     "obs"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "principles"
+     },
+     {
+      "kind": "module",
+      "slug": "researcher"
+     },
+     {
+      "kind": "module",
+      "slug": "documentation"
+     },
+     {
+      "kind": "module",
+      "slug": "language"
+     },
+     {
+      "kind": "module",
+      "slug": "beyond"
+     },
+     {
+      "kind": "module",
+      "slug": "presence"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "paobserving",
+    "title": "Observing and Documenting",
+    "desc": "Keeping observations in TREE, hearing the story in what children do, and making their learning visible to families and to us.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "obs"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "observing-in-tree"
+     },
+     {
+      "kind": "module",
+      "slug": "documentation"
+     },
+     {
+      "kind": "module",
+      "slug": "narrative"
+     },
+     {
+      "kind": "module",
+      "slug": "making-learning-visible-in-tree"
+     },
+     {
+      "kind": "module",
+      "slug": "drdp-foundations"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pacurriculum",
+    "title": "Curriculum and Inquiry",
+    "desc": "How our project cycle grows from what we notice, through small groups, good questions, threads and plans.",
+    "onboarding": false,
+    "serves": [
+     "obs",
+     "cur"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "researcher"
+     },
+     {
+      "kind": "module",
+      "slug": "smallgroup"
+     },
+     {
+      "kind": "module",
+      "slug": "questions-worth-asking"
+     },
+     {
+      "kind": "module",
+      "slug": "threads-projects-and-inquiries"
+     },
+     {
+      "kind": "module",
+      "slug": "planning-in-tree"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "parelationships",
+    "title": "Relationships and Guidance",
+    "desc": "How we speak with children, guide them with care, stay present with them and leave room for their own choices.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "lang"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "language"
+     },
+     {
+      "kind": "module",
+      "slug": "beyond"
+     },
+     {
+      "kind": "module",
+      "slug": "presence"
+     },
+     {
+      "kind": "module",
+      "slug": "meeting"
+     },
+     {
+      "kind": "module",
+      "slug": "autonomy-agency-and-invitation"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "paplay",
+    "title": "Play, Risk and the Outdoors",
+    "desc": "Play as children's work, the garden and the land beyond our gate, and keeping children safe while they take on healthy risks.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "play"
+     },
+     {
+      "kind": "module",
+      "slug": "spaces"
+     },
+     {
+      "kind": "module",
+      "slug": "risk"
+     },
+     {
+      "kind": "module",
+      "slug": "active-supervision"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "paart",
+    "title": "The Languages of Art",
+    "desc": "The class atelier, clay, looking closely at art together and children seeing themselves in what they make.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env",
+     "lang"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "atelier"
+     },
+     {
+      "kind": "module",
+      "slug": "clay"
+     },
+     {
+      "kind": "module",
+      "slug": "looking-together"
+     },
+     {
+      "kind": "module",
+      "slug": "seeing-ourselves"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "paliteracy",
+    "title": "Reading, Writing, Math and Time",
+    "desc": "How children come to reading, writing, numbers and time through their own play and questions.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "cur"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "many-ways-to-read"
+     },
+     {
+      "kind": "module",
+      "slug": "emergent-reader"
+     },
+     {
+      "kind": "module",
+      "slug": "writer"
+     },
+     {
+      "kind": "module",
+      "slug": "emergent-mathematician"
+     },
+     {
+      "kind": "module",
+      "slug": "concepts-of-time"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pagarden",
+    "title": "The Garden Series",
+    "desc": "The garden year with children, from planning and seeding through habitat and harvest to cooking what we grow.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "garden-as-teacher"
+     },
+     {
+      "kind": "module",
+      "slug": "planning-the-garden-year"
+     },
+     {
+      "kind": "module",
+      "slug": "seeding-planting-and-watering"
+     },
+     {
+      "kind": "module",
+      "slug": "garden-habitat"
+     },
+     {
+      "kind": "module",
+      "slug": "harvest-seed-saving-and-preserving"
+     },
+     {
+      "kind": "module",
+      "slug": "cooking-from-the-garden"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pafood",
+    "title": "Food and the Table",
+    "desc": "Sharing meals together, cooking with children and the food that comes from our own garden.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env",
+     "team"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "table"
+     },
+     {
+      "kind": "module",
+      "slug": "cooking-from-the-garden"
+     },
+     {
+      "kind": "module",
+      "slug": "harvest-seed-saving-and-preserving"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "paidentity",
+    "title": "Identity and Belonging",
+    "desc": "Helping every child see themselves and others with respect, in our classes, our materials and our books.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env",
+     "lang"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "development-and-anti-bias"
+     },
+     {
+      "kind": "module",
+      "slug": "seeing-ourselves"
+     },
+     {
+      "kind": "module",
+      "slug": "book-vetting-tool"
+     },
+     {
+      "kind": "module",
+      "slug": "many-ways-to-read"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pachildren",
+    "title": "Knowing the Children",
+    "desc": "How children grow, what our youngest children need, how they play and how we come to know them with their families.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env",
+     "fam"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "development"
+     },
+     {
+      "kind": "module",
+      "slug": "serving-two-year-olds"
+     },
+     {
+      "kind": "module",
+      "slug": "play"
+     },
+     {
+      "kind": "module",
+      "slug": "families"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pateam",
+    "title": "Working Together",
+    "desc": "Sharing a class with a team, the rhythm of our days, our professional practice and meeting time together.",
+    "onboarding": false,
+    "serves": [
+     "lang",
+     "team"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "collaboration"
+     },
+     {
+      "kind": "module",
+      "slug": "rhythms"
+     },
+     {
+      "kind": "module",
+      "slug": "professional"
+     },
+     {
+      "kind": "module",
+      "slug": "meeting"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "pasafety",
+    "title": "Safety and Licensing",
+    "desc": "Watching over children closely while they take on healthy risks in play.",
+    "onboarding": false,
+    "serves": [
+     "img",
+     "env"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "active-supervision"
+     },
+     {
+      "kind": "module",
+      "slug": "risk"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "add": "list",
+   "value": {
+    "id": "paleading",
+    "title": "Leading and Mentoring",
+    "desc": "Growing as a professional, supporting other educators, sharing a class well and following our own growth in TREE.",
+    "onboarding": false,
+    "serves": [
+     "team",
+     "refl"
+    ],
+    "steps": [
+     {
+      "kind": "module",
+      "slug": "professional"
+     },
+     {
+      "kind": "module",
+      "slug": "mentor"
+     },
+     {
+      "kind": "module",
+      "slug": "collaboration"
+     },
+     {
+      "kind": "module",
+      "slug": "growing-in-tree"
+     }
+    ],
+    "at": 1794070800000,
+    "by": "TREE"
+   }
+  },
+  {
+   "path": "staff/pd/paths.json",
+   "set": "list[id=patreeseries].serves",
+   "expect": null,
+   "value": [
+    "obs",
+    "cur",
+    "team",
+    "refl"
+   ]
+  }
+ ]
+}
