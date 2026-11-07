@@ -142,6 +142,11 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   return {overview,sheets,hand:hand?hand.data:demoHand()}}
 // the set as a PDF, letter or poster, Andika throughout
 const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
+/* words set to a width break only between whole words. When the longest word is wider than the room, the type is set a
+   little smaller until it fits, so "teaspoon" is never cut into "teaspo" and "on". Gives back the lines and the size. */
+function demoWrap(doc,text,width,size,min,max){let fz=size;
+  for(;;){doc.setFontSize(fz);const words=String(text||"").split(/\s+/).filter(Boolean);const wide=words.some(w=>doc.getTextWidth(w)>width);
+    const lines=doc.splitTextToSize(String(text||""),width);if((!wide&&(!max||lines.length<=max))||fz<=min)return {lines:max?lines.slice(0,max):lines,size:fz};fz=Math.max(min,fz-1)}}
 /* the poster is one sheet for the wall, 18 by 24 inches. The recipe's name and what we need across the top, then every
    step in order in numbered panels, each with its words, its picture or its amounts, so children follow the whole recipe
    at a glance. The letter set keeps one step to a sheet for the table. */
@@ -181,7 +186,15 @@ async function demoPosterWord(x){const D=await TREE_KIT.word();await TREE_KIT.fo
   const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,60,true)]}),new D.Paragraph({children:[run("What we need",26,true)]}),new D.Paragraph({children:need.map(it=>run(it.text+"     ",18))}),
     new D.Table({width:{size:tw,type:D.WidthType.DXA},columnWidths:Array(cols).fill(Math.floor(tw/cols)),rows}),...(demoCredits(P.sheets.flatMap(s=>s.pics))?[new D.Paragraph({spacing:{before:240},children:[run(demoCredits(P.sheets.flatMap(s=>s.pics)),12)]})]:[])]}];
   const docx=TREE_KIT.wordFile(D,{size:"poster",sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}
-async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k,W=S.w-M*2;
+/* two steps to a page. The letter sheets are drawn as they are, then set side by side, each at half letter, on a landscape
+   letter page with a dotted line down the middle to cut on. The setup page keeps its own half, so the steps pair in order. */
+async function demoTwoPdf(x){const blob=await demoPdf(x,"letter");const L=await TREE_KIT.pdfLib();
+  const src=await L.PDFDocument.load(await blob.arrayBuffer());const out=await L.PDFDocument.create();const pages=await out.embedPages(src.getPages());const H=TREE_KIT.SIZES.half;
+  const PWl=H.w*2,PHl=H.h;
+  for(let i=0;i<pages.length;i+=2){const sh=out.addPage([PWl,PHl]);for(const k of [0,1]){const pg=pages[i+k];if(!pg)continue;const s=Math.min(H.w/pg.width,H.h/pg.height);sh.drawPage(pg,{x:k*H.w+(H.w-pg.width*s)/2,y:(H.h-pg.height*s)/2,xScale:s,yScale:s})}
+    if(pages[i+1])sh.drawLine({start:{x:H.w,y:18},end:{x:H.w,y:PHl-18},thickness:.6,color:L.rgb(.6,.6,.6),dashArray:[3,4]})}
+  out.setTitle(x.title);out.setCreator("Fulton Community School");out.setProducer("TREE");return new Blob([await out.save()],{type:"application/pdf"})}
+async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(size==="two")return demoTwoPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k,W=S.w-M*2;
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};
   const credit=list=>{const c=demoCredits(list);if(!c)return;font(false);doc.setFontSize(8*k);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,W),M,S.h-M/2-8*k);doc.setTextColor(47,59,47)};
   // the setup page, on one page. The title and the finished picture, then what we need in two columns, ingredients and tools
@@ -208,8 +221,8 @@ async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(!wi
     else if(rows.length){const rh=Math.min(rows.length<=2?290*k:200*k,avail/rows.length);const s=rh-14*k;
       for(const r of rows){const tx=M+(r.word?0:s+22*k);
         if(!r.word)doc.addImage(r.img,demoFmt(r.img),M,top,s,s);
-        const fz=Math.min(34*k,Math.max(16*k,rh*.2));font(true);doc.setFontSize(fz);const tw=W-(tx-M)-(r.measure?Math.min(s*.6,110*k)+12*k:0);
-        const t=r.word?r.big:(r.timer?r.cap:(r.amount?r.amount+" ":"")+(r.label||r.cap||""));const tlines=doc.splitTextToSize(t,tw).slice(0,3);doc.text(tlines,tx,top+s/2-((tlines.length-1)*fz*1.15)/2+fz*.35);
+        const fz0=Math.min(34*k,Math.max(16*k,rh*.2));font(true);const tw=W-(tx-M)-(r.measure?Math.min(s*.6,110*k)+12*k:0);
+        const t=r.word?r.big:(r.timer?r.cap:(r.amount?r.amount+" ":"")+(r.label||r.cap||""));const {lines:tlines,size:fz}=demoWrap(doc,t,tw,fz0,12*k,3);doc.setFontSize(fz);doc.text(tlines,tx,top+s/2-((tlines.length-1)*fz*1.15)/2+fz*.35);
         if(r.measure){const ms=Math.min(s*.6,110*k);doc.addImage(r.measure.img,demoFmt(r.measure.img),S.w-M-ms,top+(s-ms)/2,ms,ms)}
         top+=rh}}
     credit(sh.pics)}

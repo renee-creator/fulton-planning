@@ -62,9 +62,10 @@ test('cards print centred, with their parts labelled, and longer pages keep the 
   for (const q of ['I notice.', 'I wonder.', 'It reminds me of.', 'What do you see that makes you say that?']) assert.ok(r.texts.includes(q), q);
   assert.ok(r.texts.includes('The Sculptor Foundation, example.org'));
   assert.ok(!r.texts.some(x => /stays on the screen/.test(x)), 'the note for the educator never prints');
-  // a short rule under the title, no rules across the page, and the words in the middle of the page
+  // a short rule under the title, no rules across the page, and with no picture the words sit near the top, never
+  // under an empty space where a picture would be (November 7, 2026)
   assert.strictEqual(r.wide, 0);
-  assert.ok(r.top > 230 && r.bottom < 640, `words from ${r.top} to ${r.bottom}`);
+  assert.ok(r.top > 160 && r.top < 230 && r.bottom < 640, `words from ${r.top} to ${r.bottom}`);
   // the picture card prints the work large with the routine in two short lines
   assert.strictEqual(r.pic.photos.length, 1); assert.strictEqual(r.pic.blocks.length, 1); assert.strictEqual(r.pic.blocks[0].lines.length, 2);
   assert.ok(r.table.centered !== true, 'a table keeps the full page');

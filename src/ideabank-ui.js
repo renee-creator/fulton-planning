@@ -285,9 +285,14 @@ function ibDoc(c,side){const home=side==="home"&&!!c.home;const S=home?c.home.se
     :[by(IB_ABOUT),S.find(s=>IB_PRINT_EDU.includes(s.h)),c.type==="ready"?by("Why it invites children in"):by("The child's role"),by("Wondering alongside")].filter(Boolean);
   const sub=home?"To try at home":[IB_KIND[c.type],c.setting&&c.setting.level].filter(has).join(", ");const title=home?c.home.title:c.title;
   // every item of the parts it shows, and a card with more than fits continues on a second page
-  const blocks=pick.map(s=>s.style==="text"?dText(s.h,s.text):dList(s.h,(s.items||[]).filter(Boolean)));
-  const card=asCard({display:true,type:"report",acc:"story",title,meta:[],blocks},{sub});if(card&&card.centered){card.over=c.group;return card}
-  return {display:true,type:"report",acc:"story",title,meta:[sub],blocks}}
+  // on paper About this material keeps to its first sentences, about three lines, so the card stays on one page, and each
+  // way to try it carries a bullet where it begins
+  const blocks=pick.map(s=>s.h===IB_ABOUT&&s.style==="text"?dText(s.h,sentCut(s.text,260)):s.style==="text"?dText(s.h,s.text):Object.assign(dList(s.h,(s.items||[]).filter(Boolean)),{bullets:/^Ways to try it$|^Invitations$/.test(s.h)}));
+  const card=asCard({display:true,type:"report",acc:"story",title,meta:[],blocks},{sub});
+  // a card that fits one page prints centred, and one longer than a page prints left aligned with room, no part alone on a page
+  if(card&&card.centered){card.over=c.group;let one=true;try{if(window.jspdf){const doc=planDoc({unit:"pt",format:"letter"});const F=cFlow(doc,cReady(card),accOf(card.acc)||ACC.story);one=!F.over&&F.pages.length===1}}catch(e){}
+    if(one)return card}
+  return {display:true,type:"report",acc:"story",onePage:true,title,meta:[sub],blocks}}
 // the whole card, every part of that side in order with every item, laid out as a readable sheet over as many pages as
 // it needs
 function ibFullDoc(c,side){const home=side==="home"&&!!c.home;const S=(home?c.home.sections:c.sections)||[];
