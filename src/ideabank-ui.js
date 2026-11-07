@@ -318,6 +318,7 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${before.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,t.at?shortDate(t.at):""].filter(has).join(", "))}</div></div>`).join("")}</section>`:"";
   const devHtml=`<section class="card"><div class="lbl">Could this fit this child's age and stage (developmental stage)?</div><div class="hint">Think about development first. ${esc(IB_DEV_NOTE)}</div>
     ${typeof ibAgeHtml==="function"?ibAgeHtml(x):""}
+    ${typeof scrInquiryHtml==="function"?scrInquiryHtml(x):""}
     ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea><div class="actions">${ibBusyMap[x.id+"dev"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-ibdevdraft="1">Draft from the evidence</button>`}</div>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}${IB_WHEEL}</section>`;
   return `${triedHtml}${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>

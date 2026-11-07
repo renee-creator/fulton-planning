@@ -288,6 +288,21 @@ span.pfstate{cursor:default;border-style:dashed}
 .kmrow:hover{background:var(--sun-wash)}
 .kmrow img,.kmnone{width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg)}
 .kmtext{display:grid;gap:2px;min-width:0}.kmtext b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scrwrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
+.scrpage{position:relative;background:#fff;border:1px solid var(--line,#ddd);border-radius:8px;overflow:hidden;min-height:200px;position:sticky;top:8px}
+.scrpage.loading::before{content:"Drawing the page";position:absolute;inset:0;display:grid;place-items:center;color:var(--muted,#777);font-size:13px}
+.scrpage img{display:block;width:100%;height:auto}
+.scrpage i{position:absolute;width:1.6%;aspect-ratio:1;border-radius:50%;background:#16225a;transform:translate(-50%,-50%);pointer-events:none}
+.scrpage i.chk{background:none;border:2px solid #16225a;border-radius:2px;width:1.4%}
+.scritems{display:grid;gap:10px}.scritem{border-top:1px solid var(--line,#e4e1d8);padding-top:10px;display:grid;gap:6px}.scritem.done>div:first-child{color:var(--muted,#555)}
+.scrseg{display:flex;flex-wrap:wrap}.scrseg button{flex:1 1 auto;min-height:40px}
+.scrres{display:grid;gap:4px;margin:6px 0}.scrrow{display:grid;grid-template-columns:minmax(0,1.2fr) 52px minmax(0,2fr);gap:8px;align-items:baseline;padding:6px 8px;border-radius:6px;background:var(--soft,#f4f2ec)}
+.scrrow.below{background:#f6e4e1}.scrrow.close{background:#f4efd9}.scrrow.above{background:#e6efe4}.scrrow b{font-size:16px}
+.scrcmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid var(--line,#e4e1d8)}.scrcmp small{display:block;color:var(--muted,#666);font-size:12px}
+.scrcmp>span.below,.scrcmp>span.close,.scrcmp>span.above{padding:4px 6px;border-radius:6px}.scrcmp>span.below{background:#f6e4e1}.scrcmp>span.close{background:#f4efd9}.scrcmp>span.above{background:#e6efe4}.scrhead{border-top:0}
+.scrdiff{border-top:1px solid var(--line,#e4e1d8);padding:6px 0}.scrfac{display:grid;gap:4px;padding:6px 0;border-top:1px solid var(--line,#e4e1d8)}
+.scrpgs{flex-wrap:wrap}
+@media (max-width:820px){.scrwrap{grid-template-columns:1fr}.scrpage{position:relative;top:0}}
 .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px 18px}
 .kgrid .lbl{display:block;margin-bottom:2px}
 .slidecard[aria-pressed="true"]{outline:3px solid var(--acc,var(--moss));outline-offset:-3px}
@@ -1143,6 +1158,8 @@ async function boot(){
     db.collection("menus").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v&&v.month)m.set(v.month,v)});menus=m;if(view==="settings"&&!menuDraft&&!document.activeElement?.closest?.("#main"))renderSettings();else if(view==="kitchen"&&!document.activeElement?.closest?.("#main"))renderKitchen()},()=>{});
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("reports").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});reports=m;if(view==="wreport"&&!document.activeElement?.closest?.("#main select"))renderMain()},()=>{});
+    // a screening reaches the director and the educators of the child's class only
+    db.collection("screenings").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;m.set(d.id,v);scrBase.set(d.id,jclone(v))}});screenings=m;if(view==="child"&&kidTab==="screen"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);inqBase.set(d.id,jclone(v))}});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();famSumFresh()},()=>{});
@@ -5425,6 +5442,7 @@ function renderToday(){
 
 /*__GARDEN_UI__*/
 /*__IDEABANK_UI__*/
+/*__SCREENING_UI__*/
 /* ---------- Walk safety ----------
    Fulton's walks, such as creek walks and walks to the garden or the farm. On a day a walk is on the calendar or in a plan,
    Today offers Before we walk, a checklist educators open and print. The children's walk agreements print as one card with
@@ -15020,7 +15038,7 @@ function renderChild(){
   const nx=kidNext(c);const {v}=drdpViewOf(c);const its=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
   const wait=its.filter(x=>x.status==="suggested").length,levelled=new Set(its.filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>x.code)).size,nMs=drdpMeasuresFor(c).length;
   const today=iso(new Date());const nextConf=cs.filter(x=>x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
-  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],...(tsFor(c)?[["transition","Transition summary"]]:[]),["details","Details"]];
+  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],...(tsFor(c)?[["transition","Transition summary"]]:[]),...kidScreenTab(c),["details","Details"]];
   if(!tabs.some(t=>t[0]===kidTab))kidTab="overview";
   let body="";
   if(kidTab==="overview"){
@@ -15044,6 +15062,7 @@ function renderChild(){
       ${(()=>{const sts=kidStories(c).sort((a,b)=>(b.at||0)-(a.at||0));return sts.length?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Stories</h3><span class="cnt">${sts.length}</span></div><div class="kmlist">${sts.map(st=>{const mine=storyPhotoIds(st).find(id=>{const n=notices.get(id);return n&&(n.children||[]).includes(c.id)});const ph=notices.get(mine);return `<div class="kmwrap"><button class="kmrow" data-story="${esc(st.id)}">${ph?`<img src="${esc(photoThumb(ph))}" alt="" loading="lazy">`:`<span class="kmnone"></span>`}<span class="kmtext"><b>${esc(stTitle(st))}</b><span class="cnt">${stReviewed(st)?"":"Draft · "}${shortDate(st.at)} · ${esc(st.by||"")}</span></span></button>${stReviewed(st)?pfToggle(c,"stories",st.id,true):""}</div>`}).join("")}</div><div class="cnt">In the portfolio, a reviewed story prints with its words and only the photos ${esc(c.first)} is in. A draft waits for the team's review.</div></section>`:""})()}`;
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="transition"){body=tsHtml(c)}
+  else if(kidTab==="screen"){body=kidScreenHtml(c);setTimeout(scrHydrate,0)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
       ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-"," to ")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;

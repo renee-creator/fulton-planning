@@ -134,7 +134,8 @@ module.exports = function staffModule(o) {
       // the Family Handbook's editions are read here too, beside the Policies and Procedures
       const want = all.filter(f => /^staff\/[a-z0-9/_.-]+\.(json|md)$/i.test(f.path) || /^family\/handbook\/[a-z0-9/_.-]+\.json$/i.test(f.path));
       // the pictures in the policies are read only when someone opens them
-      for (const f of all) if (/^(staff\/policies|family\/handbook|staff\/library\/images|staff\/pd\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
+      // the ASQ-3 and ASQ:SE-2 questionnaires the director keeps, read the same way and only for signed-in staff
+      for (const f of all) if (/^(staff\/policies|family\/handbook|staff\/library\/images|staff\/pd\/images)\/[a-z0-9/_.-]+\.(png|jpe?g|gif|webp)$/i.test(f.path) || /^staff\/screening\/asq\/asq(3|se2)-\d{2}\.pdf$/.test(f.path)) { if (S.imgs.get(f.path) !== f.sha) S.imgCache.delete(f.path); S.imgs.set(f.path, f.sha); }
       const seen = new Set(want.map(f => f.path));
       for (const p of [...S.files.keys()]) if (/\.md$/.test(p) && !seen.has(p)) S.files.delete(p);
       // a file already read at this version is kept as it is, and the rest are read six at a time
@@ -509,6 +510,17 @@ module.exports = function staffModule(o) {
     if (isNewHire(me) && (P === 'library/picture' || (P.startsWith('library/') && !['library/img', 'library/artshown'].includes(P)))) return deny('A new educator reads the libraries. The rest opens once the director turns on full access.');
     if (P === 'volunteer' || P.startsWith('volunteer/')) { await VOL.handle(P, body, me, req, res, { json, err }); return; }
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
+    /* the ASQ-3 and ASQ:SE-2 questionnaires the director was given to use in our program, kept in the private records under
+       staff/screening/asq. TREE fills the original form, so a signed-in educator reads the form and where each answer goes.
+       Neither is ever on the public site. */
+    if (P === 'screening/forms' || P === 'screening/layout' || P === 'screening/form') {
+      const L = get('staff/screening/asq/layout.json'); const forms = (L && L.forms) || {};
+      if (P === 'screening/forms') { json(req, res, 200, { forms: Object.values(forms).filter(f => S.imgs.has('staff/screening/asq/' + f.id + '.pdf')).map(f => ({ id: f.id, tool: f.tool, months: f.months, window: f.window })) }); return; }
+      const id = String(body.id || ''); if (!/^asq(3|se2)-\d{2}$/.test(id) || !forms[id]) { err(req, res, 404, 'That questionnaire is not here.'); return; }
+      if (P === 'screening/layout') { json(req, res, 200, { form: forms[id] }); return; }
+      try { const buf = await readImage('staff/screening/asq/' + id + '.pdf'); send(req, res, 200, { 'Content-Type': 'application/pdf', 'Cache-Control': 'private, max-age=86400' }, buf); } catch (e) { err(req, res, 404, 'That questionnaire is not here.'); }
+      return;
+    }
     if (P === 'ideabank' || P.startsWith('ideabank/')) { await IB.handle(P, body, me, req, res, { json, err }, saveRecord); return; }
     if (P === 'playgarden' || P.startsWith('playgarden/')) { await PGA.handle(P, body, me, dir, req, res, { json, err }); return; }
     if (P.startsWith('g/')) { await G.handle(P.slice(2), body, me, req, res, { json, err }); return; }

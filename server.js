@@ -34,9 +34,14 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips', 'screenings'];
 // a clip record, clips/<id>.json, is written by the server alone as a video clip arrives and is read. The educator it is for and the director receive it.
-const OWN_KINDS = ['drafts', 'clips'];
+const OWN_KINDS = ['drafts', 'clips', 'screenings'];
+/* an ASQ-3 or ASQ:SE-2 screening, screenings/<id>.json, is for the director and the educators of the child's class, and
+   whoever started it. Every result is kept, so only the director removes one. */
+const edRoom = name => { const a = accountFor(name); if (a && a.room) return a.room; const ed = store.recs.settings.get('educators'); const r = ed && !ed.deleted && ed.doc && (ed.doc.names || []).find(x => x && nameKey(x.name) === nameKey(name)); return (r && r.room) || ''; };
+const kidRoom = id => { const r = store.recs.children.get(String(id || '')); return (r && !r.deleted && r.doc && r.doc.classroom) || ''; };
+const screenSeen = (doc, name) => !!doc && (nameKey(doc.createdBy) === nameKey(name) || (!!kidRoom(doc.child) && nameKey(kidRoom(doc.child)) === nameKey(edRoom(name))));
 // a record's path, kind/id.json, for any kind
 const KIND_RE = new RegExp('^(' + KINDS.join('|') + ')\\/([^/]+)\\.json$');
 // records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
@@ -495,7 +500,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map(), screenings: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -1476,7 +1481,7 @@ function sidWritten(sid) { sidsWaiting.delete(sid); sidsWritten.set(sid, Date.no
 const HARD_TRIES = 3;
 function recordLabel(kind, id, doc) {
   doc = doc || {};
-  const one = { children: 'Child', notices: 'Observation', plans: 'Plan', threads: 'Thread', projects: 'Project', conferences: 'Conference', participation: 'Participation', settings: 'Settings', slides: 'Slide', stories: 'Story', inquiries: 'Team inquiry', menus: 'Menu', grant: 'Grant record', bins: 'Weekly bin', family: 'Family', scans: 'Scan', newsletters: 'Newsletter', posts: 'Post' }[kind] || kind;
+  const one = { children: 'Child', notices: 'Observation', plans: 'Plan', threads: 'Thread', projects: 'Project', conferences: 'Conference', participation: 'Participation', settings: 'Settings', slides: 'Slide', stories: 'Story', inquiries: 'Team inquiry', screenings: 'Screening', menus: 'Menu', grant: 'Grant record', bins: 'Weekly bin', family: 'Family', scans: 'Scan', newsletters: 'Newsletter', posts: 'Post' }[kind] || kind;
   const kidName = c => c ? [c.first || c.firstName || c.name || '', c.last || c.lastName || ''].join(' ').trim() : '';
   let name = '';
   if (kind === 'children') name = kidName(doc);
@@ -2427,7 +2432,7 @@ async function sizedPhoto(id, buf, w) {
 // an observation still being written is a draft. It is kept in the records as the educator types, so it survives a
 // change of phone, signing out or closing TREE, and only the educator who started it and the director see it.
 // a draft is the educator's own, and so is a clip record, which names the educator its draft is for. The director receives every one.
-const draftSeen = (kind, doc, name, director) => !OWN_KINDS.includes(kind) || director || (!!doc && (nameKey(doc.by) === nameKey(name) || nameKey(doc.educator) === nameKey(name)));
+const draftSeen = (kind, doc, name, director) => !OWN_KINDS.includes(kind) || director || (kind === 'screenings' ? screenSeen(doc, name) : !!doc && (nameKey(doc.by) === nameKey(name) || nameKey(doc.educator) === nameKey(name)));
 /* The records TREE loads when it opens, written out as JSON. Everything but the drafts is the same for every sign-in
    of the same shape, director, kitchen or office, so that part is written out once per shape and kept thirty seconds
    while the records do not change, and only the drafts, which each educator sees their own of, are written per name.
@@ -2441,7 +2446,7 @@ function snapshotText(director, kitchen, office, name) {
     c = { rev, at: Date.now(), text: JSON.stringify(out) }; snapCache.set(key, c);
   }
   const own = {}; for (const k of OWN_KINDS) { own[k] = {}; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && draftSeen(k, r.doc, name, director)) own[k][id] = forViewer(k, r.doc, director); }
-  return c.text.slice(0, -1) + ',"drafts":' + JSON.stringify(own.drafts) + ',"clips":' + JSON.stringify(own.clips) + '}';
+  return c.text.slice(0, -1) + ',"drafts":' + JSON.stringify(own.drafts) + ',"clips":' + JSON.stringify(own.clips) + ',"screenings":' + JSON.stringify(own.screenings) + '}';
 }
 // the server's status, in full for the director in Settings, and without any counts on the page anyone can open
 function statusLines() {
@@ -2995,6 +3000,14 @@ async function handle(req, res) {
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     if (kind === 'lens') { err(req, res, 403, 'The lens passages are kept by the reading and changed from the Lens page.'); return; }
     if (kind === 'clips') { err(req, res, 403, 'A clip record is written by the server as the clip arrives and is read.'); return; }
+    // a screening is changed by the director and the educators of the child's class, and every result is kept
+    if (kind === 'screenings' && !isDirector(me.name)) {
+      const was = store.recs.screenings.get(id); const wd = was && !was.deleted ? was.doc : null;
+      const next = op === 'update' ? Object.assign({}, wd || {}, body.patch || {}) : (body.data || null);
+      if (op === 'delete') { err(req, res, 403, 'Every screening result is kept. Only the director removes one.'); return; }
+      if (kitchenOnly || (wd && !screenSeen(wd, me.name)) || !next || !(nameKey(kidRoom(next.child)) === nameKey(edRoom(me.name)) || (wd && nameKey(wd.createdBy) === nameKey(me.name) && String(wd.child) === String(next.child)))) { log('Screening change refused for', me.name, id); err(req, res, 403, 'A screening is kept by the director and the educators of the child\'s class.'); return; }
+      if (wd && (wd.createdBy !== next.createdBy || wd.child !== next.child)) { err(req, res, 403, 'A screening stays with the child and the educator who started it.'); return; }
+    }
     // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
     const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
     // every save from a device carries a save id. A save already here is never made twice, and its answer says whether
