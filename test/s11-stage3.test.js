@@ -18,7 +18,7 @@ test('Add educator in Settings adds a new hire, the same way as adding from Educ
   await s.p.waitForFunction(() => signins.list && signins.list.some(a => a.name === 'Ivy'), null, { timeout: 10000 });
   await wait(1500);
   const ivy = accounts().find(a => a.name === 'Ivy');
-  assert.strictEqual(ivy.newHire, true); assert.strictEqual(ivy.room, 'South'); assert.ok(ivy.start);
+  assert.strictEqual(ivy.newHire, true); assert.strictEqual(ivy.room, 'South'); assert.ok(!ivy.start, 'no start code');
   const rec = JSON.parse(fs.readFileSync(path.join(fx.dir, 'staff/people/ivy.json'), 'utf8'));
   assert.strictEqual(rec.profile.role, 'educator');
   // everyone on the educators list without a sign-in is added as a new hire too
@@ -27,8 +27,8 @@ test('Add educator in Settings adds a new hire, the same way as adding from Educ
   await wait(1500);
   for (const n of ['Cora', 'Dot']) { const a = accounts().find(x => x.name === n); assert.strictEqual(a.newHire, true, n); assert.ok(fs.existsSync(path.join(fx.dir, 'staff/people/' + n.toLowerCase() + '.json')), n); }
   assert.strictEqual(accounts().find(a => a.name === 'Cora').room, 'South');
-  // the start code lets them choose a passcode
-  const ivyIn = await fx.login('Ivy', ivy.start);
+  // the first name with an empty passcode lets them choose a passcode
+  const ivyIn = await fx.login('Ivy', '');
   assert.strictEqual(ivyIn.setup, true);
   assert.deepStrictEqual(s.errors, []); await s.close();
 });

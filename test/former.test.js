@@ -68,7 +68,7 @@ test('Leaving Fulton ends the sign-in after the last day, and Bring back keeps t
     assert.ok(!d.teachers.includes('Ann'));
     assert.strictEqual(d.data.notices.n1.by, 'Ann', 'what they wrote keeps their name');
     r = await fx.as(dt, '/api/accounts/return', { name: 'Ann' });
-    assert.strictEqual(acc('Ann').former, false); assert.strictEqual(acc('Ann').code, ''); assert.ok(acc('Ann').start, 'back with a new start code');
+    assert.strictEqual(acc('Ann').former, false); assert.strictEqual(acc('Ann').code, ''); assert.ok(!acc('Ann').start, 'back to choose a new passcode, with no start code');
     const d2 = (await fx.as(dt, '/api/data')).body;
     assert.strictEqual(d2.data.settings.program.groups[0].educator, 'Ann', 'back as the small group lead');
     assert.ok(d2.data.settings.educators.names.some(x => x.name === 'Ann'));

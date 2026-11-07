@@ -898,11 +898,11 @@ module.exports = function staffModule(o) {
       const name = String(body.newName || '').normalize('NFKC').trim().replace(/\s+/g, ' ');
       if (!/^[A-Za-z][A-Za-z .'-]{0,29}$/.test(name)) { err(req, res, 400, 'Type the new educator\'s first name, letters only.'); return; }
       if (accountFor(name)) { err(req, res, 409, name + ' already has a sign-in.'); return; }
-      accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', start: String(crypto.randomInt(100000, 1000000)), v: 0 });
+      accounts.list.push({ name, room: String(body.room || '').slice(0, 20), director: false, newHire: true, addedBy: me, addedAt: Date.now(), code: '', v: 0 });
       if (!(await saveAccounts(me))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
       const doc = person(name); doc.profile = { role: body.role === 'apprentice' ? 'apprentice' : 'educator', startDate: /^\d{4}-\d{2}-\d{2}$/.test(body.startDate || '') ? body.startDate : '', planHour: '', experienced: !!body.experienced, onboarding: PA.onboardingId(body.onboarding) };
       put(pPath(name), doc); log('New educator added', name, 'by', me);
-      json(req, res, 200, { ok: true, start: (accountFor(name) || {}).start || '' }); return;
+      json(req, res, 200, { ok: true }); return;
     }
     if (P === 'access') {
       if (!dir) return deny('Only the director turns on full access.');

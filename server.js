@@ -214,7 +214,7 @@ const nameKey = n => String(n || '').normalize('NFKC').replace(/\./g, ' ').trim(
 function accountFor(name) { const k = nameKey(name); return k ? accounts.list.find(a => nameKey(a.name) === k) : null; }
 async function loadAccounts() {
   const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ACCOUNTS_PATH}?ref=${encodeURIComponent(store.branch)}`);
-  if (r.status === 200) { accounts.sha = r.json.sha; try { const d = JSON.parse(Buffer.from(r.json.content || '', 'base64').toString('utf8')); if (Array.isArray(d.accounts)) accounts.list = d.accounts.filter(a => a && a.name); } catch (e) { log('The sign-ins file could not be read'); } let gave = false; for (const a of accounts.list) if (!a.code && !a.start) { a.start = newStart(); gave = true; } if (gave) saveAccounts('TREE'); }
+  if (r.status === 200) { accounts.sha = r.json.sha; try { const d = JSON.parse(Buffer.from(r.json.content || '', 'base64').toString('utf8')); if (Array.isArray(d.accounts)) accounts.list = d.accounts.filter(a => a && a.name); } catch (e) { log('The sign-ins file could not be read'); } let gave = false; for (const a of accounts.list) if (a.start) { delete a.start; gave = true; } if (gave) saveAccounts('TREE'); }
   else if (r.status !== 404) throw new Error('GitHub answered ' + r.status + ' when reading the sign-ins.');
   const rr = await gh('GET', `/repos/${RECORDS_REPO}/contents/${ROLES_PATH}?ref=${encodeURIComponent(store.branch)}`);
   if (rr.status === 200) takeRoles(Buffer.from(rr.json.content || '', 'base64').toString('utf8'));
@@ -250,8 +250,7 @@ function nameWrong(n, acct) { if (acct && acct.name) n = acct.name; const k = na
   nameTries.set(k, t); }
 function clearLock(a) { if (!a) return; nameTries.delete(nameKey(a.name)); if (a.lock) { delete a.lock; saveAccounts('TREE, a sign-in unlocked'); } }
 function waitWords(n) { const sl = savedLock(n), t0 = nameTries.get(nameKey(n)); const t = t0 && t0.until > Date.now() ? t0 : sl; const m = t ? Math.ceil((t.until - Date.now()) / 60000) : 15; return m >= 90 ? Math.round(m / 60) + ' hours' : m + ' minute' + (m === 1 ? '' : 's'); }
-// a new sign-in, or one whose code was cleared, starts with a six-number code the director hands to the educator
-const newStart = () => String(crypto.randomInt(100000, 1000000));
+// a new sign-in, or one whose code was cleared, chooses its own four numbers at its first sign-in, with no start code
 const sameText = (a, b) => { a = String(a || ''); b = String(b || ''); return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); };
 const cleanName = n => String(n || '').normalize('NFKC').trim().replace(/\s+/g, ' ').slice(0, 30);
 const okName = n => /^[A-Za-z][A-Za-z .'-]{0,29}$/.test(n);
@@ -281,7 +280,7 @@ const isOffice = name => { if (isDirector(name)) return true; if (OFFICE_NAMES.i
 const OFFICE_KINDS = ['participation'];
 const isKitchen = name => { if (isDirector(name)) return false; const a = accountFor(name); return !!(a && a.kitchen); };
 const kitchenSees = (kind, id) => kind === 'menus' || (kind === 'settings' && id === 'staples');
-function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, newHire: !!a.newHire, code: a.code || '', start: a.code ? '' : (a.start || ''), setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0,
+function accountView(a) { return { name: a.name, room: a.room || '', director: !!a.director, kitchen: !!a.kitchen, newHire: !!a.newHire, code: a.code || '', start: '', setAt: a.setAt || 0, addedBy: a.addedBy || '', lastAt: a.lastAt || 0,
   leaveOn: a.leaveOn || '', former: isFormerAccount(a), records: hasRecords(a.name),
   // who is not set up yet. Never signed in is a sign-in still on its start code that never chose a passcode, and
   // reminders are off when no phone takes them now, since a phone that stops taking them is dropped
@@ -822,14 +821,14 @@ function checkPasscode(name, given) {
   if (!ok) nameWrong(name); return ok;
 }
 /* The director has a TREE sign-in like every educator, so reminders reach her phone. A director named on Render or in
-   the roles list with no sign-in gets one, waiting with a six-number start code she sees in Settings, Sign-ins. Her Render
+   the roles list with no sign-in gets one, which she sets up by signing in with her name and choosing four numbers. Her Render
    passcode keeps working as a backup, and the sign-in she already has stays signed in. */
 function ensureDirectorSignIns() {
   if (!accounts.loaded) return;
   const names = [...new Set([...TEACHERS.filter(t => isDirector(t.name)).map(t => t.name), ...roles.directors].map(cleanName).filter(okName))];
   const add = names.filter(n => !accountFor(n));
   if (!add.length) return;
-  for (const n of add) { accounts.list.push({ name: n, room: '', director: true, newHire: false, addedBy: 'TREE', addedAt: Date.now(), code: '', start: newStart(), v: 0 }); log('TREE sign-in made for the director', n); }
+  for (const n of add) { accounts.list.push({ name: n, room: '', director: true, newHire: false, addedBy: 'TREE', addedAt: Date.now(), code: '', v: 0 }); log('TREE sign-in made for the director', n); }
   saveAccounts('TREE');
 }
 /* once an educator's last day has passed, they come off the names offered on plans, the class lists and the small group
@@ -2914,10 +2913,8 @@ async function handle(req, res) {
         // a passcode set on Render for this same name still signs in, as a backup to the TREE sign-in
         if (given.length >= 6 && /[^0-9]/.test(given) && !isFormerAccount(a)) { const t0 = matchPasscode(given); if (t0 && nameKey(t0.name) === nameKey(a.name)) { nameTries.delete(nameKey(name)); log('Signed in with the Render passcode', t0.name); json(req, res, 200, { token: makeSession(t0.name), name: t0.name, director: isDirector(t0.name), teachers: teacherNames() }); return; } }
         if (!a.code) {
-          // the first sign-in sets the educator's own four numbers, as the director wants, and only with the six-number
-          // start code she handed them, checked both when it is typed and again when the new passcode is saved
-          const startGiven = String(body.newCode == null ? given : body.start || '').trim();
-          if (!a.start || !sameText(startGiven, a.start)) { noteWrong(ip); nameWrong(name, a); err(req, res, 403, 'That name and start code do not match. Type the six numbers the director gave you.'); return; }
+          // the first sign-in sets the educator's own four numbers with nothing else typed, as the director wants
+          // (October 18, and again November 7, 2026). A start code is never asked for.
           if (body.newCode == null) { json(req, res, 200, { setup: true, name: a.name }); return; }
           const c = String(body.newCode || '');
           if (!/^\d{4}$/.test(c)) { err(req, res, 400, 'Choose four numbers for your passcode.'); return; }
@@ -3463,14 +3460,14 @@ async function handle(req, res) {
       const name = cleanName(body.name), was = body.was ? accountFor(body.was) : null;
       if (!okName(name)) { err(req, res, 400, 'Type the educator\'s first name, letters only.'); return; }
       const other = accountFor(name); if (other && other !== was) { err(req, res, 409, name + ' already has a sign-in.'); return; }
-      const a = was || { name, addedBy: me.name, addedAt: Date.now(), code: '', start: newStart(), v: 0 };
+      const a = was || { name, addedBy: me.name, addedAt: Date.now(), code: '', v: 0 };
       if (was && a.name !== name) a.v = (a.v || 0) + 1;
       a.name = name; a.room = String(body.room || '').slice(0, 20); a.director = !!body.director; if ('kitchen' in body) a.kitchen = !!body.kitchen && !a.director;
       if (!was) accounts.list.push(a);
       if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved to the records. Try again.'); return; }
       log('Sign-in saved for', a.name, 'by', me.name); list(); return;
     }
-    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); delete a.lock; await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
+    if (path === '/api/accounts/reset') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } a.code = ''; delete a.start; a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); delete a.lock; await saveAccounts(me.name); log('Passcode cleared for', a.name, 'by', me.name); list(); return; }
     // Remove is only for a sign-in added by mistake. Someone with records leaves Fulton instead, so nothing of theirs is lost.
     if (path === '/api/accounts/remove') { const a = accountFor(body.name); if (!a) { err(req, res, 404, 'That sign-in is not here.'); return; } if (nameKey(a.name) === nameKey(me.name)) { err(req, res, 400, 'You cannot remove your own sign-in.'); return; }
       if (hasRecords(a.name)) { err(req, res, 400, a.name + ' has records here, so choose Leaving our school. Their records are kept.'); return; } accounts.list = accounts.list.filter(x => x !== a); await saveAccounts(me.name); log('Sign-in removed for', a.name, 'by', me.name); list(); return; }
@@ -3485,11 +3482,11 @@ async function handle(req, res) {
       staff.markLeft(a.name, day).catch(e => log('The last day could not be kept on the educator record', a.name, e.message));
       log('Leaving Fulton,', a.name, 'last day', day, 'set by', me.name); settleFormer(); list(); return;
     }
-    // bringing an educator back keeps all their history. A former educator gets a new start code, as for a cleared code.
+    // bringing an educator back keeps all their history. A former educator chooses a new passcode, as for a cleared code.
     if (path === '/api/accounts/return') {
       const a = accountFor(body.name); if (!a || !a.leaveOn) { err(req, res, 404, 'That educator has not left our school.'); return; }
       const former = isFormerAccount(a);
-      if (former) { a.code = ''; a.start = newStart(); a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); restoreFormer(a); }
+      if (former) { a.code = ''; delete a.start; a.v = (a.v || 0) + 1; nameTries.delete(nameKey(a.name)); restoreFormer(a); }
       delete a.leaveOn; delete a.settled;
       if (!(await saveAccounts(me.name))) { err(req, res, 502, 'The sign-in could not be saved. Try again.'); return; }
       staff.markLeft(a.name, '').catch(e => log('The educator record could not be updated', a.name, e.message));

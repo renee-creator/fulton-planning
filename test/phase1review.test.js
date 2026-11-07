@@ -16,7 +16,7 @@ test('phase one of the review', async t => {
     const mine = accts.find(a => String(a.name).toLowerCase() === 'dee');
     assert.ok(mine, 'a sign-in exists for the director');
     assert.ok(mine.director, 'it is a director sign-in');
-    assert.match(String(mine.start || mine.code ? (mine.start || 'set') : ''), /^(\d{6}|set)$/, 'it waits with a six-number start code');
+    assert.strictEqual(mine.start, '', 'it waits for her to choose four numbers, with no start code');
     const again = await fx.login('Dee', 'director-pass-1');
     assert.ok(again.token, 'the Render passcode keeps working as a backup');
   });

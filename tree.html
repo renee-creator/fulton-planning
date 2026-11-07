@@ -892,8 +892,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
       <input id="gate-name" type="text" autocomplete="username" autocapitalize="words" spellcheck="false">
       <label for="gate-code" class="small" style="font-weight:600">Your passcode</label>
       <input id="gate-code" type="password" autocomplete="current-password">
-      <div class="small muted">The first time, type your first name and the six number start code the director gave you. TREE then asks you to choose four numbers.</div>
-      <div class="small muted">Forgot your four numbers? Ask the director to clear them. She gives you a new start code to sign in with.</div>
+      <div class="small muted">The first time, type your first name and leave the passcode empty. TREE then asks you to choose four numbers.</div>
+      <div class="small muted">Forgot your four numbers? Ask the director to clear them, then sign in with an empty passcode to choose new ones.</div>
     </div>
     <div id="gate-step2" hidden style="display:grid;gap:10px">
       <div><b id="gate-hello"></b><div class="small muted">Choose four numbers you will remember. Only you and the director will know them.</div></div>
@@ -4925,7 +4925,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=da9c89fdd3","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=e7ec7b5a38","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4938,7 +4938,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=da9c89fdd3","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=e7ec7b5a38","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4956,7 +4956,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="e47be19f8691";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="852085f89bf6";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -16567,14 +16567,14 @@ function signinsHtml(){
   const L=signins.list.filter(a=>!a.former),F=signins.list.filter(a=>a.former);
   return `<section class="card" id="signins"><div class="lbl">Sign-ins</div>
     <details class="fold" data-fold="set:sghow" ${foldOpen.has("set:sghow")?"open":""}><summary class="foldhead"><span class="cnt">How sign-ins work</span></summary><div class="foldbody">
-    <div class="hint">Each educator signs in with their first name. The first time, they type the six number start code shown beside their name, then choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
+    <div class="hint">Each educator signs in with their first name. The first time, they type their first name, leave the passcode empty and choose four numbers as their passcode. Clear a code and they choose a new one at their next sign-in. Codes are shown only here, to the director. A Kitchen sign-in reaches the Kitchen page, Today and the calendar, and nothing about children or money.</div>
     <div class="hint">Leaving our school is for someone with records. Choose Today or their last day, and their sign-in ends at the end of that day. Their observations, plans and documentation keep their name, and their records page and growth move to Former educators in Educators. Remove is only for a sign-in added by mistake.</div></div></details>
     ${L.length?`<div class="sglist">${L.map(a=>`<details class="sgrow" data-sgopen="${esc(a.name)}" ${signins.open===a.name?"open":""}><summary><b>${esc(a.name)}</b><span class="cnt">${esc(a.room?a.room:a.kitchen?"Kitchen":a.director?"Director":"No class")}</span><span class="cnt sglast">${a.leaveOn?"Leaves "+esc(sgDay(a.leaveOn)):a.lastAt?esc(sgDay(a.lastAt)):"Never signed in"}</span></summary>
       <div class="sgbody">${notSetUp(a)&&a.lastAt?`<div class="cnt warnline">${esc(notSetUp(a))}</div>`:""}${a.lastAt?`<div class="cnt">Last signed in ${esc(longDate(iso(new Date(a.lastAt))))}</div>`:""}${a.leaveOn?`<div class="cnt">Last day ${esc(longDate(a.leaveOn))}</div>`:""}
         <label class="sgf"><span>Class</span><select data-sgroom="${esc(a.name)}" aria-label="${esc(a.name)}, class"><option value="">None</option>${CLASSROOMS.map(r=>`<option ${a.room===r?"selected":""}>${r}</option>`).join("")}</select></label>
         <label class="radio"><input type="checkbox" data-sgdir="${esc(a.name)}" ${a.director?"checked":""}><span>Director</span></label>
         <label class="radio"><input type="checkbox" data-sgkit="${esc(a.name)}" ${a.kitchen?"checked":""} ${a.director?"disabled":""}><span>Kitchen sign-in</span></label>
-        <div class="sgf"><span>Passcode</span>${a.code?`<span><span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button></span>`:`<span class="cnt">Start code <b style="font-variant-numeric:tabular-nums;letter-spacing:.1em">${esc(a.start||"")}</b>. ${String(a.name).toLowerCase()===String(myName()||"").toLowerCase()?"This is your own TREE sign-in, so reminders can reach you. Open TREE from its Home Screen icon on your phone and allow reminders when it asks. To sign in with four numbers of your own, sign out and sign in with your name and this code. Your Render passcode keeps working as a backup.":`Give it to ${esc(a.name)} for their first sign-in.`}</span>`}</div>
+        <div class="sgf"><span>Passcode</span>${a.code?`<span><span style="font-variant-numeric:tabular-nums;letter-spacing:.15em">${signins.show[a.name]?esc(a.code):"\u2022\u2022\u2022\u2022"}</span> <button class="linkbtn" data-sgshow="${esc(a.name)}">${signins.show[a.name]?"Hide":"Show"}</button></span>`:`<span class="cnt">${String(a.name).toLowerCase()===String(myName()||"").toLowerCase()?"This is your own TREE sign-in, so reminders can reach you. To choose four numbers of your own, sign out, then sign in with your name and the passcode left empty. Your Render passcode keeps working as a backup.":`Chooses four numbers at their first sign-in, with their first name and the passcode left empty.`}</span>`}</div>
         <span class="actions" style="margin:0">${a.code?`<button class="linkbtn" data-sgreset="${esc(a.name)}">Clear code</button>`:""}<span id="sgdel-${esc(a.name).replace(/[^A-Za-z]/g,"")}">${a.leaveOn?`<button class="linkbtn" data-sgstay="${esc(a.name)}">Staying at our school</button>`:a.records&&!a.director?`<button class="linkbtn" data-sgleave="${esc(a.name)}">Leaving our school</button>`:`<button class="linkbtn" data-sgdel="${esc(a.name)}">Remove</button>`}</span></span>
       </div></details>`).join("")}</div>`:`<div class="empty">No one has a sign-in yet.</div>`}
     ${F.length?`<div class="prow"><div><b>Former educators</b><div class="cnt">${F.length} ${F.length===1?"educator has":"educators have"} left our school. Their records and Bring back are in one place, under Educators, Records.</div></div><button class="linkbtn" data-tview="stformer">Former educators</button></div>`:""}
@@ -16592,7 +16592,7 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.cla
 async function sgNewHires(list){if(!list.length)return;signins.busy=true;if(view==="settings")renderSettings();const added=[];
   const codes={};try{for(const x of list){const r=await window.FP_API("/api/staff/newhire",{newName:x.name,room:x.room,role:"educator",...(x.startDate?{startDate:x.startDate}:{})});added.push(x.name);if(r&&r.start)codes[x.name]=r.start}}catch(e){toast(e&&e.message||"That did not save. Try again.")}
   try{const j=await window.FP_API("/api/accounts",{});signins.list=j.accounts||signins.list}catch(e){}
-  signins.busy=false;if(added.length)toast(`${added.length===1?added[0]+" can":added.join(", ").replace(/, ([^,]*)$/," and $1")+" can"} sign in now with their first name and start code, then choose four numbers. ${added.map(n=>codes[n]?n+"\u2019s start code is "+codes[n]+".":"").filter(Boolean).join(" ")} ${added.length===1?"They see":"Each sees"} only the New Educator section until you turn on full access in Educators.`);if(view==="settings")renderSettings()}
+  signins.busy=false;if(added.length)toast(`${added.length===1?added[0]+" can":added.join(", ").replace(/, ([^,]*)$/," and $1")+" can"} sign in now with their first name, leave the passcode empty and choose four numbers. ${added.length===1?"They see":"Each sees"} only the New Educator section until you turn on full access in Educators.`);if(view==="settings")renderSettings()}
 async function signinCall(path,body,msg){signins.busy=true;try{const j=await window.FP_API(path,body);signins.list=j.accounts||signins.list;if(msg)toast(msg)}catch(e){toast(e&&e.message||"That did not save. Try again.")}signins.busy=false;if(view==="settings")renderSettings()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="settings"||!signins.list)return;
   const acct=n=>signins.list.find(a=>a.name===n);
@@ -16870,7 +16870,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=da9c89fdd3","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=e7ec7b5a38","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
