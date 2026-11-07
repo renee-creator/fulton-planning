@@ -23,13 +23,25 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
 1. `npm ci` if node_modules is missing, then `node tools/watch-check.js > /tmp/watch-check.json` and read it. It checks
    every script parses, the generated pages match src, the size of the first page, the server's health and, when
    WATCH_KEY is set, the program watch's own findings from the last day.
-2. `npm test`. A test that fails is a glitch. Read the failure and find the commit that caused it with `git log`.
-3. If the Render connector is available, read the last day of the TREE service's logs, its deploys and its metrics.
+2. `node tools/user-walk.js /tmp/user-walk` and read /tmp/user-walk/walk-report.md. It walks through TREE on a made-up
+   school as an educator on a phone, the director on a laptop and the kitchen on a tablet, and checks formatting and
+   getting around: pages wider than the screen, buttons too small to tap or drawn over one another, text cut off or very
+   small, buttons and boxes with no name, slow pages, how many taps each page is from Today, and everyday tasks done by
+   tapping. Then act as that person yourself:
+   - Look at the screenshots in /tmp/user-walk as an educator would, on their phone between children. Is it clear what
+     to do next? Is anything crowded, misaligned, hard to read, cut off or inconsistent with the other pages? Is the
+     way back obvious?
+   - Before reporting that something could not be reached or done, open its screenshot and the `onScreen` list in
+     walk-report.json. If a person could plainly do it and only the walk missed it, leave it out.
+   - Report only what would really slow an educator down or confuse them, with the page, what to change, and the file
+     in src where it is drawn. Leave out the same finding you already reported in an open program-watch issue.
+3. `npm test`. A test that fails is a glitch. Read the failure and find the commit that caused it with `git log`.
+4. If the Render connector is available, read the last day of the TREE service's logs, its deploys and its metrics.
    Look for lines with "could not", "Request error", "Unexpected", "Slow request" and "refused", and for a failed deploy.
    If the connector is not available, say so in the report and go on.
-4. Read the commits of the last day (`git log --since="26 hours ago" -p`) for anything that could break: a change to
+5. Read the commits of the last day (`git log --since="26 hours ago" -p`) for anything that could break: a change to
    server.js without a test, src changed without building, a writing rule broken (see Writing rules in README.md).
-5. Put the findings together. Leave out anything the server's program watch already sent that has not happened again.
+6. Put the findings together. Leave out anything the server's program watch already sent that has not happened again.
    Order them most urgent first. For each one write:
    - **What happened**, with counts and when, in plain words.
    - **Why it matters** to educators, families or the records.
