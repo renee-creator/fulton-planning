@@ -154,7 +154,7 @@ function renderGarden(){const m=$("#main");if(gdn===null||gdn===false&&!gdnAt){l
   const spaceList=[...spaces.filter(s=>bySpace.has(s.id)||/garden|yard|piazza|studio|bed|orchard|goat|chicken|rabbit|island|entry/i.test(s.name)),...[...bySpace.keys()].filter(k=>k&&!spaces.some(s=>s.id===k)).map(k=>({id:k,name:k}))];
   // plants
   const pRow=p=>`<details class="gplant" id="ge-${esc(p.id)}"><summary><span><b>${esc(p.common)}</b> <i class="cnt">${esc(p.botanical||"")}${p.confirm?", to confirm":""}</i></span><span>${gdnMark(p)}</span></summary>
-    ${gdnPhotoHtml(p)}
+    ${gdnPhotoHtml(p)}${gdnStagesHtml(p)}
     ${p.filled?`<div class="hint">TREE looked this plant up. Read it through and change anything that is not right for our site.${p.commonSays?` Usually written ${esc(p.commonSays)}.`:""}${dir?` <span class="actions" style="display:inline-flex;margin:0">${p.commonSays?`<button class="linkbtn" data-gpname="${esc(p.id)}|${esc(p.commonSays)}">Use ${esc(p.commonSays)}</button>`:""}<button class="linkbtn" data-gpchecked="${esc(p.id)}">It is checked</button></span>`:""}</div>`:""}
     <div class="cnt">${esc(p.where||(gdnBed(p.bed)||{}).name||"Where it sits is not set yet")}. ${esc((p.uses||[]).join(", "))}.${p.varietyConfirm!==false?` Variety ${p.variety?esc(p.variety)+", ":""}to confirm.`:p.variety?" Variety "+esc(p.variety)+".":""}${p.group?` The ${esc(p.group)} small group carries its name.`:""}</div>
     ${p.taste?`<div class="gsafe"><b>${p.eat==="look"?"For looking.":"What is safe to taste."}</b> ${esc(p.taste)}</div>`:""}${p.opens?`<div style="margin-top:4px">${esc(p.opens)}</div>`:""}
@@ -284,12 +284,58 @@ function gdnMonthsText(ms){const u=[...new Set(ms.map(m=>+m).filter(m=>m>=1&&m<=
 function gdnCareText(p){const by=new Map();for(const c of (p.care||[])){const k=String(c.text||"").trim();if(!k)continue;if(!by.has(k))by.set(k,[]);by.get(k).push(c.month)}
   return [...by.entries()].map(([t,ms])=>({t,ms,first:Math.min(...ms.map(Number))})).sort((a,b)=>a.first-b.first).map(x=>x.t.charAt(0).toLowerCase()+x.t.slice(1)+", "+gdnMonthsText(x.ms))}
 function gdnAdultLine(p){const b=gdnBed(p.bed);const seeds=((gdn&&gdn.seeds)||[]).filter(s=>s.plant===p.id);
-  return [b?"Grows in "+b.name:"",(p.uses||[]).length?"Uses, "+p.uses.join(", "):"",(p.care||[]).length?"Care, "+gdnCareText(p).join("; "):"",(p.ready||[]).length?"Harvest or gather in "+p.ready.map(m=>GDN_MONTHS[+m-1]).join(", "):"",seeds.length?"Seeds saved, "+seeds.map(s=>s.name).join(", "):"",(p.wildlife||[]).length?"Feeds "+p.wildlife.join(", "):"",(p.words||{}).adult||""].filter(Boolean).join(". ")+"."}
+  return [b?"Grows in "+b.name:"",(p.uses||[]).length?"Uses, "+p.uses.join(", "):"",(p.care||[]).length?"Care, "+gdnCareText(p).join("; "):"",(p.ready||[]).length?"Harvest or gather in "+p.ready.map(m=>GDN_MONTHS[+m-1]).join(", "):"",seeds.length?"Seeds saved, "+seeds.map(s=>s.name).join(", "):"",(p.wildlife||[]).length?"Feeds "+p.wildlife.join(", "):"",(p.words||{}).adult||""].filter(Boolean).map(x=>String(x).replace(/[.\s]+$/,"")).join(". ")+"."}
 function gdnPlantForm(p,beds,uses){return `<div class="gform" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px"><div class="kfields"><label>Common name<input type="text" id="gp-common" value="${esc(p.common||"")}"></label><label>Botanical name<input type="text" id="gp-bot" value="${esc(p.botanical||"")}"></label><label>Where it sits<select id="gp-bed"><option value="">Not set</option>${beds.map(b=>`<option value="${esc(b.id)}" ${p.bed===b.id?"selected":""}>${esc(b.name)}</option>`).join("")}</select></label><label>Food or look<select id="gp-eat"><option value="food" ${p.eat==="food"?"selected":""}>Food</option><option value="partly" ${p.eat==="partly"?"selected":""}>Partly edible</option><option value="look" ${p.eat!=="food"&&p.eat!=="partly"?"selected":""}>Look, don't eat</option></select></label><label>Variety, if known<input type="text" id="gp-var" value="${esc(p.variety||"")}"></label></div>
   <label class="fld-label">What is safe to taste, or that it is for looking<textarea id="gp-taste" rows="2">${esc(p.taste||"")}</textarea></label>
   <div class="chips">${(uses||[]).filter(u=>u!=="Look, don't eat").map(u=>`<label class="radio"><input type="checkbox" data-gpuse="${esc(u)}" ${(p.uses||[]).includes(u)?"checked":""}><span>${esc(u)}</span></label>`).join("")}<label class="radio"><input type="checkbox" id="gp-gather" ${p.gather?"checked":""}><span>Gather with an educator</span></label></div>
   <label class="fld-label">Plant card, read aloud<textarea id="gp-child" rows="2">${esc((p.words||{}).child||"")}</textarea></label><label class="fld-label">Full plant page<textarea id="gp-adult" rows="2">${esc((p.words||{}).adult||"")}</textarea></label>
+  ${gdnStageFormStart(p)}
   <div class="actions"><button class="btn small" data-gpsave="${esc(p.id)}">Save the plant</button><button class="linkbtn" data-gpedit="">Cancel</button>${p.id?`<button class="linkbtn" data-gpdel="${esc(p.id)}">Take it off the list</button>`:""}</div></div>`}
+/* The stage photos in the plant editor. The director sees each one, changes its word, moves it with Up and Down, takes
+   it off or replaces it, and adds one by pasting an iNaturalist photo page link or a photo's own address, with who took
+   it and its license. Nothing is kept until Save the plant, the same as every other part of the plant. */
+let gdnStageDraft={},gdnStageAdd=null;
+const GDN_LICENSES=["CC0","CC BY","CC BY-SA","CC BY-NC","CC BY-NC-SA","Public domain"];
+function gdnStageFormStart(p){const k=p.id||"new";if(!gdnStageDraft[k])gdnStageDraft[k]=JSON.parse(JSON.stringify(gdnStages(p)));
+  return `<div class="lbl" style="margin-top:8px">Stage photos</div><div class="hint">Up to four, blossom, fruit, leaf, and seed or bark, only the ones that fit this plant, in the order of the year. Each prints under the main photo with its word.</div><div id="gp-stages">${gdnStageFormHtml(k)}</div>`}
+function gdnStageFormHtml(k){const S=gdnStageDraft[k]||[],A=gdnStageAdd&&gdnStageAdd.k===k?gdnStageAdd:null;
+  const rows=S.map((s,i)=>`<div class="gstedit"><img src="${esc(s.photo.url)}" alt="${esc(s.label)}"><div><div class="kfields"><label>Its word<input type="text" maxlength="20" data-gstlabel="${i}" value="${esc(s.label)}"></label></div>
+    <div class="cnt">${esc(gdnStageCredit(s))}</div><div class="actions" style="flex-wrap:wrap">${i?`<button class="linkbtn" data-gstmove="${i}|-1">Up</button>`:""}${i<S.length-1?`<button class="linkbtn" data-gstmove="${i}|1">Down</button>`:""}<button class="linkbtn" data-gstnew="${i}">Replace</button><button class="linkbtn" data-gstdel="${i}">Remove</button></div></div></div>`).join("");
+  const form=A?`<div class="gform" style="border-top:1px solid var(--line);padding-top:6px"><div class="kfields">
+    <label>Stage<select id="gst-kind">${GDN_STAGE_KINDS.map(([v,l])=>`<option value="${v}" ${A.kind===v?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label>Its word<input type="text" id="gst-label" maxlength="20" value="${esc(A.label||"")}" placeholder="Ex. Blossom, Acorn, Pod"></label>
+    <label>iNaturalist photo page or photo address<input type="url" id="gst-url" value="${esc(A.url||"")}" placeholder="https://www.inaturalist.org/photos/"></label>
+    <label>Who took it<input type="text" id="gst-by" value="${esc(A.by||"")}"></label>
+    <label>License<select id="gst-lic">${GDN_LICENSES.map(l=>`<option ${A.license===l?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="cnt">On iNaturalist, open the species, choose a photo with an open license, and copy the address of its page. Who took it and the license are shown beside the photo there.</div>
+    <div class="actions"><button class="btn small" data-gstkeep="1">${A.i!=null?"Use this photo":"Add this photo"}</button><button class="linkbtn" data-gstcancel="1">Cancel</button>${A.botanical?`<a class="linkbtn" href="https://www.inaturalist.org/taxa/search?q=${encodeURIComponent(A.botanical)}" target="_blank" rel="noopener">Find a photo on iNaturalist</a>`:""}</div></div>`:"";
+  return `${rows||`<div class="cnt">No stage photos yet.</div>`}${form}${!A&&S.length<4?`<div class="actions"><button class="btn small ghost" data-gstnew="">Add a stage photo</button></div>`:""}`}
+const gdnStageRedraw=k=>{const box=document.getElementById("gp-stages");if(box)box.innerHTML=gdnStageFormHtml(k)};
+// a pasted address becomes the photo. An iNaturalist photo page names its photo, which is kept at iNaturalist's open
+// photo store in a medium and a large size. Any other address is used as it is, and must start with https.
+function gdnStageFromLink(u){u=String(u||"").trim();const m=u.match(/^https:\/\/(?:www\.)?inaturalist\.org\/photos\/(\d+)/);
+  if(m)return {url:`https://inaturalist-open-data.s3.amazonaws.com/photos/${m[1]}/medium.jpg`,large:`https://inaturalist-open-data.s3.amazonaws.com/photos/${m[1]}/large.jpg`,link:`https://www.inaturalist.org/photos/${m[1]}`,source:"iNaturalist"};
+  const o=u.match(/^https:\/\/inaturalist-open-data\.s3\.amazonaws\.com\/photos\/(\d+)\/[a-z]+\.(jpe?g|png)/i);
+  if(o)return {url:`https://inaturalist-open-data.s3.amazonaws.com/photos/${o[1]}/medium.${o[2]}`,large:`https://inaturalist-open-data.s3.amazonaws.com/photos/${o[1]}/large.${o[2]}`,link:`https://www.inaturalist.org/photos/${o[1]}`,source:"iNaturalist"};
+  if(!/^https:\/\/\S+$/.test(u))return null;let host="";try{host=new URL(u).hostname.replace(/^www\./,"")}catch(e){return null}
+  return {url:u,source:/wikimedia|wikipedia/.test(host)?"Wikimedia Commons":host}}
+const gdnImgOk=src=>new Promise(ok=>{const i=new Image();const t=setTimeout(()=>ok(false),12000);i.onload=()=>{clearTimeout(t);ok(i.naturalWidth>0)};i.onerror=()=>{clearTimeout(t);ok(false)};i.src=src});
+document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||t.dataset.gstlabel==null||view!=="garden")return;const k=gdnEdit||"new",S=gdnStageDraft[k];if(S&&S[+t.dataset.gstlabel])S[+t.dataset.gstlabel].label=t.value.trim()});
+document.addEventListener("click",async e=>{const t=view==="garden"&&e.target.closest("[data-gstmove],[data-gstdel],[data-gstnew],[data-gstkeep],[data-gstcancel]");if(!t)return;
+  const k=gdnEdit||"new",S=gdnStageDraft[k]=gdnStageDraft[k]||[],d=t.dataset,v=id=>((document.getElementById(id)||{}).value||"").trim();
+  if(d.gstmove){const [i,dir]=d.gstmove.split("|").map(Number),j=i+dir;if(j<0||j>=S.length)return;[S[i],S[j]]=[S[j],S[i]];gdnStageRedraw(k);return}
+  if(d.gstdel!=null){S.splice(+d.gstdel,1);gdnStageRedraw(k);return}
+  if(d.gstcancel){gdnStageAdd=null;gdnStageRedraw(k);return}
+  if(d.gstnew!=null){const i=d.gstnew===""?null:+d.gstnew,cur=i==null?null:S[i],pl=(gdn.plants||[]).find(x=>x.id===gdnEdit)||{};
+    const used=new Set(S.map(x=>x.stage)),next=(GDN_STAGE_KINDS.find(([x])=>!used.has(x))||GDN_STAGE_KINDS[0]);
+    gdnStageAdd={k,i,kind:cur?cur.stage:next[0],label:cur?cur.label:next[1],url:cur?cur.photo.link||cur.photo.url:"",by:cur?cur.photo.by:"",license:cur?cur.photo.license:"CC BY",botanical:pl.botanical||v("gp-bot")};gdnStageRedraw(k);return}
+  if(d.gstkeep){const A=gdnStageAdd;if(!A)return;const label=v("gst-label").replace(/\s+/g," "),ph=gdnStageFromLink(v("gst-url")),by=v("gst-by");
+    if(!ph){toast("Paste an iNaturalist photo page link, or a photo address that starts with https.");return}
+    if(!label||label.length>20||/\s/.test(label)){toast("Give the stage one short word, such as Blossom or Acorn.");return}
+    if(!by&&v("gst-lic")!=="Public domain"&&v("gst-lic")!=="CC0"){toast("Write who took the photo, as the photo's page shows it.");return}
+    t.disabled=true;if(!(await gdnImgOk(ph.url))){t.disabled=false;toast("That photo did not open. On iNaturalist, choose a photo with an open license, or paste the photo's own address.");return}
+    const s={stage:v("gst-kind")||"leaf",label,photo:Object.assign(ph,{by,license:v("gst-lic")})};
+    if(A.i!=null&&S[A.i])S[A.i]=s;else if(S.length<4)S.push(s);gdnStageAdd=null;gdnStageRedraw(k);toast("Kept here. Save the plant to keep it.");return}});
 // preserving, from the harvests, with how we preserve, herbs and tea, and our food rule. We do not can for storage.
 function gdnPreserveCard(){const g=gdn,day=iso(new Date()),pg=gdnPage("preserving"),dir=isDirector()&&!VIEW_AS;
   const hs=(g.harvests||[]).slice().reverse().slice(0,20);
@@ -317,7 +363,26 @@ const gdnEntry=id=>{if(!gdn)return null;return (gdn.plants||[]).find(x=>x.id===i
 const gdnName=x=>x?(x.common||x.name||x.title||""):"";
 // our own photo when there is one, otherwise the stand-in, with its credit
 function gdnPhotoSrc(x){const own=((gdn&&gdn.photos)||[]).filter(p=>p.plant===x.id&&!p.name).slice(-1)[0];if(own&&window.FP_ORIGINAL_URL)return {src:window.FP_ORIGINAL_URL(own.id),own:true,key:"go-"+own.id};
-  const ph=x.photo&&x.photo.url?x.photo:null;return ph?{src:ph.url,credit:["Photo by "+(ph.by||"an iNaturalist observer"),ph.license,ph.source||"iNaturalist"].filter(Boolean).join(", "),link:ph.link||"",key:"gi-"+x.id}:null}
+  const ph=x.photo&&x.photo.url?x.photo:null;return ph?{src:ph.url,credit:["Photo by "+(ph.by||"an iNaturalist observer"),ph.license,ph.source||"iNaturalist"].filter(Boolean).join(", "),printCredit:gdnPrintCredit(ph),link:ph.link||"",key:"gi-"+x.id,printSrc:ph.large||ph.url,printKey:(ph.large?"gil-":"gi-")+x.id}:null}
+/* A credit as it prints. The print typeface has Latin letters only, so a name written in another script, such as
+   Cyrillic, Greek or Chinese, would print as nothing and leave "Photo by ," on the card. A name with its Latin spelling
+   in brackets prints that spelling, and a name with no Latin letters prints as Photo from iNaturalist, with its license. */
+function gdnPrintCredit(ph,lead){if(!ph)return "";const src=ph.source||"iNaturalist",lic=ph.license||"";const by=String(ph.by||"").trim();
+  const latin=t=>String(t||"").replace(/[^\x20-\x7E\xA0-\xFF]/g,"").replace(/\(\s*\)/g,"").replace(/\s+/g," ").replace(/^[\s,.(]+|[\s,.)]+$/g,"").trim();
+  const inBr=(by.match(/\(([^)]*)\)/)||[])[1];const all=latin(by.replace(/\([^)]*\)/g,""));
+  const plain=by.replace(/\([^)]*\)/g,"").replace(/[\s.,'-]/g,"");const whole=plain&&latin(by.replace(/\([^)]*\)/g,"")).replace(/[\s.,'-]/g,"").length===plain.length;
+  const name=whole?all:inBr&&/[A-Za-z]/.test(latin(inBr))?latin(inBr):"";
+  const words=name?[(lead?lead+", photo by ":"Photo by ")+name,lic,src]:[(lead?lead+", photo from ":"Photo from ")+src,lic];
+  return words.filter(Boolean).join(", ")}
+// a plant's stage photos, blossom, fruit, leaf, and seed or bark, each with its one-word label, in seasonal order
+const GDN_STAGE_KINDS=[["blossom","Blossom"],["fruit","Fruit"],["leaf","Leaf"],["seed","Seed"],["bark","Bark"]];
+const gdnStages=x=>(Array.isArray(x&&x.stages)?x.stages:[]).filter(s=>s&&s.photo&&s.photo.url).slice(0,4);
+const gdnStageCredit=s=>{const ph=s.photo||{};return [s.label+", photo by "+(ph.by||"an iNaturalist observer"),ph.license,ph.source||"iNaturalist"].filter(Boolean).join(", ")};
+function gdnStagesHtml(x){const S=gdnStages(x);if(!S.length)return "";
+  return `<div class="gstages">${S.map(s=>`<figure><img src="${esc(s.photo.url)}" alt="${esc(gdnName(x)+", "+s.label)}" loading="lazy"><figcaption>${esc(s.label)}</figcaption></figure>`).join("")}</div>
+    <div class="cnt">${S.map(s=>s.photo.link?`<a href="${esc(s.photo.link)}" target="_blank" rel="noopener">${esc(gdnStageCredit(s))}</a>`:esc(gdnStageCredit(s))).join(". ")}.</div>`}
+// the stage photos as they print, the large photo when there is one
+const gdnStageTiles=x=>gdnStages(x).map((s,i)=>({key:"gst-"+x.id+"-"+i+"-"+(s.photo.large?"l":"m"),src:s.photo.large||s.photo.url,label:s.label,credit:gdnPrintCredit(s.photo,s.label)}));
 function gdnPhotoHtml(x){const p=gdnPhotoSrc(x);if(!p)return "";return `<div class="gentph"><img src="${esc(p.src)}" alt="${esc(gdnName(x))}" loading="lazy">${p.credit?`<div class="cnt">${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.credit)}</a>`:esc(p.credit)}. Our own photo can take its place.</div>`:`<div class="cnt">Our own photo.</div>`}</div>`}
 const gdnList=(l,items)=>items&&items.length?`<div class="lbl">${esc(l)}</div><ul style="margin:2px 0 6px;padding-left:18px">${items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
 const gdnFam=f=>f&&Object.values(f).some(Boolean)?`<div class="cnt">${[f.male&&"Male, "+f.male,f.female&&"female, "+f.female,f.young&&"young, "+f.young,f.group&&"a group is a "+f.group].filter(Boolean).map(esc).join(". ")}.</div>`:"";
@@ -358,7 +423,7 @@ function gdnFieldGuidesHtml(){const F=(gdn&&gdn.fieldGuides)||[];if(!F.length)re
 // an entry as it prints, its card or sign, photo first, our own when there is one, centred as a card
 function gdnEntryDoc(x){return asCard(gdnEntryDoc0(x))}
 function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[]).includes(x)&&"plant"||(gdn.animals||[]).includes(x)&&"animal"||"";
-  const photo=p?[{t:"photo",key:p.key,src:p.src,maxH:k==="sign"?380:330}]:[];const credit=p&&p.credit?[{t:"small",label:"",lines:[p.credit]}]:[];
+  const photo=p?[{t:"photo",key:p.printKey||p.key,src:p.printSrc||p.src,maxH:k==="sign"?380:330}]:[];const credit=p&&p.printCredit?[{t:"small",label:"",lines:[p.printCredit]}]:[];
   if(x.question!==undefined||(gdn.signs||[]).includes(x))return {display:true,type:"report",acc:"story",title:x.kind==="shoes"?"Shoes on":x.title||"",meta:[x.place||""].filter(Boolean),blocks:[...photo,dText("",x.question||""),...(x.wonder?[dText("",x.wonder)]:[]),...credit]};
   // a warning sign's words are kept in their parts, its description, its rule and its line, and each prints as its own line
   if(x.kind==="hazard"){const sg=x.sign&&typeof x.sign==="object"?x.sign:{description:x.sign||x.know||""};
@@ -374,14 +439,14 @@ function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[])
    go on to a page of their own, its title marked continued. */
 function gdnFieldDocs(key){const f=((gdn&&gdn.fieldGuides)||[]).find(x=>(x.space||x.title)===key);if(!f)return [];const es=(f.entries||[]).map(gdnEntry).filter(Boolean);
   const title="Who we might see in the "+f.title.toLowerCase();
-  const tiles=es.map(x=>{const p=gdnPhotoSrc(x);return {name:gdnName(x),key:p?p.key:"",src:p?p.src:"",credit:p&&p.credit?p.credit:""}});
+  const tiles=es.map(x=>{const p=gdnPhotoSrc(x);return {name:gdnName(x),key:p?p.printKey||p.key:"",src:p?p.printSrc||p.src:"",credit:p&&p.printCredit?p.printCredit:""}});
   const out=[];for(let i=0;i<Math.max(1,tiles.length);i+=6)out.push(asCard({display:true,type:"report",acc:"story",title:i?title+", continued":title,meta:[],
     blocks:[{t:"grid",tiles:tiles.slice(i,i+6)},dText("",f.intro||"We look with our eyes and leave them be.")]}));
   return out}
 function gdnFieldDoc(key){return gdnFieldDocs(key)[0]||null}
 // an entry in the sheet that opens from Search
 function gdnEntrySheet(x){const kind=x.kind||((gdn.plants||[]).includes(x)?"plant":(gdn.animals||[]).includes(x)?"animal":"");
-  const body=kind==="plant"?`${gdnPhotoHtml(x)}<div class="cnt">${esc(x.where||(gdnBed(x.bed)||{}).name||"")}</div>${x.taste?`<div class="gsafe">${esc(x.taste)}</div>`:""}${x.opens?`<p>${esc(x.opens)}</p>`:""}${(x.wonder||[]).length?`<ul class="gwonder">${x.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`:kind==="animal"?gdnAnimalHtml(x):gdnWildRow(x).replace(/^<details[^>]*>/,"<div>").replace(/<summary>[\s\S]*?<\/summary>/,"").replace(/<\/details>$/,"</div>");
+  const body=kind==="plant"?`${gdnPhotoHtml(x)}${gdnStagesHtml(x)}<div class="cnt">${esc(x.where||(gdnBed(x.bed)||{}).name||"")}</div>${x.taste?`<div class="gsafe">${esc(x.taste)}</div>`:""}${x.opens?`<p>${esc(x.opens)}</p>`:""}${(x.wonder||[]).length?`<ul class="gwonder">${x.wonder.map(w=>`<li>${esc(w)}</li>`).join("")}</ul>`:""}`:kind==="animal"?gdnAnimalHtml(x):gdnWildRow(x).replace(/^<details[^>]*>/,"<div>").replace(/<summary>[\s\S]*?<\/summary>/,"").replace(/<\/details>$/,"</div>");
   return `<h2>${esc(gdnName(x))}</h2>${x.botanical||x.scientific?`<div class="cnt"><i>${esc(x.botanical||x.scientific)}</i></div>`:""}${kind==="plant"?gdnMark(x):""}${body}<div class="actions"><button class="btn small ghost" data-tview="garden">Open the Garden</button></div>`}
 window.gdnEntry=gdnEntry;window.gdnEntrySheet=gdnEntrySheet;
 // the cards and signs, through the one print kit. Every set prints one, some or all.
@@ -403,11 +468,17 @@ window.gdnSetDocs=gdnSetDocs;window.gdnEntryDoc=gdnEntryDoc;window.gdnFieldDoc=g
 // the plant guide and the agreements as prints, PDF and Word, photos of the actual plants only, never children
 function gdnGuideDoc(kind,id){const want=id?new Set(String(id).split(",")):null;const ps=(gdn.plants||[]).filter(p=>!want||want.has(p.id));
   // each plant's own photo, ours once there is one and the stand-in with its credit until then
-  const ph=p=>{const s=gdnPhotoSrc(p);return s?{photo:{t:"photo",key:s.key,src:s.src,maxH:300},credit:s.credit||""}:{photo:null,credit:""}};
+  const ph=p=>{const s=gdnPhotoSrc(p);return s?{photo:{t:"photo",key:s.printKey||s.key,src:s.printSrc||s.src,maxH:300},credit:s.printCredit||""}:{photo:null,credit:""}};
   const eatLine=p=>[p.eat==="food"?"Food":p.eat==="partly"?"Partly edible. We taste only the part an adult names":"Look, don't eat",p.gather?"Gather with an educator":""].filter(Boolean).join(". ")+".";
-  if(kind==="children")return ps.map(p=>{const x=ph(p);return asCard({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(x.photo?[x.photo]:[]),dText("",(p.words||{}).child||""),dText("",eatLine(p)),...(x.credit?[{t:"small",label:"",lines:[x.credit]}]:[])]},{sub:p.botanical||""})});
+  /* A plant card for children, one centred page. One large photo, the stage photos in a row under it with a word under
+     each, the words to read aloud set large, about 20 points, whether to eat or look, and every credit small at the foot,
+     one line for each photo. When the words and the row would not fit, the row grows smaller, never the words. */
+  if(kind==="children")return ps.map(p=>{const x=ph(p),st=gdnStageTiles(p);const c=asCard({display:true,type:"report",acc:"story",title:p.common,meta:[],blocks:[...(x.photo?[x.photo]:[]),...(st.length?[{t:"stages",tiles:st}]:[]),dText("",(p.words||{}).child||""),dText("",eatLine(p)),
+    ...([x.credit?(st.length?x.credit.replace(/^Photo /,p.common+", photo "):x.credit):"",...st.map(t=>t.credit)].filter(Boolean).length?[{t:"credits",lines:[x.credit?(st.length?x.credit.replace(/^Photo /,p.common+", photo "):x.credit):"",...st.map(t=>t.credit)].filter(Boolean)}]:[])]},{sub:p.botanical||""});return Object.assign(c,{plantCard:true})});
   // the full plant pages, every plant with its photo, its card words, everything it holds and its wonderings, nothing cut
-  const blocks=[];for(const p of ps){const x=ph(p);blocks.push(dSub(p.common+(p.botanical?", "+p.botanical:"")));if(x.photo)blocks.push(Object.assign({},x.photo,{maxH:200}));if(x.credit)blocks.push(dText("",x.credit));
+  const blocks=[];for(const p of ps){const x=ph(p),st=gdnStageTiles(p);blocks.push(dSub(p.common+(p.botanical?", "+p.botanical:"")));if(x.photo)blocks.push(Object.assign({},x.photo,{maxH:200}));if(x.credit)blocks.push(dText("",x.credit));
+    // the stage photos larger, two across, each with its word and its credit
+    if(st.length)blocks.push({t:"stagegrid",tiles:st});
     if(has((p.words||{}).child))blocks.push(dText("Plant card",(p.words||{}).child));blocks.push(dText("Full plant page",gdnAdultLine(p)));blocks.push(dText("Food or look",eatLine(p)+(p.taste?" "+p.taste:"")));
     if(p.opens)blocks.push(dText("",p.opens));if((p.wonder||[]).length)blocks.push(dList("Wonderings",p.wonder))}
   return [{display:true,type:"report",acc:"story",title:"Fulton Community School full plant pages",meta:[["Date",longDate(iso(new Date()))]],blocks}]}
@@ -431,7 +502,7 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
     if(!await gdnCall("seed",{name,from:"donated",source:e.who||e.family||"",share:true},"Added to the seed list and shared with families."))return;
     try{await db.doc("participation/"+item).update({signups:(it.signups||[]).map(y=>y.email===email?Object.assign({},y,{seedAccepted:new Date().toISOString().slice(0,10)}):y)})}catch(er){}renderMain();return}
   if(d.gpreserve){const b={harvest:v("gv-h"),what:v("gv-what"),method:v("gv-m"),note:v("gv-note"),children:!!(document.getElementById("gv-kids")||{}).checked};if(!b.harvest&&!b.what.trim()){toast("Choose the harvest or say what was preserved.");return}await gdnCall("preserve",b,"Recorded.");return}
-  if(d.gpedit!=null){gdnEdit=d.gpedit||null;renderMain();return}
+  if(d.gpedit!=null){gdnEdit=d.gpedit||null;gdnStageDraft={};gdnStageAdd=null;renderMain();return}
   if(d.gmplace!=null){gdnPlace=d.gmplace;renderMain();if(gdnPlace)document.getElementById("gmap")?.scrollIntoView({block:"center"});return}
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.gmapplace!=null&&gdnPlace){const r=t.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;const sp=gdnPlace;gdnPlace="";await gdnCall("map",{space:sp,x,y},"Placed on the map.");return}
@@ -444,7 +515,7 @@ document.addEventListener("click",async e=>{const t=(view==="garden"||view==="to
   if(d.gmapready){if(await gdnCall("mapready",{on:d.gmapready==="1"},d.gmapready==="1"?"The site map shows on sign-ups, plans, New Educator, the Family page and handouts.":"The site map shows on the Garden page only."))window.TREE_SITEMAP(true);return}
   if(d.gharvest){const r=v("gh-room");await gdnCall("harvest",{plant:v("gh-plant"),amount:v("gh-amount"),bed:v("gh-bed"),date:v("gh-date"),children:!!r,room:r},"Kept. It shows on the Kitchen page.");return}
   if(d.gpsave!=null){const uses=[...document.querySelectorAll("[data-gpuse]:checked")].map(x=>x.dataset.gpuse);const eat=v("gp-eat");if(eat==="look")uses.push("Look, don't eat");
-    gdnEdit=null;const before=new Set((gdn.plants||[]).map(x=>x.id));const ok=await gdnCall("plant",{id:d.gpsave||undefined,plant:{common:v("gp-common"),botanical:v("gp-bot"),bed:v("gp-bed"),eat,uses,gather:!!document.getElementById("gp-gather")?.checked,taste:v("gp-taste"),variety:v("gp-var"),words:{child:v("gp-child"),adult:v("gp-adult")}}},"Saved.");
+    gdnEdit=null;const before=new Set((gdn.plants||[]).map(x=>x.id));const ok=await gdnCall("plant",{id:d.gpsave||undefined,plant:{common:v("gp-common"),botanical:v("gp-bot"),bed:v("gp-bed"),eat,uses,gather:!!document.getElementById("gp-gather")?.checked,taste:v("gp-taste"),variety:v("gp-var"),words:{child:v("gp-child"),adult:v("gp-adult")},...(gdnStageDraft[d.gpsave||"new"]?{stages:gdnStageDraft[d.gpsave||"new"].map(x=>Object.assign({},x,{label:String(x.label||"").trim()}))}:{})}},"Saved.");if(ok){delete gdnStageDraft[d.gpsave||"new"];gdnStageAdd=null}
     // a new plant is looked up straight away, so its card fills in like the others
     if(ok&&!d.gpsave){const n=(gdn.plants||[]).find(x=>!before.has(x.id));if(n){progress("Looking up "+n.common);await gdnCall("fill",{id:n.id},"Filled in. Read it through and confirm it.")}}return}
   if(d.gpfill){t.disabled=true;const p=(gdn.plants||[]).find(x=>x.id===d.gpfill);progress("Looking up "+(p?p.common:"the plant"));await gdnCall("fill",{id:d.gpfill},"Filled in. Read it through and confirm it.");return}

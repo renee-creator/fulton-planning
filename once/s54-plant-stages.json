@@ -1,0 +1,1512 @@
+{
+ "name": "s54PlantStages",
+ "note": "Stage photos for the plants, blossom, fruit, leaf, and seed or bark, each with its credit, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-plum].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/70797351/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/70797351/large.jpg",
+      "by": "Owen McElroy",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/70797351",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/232367592/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/232367592/large.jpg",
+      "by": "Jackson Irvin",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/232367592",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/592358298/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/592358298/large.jpg",
+      "by": "Lídia Carrera",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/592358298",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-apricot].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/490372742/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/490372742/large.jpg",
+      "by": "Z",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/490372742",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/511040819/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/511040819/large.jpg",
+      "by": "Michael Tidwell",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/511040819",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/292008079/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/292008079/large.jpeg",
+      "by": "swmpg",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/292008079",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-apple].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/282051996/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/282051996/large.jpeg",
+      "by": "Jens Ullenius",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/282051996",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/327527218/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/327527218/large.jpg",
+      "by": "Георгий Виноградов (Georgy Vinogradov)",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/327527218",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/438471171/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/438471171/large.jpeg",
+      "by": "Daryl Nolan",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/438471171",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-fig].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/190426949/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/190426949/large.jpg",
+      "by": "rappman",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/190426949",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/254769774/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/254769774/large.jpeg",
+      "by": "Michael Andresek",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/254769774",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "seed",
+     "label": "Seed",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/554265395/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/554265395/large.jpg",
+      "by": "Karim Haddad",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/554265395",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-nectarine].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/725662060/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/725662060/large.jpg",
+      "by": "James K. Douch",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/725662060",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/560634008/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/560634008/large.jpg",
+      "by": "Alex Abair",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/560634008",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/5519788/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/5519788/large.jpg",
+      "by": "Murray NZ",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/5519788",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-pomegranate].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/246755925/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/246755925/large.jpg",
+      "by": "Proteros",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/246755925",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/334253057/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/334253057/large.jpg",
+      "by": "Peter Chen 2.0",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/334253057",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "seed",
+     "label": "Seed",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/329386969/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/329386969/large.jpg",
+      "by": "F. Bemmerlein-Lux",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/329386969",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-feijoa].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/240219823/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/240219823/large.jpeg",
+      "by": "William G. Borges",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/240219823",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/409640495/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/409640495/large.jpg",
+      "by": "catchwords",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/409640495",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-meyer].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/190063353/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/190063353/large.jpeg",
+      "by": "Se Lena",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/190063353",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/167595900/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/167595900/large.jpeg",
+      "by": "Gianni Del Bufalo bygdb",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/167595900",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-mandarin].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/114776742/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/114776742/large.jpg",
+      "by": "Alex Abair",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/114776742",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/229688925/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/229688925/large.jpeg",
+      "by": "Tony Rebelo",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/229688925",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-fingerlime].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/466043602/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/466043602/large.jpeg",
+      "by": "Christine Braaten",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/466043602",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-pricklypear].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Pad",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/500158844/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/500158844/large.jpg",
+      "by": "René Alejandro Moscoso Miranda",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/500158844",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/120065149/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/120065149/large.jpeg",
+      "by": "Millie Basden",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/120065149",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/469728811/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/469728811/large.jpg",
+      "by": "Zoltán Stekkelpak",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/469728811",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-strawberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/510258919/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/510258919/large.jpg",
+      "by": "Petr Harant",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/510258919",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/616847026/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/616847026/large.jpg",
+      "by": "Shiwen Yu",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/616847026",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-raspberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/19854565/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/19854565/large.jpeg",
+      "by": "Benoit Renaud",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/19854565",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/262058739/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/262058739/large.jpg",
+      "by": "Douglas Goldman",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/262058739",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-blackberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/8407970/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/8407970/large.jpg",
+      "by": "avocat",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/8407970",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/211151517/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/211151517/large.jpeg",
+      "by": "Justin",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/211151517",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-grape].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/426985394/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/426985394/large.jpeg",
+      "by": "Rose Zappa",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/426985394",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/197483971/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/197483971/large.jpeg",
+      "by": "Andrey Polstianoi",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/197483971",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-passion].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/626660316/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/626660316/large.jpg",
+      "by": "Jhonatan Matheus",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/626660316",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/248314378/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/248314378/large.jpeg",
+      "by": "Matt B",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/248314378",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-pipevine].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/3019839/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/3019839/large.jpeg",
+      "by": "Ken-ichi Ueda",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/3019839",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/525543964/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/525543964/large.jpg",
+      "by": "Chris Conard",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/525543964",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/675976221/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/675976221/large.jpg",
+      "by": "Alex Heyman",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/675976221",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-valleyoak].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/430835510/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/430835510/large.jpeg",
+      "by": "klicklo",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/430835510",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Acorn",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/227268660/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/227268660/large.jpeg",
+      "by": "Cricket Raspet",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/227268660",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "bark",
+     "label": "Bark",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/523270930/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/523270930/large.jpg",
+      "by": "Irene",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/523270930",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-coastliveoak].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/465577176/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/465577176/large.jpg",
+      "by": "Corey Stafford",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/465577176",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Acorn",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/232386571/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/232386571/large.jpeg",
+      "by": "Henrik Kibak",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/232386571",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "bark",
+     "label": "Bark",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/465577157/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/465577157/large.jpg",
+      "by": "Corey Stafford",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/465577157",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-olive].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/4231186/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/4231186/large.jpg",
+      "by": "Anne Parsons",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/4231186",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "bark",
+     "label": "Bark",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/178914601/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/178914601/large.jpg",
+      "by": "Karim Haddad",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/178914601",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-redbud].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/285837/medium.JPG",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/285837/large.JPG",
+      "by": "Justin",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/285837",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/153946950/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/153946950/large.jpeg",
+      "by": "Jo Roberts",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/153946950",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "seed",
+     "label": "Pod",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/153947003/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/153947003/large.jpeg",
+      "by": "Jo Roberts",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/153947003",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-elderberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/139005658/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/139005658/large.jpeg",
+      "by": "sudomir",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/139005658",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/145768701/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/145768701/large.jpeg",
+      "by": "sudomir",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/145768701",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-cherry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/250804139/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/250804139/large.jpeg",
+      "by": "Dr. Guido Bohne",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/250804139",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/444834992/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/444834992/large.jpeg",
+      "by": "Kailey Alderfer",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/444834992",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/204647799/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/204647799/large.jpg",
+      "by": "olrett",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/204647799",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "bark",
+     "label": "Bark",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/444834936/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/444834936/large.jpeg",
+      "by": "Kailey Alderfer",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/444834936",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-asianpear].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/632827435/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/632827435/large.jpg",
+      "by": "Chris D Thomas",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/632827435",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/74950106/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/74950106/large.jpeg",
+      "by": "chiuluan",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/74950106",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-japanesemaple].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/385454008/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/385454008/large.jpeg",
+      "by": "Tom Norton",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/385454008",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "seed",
+     "label": "Seed",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/68790982/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/68790982/large.jpg",
+      "by": "Lawson Cope",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/68790982",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-rose].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/241284130/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/241284130/large.jpg",
+      "by": "Douglas Goldman",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/241284130",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Hip",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/58156836/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/58156836/large.jpg",
+      "by": "syvwlch",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/58156836",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-blueberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/516107381/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/516107381/large.jpg",
+      "by": "Tom Scavo",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/516107381",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/314275986/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/314275986/large.jpg",
+      "by": "Tom Scavo",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/314275986",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-currant].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/120061412/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/120061412/large.jpeg",
+      "by": "bristolian",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/120061412",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/32630566/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/32630566/large.jpg",
+      "by": "Radek Walkowiak",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/32630566",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-banana].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/607290729/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/607290729/large.jpg",
+      "by": "andrew2285",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/607290729",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/245083753/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/245083753/large.jpeg",
+      "by": "葉子",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/245083753",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/457495529/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/457495529/large.jpeg",
+      "by": "Ametsak",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/457495529",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-persimmon].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/1895742/medium.JPG",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/1895742/large.JPG",
+      "by": "harum.koh",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/1895742",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/25692449/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/25692449/large.jpg",
+      "by": "Marco Mussita",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/25692449",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-quince].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/119966208/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/119966208/large.jpg",
+      "by": "João Valença",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/119966208",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/50656325/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/50656325/large.jpeg",
+      "by": "Corinne Helmer",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/50656325",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-gooseberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/118604095/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/118604095/large.jpeg",
+      "by": "Daniel Cahen",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/118604095",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/47313806/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/47313806/large.jpeg",
+      "by": "mfeaver",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/47313806",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-kiwi].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/278431053/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/278431053/large.jpg",
+      "by": "Anne Parker",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/278431053",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/51499698/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/51499698/large.jpeg",
+      "by": "Repina Tatyana",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/51499698",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-huckleberry].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/133653239/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/133653239/large.jpeg",
+      "by": "Rand Workman",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/133653239",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/697513374/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/697513374/large.jpg",
+      "by": "Felicia Gershberg",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/697513374",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-manzanita].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/32527277/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/32527277/large.jpg",
+      "by": "Alan Rockefeller",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/32527277",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/173340070/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/173340070/large.jpg",
+      "by": "paulexcoff",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/173340070",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "bark",
+     "label": "Bark",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/459969877/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/459969877/large.jpg",
+      "by": "Irene",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/459969877",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-toyon].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/294989811/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/294989811/large.jpeg",
+      "by": "Anne Parsons",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/294989811",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Berry",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/176606569/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/176606569/large.jpg",
+      "by": "Irene",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/176606569",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-milkweed].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/89804524/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/89804524/large.jpg",
+      "by": "Steve Matson",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/89804524",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "seed",
+     "label": "Pod",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/443818640/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/443818640/large.jpeg",
+      "by": "Irene",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/443818640",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-willow].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Catkin",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/459098197/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/459098197/large.jpg",
+      "by": "Dan Vickers",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/459098197",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/79495385/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/79495385/large.jpg",
+      "by": "Eric Lamb",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/79495385",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-plum-west].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/70797351/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/70797351/large.jpg",
+      "by": "Owen McElroy",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/70797351",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/232367592/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/232367592/large.jpg",
+      "by": "Jackson Irvin",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/232367592",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/592358298/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/592358298/large.jpg",
+      "by": "Lídia Carrera",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/592358298",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-apple-west].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/282051996/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/282051996/large.jpeg",
+      "by": "Jens Ullenius",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/282051996",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/327527218/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/327527218/large.jpg",
+      "by": "Георгий Виноградов (Georgy Vinogradov)",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/327527218",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/438471171/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/438471171/large.jpeg",
+      "by": "Daryl Nolan",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/438471171",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-grape-west].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Leaf",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/426985394/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/426985394/large.jpeg",
+      "by": "Rose Zappa",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/426985394",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/197483971/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/197483971/large.jpeg",
+      "by": "Andrey Polstianoi",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/197483971",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "set": "plants[id=p-pricklypear-2].stages",
+   "expect": null,
+   "value": [
+    {
+     "stage": "leaf",
+     "label": "Pad",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/500158844/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/500158844/large.jpg",
+      "by": "René Alejandro Moscoso Miranda",
+      "license": "CC BY-SA",
+      "link": "https://www.inaturalist.org/photos/500158844",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "blossom",
+     "label": "Blossom",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/120065149/medium.jpeg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/120065149/large.jpeg",
+      "by": "Millie Basden",
+      "license": "CC BY",
+      "link": "https://www.inaturalist.org/photos/120065149",
+      "source": "iNaturalist"
+     }
+    },
+    {
+     "stage": "fruit",
+     "label": "Fruit",
+     "photo": {
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/469728811/medium.jpg",
+      "large": "https://inaturalist-open-data.s3.amazonaws.com/photos/469728811/large.jpg",
+      "by": "Zoltán Stekkelpak",
+      "license": "CC0",
+      "link": "https://www.inaturalist.org/photos/469728811",
+      "source": "iNaturalist"
+     }
+    }
+   ]
+  }
+ ]
+}

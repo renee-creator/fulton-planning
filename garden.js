@@ -140,6 +140,25 @@ module.exports = function garden(o) {
     return out;
   }
 
+  /* A plant's stage photos, up to four, each {stage, label, photo}. The label is one short word under the photo, such as
+     Blossom or Acorn, and every photo address is https. A list that breaks a rule comes back as the reason, in words. */
+  const STAGE_KINDS = ['blossom', 'fruit', 'leaf', 'seed', 'bark'];
+  const https = v => (/^https:\/\/[^\s"'<>]+$/.test(String(v || '')) ? String(v).slice(0, 400) : '');
+  function plantStages(list) {
+    if (!Array.isArray(list)) return 'The stage photos come as a list.';
+    if (list.length > 4) return 'A plant holds up to four stage photos.';
+    const out = [];
+    for (const x of list) {
+      if (!x || typeof x !== 'object' || !x.photo || typeof x.photo !== 'object') return 'Each stage photo needs its photo.';
+      const ph = x.photo; if (!https(ph.url)) return 'A stage photo\'s address must start with https.';
+      const stage = STAGE_KINDS.includes(x.stage) ? x.stage : 'leaf';
+      const label = String(x.label == null ? '' : x.label).replace(/\s+/g, ' ').trim() || stage.charAt(0).toUpperCase() + stage.slice(1);
+      if (label.length > 20) return 'A stage label is one short word, up to 20 letters.';
+      out.push({ stage, label, photo: Object.assign({ url: https(ph.url) }, https(ph.large) ? { large: https(ph.large) } : {}, { by: txt(ph.by, 120), license: txt(ph.license, 20) }, https(ph.link) ? { link: https(ph.link) } : {}, { source: txt(ph.source, 40) }) });
+    }
+    return out;
+  }
+
   /* ---------- requests, through /api/staff/garden ---------- */
   async function handle(P, body, me, req, res, { json, err }) {
     const s = setup(); if (!s) { err(req, res, 404, 'The Garden is not in the records yet.'); return; }
@@ -230,6 +249,11 @@ module.exports = function garden(o) {
       const list = [...(s.plants || [])]; let p = list.find(x => x.id === body.id); if (body.remove) { saveS({ plants: list.filter(x => x.id !== body.id) }); return back(); }
       if (!p) { p = { id: rid('p'), care: [] }; list.push(p); }
       const b = body.plant || {};
+      // the stage photos, blossom, fruit, leaf, and seed or bark, only the stages that apply, in seasonal order. They are
+      // checked before anything changes, so a list that is refused leaves the plant as it was.
+      let stages = null;
+      if ('stages' in b) { stages = plantStages(b.stages); if (typeof stages === 'string') { err(req, res, 400, stages); return; } }
+      if (stages) p.stages = stages;
       if ('common' in b) p.common = txt(b.common, 80); if ('botanical' in b) p.botanical = txt(b.botanical, 120); if ('bed' in b) p.bed = bedOf(s, b.bed) ? b.bed : '';
       if (Array.isArray(b.uses)) p.uses = b.uses.filter(u => USES.includes(u)); if ('eat' in b) p.eat = b.eat === 'food' ? 'food' : b.eat === 'partly' ? 'partly' : 'look';
       if ('taste' in b) p.taste = txt(b.taste, 300); if ('variety' in b) { p.variety = txt(b.variety, 120); p.varietyConfirm = !p.variety; }

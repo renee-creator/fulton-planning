@@ -388,6 +388,8 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .gfold>summary{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;cursor:pointer;list-style:none}.gfold>summary::-webkit-details-marker{display:none}.gfold>summary .cnt{flex:1 1 180px;min-width:0}
 .gtasks{display:grid;gap:6px;margin-top:6px}.gtask{display:flex;gap:10px;align-items:center;min-width:0}.gtask.done b{color:var(--muted);text-decoration:line-through}.gtask.passed b{text-decoration:none;font-style:italic}.gtact{display:flex;gap:14px;margin-top:2px}.gtask:has(.kfields) .gdone{align-self:flex-start}.gtask .kfields input[type=text]{min-width:0;width:100%}
 .gdone{flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:2px solid var(--moss,#4a6b3a);background:transparent;font-size:20px;color:var(--moss,#4a6b3a);cursor:pointer}.gdone[aria-pressed="true"]{background:var(--moss,#4a6b3a);color:#fff}
+.gstages{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,120px));gap:8px;margin:6px 0 2px}.gstages figure{margin:0;min-width:0}.gstages img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;background:var(--bg)}.gstages figcaption{text-align:center;font-weight:600;font-size:14px;margin-top:3px}
+.gstedit{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px;align-items:start;border-top:1px solid var(--line);padding:6px 0}.gstedit img{width:64px;height:64px;object-fit:cover;border-radius:8px;display:block;background:var(--bg)}.gstedit .actions{margin:2px 0 0}
 .gentph{margin:6px 0}.gentph img{width:100%;max-width:420px;max-height:300px;object-fit:cover;border-radius:10px;display:block;background:var(--bg)}.gsafe{background:#fff6dc;border-left:3px solid #d9a31a;padding:6px 10px;border-radius:6px;margin:6px 0;font-size:14.5px}.gwonder{margin:4px 0;padding-left:18px;font-style:italic}.gsafebox{margin:6px 0 10px}.gprint{display:grid;gap:4px;margin:6px 0}
 .gtag{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px;margin:0 4px 2px 0}.gtag.food{background:#e6efd8;color:#3d5a27}.gtag.look{background:#f6e3d9;color:#7a3b1d}.gtag.gather{background:#fff1c7;color:#6b5205}
 .gmap{position:relative;max-width:100%;overflow:hidden;border-radius:10px}.gmap img{width:100%;display:block}.gspot{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.88);border-radius:8px;padding:1px 6px;font-size:11px;font-weight:700;color:#24331b;white-space:nowrap;text-decoration:none}.gspot.detail{font-size:10px;font-weight:500;background:rgba(255,250,238,.9);border:1px solid #8a6a3b;padding:0 5px}.gmaplbl{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin-top:8px}
@@ -12439,7 +12441,7 @@ async function decodeImage(blob){
 }
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
 async function loadPhotos(docs,quiet){const say=quiet?()=>{}:progress;
-  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="grid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
+  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="grid"||b.t==="stages"||b.t==="stagegrid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
   let missed=0,got=0;const n=want.length;if(n)say(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
   await Promise.all(want.map(async b=>{try{
     const r=await fetchPhoto(b.src);const blob=await r.blob();
@@ -12985,6 +12987,14 @@ function displayAtoms(doc,p,A,s){
     else if(b.t==="web"){const n=(b.web.branches||[]).filter(x=>x.name||x.materials).length;push({h:webHeight(n)[0],min:webHeight(n)[1]*.8,draw(y){displayWeb(doc,m,y,w,this.h,b.web,A)}});gap(6)}
     else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const fw=b.full?w:w*.72,fx=m,mh=(b.maxH||260)*Math.min(s,1.15);let pw=fw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
       gap(6);push({h:ph,keep:true,draw(y){doc.addImage(im.url,"JPEG",fx+(b.full?(fw-pw)/2:0),y,pw,ph,undefined,"FAST")}});gap(8)}}
+    // a plant's stage photos on its full page, two across, each cut to the same frame, with its word and credit beneath
+    else if(b.t==="stagegrid"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key));const g=16,tw=Math.min((w-g)/2,236)*Math.min(Math.max(s,.85),1),th=tw*.75,lz=11.5*Math.min(s,1.1),cz=7.4;
+      for(let i=0;i<T.length;i+=2){const R=T.slice(i,i+2);const cls=R.map(t=>cwrap(doc,"fr",cz,t.credit||"",tw).slice(0,2));const ch=Math.max(...cls.map(c=>c.length))*9.4;
+        gap(i?6:4);push({h:th+6+lz*1.3+ch,draw(y){R.forEach((t,j)=>{const im=photoCache.get(t.key),x=m+j*(tw+g),r=Math.max(tw/im.w,th/im.h),iw=im.w*r,ih=im.h*r;
+          try{doc.saveGraphicsState();doc.rect(x,y,tw,th,null);doc.clip();doc.discardPath();doc.addImage(im.url,"JPEG",x+(tw-iw)/2,y+(th-ih)/2,iw,ih,undefined,"FAST");doc.restoreGraphicsState()}catch(e){doc.addImage(im.url,"JPEG",x,y,tw,th,undefined,"FAST")}
+          pfont(doc,"fs",lz);doc.setTextColor(...D_INK);doc.text(clean(t.label||""),x,y+th+6+lz*.9);
+          pfont(doc,"fr",cz);doc.setTextColor(...D_MUTED);cls[j].forEach((l,k)=>doc.text(l,x,y+th+6+lz*1.3+cz+k*9.4))})}})}
+      gap(8)}
     if(b.t!=="sub")mark(a0);
   }
   while(atoms.length&&atoms[atoms.length-1].gap)atoms.pop();
@@ -13149,6 +13159,8 @@ function cLayout(doc,md,A){
     cWords(doc,md,A,s,(pos==="right"?CM:CM+pw+30)+ww/2,ww,top+Math.max(0,(H-wh)/2),ops);
     return {ops,s,over,PW:PWd,PH:PHd,land,sq,pos};
   }
+  // a children's plant card, its photo, its stage photos in a row and its words set large
+  if(md.plantCard){const G=cPlant(doc,md,A,top,W,PWd,PHd);G.ops.forEach(o=>ops.push(o));return {ops,s:1,over:G.over,PW:PWd,PH:PHd,land:false,sq,pos,plant:G.plant}}
   // a grid of photos, two across, each with its name beneath, and the closing words under the grid
   const gb=(md.blocks||[]).find(b=>b.t==="grid");
   if(gb){const G=cGrid(doc,md,A,gb,top,W,H,PWd,PHd);G.ops.forEach(o=>ops.push(o));return {ops,s:1,over:G.over,PW:PWd,PH:PHd,land:false,sq,pos,grid:G.grid}}
@@ -13194,6 +13206,46 @@ function cGrid(doc,md,A,gb,top,W,H,PWd,PHd){
   footL.forEach((l,i)=>ops.push({t:"text",x:PWd/2,y:PHd-52-(footL.length-1-i)*cl,k:"fr",s:cz,c:D_MUTED,txt:l}));
   return {ops,over,grid:{tw,ih,cols,under,footL}};
 }
+/* A children's plant card. The main photo is first and largest, then the stage photos in one row, up to four, each cut to
+   the same square with its word beneath, then the words to read aloud at 20 points and whether we eat it or look, then
+   every photo's credit in small lines at the foot. The words keep their size. When they and the row would not fit, the
+   row grows smaller first, down to small squares, and the main photo gives room only after that. */
+function cPlant(doc,md,A,top,W,PWd,PHd){
+  const ops=[],B=md.blocks||[],main=(md.photos||[])[0]||null,row=(B.find(b=>b.t==="stages")||{tiles:[]}).tiles.filter(t=>photoCache.get(t.key)).slice(0,4);
+  // the words to read aloud, then the line that says whether we eat it or look, which is always last
+  const sects=B.filter(b=>b.t==="sect"),eatAt=sects.length&&/^(Food|Partly edible|Look, don't eat)/.test(sects[sects.length-1].text||"")?sects.length-1:-1;
+  const texts=[eatAt===0?null:sects[0],eatAt>=0?sects[eatAt]:sects[1]],cred=(B.find(b=>b.t==="credits")||{lines:[]}).lines.filter(has);
+  const ww=W*.9,cz=7.4,clh=9.6,cl=cred.flatMap(l=>cwrap(doc,"fr",cz,l,W));
+  const credTop=PHd-54-cl.length*clh;
+  // the words, the first at 20 points and the eat or look line under it a little smaller
+  const wz=20,wlh=wz*1.38,ez=14,elh=ez*1.4;
+  const wl=texts[0]?cwrap(doc,"fr",wz,texts[0].text||"",ww):[],el=texts[1]?cwrap(doc,"fs",ez,texts[1].text||"",ww):[];
+  const wordsH=wl.length*wlh+(el.length?10+el.length*elh:0);
+  const lz=12.5,lgap=6,g=12,gapA=16,gapB=20;
+  const avail=credTop-14-top;
+  const n=row.length,colW=n?(W-g*(n-1))/n:0;
+  const labelH=n?lgap+lz*1.25:0;
+  let tile=n?Math.min(colW,n<=2?190:n===3?165:124):0;
+  const mainMin=200;
+  const roomFor=t=>avail-wordsH-gapB-(n?t+labelH+gapA:0);
+  // the row gives way before the main photo does, and the words never do
+  if(main){while(n&&tile>64&&roomFor(tile)<mainMin)tile-=4}else{while(n&&tile>64&&roomFor(tile)<0)tile-=4}
+  let mh=Math.max(0,roomFor(tile)),over=mh<(main?120:0);
+  let mw=0,mhh=0;if(main){const r=Math.min(W/main.w,mh/main.h);mw=main.w*r;mhh=main.h*r}
+  // a wide main photo leaves room, so the stage row grows into it, up to its own width
+  if(n&&main){const spare=mh-mhh;if(spare>0)tile=Math.min(colW,n<=2?200:n===3?170:124,tile+spare)}
+  const total=(main?mhh:0)+(n?(main?gapA:0)+tile+labelH:0)+gapB+wordsH;
+  let y=top+Math.max(0,(avail-total)*.4);
+  if(main){ops.push({t:"img",x:CM+(W-mw)/2,y,w:mw,h:mhh,key:main.key,src:main.src});y+=mhh+(n?gapA:0)}
+  if(n){const tw=n*tile+(n-1)*g,x0=CM+(W-tw)/2;
+    row.forEach((t,i)=>{const im=photoCache.get(t.key),x=x0+i*(tile+g);ops.push({t:"img",x,y,w:tile,h:tile,key:t.key,src:t.src,cover:true,grid:true,iw:im.w,ih:im.h});
+      ops.push({t:"text",x:x+tile/2,y:y+tile+lgap+lz*.9,k:"fs",s:lz,c:D_INK,txt:ct(doc,t.label||"")})});
+    y+=tile+labelH}
+  y+=gapB;
+  wl.forEach(l=>{ops.push({t:"text",x:PWd/2,y:y+wz*.92,k:"fr",s:wz,c:D_INK,txt:l});y+=wlh});
+  if(el.length){y+=10;el.forEach(l=>{ops.push({t:"text",x:PWd/2,y:y+ez*.92,k:"fs",s:ez,c:deep(A.c),txt:l});y+=elh})}
+  cl.forEach((l,i)=>ops.push({t:"text",x:PWd/2,y:credTop+i*clh+cz,k:"fr",s:cz,c:D_MUTED,txt:l}));
+  return {ops,over,plant:{tile,n,mainH:mhh,mainW:mw,wordsSize:wz,words:wl.length,credits:cl.length,bottom:y,credTop}}}
 // a moment sheet keeps everything that was written, so words that do not fit beside the photo go on to a second sheet
 function cFlow(doc,md,A){
   const fm=fontMapOf(md);if(!Object.keys(fm).length)return cFlow0(doc,md,A);
@@ -13215,7 +13267,7 @@ function cContinue(doc,md,A,L0){let rest=[...(md.blocks||[])];const sheets=[],pa
   if(!pages.length)return {sheets:[md],pages:[L0],over:L0.over};
   return {sheets,pages,over:pages.some(p=>p.over)}}
 function cFlow0(doc,md,A){
-  const L=cLayout(doc,md,A);if(!L.over&&(md.flow||!(L.s<.8)))return {sheets:[md],pages:[L],over:false};
+  const L=cLayout(doc,md,A);if(md.plantCard)return {sheets:[md],pages:[L],over:L.over};if(!L.over&&(md.flow||!(L.s<.8)))return {sheets:[md],pages:[L],over:false};
   if(!md.flow||!(md.photos||[]).length)return cContinue(doc,md,A,L);
   const B=md.blocks||[];let k=B.length-1;
   for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=1)break}
@@ -13247,9 +13299,9 @@ function cPreview(md){
   if(!window.jspdf){TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});return `<div class="empty">The preview is loading.</div>`}
   try{const doc=TREE_KIT.pdf({unit:"pt",format:"letter"});const A=accOf(md.acc)||ACC.story;const F=cFlow(doc,md,A);
     const rgb=c=>`rgb(${c.join(",")})`,fam=k=>k[0]==="T"?"'Times New Roman', Times, serif":k[0]==="H"?"Helvetica, Arial, sans-serif":PF.face?`PF${k}, sans-serif`:"Helvetica, Arial, sans-serif",wt=k=>(k[0]==="T"||k[0]==="H")?(k[1]==="s"?"bold":"normal"):PF.face?"normal":(k==="bs"||k==="fs"?"bold":"normal");
-    const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover);
+    const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover&&!o.grid);
       let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre${cover.length?";position:relative":""}" role="img" aria-label="How the sheet prints">${cover.length?"":`<rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`}`;
-      for(const o of L.ops){if(o.cover)continue;
+      for(const o of L.ops){if(o.cover&&!o.grid)continue;
         if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="middle"${o.cs?` letter-spacing="${o.cs.toFixed(2)}"`:""}>${esc(o.txt)}</text>`;
         else if(o.t==="img")h+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" fill="#eef1ec"/>`;
         else if(o.t==="rect")h+=(o.after?"":`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.r}" fill="${rgb(o.fill)}"/>`);
@@ -13317,8 +13369,15 @@ async function centeredDocx(ch,p,D,A){
     const out=[new Table({width:{size:10080,type:WidthType.DXA},columnWidths:Array(cols).fill(cw),layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows})];
     if(G.footL&&G.footL.length)out.push(P(run(G.footL.join(" "),"fr",7,D_MUTED),{alignment:CEN,spacing:{before:120,after:120}}));
     return out};
+  let L0=null;const ls0=b=>[...(has(b.text)?String(b.text).split("\n").filter(has):[]),...(b.lines||[]).filter(has)];
   const words=(md,s)=>{const out=[],B=md.blocks||[];B.forEach((b,i)=>{
     if(b.t==="grid")out.push(...gridTable(b),P([],{spacing:{after:120}}));
+    // a plant card's stage photos, one row of equal squares with the word under each, and its credits small at the foot
+    else if(b.t==="stages"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key)).slice(0,4);if(T.length){const sz=((L0&&L0.plant&&L0.plant.tile)||110)*96/72,cw=Math.round(10080/T.length);
+      out.push(new Table({width:{size:cw*T.length,type:WidthType.DXA},columnWidths:Array(T.length).fill(cw),layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows:[new TableRow({cantSplit:true,children:T.map(t=>{const im=photoCache.get(t.key),r=Math.min(sz/im.w,sz/im.h);
+        return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[P(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r),height:Math.round(im.h*r)}}),{alignment:CEN,spacing:{after:40}}),P(run(t.label||"","fs",12.5),{alignment:CEN,spacing:{after:120}})]})})})]}),P([],{spacing:{after:80}}))}}
+    else if(b.t==="credits")(b.lines||[]).filter(has).forEach((l,j)=>out.push(P(run(l,"fr",7.4,D_MUTED),{alignment:CEN,spacing:{before:j?0:240}})));
+    else if(b.t==="sect"&&md.plantCard){const first=B.findIndex(x=>x.t==="sect")===i;ls0(b).forEach(l=>out.push(P(run(l,first?"fr":"fs",first?20:14,first?D_INK:deep(A.c)),{alignment:CEN,spacing:{before:first?160:120,after:0,line:Math.round((first?20:14)*1.38*20),lineRule:"atLeast"}})))}
     else if(b.t==="para")String(b.text).split("\n").filter(has).forEach(l=>out.push(P(run(l,"fr",12.5*s),{alignment:CEN,spacing:{after:90,line:Math.round(12.5*s*1.45*20),lineRule:"atLeast"}})));
     else if(b.t==="quote"){if(B[i-1]&&B[i-1].t==="quote")out.push(P(run("•","fr",9,A.c),{alignment:CEN,spacing:{after:40}}));
       out.push(P(run("“"+b.words+"”","bm",15*s),{alignment:CEN,spacing:{after:has(b.by)?20:100,line:Math.round(15*s*1.28*20),lineRule:"atLeast"}}));
@@ -13328,7 +13387,7 @@ async function centeredDocx(ch,p,D,A){
       if(has(b.label))out.push(P(new TextRun({text:ct(doc,b.label).replace(/[.]+$/,"").toUpperCase(),font:word("fs"),bold:heavy("fs"),size:Math.round(9.2*Math.min(s,1.25)*2),color:hex(deep(A.c)),characterSpacing:Math.round(9.2*.16*20)}),{alignment:CEN,spacing:{before:i>0?Math.round(20*s*20):0,after:80}}));
       const ls=[...(has(b.text)?String(b.text).split("\n").filter(has):[]),...(b.lines||[]).filter(has)];ls.forEach((l,j)=>out.push(P(run(l,wk,z),{alignment:CEN,spacing:{before:!has(b.label)&&j===0&&i>0?Math.round(20*s*20):0,after:j===ls.length-1?60:0,line:Math.round(z*1.6*20),lineRule:"atLeast"}})))}
     else if(b.t==="small"){out.push(P(run(b.label,"fs",9,deep(A.c)),{alignment:CEN,spacing:{before:80,after:40}}));(b.lines||[]).forEach(l=>out.push(P(run(l,"fr",9.5,D_MUTED),{alignment:CEN})))}});return out};
-  F.sheets.forEach((md,si)=>{const L=F.pages[si];GRID=L.grid||null;
+  F.sheets.forEach((md,si)=>{const L=F.pages[si];GRID=L.grid||null;L0=L;
     let pb=si>0;const P1=(kids,o)=>{const r=P(kids,Object.assign({},o||{},pb?{pageBreakBefore:true}:{}));pb=false;return r};
     if(md.bare)ch.push(P1([],{spacing:{before:2400}}));else{
     if(md.brand!==undefined?md.brand:PRINT.schoolDocs)ch.push(P1(run("Fulton Community School","fs",9.5,deep(A.c)),{alignment:CEN,spacing:{after:80}}));
@@ -13462,6 +13521,9 @@ async function displayDocx(ch,p,D,A){
     else if(b.t==="sub"){ch.push(para(run(b.text,"bs",16.5*s),{keepNext:true,spacing:{before:280,after:120}}))}
     else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const mw=b.full?640:470,mh=(b.maxH||260)*96/72;let pw=mw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
       ch.push(para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(pw),height:Math.round(ph)}}),{alignment:b.full?AlignmentType.CENTER:AlignmentType.LEFT,spacing:{after:160}}))}}
+    else if(b.t==="stagegrid"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key));const cw=Math.floor(W/2);
+      for(let i=0;i<T.length;i+=2){const R=[T[i],T[i+1]];ch.push(new Table({width:{size:cw*2,type:WidthType.DXA},columnWidths:[cw,cw],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({cantSplit:true,children:R.map(t=>{if(!t)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[para([])]});
+        const im=photoCache.get(t.key),r=Math.min(300/im.w,225/im.h);return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r),height:Math.round(im.h*r)}}),{spacing:{after:40}}),para(run(t.label||"","fs",11.5),{spacing:{after:20}}),para(run(t.credit||"","fr",7.4,MUT),{spacing:{after:140}})]})})})]}))}}
     else if(b.t==="web"){
       try{const png=await webPng(b.web,A);ch.push(para(new ImageRun({type:"png",data:png.data,transformation:{width:png.w,height:png.h}}),{alignment:AlignmentType.CENTER,spacing:{after:160}}))}
       catch(e){if(has(b.web.focus))ch.push(...body(b.web.focus));(b.web.branches||[]).filter(x=>x.name||x.materials).forEach(x=>{heading(x.name);ch.push(...body(x.materials||" "))})}}

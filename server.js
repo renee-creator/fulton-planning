@@ -774,6 +774,8 @@ ONCE.push(['s51Citations', () => staff.once.edits('s51Citations', recsEdit)]);
 ONCE.push(['s52Wording', () => staff.once.edits('s52Wording', recsEdit)]);
 // fourteen PD paths beside the TREE series, each open for educators to choose, November 7, 2026
 ONCE.push(['s53Paths', () => staff.once.edits('s53Paths', recsEdit)]);
+// stage photos for the plants, blossom, fruit, leaf, and seed or bark, each plant only while it has none, November 7, 2026
+ONCE.push(['s54PlantStages', () => staff.once.edits('s54PlantStages', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
