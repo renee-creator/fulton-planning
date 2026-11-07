@@ -655,21 +655,38 @@ function printCard(m,prints,dir){const P=m.printables;if(!P||!(P.list||[]).lengt
   const KIND={card:"Card",sheet:"Sheet",sign:"Sign",visual:"Visual"};
   return card("Printables",`<div class="hint">Tick the ones you want, or print them all. Each prints on its own page.</div>${P.list.map(x=>`<details class="strow"><summary style="cursor:pointer"><label style="display:inline-flex;gap:8px;align-items:center" onclick="event.stopPropagation()"><input type="checkbox" data-gmprpick="${H(x.id)}"> <b>${H(x.title)}</b></label> <span class="cnt">${KIND[x.kind]||"Card"}</span></summary><div class="stmd">${md(x.body)}</div><div class="actions"><button class="btn small ghost" data-gmprint="${H(m.slug)}|${H(x.id)}">PDF</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|${H(x.id)}" data-word="1">Word</button></div></details>`).join("")}
     <div class="actions"><button class="btn small" data-gmprint="${H(m.slug)}|chosen">Print the ones ticked</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|chosen" data-word="1">Word</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|all">Print all</button><button class="btn small ghost" data-gmprint="${H(m.slug)}|all" data-word="1">All as Word</button>${dir&&P.path&&typeof peBtn==="function"?peBtn(P.path,"Edit the printables"):""}</div>`)}
-// the Markdown of a printable as print blocks, paragraphs, lists, numbered steps and a simple table
+// the Markdown of a printable as print blocks, paragraphs, lists, numbered steps and a simple table. A "**Label.**" at the
+// start of a line is a small bold heading of its own, without its full stop. "- [ ]" items are tick boxes, and a line of
+// underscores is a full-width line to write on, with its labels beside it when it has them.
+const FILL=/^\s*(?:\*\*[^*]+\*\*\s*)?_{4,}(?:\s*\*\*[^*]+\*\*\s*_{4,})*\s*$/;
+const BOLDLEAD=/^\s*\*\*([^*]+?)\*\*\s*(.*)$/;
 function printBlocks(body){const out=[];const lines=String(body||"").split("\n");const strip=t=>String(t).replace(/\*\*([^*]+)\*\*/g,"$1").replace(/\*([^*]+)\*/g,"$1").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").trim();
+  const lab=t=>strip(t).replace(/[.:]+$/,"");
   let i=0;while(i<lines.length){const l=lines[i];
+    if(FILL.test(l)){let n=0;const fields=[...l.matchAll(/\*\*([^*]+)\*\*/g)].map(m=>lab(m[1]));
+      if(fields.length){out.push({t:"fill",fields,lines:1});i++;continue}
+      while(i<lines.length&&(FILL.test(lines[i])&&!/\*\*/.test(lines[i])||(!lines[i].trim()&&lines[i+1]!==undefined&&FILL.test(lines[i+1])&&!/\*\*/.test(lines[i+1])))){if(lines[i].trim())n++;i++}
+      out.push({t:"fill",fields:[""],lines:n});continue}
+    if(/^\s*[-*]\s+\[[ xX]?\]\s*/.test(l)){const items=[];while(i<lines.length&&/^\s*[-*]\s+\[[ xX]?\]\s*/.test(lines[i])){items.push(strip(lines[i].replace(/^\s*[-*]\s+\[[ xX]?\]\s*/,"")));i++}out.push({t:"checks",label:"",items});continue}
+    {const m=l.match(BOLDLEAD);if(m&&!/\*\*/.test(m[2])){out.push({t:"minor",text:lab(m[1])});if(m[2].trim())lines[i]=m[2];else{i++;continue}}}
     if(/^\s*\|/.test(l)){const rows=[];while(i<lines.length&&/^\s*\|/.test(lines[i])){const r=lines[i].trim().replace(/^\||\|$/g,"").split("|").map(c=>strip(c));if(!r.every(c=>/^:?-{2,}:?$/.test(c)))rows.push(r);i++}if(rows.length)out.push({t:"table",label:"",head:rows[0],rows:rows.slice(1)});continue}
     if(/^\s*[-*]\s+/.test(l)){const items=[];while(i<lines.length&&/^\s*[-*]\s+/.test(lines[i])){items.push(strip(lines[i].replace(/^\s*[-*]\s+/,"")));i++}out.push({t:"list",label:"",items});continue}
     if(/^\s*\d+\.\s+/.test(l)){const items=[];while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){items.push(strip(lines[i].replace(/^\s*\d+\.\s+/,"")));i++}out.push({t:"list",label:"",items,numbered:true});continue}
     if(/^\s*#{3,}\s+/.test(l)){out.push({t:"sub",text:strip(l.replace(/^\s*#+\s+/,""))});i++;continue}
     if(!l.trim()){i++;continue}
-    const para=[];while(i<lines.length&&lines[i].trim()&&!/^\s*(\||[-*]\s|\d+\.\s|#{3,}\s)/.test(lines[i])){para.push(lines[i].trim());i++}out.push({t:"text",label:"",text:strip(para.join(" "))})}
+    const para=[lines[i].trim()];i++;while(i<lines.length&&lines[i].trim()&&!/^\s*(\||[-*]\s|\d+\.\s|#{3,}\s)/.test(lines[i])&&!FILL.test(lines[i])&&!BOLDLEAD.test(lines[i])){para.push(lines[i].trim());i++}out.push({t:"text",label:"",text:strip(para.join(" "))})}
   return out}
 // a card or a sign prints centred, each "**Label.** words" paragraph as a part with its small label, and a sheet keeps the full page
 function cardBlocks(body){if(/^\s*\|/m.test(String(body||"")))return printBlocks(body);const out=[];
   const strip=t=>String(t).replace(/\*\*([^*]+)\*\*/g,"$1").replace(/\*([^*]+)\*/g,"$1").replace(/\[([^\]]+)\]\([^)]+\)/g,"$1").trim();
   const item=/^\s*([-*]|\d+\.)\s+/;
-  for(const p of String(body||"").split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean)){
+  const paras=[];for(const p of String(body||"").split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean)){
+    // each "**9:00.** words" line is its own part, and a "**We ask.**" line over list lines keeps the list under it
+    const ls=p.split("\n"),firstAlone=/^\*\*[^*]+\*\*\s*$/.test(ls[0]);
+    if(ls.length>1&&firstAlone&&ls.slice(1).every(l=>item.test(l))){paras.push({t:"list",label:strip(ls[0]).replace(/[.:]+$/,""),items:ls.slice(1).map(l=>strip(l.replace(item,"")))});continue}
+    if(ls.length>1&&ls.filter(l=>/^\*\*[^*]+\*\*\s*\S/.test(l)).length>=2){paras.push(...ls.reduce((a,l)=>{if(/^\*\*/.test(l)||!a.length)a.push(l);else a[a.length-1]+="\n"+l;return a},[]));continue}
+    paras.push(p)}
+  for(const p of paras){if(typeof p!=="string"){out.push(p);continue}
     if(/^#{3,}\s+/.test(p)){out.push({t:"sub",text:strip(p.replace(/^#+\s+/,""))});continue}
     if(item.test(p)){out.push({t:"list",label:"",items:p.split("\n").filter(l=>item.test(l)).map(l=>strip(l.replace(item,"")))});continue}
     const m=p.match(/^\*\*([^*]+?)\*\*\s*([\s\S]*)$/);
@@ -696,7 +713,7 @@ function visualBlocks(body,sub){const strip=t=>String(t).replace(/\*\*([^*]+)\*\
   return out}
 const printDoc=(m,x)=>x.kind==="visual"?{display:true,visual:true,onePage:true,type:"report",acc:"story",title:x.title,meta:[],details:[],photos:[],blocks:visualBlocks(x.body,m.title)}
   :x.kind==="sheet"?{display:true,type:"report",acc:"story",title:x.title,meta:[["From",m.title]],details:[],photos:[],blocks:printBlocks(x.body)}
-  :asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:cardBlocks(x.body)},{sub:x.kind==="sign"?"":m.title});
+  :asCard({display:true,type:"report",acc:"story",title:x.title,meta:[],blocks:cardBlocks(x.body),sign:x.kind==="sign",bigType:x.kind==="sign"},{sub:x.kind==="sign"?"":m.title});
 function moduleSlides(m){const slide=(title,lines,o)=>Object.assign({centered:true,display:true,type:"report",acc:"story",title,details:[],photos:[],blocks:lines.filter(Boolean).map(l=>({t:"para",text:l}))},o||{});
   const sec=h=>m.sections.find(x=>x.heading.toLowerCase().startsWith(h));const why=sec("why it matters"),rd=sec("reading"),tr=sec("try this week"),rf=sec("reflect");
   const q=(String(why&&why.body||"").match(/asks one question throughout\.\s*([^\n]+)/i)||[])[1]||"";

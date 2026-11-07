@@ -7528,15 +7528,15 @@ function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=P
 async function makePdf(list,filename,ret){
   // a print with nothing in it is never made, and the educator hears Nothing to print yet
   list=TREE_KIT.guard(list,ret==="quiet");if(!list)return;
-  // the card set's own choice of cards per page and sign size, taken once, from the button that asked for this print
-  const armed=ret?null:TREE_KIT.takeArmed(),plan=[];
+  // each page is a card, a sign or a page, so the preview can set cards two or four to a page and signs at their size
+  const kinds=[];
   if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){if(ret!=="quiet")toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);await loadPrintFonts();
   const isLand=p=>!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
   const fmt=p=>p&&p.centered&&p.sq?[PW,PW]:"letter";
   const doc=planDoc({unit:"pt",format:fmt(list[0]),orientation:list[0]&&isLand(list[0])?"landscape":"portrait"});
   const pageAcc={};pageInfo={};centerOver=[];
-  list.forEach((p,i)=>{if(i>0)doc.addPage(fmt(p),isLand(p)?"landscape":"portrait");drawAny(doc,p,pageAcc);const pp=TREE_KIT.pagePlan(p,armed);while(plan.length<doc.getNumberOfPages())plan.push(pp)});
+  list.forEach((p,i)=>{if(i>0)doc.addPage(fmt(p),isLand(p)?"landscape":"portrait");drawAny(doc,p,pageAcc);const k=TREE_KIT.pageKind(p);while(kinds.length<doc.getNumberOfPages())kinds.push(k)});
   const n=doc.getNumberOfPages();
   for(let i=1;i<=n;i++){doc.setPage(i);const A=pageAcc[i]||ACC.classroom;const pi=pageInfo[i];
     if(pi&&pi.display){displayFoot(doc,A,pi);continue}
@@ -7545,9 +7545,9 @@ async function makePdf(list,filename,ret){
     doc.text(CYCLE_TEXT,PW/2,PH-26,{align:"center"});doc.setCharSpace(0);
     if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...D_MUTED);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-14,{align:"center"})}}
   if(ret){if(ret==="quiet")centerOver=[];else overWarn();return doc.output("blob")}
-  // two or four cards to a letter page with dotted cut lines, or a sign at half letter or poster size
-  let out=doc.output("blob");if(armed&&plan.some(x=>x.n>1||x.size!=="letter")){try{out=await TREE_KIT.repage(out,plan)}catch(e){}}
-  saveFile(out,filename);overWarn();
+  // two or four cards to a letter page with dotted cut lines, or a sign at half letter or poster size, as last chosen
+  const base=doc.output("blob");pvSet=kinds.some(k=>k!=="page")?{base,kinds}:null;
+  saveFile(pvSet?await pvLayout(pvSet):base,filename);overWarn();
 }
 // a sheet with more words than fit still prints, and the educator hears which one to shorten
 function overWarn(){const u=[...new Set(centerOver)];if(u.length)setTimeout(()=>toast(`${u.length===1?"“"+u[0]+"” has":u.length+" sheets have"} more words than fit. Choose fewer quotes or shorten the words.`),1200);centerOver=[]}
@@ -7558,15 +7558,18 @@ async function saveFile(blob,filename,direct){
   if(downloads){try{await downloads.save({filename,data:blob});return}catch(e){if(e?.code==="declined")return;if(e?.code==="rate_limited"){toast("A save is already open. Finish that one first.");return}}}
   try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}catch(e){toast("Downloads are not available in this view.")}
 }
-let pvLast=null,pvState=null;
+let pvLast=null,pvState=null,pvSet=null;
+// a print holding cards or signs, laid out with this device's choice of cards per page and sign size
+async function pvLayout(S){const plan=S.kinds.map(k=>TREE_KIT.pagePlan(k));if(!plan.some(x=>x.n>1||x.size!=="letter"))return S.base;try{return await TREE_KIT.repage(S.base,plan)}catch(e){return S.base}}
 // the preview draws pages with the same PDF reader TREE uses to read uploaded paper plans, pdfLib below
 async function pdfPreview(blob,filename){
-  const word=pvLast&&pvLast.dataset&&pvLast.dataset.print?pvLast:null;pvLast=null;
+  const word=pvLast&&pvLast.dataset&&pvLast.dataset.print?pvLast:pvState&&pvState.keepWord||null;pvLast=null;const set=pvSet;pvSet=null;
   pvClose();const el=document.createElement("div");el.id="pview";el.className="pview";el.setAttribute("role","dialog");el.setAttribute("aria-label","Preview");
   el.innerHTML=`<div class="pvbar"><div class="pvname"><b>${esc(filename.replace(/\.pdf$/i,""))}</b><span class="cnt" id="pvcount">Opening the preview</span></div>
+    ${set?`<div class="actions pvchoice" style="margin:0">${set.kinds.includes("card")?TREE_KIT.cardsPerHtml():""}${set.kinds.includes("sign")?TREE_KIT.signSizeHtml():""}</div>`:""}
     <div class="actions" style="margin:0"><button class="btn small" data-pvsave="1">Download PDF</button>${word?`<button class="btn small ghost" data-pvword="1">Word</button>`:""}<button class="btn small ghost" data-pvclose="1">Close</button></div></div>
     <div class="pvpages" id="pvpages"></div>`;
-  document.body.append(el);document.body.style.overflow="hidden";pvState={blob,filename,word,io:null,doc:null};
+  document.body.append(el);document.body.style.overflow="hidden";pvState={blob,filename,word,set,io:null,doc:null};
   try{const lib=await pdfLib();const doc=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;if(!pvState||pvState.blob!==blob){doc.destroy();return}pvState.doc=doc;
     const n=doc.numPages;$("#pvcount").textContent=n===1?"1 page":n+" pages";const box=$("#pvpages");
     const first=await doc.getPage(1),v0=first.getViewport({scale:1});
@@ -7579,6 +7582,9 @@ async function pdfPreview(blob,filename){
 function pvClose(){const el=$("#pview");if(pvState){if(pvState.io)pvState.io.disconnect();if(pvState.doc)try{pvState.doc.destroy()}catch(e){}}pvState=null;if(el){el.remove();document.body.style.overflow=""}}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("#pview button");if(!t)return;e.stopImmediatePropagation();const st=pvState;
   if(t.dataset.pvclose){pvClose();return}
+  // cards per page or a sign's size, chosen in the preview, lays the same print out again and is kept for next time
+  if((t.dataset.tkper||t.dataset.tksign)&&st&&st.set){TREE_KIT.setChoice(!!t.dataset.tkper,t.dataset.tkper||t.dataset.tksign);const S=st.set,w=st.word,f=st.filename;
+    pvLayout(S).then(b=>{pvSet=S;pvState=Object.assign(pvState||{},{keepWord:w});pvLast=null;pdfPreview(b,f)});return}
   if(t.dataset.pvsave&&st){saveFile(st.blob,st.filename,true);pvClose();return}
   if(t.dataset.pvword&&st&&st.word){const b=st.word.cloneNode(true);b.dataset.word="1";pvClose();printsClick(b);return}},true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#pview"))pvClose()});
@@ -12523,7 +12529,7 @@ function asCard(d,o){o=o||{};if(!d)return d;const B=o.blocks||d.blocks||[];
     if(b.t==="list"){blocks.push({t:"sect",label:has(b.label)?b.label:pend,lines:(b.items||[]).filter(has),strong:!!b.strong,cols:b.cols||0,bullets:!!b.bullets});pend="";continue}
     blocks.push(b)}
   return {centered:true,card:true,display:true,type:"report",acc:d.acc||"story",title:o.title||d.title||"",sub:o.sub!==undefined?o.sub:m.join(", "),
-    details:[],photos,blocks,brand:d.brand,noTitle:d.noTitle,onePage:!!d.onePage,wordsTop:!!(o.wordsTop||d.wordsTop),bigType:!!d.bigType&&!photos.length}}
+    details:[],photos,blocks,brand:d.brand,noTitle:d.noTitle,onePage:!!d.onePage,wordsTop:!!(o.wordsTop||d.wordsTop),bigType:!!d.bigType&&!photos.length,sign:!!d.sign}}
 const dItem=(title,text,by,side)=>({t:"item",title,text,by,side});
 const dSub=text=>({t:"sub",text});
 // a photo kept with a moment. It is drawn from the copy fetched just before printing.
@@ -13158,6 +13164,17 @@ function displayAtoms(doc,p,A,s){
       if(has(by)){gap(2);lines(wrap(by,"fr",Z.small,cw).slice(0,2),"fr",Z.small,Z.slh,cx,D_MUTED)}
       if(atoms.length-i0<=7)for(let k=i0;k<atoms.length-1;k++)atoms[k].keep=true;
       if(B[bi+1]&&B[bi+1].t==="quote"){gap(4)}}
+    // a small bold label of a sheet's part, with no rule, kept with what follows
+    else if(b.t==="minor"){gap(atoms.length?9:2);wrap(b.text,"bs",Z.head,w).forEach(l=>line(l,"bs",Z.head,Z.head*1.36,m,AT,true));push({h:2*s,keep:true,draw(){}})}
+    // tick boxes, each a drawn square with its words beside it
+    else if(b.t==="checks"){if(has(b.label))heading(b.label);const bx=10*s,i0=atoms.length;(b.items||[]).filter(has).forEach(it=>{const ls=wrap(it,"fr",Z.body,cw-bx-10);ls.forEach((l,k)=>push({h:Z.blh,base:base(Z.blh,Z.body),keep:k<ls.length-1,draw(y){const by=y+base(Z.blh,Z.body);
+        if(k===0){doc.setDrawColor(...D_INK);doc.setLineWidth(.8);doc.rect(cx,by-bx+1.2,bx,bx)}pfont(doc,"fr",Z.body);doc.setTextColor(...D_INK);doc.text(l,cx+bx+10,by)}}));gap(4)});holdFirst(i0)}
+    // lines to write on, the full width of the page, or labels each with its own line across one row
+    else if(b.t==="fill"){const F=(b.fields||[""]),lh=28*s,lz=Z.head;
+      if(F.length===1&&!has(F[0])){for(let k=0;k<Math.max(1,b.lines||1);k++)push({h:lh,keep:k<(b.lines||1)-1,draw(y){doc.setDrawColor(...D_MUTED);doc.setLineWidth(.6);doc.line(m,y+lh-5,m+w,y+lh-5)}})}
+      else{pfont(doc,"bs",lz);const lw=F.map(f=>doc.getTextWidth(clean(f))+8),g=18,rest=(w-lw.reduce((a,x)=>a+x,0)-g*(F.length-1))/F.length;
+        push({h:lh+4,draw(y){let x=m;F.forEach((f,j)=>{pfont(doc,"bs",lz);doc.setTextColor(...AT);doc.text(clean(f),x,y+lh-8);x+=lw[j];doc.setDrawColor(...D_MUTED);doc.setLineWidth(.6);doc.line(x,y+lh-5,x+Math.max(40,rest),y+lh-5);x+=Math.max(40,rest)+g})}})}
+      gap(4)}
     else if(b.t==="qa"){gap(6);const ql=wrap(b.q,"fs",9.8*s,cw);ql.forEach(l=>line(l,"fs",9.8*s,13.2*s,cx,D_MUTED,true));lines(wrap(b.a,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,D_INK)}
     else if(b.t==="sub"){gap(14);sub=b.text;const i0=atoms.length;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:6*s,keep:true,gap:false,draw(){}});if(atoms[i0])atoms[i0].isSub=true}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item","table","figures","small"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(12);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(8)}
@@ -13268,7 +13285,8 @@ function cHead(doc,md,A,PWd,ops,y0){
   const x=PWd/2,W=PWd-2*CM;let y=y0||44;
   if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School"});y+=24}else y+=4;
   if(md.over){ops.push({t:"text",x,y:y+9,k:"fs",s:11,c:deep(A.c),txt:ct(doc,md.over)});y+=22}
-  let ts=md.bigType?80:md.card?30:36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
+  // a sign's title is sign size, 72 points down to no less than 48
+  let ts=md.sign?72:md.bigType?80:md.card?30:36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=(md.sign?48:22))break;ts-=2}tl=tl.slice(0,md.sign?3:2);
   tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
   // a card's second line names the work or where it comes from, set smaller under the title
   if(md.card&&has(md.sub)){cwrap(doc,"fr",14,md.sub,W).slice(0,2).forEach(l=>{ops.push({t:"text",x,y:y+13,k:"fr",s:14,c:D_MUTED,txt:l});y+=19});y+=4}
@@ -13680,6 +13698,12 @@ async function displayDocx(ch,p,D,A){
     else if(b.t==="text"){if(has(b.label))heading(b.label);ch.push(...body(b.text,b.quiet?MUT:INKH,b.big?14.5:undefined))}
     else if(b.t==="small"){if(has(b.label))heading(b.label);else ch.push(spacer(80));(b.lines||[b.text]).filter(has).forEach(t=>ch.push(...body(t,MUT,9.4)))}
     else if(b.t==="list"){heading(b.label);(b.items||[]).filter(has).forEach((it,i)=>ch.push(para([raw((b.numbered?String(i+1):"•")+"\t","fs",12*s,dp),run(String(it).trim(),"fr",12*s)],{spacing:{after:70,line:LS,lineRule:"atLeast"},indent:{left:360,hanging:360},tabStops:[{type:"left",position:360}]})))}
+    else if(b.t==="minor")ch.push(para(run(b.text,"bs",12.5*s,dp),{keepNext:true,keepLines:true,spacing:{before:200,after:50}}));
+    else if(b.t==="checks"){heading(b.label);(b.items||[]).filter(has).forEach(it=>ch.push(para([raw("\u2610\t","fr",13*s,INKH),run(String(it).trim(),"fr",12*s)],{spacing:{after:70,line:LS,lineRule:"atLeast"},indent:{left:400,hanging:400},tabStops:[{type:"left",position:400}]})))}
+    else if(b.t==="fill"){const F=b.fields||[""];
+      if(F.length===1&&!has(F[0])){for(let k=0;k<Math.max(1,b.lines||1);k++)ch.push(para([],{spacing:{before:0,after:0,line:560,lineRule:"exact"},border:{bottom:{style:BorderStyle.SINGLE,size:6,color:MUT,space:1}}}))}
+      else{const step=Math.floor(W/F.length);const kids=[];F.forEach((f,j)=>{kids.push(run(f+" ","bs",12.5*s,dp));kids.push(raw("\t","fr",12*s))});
+        ch.push(para(kids,{spacing:{before:200,after:120},tabStops:F.map((f,j)=>({type:"left",position:step*(j+1)-160,leader:"underscore"}))}))}}
     else if(b.t==="tags"){heading(b.label);const kids=[];(b.items||[]).filter(has).forEach((it,i)=>{if(i)kids.push(raw("   ","fr",11*s));kids.push(new TextRun({text:"  "+clean(it)+"  ",font:F("fs"),bold:heavy("fs"),color:INKH,size:Math.round(22*s),shading:{type:ShadingType.CLEAR,fill:tn,color:"auto"}}))});
       ch.push(para(kids,{spacing:{before:20,line:Math.round(450*s),lineRule:"atLeast"}}))}
     else if(b.t==="figures"){if(has(b.label))heading(b.label);const its=(b.items||[]).filter(x=>x&&has(String(x[0])));if(its.length){const g=120,cw=Math.floor((W-(its.length-1)*g)/its.length);const cols=[];its.forEach((x,i)=>{if(i)cols.push(g);cols.push(cw)});

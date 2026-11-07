@@ -471,10 +471,10 @@ function gdnEntryDoc(x){return asCard(gdnEntryDoc0(x))}
 function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[]).includes(x)&&"plant"||(gdn.animals||[]).includes(x)&&"animal"||"";
   const photo=p?[{t:"photo",key:p.printKey||p.key,src:p.printSrc||p.src,maxH:k==="sign"?380:330}]:[];const credit=p&&p.printCredit?[{t:"small",label:"",lines:[p.printCredit]}]:[];
   // a sign with no photo yet prints in large type, its title and its question filling the sheet
-  if(x.question!==undefined||(gdn.signs||[]).includes(x))return {display:true,type:"report",acc:"story",bigType:!photo.length,title:x.kind==="shoes"?"Shoes on":x.title||"",meta:[x.place||""].filter(Boolean),blocks:[...photo,dText("",x.question||""),...(x.wonder?[dText("",x.wonder)]:[]),...credit]};
+  if(x.question!==undefined||(gdn.signs||[]).includes(x))return {display:true,type:"report",acc:"story",sign:true,bigType:!photo.length,title:x.kind==="shoes"?"Shoes on":x.title||"",meta:[x.place||""].filter(Boolean),blocks:[...photo,dText("",x.question||""),...(x.wonder?[dText("",x.wonder)]:[]),...credit]};
   // a warning sign's words are kept in their parts, its description, its rule and its line, and each prints as its own line
   if(x.kind==="hazard"){const sg=x.sign&&typeof x.sign==="object"?x.sign:{description:x.sign||x.know||""};
-    return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
+    return {display:true,type:"report",acc:"story",sign:true,title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
   // an animal's card is kept in parts, what to know, a wondering, its family words and our rule, each its own line
   if((gdn.animals||[]).includes(x)){const c=x.card&&typeof x.card==="object"?x.card:{know:x.card||""};
     // the health rule prints once, in the children's words when the card has them, and the words sit in columns

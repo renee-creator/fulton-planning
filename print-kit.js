@@ -40,11 +40,12 @@
    TREE_KIT.guard(docs, quiet) -> the pages worth printing, or null. A print with nothing in it, such as an agenda with
      no blocks, an evaluation with nothing scored or a slide with no title and no photo, shows Nothing to print yet and
      no file is made. TREE_KIT.isEmpty(doc) checks one page, TREE_KIT.printable(docs) keeps the ones that hold something.
-   TREE_KIT.cardsPerHtml() and TREE_KIT.signSizeHtml() are the small choices shown beside a card set's print buttons,
-     Cards per page 1, 2 or 4 and Sign size Letter, Half letter or 18 by 24. Each device remembers its last choice.
-   TREE_KIT.takeArmed() gives, once, the choice made with the card set's button just tapped, and TREE_KIT.pagePlan(doc,
-     armed) how each of that doc's pages is set. TREE_KIT.repage(blob, plan) -> Promise<Blob> sets the finished PDF two
-     or four cards to a letter page with dotted cut lines, and a sign on half letter or the poster, scaled whole. */
+   TREE_KIT.cardsPerHtml() and TREE_KIT.signSizeHtml() are the small choices shown in the print preview whenever a print
+     holds cards or signs, Cards per page 1, 2 or 4 and Sign size Letter, Half letter or 18 by 24. Each device remembers
+     its last choice (setChoice). TREE_KIT.pageKind(doc) says whether a doc is a card, a sign or a page, pagePlan(kind)
+     how its pages are set, and TREE_KIT.repage(blob, plan) -> Promise<Blob> sets the finished PDF two or four cards to a
+     letter page with dotted cut lines, and a sign on half letter or the poster, scaled whole. Print one, some or all
+     still chooses which cards go in. */
 (function (root) {
   'use strict';
   const LIB = {
@@ -273,6 +274,8 @@
     // a plan form, or a blank form made to be filled in by hand, always prints
     if (p.blank || (!p.display && !p.centered)) return false;
     if ((p.photos || []).some(x => x && (x.key || x.src))) return false;
+    // a slide or card with its own title stands, a slide with no title and no photo does not
+    if (p.centered && filled(p.title) && !p.bare) return false;
     if ((p.blocks || []).some(blockFilled)) return false;
     return true;
   }
@@ -292,32 +295,18 @@
   const keep = { get(k, d) { try { const v = root.localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }, set(k, v) { try { root.localStorage.setItem(k, v); } catch (e) {} } };
   function cardsPer() { const n = +keep.get('tree-cards-per', '1'); return [1, 2, 4].includes(n) ? n : 1; }
   function signSize() { const s = keep.get('tree-sign-size', 'letter'); return SIZES[s] ? s : 'letter'; }
+  const setChoice = (per, v) => keep.set(per ? 'tree-cards-per' : 'tree-sign-size', String(v));
   const seg = (label, attr, opts, cur) => `<span class="tkchoice" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="cnt">${label}</span><span class="tseg" role="group" aria-label="${label}">${opts.map(([v, l]) => `<button type="button" data-${attr}="${v}" aria-pressed="${String(v) === String(cur)}">${l}</button>`).join('')}</span></span>`;
-  // the small choices shown beside a card set's print buttons, and beside a set of signs
+  // the small choices shown in the print preview, when the print holds cards or signs
   const cardsPerHtml = () => seg('Cards per page', 'tkper', [[1, '1'], [2, '2'], [4, '4']], cardsPer());
   const signSizeHtml = () => seg('Sign size', 'tksign', [['letter', 'Letter'], ['half', 'Half letter'], ['poster', '18 by 24']], signSize());
-  /* The print buttons of each card set. A tap on one remembers, for the PDF it makes, how many cards go on a page and
-     what size a sign prints at. The PD printables keep sheets and visuals on their own full pages. */
-  const CARD_SETS = ['[data-gmprint]', '[data-bookprint]', '[data-artprint]', '[data-volprint]', '[data-tkcards]',
-    ...['gguidesel', 'gguidekids', 'gplant', 'gfield', 'gset', 'gentry', 'ibcards', 'recipe', 'frecipe', 'fthanks', 'helpquick', 'helpcard', 'artistcard', 'bookcard', 'voljob'].map(k => `[data-print="${k}"]`)].join(',');
-  let armed = null;
-  function arm(t) { armed = { n: cardsPer(), sign: signSize(), only: t.hasAttribute('data-gmprint') ? 'cards' : 'all', at: Date.now() }; }
-  function takeArmed() { const a = armed; armed = null; return a && Date.now() - a.at < 180000 ? a : null; }
-  if (typeof document !== 'undefined') document.addEventListener('click', e => {
-    const t = e.target && e.target.closest ? e.target.closest('button,[data-print],summary') : null; if (!t) return;
-    if (t.dataset.tkper || t.dataset.tksign) {
-      const per = !!t.dataset.tkper; keep.set(per ? 'tree-cards-per' : 'tree-sign-size', per ? t.dataset.tkper : t.dataset.tksign);
-      document.querySelectorAll(per ? '[data-tkper]' : '[data-tksign]').forEach(b => b.setAttribute('aria-pressed', String(b === t || (per ? b.dataset.tkper === t.dataset.tkper : b.dataset.tksign === t.dataset.tksign))));
-      e.preventDefault(); return;
-    }
-    if (t.matches(CARD_SETS) && t.dataset.word !== '1') arm(t); else if (t.tagName === 'BUTTON' && !t.closest('#pview')) armed = null;
-  }, true);
-  // how one page of a print is set: a card n to a page, a sign at its size, anything else as it is
-  function pagePlan(p, a) {
-    if (!a) return { n: 1, size: 'letter' };
-    if (p && p.sign) return { n: 1, size: a.sign };
-    if (a.only === 'cards' && !(p && p.centered && (p.card || p.plantCard))) return { n: 1, size: 'letter' };
-    return { n: a.n, size: 'letter' };
+  // what a page of a print is: a card (a centred one-page sheet), a sign, or a page that stays as it is
+  const pageKind = p => p && p.sign ? 'sign' : p && p.centered && !p.land && !p.sq && !p.pos ? 'card' : 'page';
+  // how one page is set from its kind and the choices, n cards to a letter page or a sign at its size
+  function pagePlan(kind, n, sign) {
+    if (kind === 'sign') return { n: 1, size: sign || signSize() };
+    if (kind === 'card') return { n: n || cardsPer(), size: 'letter' };
+    return { n: 1, size: 'letter' };
   }
   /* The finished PDF laid out again. Pages set n to a letter page, two side by side on a landscape page or four in a
      grid, each cut on a dotted line, the quiet footer left off. A sign is set on a half letter page or an 18 by 24 inch
@@ -347,5 +336,5 @@
   }
 
   root.TREE_KIT = { LIB, SIZES, PF, loadScript, fonts, pdfFonts, wordFonts, pdf, word, wordFile, wordBlob, pdfLib, pdfjs, readPdf, pageImage, readDocx, placeSheet, childHeight,
-    isEmpty, printable, nothing, guard, cardsPer, signSize, cardsPerHtml, signSizeHtml, takeArmed, pagePlan, repage };
+    isEmpty, printable, nothing, guard, cardsPer, signSize, setChoice, cardsPerHtml, signSizeHtml, pageKind, pagePlan, repage };
 })(typeof window !== 'undefined' ? window : this);
