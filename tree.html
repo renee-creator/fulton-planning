@@ -1510,7 +1510,7 @@ async function boot(){
     db.collection("bins").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,Object.assign({id:d.id},v))});bins=m;if(view==="bin"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.collection("reports").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});reports=m;if(view==="wreport"&&!document.activeElement?.closest?.("#main select"))renderMain()},()=>{});
     // a screening reaches the director and the educators of the child's class only
-    db.collection("screenings").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=v.id||d.id;m.set(d.id,v);scrBase.set(d.id,jclone(v))}});screenings=m;if(view==="child"&&kidTab==="screen"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    db.collection("screenings").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v)return;const mine=screenings.get(d.id);if(mine&&scrKeepLocal(d.id)){m.set(d.id,mine);return}v.id=v.id||d.id;m.set(d.id,v);scrBase.set(d.id,jclone(v))});for(const [id,x] of screenings)if(!m.has(id)&&scrKeepLocal(id))m.set(id,x);screenings=m;if(view==="child"&&kidTab==="screen"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);inqBase.set(d.id,jclone(v))}});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();famSumFresh()},()=>{});
@@ -4944,7 +4944,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8f443b5cf850";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="3ea1bd619244";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6768,9 +6768,13 @@ const SCR_A3={y:"Yes",s:"Sometimes",n:"Not yet"},SCR_SE={often:"Often or always"
 const SCR_ZONE={asq3:{above:"Above the cutoff",close:"Close to the cutoff, in the monitoring zone",below:"Below the cutoff",unscored:"Not scored"},asqse2:{below:"Below the cutoff",close:"Close to the cutoff, in the monitoring zone",above:"Above the cutoff",unscored:"Not scored"}};
 const scrCan=c=>!(typeof isKitchenUser==="function"&&isKitchenUser())&&(isDirector()||(!!c&&!!myRoom()&&c.classroom===myRoom()));
 const scrOf=c=>[...screenings.values()].filter(x=>x&&x.child===c.id).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))||(b.createdAt||0)-(a.createdAt||0));
-function saveScreening(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();screenings.set(x.id,x);if(db)savePart("screenings",scrBase,x,"screening")}
+/* a change made here is kept on this device until the server has it, so a copy arriving from the server a moment
+   older never takes back an answer just chosen */
+const scrDirty={};
+function scrKeepLocal(id){return Date.now()-(scrDirty[id]||0)<8000}
+function saveScreening(x){scrDirty[x.id]=Date.now();x.updatedAt=Date.now();x.updatedBy=whoAmI();screenings.set(x.id,x);if(db)savePart("screenings",scrBase,x,"screening")}
 const scrTimers={};
-function saveScreeningSoon(x){screenings.set(x.id,x);clearTimeout(scrTimers[x.id]);scrTimers[x.id]=setTimeout(()=>saveScreening(x),700)}
+function saveScreeningSoon(x){scrDirty[x.id]=Date.now();screenings.set(x.id,x);clearTimeout(scrTimers[x.id]);scrTimers[x.id]=setTimeout(()=>saveScreening(x),700)}
 
 /* ---------- age and which questionnaire ---------- */
 // the child's age on the day of the screening in months and days, as the ASQ counts it
@@ -6977,8 +6981,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-scropen],[
   if(d.scrblank){scrPrint(x,"blank");return}
   if(scrBlocked())return;
   const cp=x.copies[scrEdit];
-  if(d.scra&&cp&&!cp.done){const [id,v]=d.scra.split("|");cp.answers=cp.answers||{};if(cp.answers[id]===v)delete cp.answers[id];else cp.answers[id]=v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
-  if(d.scro&&cp&&!cp.done){const [n,v]=d.scro.split("|");cp.overall=cp.overall||{};const o=cp.overall[n]=Object.assign({},cp.overall[n]);o.a=o.a===v?"":v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
+  if(d.scra&&cp&&!cp.done){const [id,v]=d.scra.split("|");cp.answers=cp.answers||{};if(cp.answers[id]===v)return;cp.answers[id]=v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
+  if(d.scro&&cp&&!cp.done){const [n,v]=d.scro.split("|");cp.overall=cp.overall||{};const o=cp.overall[n]=Object.assign({},cp.overall[n]);if(o.a===v)return;o.a=v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
   if(d.scrdone&&cp){const F=SCR.lay.get(x.form);cp.done=true;cp.doneAt=Date.now();cp.doneBy=whoAmI();cp.result=scrScore(F,cp);saveScreening(x);scrEdit="";renderMain();jumpTop();toast("Complete. The results are kept with the screening.");return}
   if(d.scrreopen){const c2=x.copies[d.scrreopen];if(c2&&confirm("Open this questionnaire to change it? The results are scored again when it is marked complete.")){c2.done=false;saveScreening(x);renderMain()}return}
   if(d.scrfinal){const F=SCR.lay.get(x.form);if(!F||F.tool!=="asq3")return;const E=x.copies.educator,M=x.copies.family;const ans={};

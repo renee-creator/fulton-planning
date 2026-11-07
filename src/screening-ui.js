@@ -19,9 +19,13 @@ const SCR_A3={y:"Yes",s:"Sometimes",n:"Not yet"},SCR_SE={often:"Often or always"
 const SCR_ZONE={asq3:{above:"Above the cutoff",close:"Close to the cutoff, in the monitoring zone",below:"Below the cutoff",unscored:"Not scored"},asqse2:{below:"Below the cutoff",close:"Close to the cutoff, in the monitoring zone",above:"Above the cutoff",unscored:"Not scored"}};
 const scrCan=c=>!(typeof isKitchenUser==="function"&&isKitchenUser())&&(isDirector()||(!!c&&!!myRoom()&&c.classroom===myRoom()));
 const scrOf=c=>[...screenings.values()].filter(x=>x&&x.child===c.id).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))||(b.createdAt||0)-(a.createdAt||0));
-function saveScreening(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();screenings.set(x.id,x);if(db)savePart("screenings",scrBase,x,"screening")}
+/* a change made here is kept on this device until the server has it, so a copy arriving from the server a moment
+   older never takes back an answer just chosen */
+const scrDirty={};
+function scrKeepLocal(id){return Date.now()-(scrDirty[id]||0)<8000}
+function saveScreening(x){scrDirty[x.id]=Date.now();x.updatedAt=Date.now();x.updatedBy=whoAmI();screenings.set(x.id,x);if(db)savePart("screenings",scrBase,x,"screening")}
 const scrTimers={};
-function saveScreeningSoon(x){screenings.set(x.id,x);clearTimeout(scrTimers[x.id]);scrTimers[x.id]=setTimeout(()=>saveScreening(x),700)}
+function saveScreeningSoon(x){scrDirty[x.id]=Date.now();screenings.set(x.id,x);clearTimeout(scrTimers[x.id]);scrTimers[x.id]=setTimeout(()=>saveScreening(x),700)}
 
 /* ---------- age and which questionnaire ---------- */
 // the child's age on the day of the screening in months and days, as the ASQ counts it
@@ -228,8 +232,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-scropen],[
   if(d.scrblank){scrPrint(x,"blank");return}
   if(scrBlocked())return;
   const cp=x.copies[scrEdit];
-  if(d.scra&&cp&&!cp.done){const [id,v]=d.scra.split("|");cp.answers=cp.answers||{};if(cp.answers[id]===v)delete cp.answers[id];else cp.answers[id]=v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
-  if(d.scro&&cp&&!cp.done){const [n,v]=d.scro.split("|");cp.overall=cp.overall||{};const o=cp.overall[n]=Object.assign({},cp.overall[n]);o.a=o.a===v?"":v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
+  if(d.scra&&cp&&!cp.done){const [id,v]=d.scra.split("|");cp.answers=cp.answers||{};if(cp.answers[id]===v)return;cp.answers[id]=v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
+  if(d.scro&&cp&&!cp.done){const [n,v]=d.scro.split("|");cp.overall=cp.overall||{};const o=cp.overall[n]=Object.assign({},cp.overall[n]);if(o.a===v)return;o.a=v;saveScreeningSoon(x);const y=window.scrollY;renderMain();window.scrollTo(0,y);return}
   if(d.scrdone&&cp){const F=SCR.lay.get(x.form);cp.done=true;cp.doneAt=Date.now();cp.doneBy=whoAmI();cp.result=scrScore(F,cp);saveScreening(x);scrEdit="";renderMain();jumpTop();toast("Complete. The results are kept with the screening.");return}
   if(d.scrreopen){const c2=x.copies[d.scrreopen];if(c2&&confirm("Open this questionnaire to change it? The results are scored again when it is marked complete.")){c2.done=false;saveScreening(x);renderMain()}return}
   if(d.scrfinal){const F=SCR.lay.get(x.form);if(!F||F.tool!=="asq3")return;const E=x.copies.educator,M=x.copies.family;const ans={};
