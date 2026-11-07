@@ -34,7 +34,17 @@
        foot: 'Fulton Community School'          // optional
      }
      Photos come to both layouts already loaded by the caller, so the kit never fetches. The caller softens faces or
-     chooses names before calling. Each sheet is cut on the dotted line down the middle of the page. */
+     chooses names before calling. Each sheet is cut on the dotted line down the middle of the page.
+
+   Every print also passes through the kit on its way out (November 7, 2026).
+   TREE_KIT.guard(docs, quiet) -> the pages worth printing, or null. A print with nothing in it, such as an agenda with
+     no blocks, an evaluation with nothing scored or a slide with no title and no photo, shows Nothing to print yet and
+     no file is made. TREE_KIT.isEmpty(doc) checks one page, TREE_KIT.printable(docs) keeps the ones that hold something.
+   TREE_KIT.cardsPerHtml() and TREE_KIT.signSizeHtml() are the small choices shown beside a card set's print buttons,
+     Cards per page 1, 2 or 4 and Sign size Letter, Half letter or 18 by 24. Each device remembers its last choice.
+   TREE_KIT.takeArmed() gives, once, the choice made with the card set's button just tapped, and TREE_KIT.pagePlan(doc,
+     armed) how each of that doc's pages is set. TREE_KIT.repage(blob, plan) -> Promise<Blob> sets the finished PDF two
+     or four cards to a letter page with dotted cut lines, and a sign on half letter or the poster, scaled whole. */
 (function (root) {
   'use strict';
   const LIB = {
@@ -244,5 +254,98 @@
     return d;
   }
 
-  root.TREE_KIT = { LIB, SIZES, PF, loadScript, fonts, pdfFonts, wordFonts, pdf, word, wordFile, wordBlob, pdfLib, pdfjs, readPdf, pageImage, readDocx, placeSheet, childHeight };
+  /* ---------- nothing to print, cards per page and sign sizes ---------- */
+  // a print with nothing in it is never made. A page counts when it holds words, a list, a table or a photo. A title and
+  // a date alone, such as an agenda with no blocks or a slide with no title and no photo, do not. A set with something
+  // in it prints whole, its cover sheet included.
+  const filled = v => v == null ? false : typeof v === 'string' ? !!v.replace(/[\s_.…-]+/g, '') : typeof v === 'number' ? true
+    : Array.isArray(v) ? v.some(filled) : typeof v === 'object' ? Object.values(v).some(filled) : !!v;
+  const CONTENT = ['text', 'words', 'lines', 'items', 'rows', 'cols', 'tiles', 'web', 'q', 'a', 'name', 'materials', 'fields', 'labels'];
+  function blockFilled(b) {
+    if (!b || typeof b !== 'object') return false;
+    if (b.t === 'photo') return !!(b.key || b.src);
+    if (b.t === 'fill') return true;
+    if (b.t === 'rule' || b.t === 'sub' || b.t === 'label' || b.t === 'break') return false;
+    return CONTENT.some(k => filled(b[k]));
+  }
+  function isEmpty(p) {
+    if (!p || typeof p !== 'object') return true;
+    // a plan form, or a blank form made to be filled in by hand, always prints
+    if (p.blank || (!p.display && !p.centered)) return false;
+    if ((p.photos || []).some(x => x && (x.key || x.src))) return false;
+    if ((p.blocks || []).some(blockFilled)) return false;
+    return true;
+  }
+  // the first page stays as the set's cover, and any later page with nothing on it is left out
+  const printable = list => { const L = (Array.isArray(list) ? list : [list]).filter(Boolean); return L.some(p => !isEmpty(p)) ? L.filter((p, i) => i === 0 || !isEmpty(p)) : []; };
+  function nothing() {
+    const msg = 'Nothing to print yet';
+    if (typeof root.toast === 'function') { root.toast(msg); return; }
+    try { const el = document.createElement('div'); el.setAttribute('role', 'status'); el.textContent = msg;
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1b2920;color:#fff;padding:10px 16px;border-radius:10px;font:15px system-ui,sans-serif;z-index:9999';
+      document.body.appendChild(el); setTimeout(() => el.remove(), 3200); } catch (e) {}
+  }
+  // the pages worth printing, or null after the notice when there are none
+  function guard(list, quiet) { const L = printable(list); if (L.length) return L; if (!quiet) nothing(); return null; }
+
+  // each device keeps its own last choice
+  const keep = { get(k, d) { try { const v = root.localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }, set(k, v) { try { root.localStorage.setItem(k, v); } catch (e) {} } };
+  function cardsPer() { const n = +keep.get('tree-cards-per', '1'); return [1, 2, 4].includes(n) ? n : 1; }
+  function signSize() { const s = keep.get('tree-sign-size', 'letter'); return SIZES[s] ? s : 'letter'; }
+  const seg = (label, attr, opts, cur) => `<span class="tkchoice" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="cnt">${label}</span><span class="tseg" role="group" aria-label="${label}">${opts.map(([v, l]) => `<button type="button" data-${attr}="${v}" aria-pressed="${String(v) === String(cur)}">${l}</button>`).join('')}</span></span>`;
+  // the small choices shown beside a card set's print buttons, and beside a set of signs
+  const cardsPerHtml = () => seg('Cards per page', 'tkper', [[1, '1'], [2, '2'], [4, '4']], cardsPer());
+  const signSizeHtml = () => seg('Sign size', 'tksign', [['letter', 'Letter'], ['half', 'Half letter'], ['poster', '18 by 24']], signSize());
+  /* The print buttons of each card set. A tap on one remembers, for the PDF it makes, how many cards go on a page and
+     what size a sign prints at. The PD printables keep sheets and visuals on their own full pages. */
+  const CARD_SETS = ['[data-gmprint]', '[data-bookprint]', '[data-artprint]', '[data-volprint]', '[data-tkcards]',
+    ...['gguidesel', 'gguidekids', 'gplant', 'gfield', 'gset', 'gentry', 'ibcards', 'recipe', 'frecipe', 'fthanks', 'helpquick', 'helpcard', 'artistcard', 'bookcard', 'voljob'].map(k => `[data-print="${k}"]`)].join(',');
+  let armed = null;
+  function arm(t) { armed = { n: cardsPer(), sign: signSize(), only: t.hasAttribute('data-gmprint') ? 'cards' : 'all', at: Date.now() }; }
+  function takeArmed() { const a = armed; armed = null; return a && Date.now() - a.at < 180000 ? a : null; }
+  if (typeof document !== 'undefined') document.addEventListener('click', e => {
+    const t = e.target && e.target.closest ? e.target.closest('button,[data-print],summary') : null; if (!t) return;
+    if (t.dataset.tkper || t.dataset.tksign) {
+      const per = !!t.dataset.tkper; keep.set(per ? 'tree-cards-per' : 'tree-sign-size', per ? t.dataset.tkper : t.dataset.tksign);
+      document.querySelectorAll(per ? '[data-tkper]' : '[data-tksign]').forEach(b => b.setAttribute('aria-pressed', String(b === t || (per ? b.dataset.tkper === t.dataset.tkper : b.dataset.tksign === t.dataset.tksign))));
+      e.preventDefault(); return;
+    }
+    if (t.matches(CARD_SETS) && t.dataset.word !== '1') arm(t); else if (t.tagName === 'BUTTON' && !t.closest('#pview')) armed = null;
+  }, true);
+  // how one page of a print is set: a card n to a page, a sign at its size, anything else as it is
+  function pagePlan(p, a) {
+    if (!a) return { n: 1, size: 'letter' };
+    if (p && p.sign) return { n: 1, size: a.sign };
+    if (a.only === 'cards' && !(p && p.centered && (p.card || p.plantCard))) return { n: 1, size: 'letter' };
+    return { n: a.n, size: 'letter' };
+  }
+  /* The finished PDF laid out again. Pages set n to a letter page, two side by side on a landscape page or four in a
+     grid, each cut on a dotted line, the quiet footer left off. A sign is set on a half letter page or an 18 by 24 inch
+     poster, scaled whole, so its words stay sharp. plan holds one { n, size } for each page. */
+  async function repage(blob, plan) {
+    const L = await pdfLib(); const src = await L.PDFDocument.load(blob instanceof Uint8Array ? blob : await blob.arrayBuffer());
+    const out = await L.PDFDocument.create(); const pages = src.getPages();
+    const box = pg => { const { width: w, height: h } = pg.getSize(); return { left: 26, bottom: 50, right: w - 26, top: h - 22 }; };
+    const emb = await out.embedPages(pages, pages.map(box));
+    const grey = L.rgb(0.55, 0.58, 0.56);
+    const dotted = (sh, x1, y1, x2, y2) => sh.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: 0.6, color: grey, dashArray: [3, 4] });
+    const put = (sh, e, x, y, w, h, pad) => { const s = Math.min((w - 2 * pad) / e.width, (h - 2 * pad) / e.height); sh.drawPage(e, { x: x + (w - e.width * s) / 2, y: y + (h - e.height * s) / 2, xScale: s, yScale: s }); };
+    let i = 0;
+    while (i < pages.length) {
+      const pl = plan[i] || { n: 1, size: 'letter' };
+      if (pl.n === 2 || pl.n === 4) {
+        const run = []; while (i < pages.length && run.length < pl.n && (plan[i] || {}).n === pl.n) { run.push(emb[i]); i++; }
+        if (pl.n === 2) { const sh = out.addPage([792, 612]); run.forEach((e, k) => put(sh, e, k * 396, 0, 396, 612, 16)); dotted(sh, 396, 14, 396, 598); }
+        else { const sh = out.addPage([612, 792]); run.forEach((e, k) => put(sh, e, (k % 2) * 306, 396 - Math.floor(k / 2) * 396, 306, 396, 12)); dotted(sh, 306, 14, 306, 778); dotted(sh, 14, 396, 598, 396); }
+        continue;
+      }
+      if (pl.size === 'half' || pl.size === 'poster') { const S = SIZES[pl.size]; const sh = out.addPage([S.w, S.h]); put(sh, emb[i], 0, 0, S.w, S.h, pl.size === 'poster' ? 40 : 12); i++; continue; }
+      const [cp] = await out.copyPages(src, [i]); out.addPage(cp); i++;
+    }
+    out.setCreator('Fulton Community School'); out.setProducer('TREE');
+    return new Blob([await out.save()], { type: 'application/pdf' });
+  }
+
+  root.TREE_KIT = { LIB, SIZES, PF, loadScript, fonts, pdfFonts, wordFonts, pdf, word, wordFile, wordBlob, pdfLib, pdfjs, readPdf, pageImage, readDocx, placeSheet, childHeight,
+    isEmpty, printable, nothing, guard, cardsPer, signSize, cardsPerHtml, signSizeHtml, takeArmed, pagePlan, repage };
 })(typeof window !== 'undefined' ? window : this);
