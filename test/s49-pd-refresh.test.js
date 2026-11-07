@@ -10,7 +10,7 @@ test('s49PdRefresh brings each PD page up to date', async () => {
   const by = new Map();
   for (const c of LIST.changes) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
   const page = cs => '<!--\nserves: obs\n-->\n# A page\n\nLead.\n\n## Reading\n\n' + cs.map(c => c.from).join('\n\nSome words between.\n\n') + '\n';
-  const f = await fx.start({ env: { ONCE_SKIP: 's50PdScreens,s51Citations' }, more: put => { for (const [p, cs] of by) put(p, page(cs)); } });
+  const f = await fx.start({ env: { ONCE_SKIP: 's50PdScreens,s51Citations,s52Wording' }, more: put => { for (const [p, cs] of by) put(p, page(cs)); } });
   try {
     let ok = false;
     for (let i = 0; i < 60 && !ok; i++) {

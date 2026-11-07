@@ -1245,6 +1245,7 @@ module.exports = function staffModule(o) {
     s49PdRefresh: ['code:once/s49-pd-refresh.json', 'PD library, out of date facts brought up to date, November 7, 2026'],
     s50PdScreens: ['code:once/s50-pd-screens.json', 'PD library, TREE series and Licensing matched to TREE today, November 7, 2026'],
     s51Citations: ['code:once/s51-citations.json', 'PD library citations corrected after the fact check, November 7, 2026'],
+    s52Wording: ['code:once/s52-wording.json', 'PD library wording brought in line with our writing rules, November 7, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

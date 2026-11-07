@@ -1,0 +1,1431 @@
+{
+ "name": "s52Wording",
+ "note": "PD library wording brought in line with our writing rules, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/01-researcher.md",
+   "from": ", and it is never a step on a form.",
+   "to": ". No form records it."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "thinking, and it is never a step on a form.",
+   "to": "thinking. No form records it."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Just as we allow children to navigate the risks of the garden, from stinging pollinators to the balance of a climbing tree, we invite educators",
+   "to": "We allow children to navigate the risks of the garden, from stinging pollinators to the balance of a climbing tree. We also invite educators"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "**Teachers as Researchers.**",
+   "to": "**Educators as Researchers.**"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "This cycle is our container. Our work is learning how to inhabit it well,",
+   "to": "This cycle shapes all our project work. Our work is learning how to use it well,"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "We look for the spark, the persistent questions",
+   "to": "We look for the persistent questions"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "which open a window into their thinking",
+   "to": "which show their thinking"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "show us the scaffold where the child is ready for a new challenge, and that is where a project can live.",
+   "to": "show us where the child is ready for a new challenge, and a project can grow from there."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "trajectories children use, never as a score.",
+   "to": "trajectories children use. We do not use it as a score."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "\"When we look at a child, we do not see a deficit to be filled or a score to be reached. We see a researcher in the midst of a theory. The DRDP is the vocabulary we use to give voice to that research, a shared professional grammar that translates the 'Hundred Languages' of the child into a visible map of brilliance.\"",
+   "to": "\"When we look at a child, we see a researcher in the midst of a theory. The DRDP gives us shared professional words for that research, so the many ways a child thinks and shows thinking (the Hundred Languages) become visible.\""
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "**Tracing the invisible.** The DRDP (2025) PTK View is a developmental map used to document and reflect on the child's unique learning journey.",
+   "to": "**Making growth visible.** The DRDP (2025) PTK View describes developmental steps we use to document and reflect on each child's learning."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "is the primary vehicle for the Hundred Languages",
+   "to": "is the main domain for the Hundred Languages"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "**Authentic roots.** The DRDP is grounded in",
+   "to": "**Observation first.** The DRDP is based on"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "a rigorous container,",
+   "to": "a rigorous structure,"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Assessment is a lens through which we see the child's brilliance more clearly.",
+   "to": "Assessment helps us see the child's thinking more clearly."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Seeds that last are fueled by intrinsic motivation.",
+   "to": "Seeds that last grow from intrinsic motivation."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "It names what to look for, never a box to tick.",
+   "to": "It names what to look for. No boxes are ticked."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "The container line is from",
+   "to": "The line on the cycle is from"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "This is our quiet spine.",
+   "to": "This cycle guides all our project work."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Use the DRDP as a dictionary.",
+   "to": "Use the DRDP to find precise words."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "How do we change the 'stage' to invite",
+   "to": "How do we change the space to invite"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "strategies and trajectories, and never a score.\"",
+   "to": "strategies and trajectories. We do not use it as a score.\""
+  },
+  {
+   "path": "staff/pd/printables/researcher.md",
+   "from": "Circle any word that interprets in place of describing.",
+   "to": "Circle any word that interprets."
+  },
+  {
+   "path": "staff/pd/printables/researcher.md",
+   "from": "an actual question in place of a topic.",
+   "to": "written as a question."
+  },
+  {
+   "path": "staff/pd/modules/02-documentation.md",
+   "from": "own voice and never as though a child were speaking.",
+   "to": "own voice. It is never written as though a child were speaking."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "own voice and never as though a child were speaking.",
+   "to": "own voice. It is never written as though a child were speaking."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "Photos and documentation are a window into the child's world,",
+   "to": "Photos and documentation show the child's world,"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "opens a window into the ongoing project work",
+   "to": "shows the ongoing project work"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "A portfolio is a window into the child's time at school,",
+   "to": "A portfolio shows the child's time at school,"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "reignite their experiences",
+   "to": "bring their experiences back"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "We aren't here to label children; we are here to practice",
+   "to": "We are here to practice"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "depth of each child's thinking, and never as scores.",
+   "to": "depth of each child's thinking. We do not use them as scores."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "is a technical bridge that validates educators' intuition",
+   "to": "is a technical step that confirms educators' intuition"
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "that an adult decides, never that their own words can get them a turn.",
+   "to": "that an adult decides. They do not learn that their own words can get them a turn."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "that an adult decides, never that their own words can get them a turn.",
+   "to": "that an adult decides. They do not learn that their own words can get them a turn."
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "still building that inner map of the body.",
+   "to": "still building that body sense."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "still building that inner map of the body.",
+   "to": "still building that body sense."
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "is still building that map.",
+   "to": "is still building that sense."
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "art and music as doors in.",
+   "to": "art and music as ways to join in."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "art and music as doors in.",
+   "to": "art and music as ways to join in."
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "art and music as doors in.",
+   "to": "art and music as ways to join in."
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "the patterns are a lens for wondering, never a diagnosis.",
+   "to": "the patterns help us wonder about a child. They are not a diagnosis."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "the patterns are a lens for wondering, never a diagnosis.",
+   "to": "the patterns help us wonder about a child. They are not a diagnosis."
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "A lens for wondering, and a child is always more than one pattern.",
+   "to": "The patterns help us wonder. A child is always more than one pattern."
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "as partners, never in a spirit of blame,",
+   "to": "as partners, without blame,"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "as partners, never in a spirit of blame,",
+   "to": "as partners, without blame,"
+  },
+  {
+   "path": "staff/familypieces/together-beyond.md",
+   "from": "as partners, never to blame,",
+   "to": "as partners, without blame,"
+  },
+  {
+   "path": "staff/familypieces/together-beyond.md",
+   "from": "\"He does it for attention\" closes the door.",
+   "to": "\"He does it for attention\" ends the question."
+  },
+  {
+   "path": "staff/familypieces/together-beyond.md",
+   "from": "keeps it open and gives",
+   "to": "keeps the question open and gives"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "**Dignity in the storm.**",
+   "to": "**Dignity in hard moments.**"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "Your quiet voice is a child's anchor. Redirection is about safety, never about power.",
+   "to": "A quiet voice helps a child stay steady. Redirection is about safety. It is never used to show power."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "Can you find your eye of the storm when",
+   "to": "Can you find your own steadiness when"
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "Can you find your eye of the storm when",
+   "to": "Can you find your own steadiness when"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "so the environment responds to the children and never stays static.",
+   "to": "so the environment keeps changing in response to the children."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "You cannot pour from an empty cup.",
+   "to": "Caring for yourself lets you keep caring for children."
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "\"You cannot pour from an empty cup.\"",
+   "to": "Caring for yourself lets you keep caring for children."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "including the empty cup line.",
+   "to": "including the educator's reset."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "\"The playground is a stage where the culture of the home and screen is performed.\"",
+   "to": "On the playground, children act out the culture of home and screen."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "\"Prejudice is not taught; it is caught during the power rehearsals of early play.\"",
+   "to": "Prejudice is caught, more than taught, during the power rehearsals of early play."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "**Offer a bridge.**",
+   "to": "**Offer a next step.**"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "moderate their own behavior, rather than needing the teachers to control their actions.\"",
+   "to": "moderate their own behavior.\""
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "a partner in a child's education and never the only authority in it.",
+   "to": "one partner in a child's education, alongside the family."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "one educator who becomes the bridge between home and school.",
+   "to": "one educator who connects home and school."
+  },
+  {
+   "path": "staff/familypieces/together-families.md",
+   "from": "who becomes your first contact and the bridge between home and school.",
+   "to": "who becomes your first contact and connects home and school."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "Families take part with open minds, as if they were in their children's shoes.",
+   "to": "Families take part with open minds and try the experiences as their children do."
+  },
+  {
+   "path": "staff/pd/printables/families.md",
+   "from": "**How will families try it, as if they were in their children's shoes?**",
+   "to": "**How will families try it the way their children do?**"
+  },
+  {
+   "path": "staff/pd/printables/families.md",
+   "from": "Come with open minds, as if you were in your child's shoes.",
+   "to": "Come with open minds, ready to try things the way your child does."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "It is evidence, never a rating.",
+   "to": "It is evidence. It is not a rating."
+  },
+  {
+   "path": "staff/pd/printables/families.md",
+   "from": "as evidence and never a rating",
+   "to": "as evidence, with no rating"
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "a clear invitation opens the door.",
+   "to": "a clear invitation helps."
+  },
+  {
+   "path": "staff/pd/modules/06-development.md",
+   "from": "each child grows on their own path.",
+   "to": "each child grows in their own way."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "each child grows on their own path.",
+   "to": "each child grows in their own way."
+  },
+  {
+   "path": "staff/familypieces/together-development.md",
+   "from": "Each child grows on their own path and",
+   "to": "Each child grows in their own way and"
+  },
+  {
+   "path": "staff/pd/modules/06-development.md",
+   "from": "development describes a path and never a comparison.",
+   "to": "development describes each child's own growth, and we do not compare children."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "development describes a path and never a comparison.",
+   "to": "development describes each child's own growth, and we do not compare children."
+  },
+  {
+   "path": "staff/pd/modules/06-development.md",
+   "from": "describes the path of that learning measure by measure.",
+   "to": "describes that learning measure by measure."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "describes the path of that learning measure by measure.",
+   "to": "describes that learning measure by measure."
+  },
+  {
+   "path": "staff/familypieces/together-development.md",
+   "from": "## A path to follow",
+   "to": "## Tools that describe growth"
+  },
+  {
+   "path": "staff/familypieces/together-development.md",
+   "from": "describes the path of that learning step by step.",
+   "to": "describes that learning step by step."
+  },
+  {
+   "path": "staff/pd/modules/06-development.md",
+   "from": "Development read in What I wonder, never as a rating.",
+   "to": "Development read in What I wonder, with no rating."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "Development read in What I wonder, never as a rating.",
+   "to": "Development read in What I wonder, with no rating."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "Our values and developmental goals are a lens through which we can observe, interpret and support each child's unique journey, rooted in deep respect",
+   "to": "Our values and developmental goals guide how we observe, interpret and support each child's growth, with deep respect"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "The lens line is from",
+   "to": "The line on values and goals is from"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "protagonists in their own learning journey.",
+   "to": "protagonists in their own learning."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "local place, and it is never a pre-set list of topics.",
+   "to": "local place. We do not work from a pre-set list of topics."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "We document to conduct research, and creating displays is never the purpose.",
+   "to": "We document to conduct research, and any display grows out of that research."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "a disposition of curiosity that fuels all learning",
+   "to": "a disposition of curiosity that supports all learning"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "a rich sensory landscape",
+   "to": "a rich sensory environment"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "We help them tell a reporting situation, when someone is hurt or needs help, from a tattling situation, trying to get a friend in trouble, so they can",
+   "to": "We help them tell when someone is hurt or needs help and an adult should know, so they can"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "gently anchor them in reality when needed.",
+   "to": "gently help them sort out what is real when needed."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "In this bridge year to kindergarten,",
+   "to": "In this year before kindergarten,"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "Concerns are described with specific examples, never labels.",
+   "to": "Concerns are described with specific examples. We do not label children."
+  },
+  {
+   "path": "staff/pd/printables/development.md",
+   "from": "Describe with specific examples, never labels.",
+   "to": "Describe with specific examples. Do not label."
+  },
+  {
+   "path": "staff/familypieces/together-development.md",
+   "from": "keeps everyone safe until the storm passes.",
+   "to": "keeps everyone safe until the hard moment passes."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "are a jumping off point for open conversation, never a checklist.",
+   "to": "are a way to begin an open conversation. They are not a checklist."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Development is a series of unique adaptations, never a straight line, and no two children reach the same point by the same inner map.",
+   "to": "Development is a series of unique adaptations, and no two children grow in the same way or at the same pace."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Our documentation becomes the child's second memory, so they",
+   "to": "Our documentation helps the child remember, so they"
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Reflection is the bridge between an experience and the meaning made from it.",
+   "to": "Reflection connects an experience to the meaning made from it."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Reflection is the remedy for assumptions.",
+   "to": "Reflection helps us catch our assumptions."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "The goal is to connect with a park, never to finish it or quiz a child.",
+   "to": "The goal is to connect with a park. Families do not need to finish it or quiz a child."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Let the child's curiosity be the map.",
+   "to": "Follow the child's curiosity."
+  },
+  {
+   "path": "staff/pd/printables/spaces.md",
+   "from": "Collect experiences in place of things. Let your child's curiosity be the map.",
+   "to": "Collect experiences, and leave things where they are. Follow your child's curiosity."
+  },
+  {
+   "path": "staff/familypieces/together-meeting.md",
+   "from": "describe listening as the heart of teaching.",
+   "to": "describe listening as central to teaching."
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "A stronger grasp of our Reggio-inspired philosophy.",
+   "to": "A stronger grasp of our philosophy."
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "It is a curriculum intention, held open in the way a project plan is not.",
+   "to": "It is a curriculum intention, and it stays open."
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "\"We are not trying to cover everything teachers need to know. We are trying to establish a shared lens, give teachers time",
+   "to": "\"We are trying to establish a shared lens, give educators time"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "**Making space for magic to happen.**",
+   "to": "**Making space for wonder.**"
+  },
+  {
+   "path": "staff/pd/printables/principles.md",
+   "from": "| Making space for magic to happen |",
+   "to": "| Making space for wonder |"
+  },
+  {
+   "path": "staff/pd/modules/12-play.md",
+   "from": "when a child shows real fear or distress,",
+   "to": "when a child shows fear or distress,"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "results in real fear or distress in peers.",
+   "to": "results in fear or distress in peers."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "It is the bridge that allows social observation",
+   "to": "It allows social observation"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "children are architects, engineers, storytellers and collaborators.",
+   "to": "children design, engineer, tell stories and collaborate."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "**North class, the dawn of imagination.**",
+   "to": "**North class, imagination emerging.**"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "The playground is a stage where the culture of the home and screen is performed.",
+   "to": "On the playground, children act out the culture of home and screen."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "sketching shout zones and grounded anchors.",
+   "to": "sketching shout zones and bases."
+  },
+  {
+   "path": "staff/pd/printables/play.md",
+   "from": "Sportscast one hard moment instead of solving it.",
+   "to": "Sportscast one hard moment, and let the children work on solving it."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Reggio-inspired reflective dialogue",
+   "to": "inquiry-based reflective dialogue"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Educator affect, groundedness and the physical anchor.",
+   "to": "Educator affect, steadiness and the base."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "our presence should add to the child's focus and never distract from it.",
+   "to": "our presence should support the child's focus."
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "the adult staying while the storm passes.",
+   "to": "the adult staying until the hard moment passes."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "the adult staying while the storm passes.",
+   "to": "the adult staying until the hard moment passes."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "a physical anchor point in the room or yard",
+   "to": "a set spot in the room or yard"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "how you can move your anchor points to be",
+   "to": "how you can move your base to be"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Talking over children's heads makes them invisible.",
+   "to": "Adults talking over children's heads leave children out."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "when we treat the class like a staff lounge?",
+   "to": "when adults chat with each other in the class?"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "affect to remain the calm anchor",
+   "to": "affect to stay calm and steady"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "Your quiet voice is a child's anchor.",
+   "to": "A quiet voice helps a child stay steady."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "**Anchor.** Stay grounded and avoid mental ghosting.",
+   "to": "**Attention.** Stay put, and keep your mind on the children."
+  },
+  {
+   "path": "staff/pd/printables/presence.md",
+   "from": "**Anchor.** Stay grounded and avoid mental ghosting.",
+   "to": "**Attention.** Stay put, and keep your mind on the children."
+  },
+  {
+   "path": "staff/pd/printables/presence.md",
+   "from": "move your anchor points to be",
+   "to": "move your base to be"
+  },
+  {
+   "path": "staff/pd/printables/presence.md",
+   "from": "a physical anchor where you sit",
+   "to": "a set spot where you sit"
+  },
+  {
+   "path": "staff/pd/printables/presence.md",
+   "from": "a reach or a storm,",
+   "to": "a reach or a big feeling,"
+  },
+  {
+   "path": "staff/pd/printables/presence.md",
+   "from": "staying through the storm.",
+   "to": "staying through the hard moment."
+  },
+  {
+   "path": "staff/pd/howto/04-family-conferences.md",
+   "from": "evidence the family can read, never a rating.",
+   "to": "evidence the family can read. It does not rate the child."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "It results in genuine fear or distress in peers.",
+   "to": "It results in fear or distress in peers."
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "peers show genuine fear or distress.",
+   "to": "peers show fear or distress."
+  },
+  {
+   "path": "staff/familypieces/together-language.md",
+   "from": "## Questions that open a door",
+   "to": "## Questions that invite a story"
+  },
+  {
+   "path": "staff/familypieces/together-language.md",
+   "from": "Some questions that open a door follow.",
+   "to": "Some open questions follow."
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "In Reggio-inspired practice, art",
+   "to": "In our philosophy, art"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "In Reggio-inspired practice, art",
+   "to": "In our philosophy, art"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "In our Reggio-inspired approach",
+   "to": "In our inquiry-based approach"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "key elements of a Reggio inspired learning",
+   "to": "key elements of an inquiry-based learning"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "with our Reggio inspired philosophy",
+   "to": "with our inquiry-based philosophy"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "A ten day Reggio Emilia inspired, nature based",
+   "to": "A ten day inquiry-based, nature based"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "for our Reggio inspired, nature based program",
+   "to": "for our inquiry-based, nature based program"
+  },
+  {
+   "path": "staff/familypieces/together-narrative.md",
+   "from": "a kindergarten teacher and author",
+   "to": "a kindergarten educator and author"
+  },
+  {
+   "path": "staff/familypieces/together-autonomy-agency-and-invitation.md",
+   "from": "describe the environment as a teacher in its own right (the environment as the third teacher), because",
+   "to": "describe the environment as the third teacher, because"
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "It is an invitation, never a directive.",
+   "to": "It invites children in and leaves the direction to them."
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "Our role is to honor the words, never to correct them.",
+   "to": "Our role is to honor the words. We do not correct them."
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "It is an answer tool and never a discovery tool.",
+   "to": "We use it to answer a question the child has already explored."
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "The goal is never just to collect names.",
+   "to": "Learning a name is only one part of the goal."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "understand each child and never to score or compare children.",
+   "to": "understand each child. We do not score or compare children."
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "understand each child and never to score or compare children.",
+   "to": "understand each child. We do not score or compare children."
+  },
+  {
+   "path": "staff/pd/printables/writer.md",
+   "from": "understand each child, never to score or compare.",
+   "to": "understand each child. We do not score or compare."
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "Age bands are a guide to watching, never a schedule.",
+   "to": "Age bands are a guide to watching. Each child keeps their own timing."
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "Age bands are a guide to watching, never a schedule.",
+   "to": "Age bands are a guide to watching. Each child keeps their own timing."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "We borrow the safety world's own phrase, as safe as necessary, never as safe as possible.",
+   "to": "We borrow the safety world's own phrase, as safe as necessary, so children keep the challenges they learn from."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "We borrow the safety world's own phrase, as safe as necessary, never as safe as possible.",
+   "to": "We borrow the safety world's own phrase, as safe as necessary, so children keep the challenges they learn from."
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "Report observations, never conclusions, and never investigate",
+   "to": "Report what you observed and leave out conclusions. Do not investigate"
+  },
+  {
+   "path": "staff/pd/printables/professional.md",
+   "from": "Observations, never conclusions.",
+   "to": "What you observed, with no conclusions."
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "The DRDP is a lens for seeing that learning more clearly, and it never replaces our Image of the Child as competent and full of ideas.",
+   "to": "The DRDP helps us see that learning more clearly, and our Image of the Child as competent and full of ideas stays at the center."
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "**Our words describe and never rate.**",
+   "to": "**Our words describe.**"
+  },
+  {
+   "path": "staff/pd/modules/26-seeing-ourselves.md",
+   "from": "as our own hypotheses in observations, never in the child's voice.",
+   "to": "in observations as our own hypotheses, in the educator's voice."
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "Our environment is offered as a lens for thinking about environments and children's learning. It is never a model to copy, because every school lives in its own context.",
+   "to": "Our environment is offered as an example for thinking about environments and children's learning. Each school adapts what it sees to its own context."
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "The key message is that our school is a lens and never a blueprint.",
+   "to": "The key message is that each program adapts what it sees to its own setting."
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "Our environment is presented as a lens for each program",
+   "to": "Our environment is presented as an example for each program"
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "Our environment as a lens. |",
+   "to": "Our environment as an example to adapt. |"
+  },
+  {
+   "path": "staff/pd/printables/autonomy-agency-and-invitation.md",
+   "from": "Our school is offered as a lens for thinking",
+   "to": "Our school is offered as an example for thinking"
+  },
+  {
+   "path": "staff/pd/modules/37-active-supervision.md",
+   "from": "Our goal is continuity of relationship, and coverage alone is never enough.",
+   "to": "Our goal is continuity of relationship, with each child cared for by educators they know."
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "at the same eye level as friends, never set apart.",
+   "to": "at the same eye level and the same table as friends."
+  },
+  {
+   "path": "staff/pd/printables/autonomy-agency-and-invitation.md",
+   "from": "suggest possibilities rather than directing activity.",
+   "to": "suggest possibilities, and children decide what to make of them."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "it is watched rather than scheduled.",
+   "to": "educators watch for it."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "it is watched rather than scheduled.",
+   "to": "educators watch for it."
+  },
+  {
+   "path": "staff/pd/printables/collaboration.md",
+   "from": "Stay open to the mystery of your partner in place of labeling them.",
+   "to": "Stay curious about your partner, and hold off on labeling them."
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "What he offers in place of praise is description",
+   "to": "What he offers is description"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "What he offers in place of praise is description",
+   "to": "What he offers is description"
+  },
+  {
+   "path": "staff/pd/depth/collaboration.md",
+   "from": "stays open to the mystery of their partner.",
+   "to": "stays curious about their partner."
+  },
+  {
+   "path": "staff/pd/depth/collaboration.md",
+   "from": "the relational heart of co-teaching.",
+   "to": "the relationships at the center of co-teaching."
+  },
+  {
+   "path": "staff/familypieces/together-narrative.md",
+   "from": "gave her a window into what each child",
+   "to": "showed her what each child"
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "unlock children's theories",
+   "to": "bring out children's theories"
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "protagonists of their own learning journey.",
+   "to": "protagonists of their own learning."
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "The building blocks of a tale.",
+   "to": "The parts of a tale."
+  },
+  {
+   "path": "staff/pd/modules/16-narrative.md",
+   "from": "The words a child offers become the heart of the record.",
+   "to": "The record is built on the words a child offers."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "Documentation is the heart of the Reggio Emilia approach.",
+   "to": "Documentation is central to the Reggio Emilia approach."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "make their learning journey visible.",
+   "to": "make their learning visible."
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "makes the most of this developmental window and builds a strong foundation for handwriting.",
+   "to": "makes the most of these years and prepares the hand for handwriting."
+  },
+  {
+   "path": "staff/familypieces/together-writer.md",
+   "from": "A box of broken crayons at home is a gift.",
+   "to": "Broken crayons at home are worth keeping."
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "Her sequence is a useful map of what to look for",
+   "to": "Her sequence is a useful guide to what to look for"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "Her sequence is a useful map of what to look for",
+   "to": "Her sequence is a useful guide to what to look for"
+  },
+  {
+   "path": "staff/pd/printables/atelier.md",
+   "from": "Two maps of what to look for",
+   "to": "Two guides to what to look for"
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "it answers every push, pinch and pat",
+   "to": "it changes with every push, pinch and pat"
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "discovery, rooted in the Reggio Emilia view",
+   "to": "discovery, drawn from the Reggio Emilia view"
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "The location itself should feel like an invitation.",
+   "to": "Choose a spot children will notice and want to join."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "settle in and independence blossom.",
+   "to": "settle in and independence grow."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "The architecture of daily life",
+   "to": "The design of daily life"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "an important window for healthy eating",
+   "to": "an important time for healthy eating"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "All behavior is rooted in an unmet need.",
+   "to": "All behavior signals an unmet need."
+  },
+  {
+   "path": "staff/pd/printables/professional.md",
+   "from": "All behavior is rooted in an unmet need.",
+   "to": "All behavior signals an unmet need."
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "partnerships rooted in trust",
+   "to": "partnerships built on trust"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "give that growth a place to live in TREE.",
+   "to": "keep a record of that growth in TREE."
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "reflection-on-action with a place to live.",
+   "to": "reflection-on-action, written down."
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "reflection-on-action with a place to live.",
+   "to": "reflection-on-action, written down."
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "are the heart of the curriculum for the youngest",
+   "to": "are central to the curriculum for the youngest"
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "are the heart of the curriculum for the youngest",
+   "to": "are central to the curriculum for the youngest"
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "ask us to notice our own lens.",
+   "to": "ask us to notice our own assumptions."
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "Does the invitation whisper a suggestion, or demand a specific result?",
+   "to": "Does the invitation suggest possibilities, or ask for a specific result?"
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "Is your language serving as a mirror for the child's thinking, or as a judge of their output?",
+   "to": "Does your language describe the child's thinking back to them, or judge their output?"
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "affirmative language to mirror a child's own process",
+   "to": "affirmative language to describe a child's own process"
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "Our documentation becomes the child's second memory, so they",
+   "to": "Our documentation keeps a record of the work, so children"
+  },
+  {
+   "path": "staff/familypieces/together-serving-two-year-olds.md",
+   "from": "those routines are the heart of learning.",
+   "to": "those routines are where much of their learning happens."
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "Big feelings spill into the body",
+   "to": "Big feelings show in the body"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "Big feelings spill into the body",
+   "to": "Big feelings show in the body"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "Much of it is rooted in routines",
+   "to": "Much of it is built around routines"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "**Environments speak to families.**",
+   "to": "**Environments show families what we value.**"
+  },
+  {
+   "path": "staff/pd/modules/33-many-ways-to-read.md",
+   "from": "as a way to check an idea, never as the first answer.",
+   "to": "as a way to check an idea children already have."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "talks about patterns, never about people.",
+   "to": "talks only about patterns."
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "a book or a visit, never copied.",
+   "to": "a book or a visit. We do not print copies of them."
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "Children draw what they notice, never a copy of the work.",
+   "to": "Children draw what they notice. They do not copy the work."
+  },
+  {
+   "path": "staff/pd/modules/40-questions-worth-asking.md",
+   "from": "written as our hypothesis and never as though a child were speaking.",
+   "to": "written as our hypothesis in our own voice."
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "Questions are written as the educators' own wonderings and hypotheses, never in a child's voice.",
+   "to": "Questions are written in the educators' voice, as our own wonderings and hypotheses."
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "written as the educators' hypothesis, never in a child's voice.",
+   "to": "written in the educators' voice, as our hypothesis."
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "is set aside, never deleted,",
+   "to": "is set aside and kept,"
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "conversation, never a conclusion.",
+   "to": "conversation. The team draws its own conclusions."
+  },
+  {
+   "path": "staff/pd/printables/threads-projects-and-inquiries.md",
+   "from": "The educators' hypothesis, never in a child's voice.",
+   "to": "The educators' hypothesis, written in our own voice."
+  },
+  {
+   "path": "staff/pd/modules/47-emergent-reader.md",
+   "from": "possibilities to notice, never a checklist.",
+   "to": "possibilities to notice, and each child's path is their own."
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "possibilities to notice, never a checklist.",
+   "to": "possibilities to notice, and each child's path is their own."
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "It is part of learning, never something to correct.",
+   "to": "It is part of learning, and it sorts itself out with time."
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "what we see, never to diagnose.",
+   "to": "what we see. We do not diagnose."
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "what we see, never to diagnose.",
+   "to": "what we see. We do not diagnose."
+  },
+  {
+   "path": "staff/pd/modules/48-emergent-mathematician.md",
+   "from": "Each is a window into where the child is, never a mistake to correct.",
+   "to": "Each shows where the child is right now, and none of it needs correcting."
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "Each is a window into where the child is, never a mistake to correct.",
+   "to": "Each shows where the child is right now, and none of it needs correcting."
+  },
+  {
+   "path": "staff/familypieces/together-emergent-mathematician.md",
+   "from": "Each is a window into where your child is, never a mistake to correct.",
+   "to": "Each shows where your child is right now, and none of it needs correcting."
+  },
+  {
+   "path": "staff/pd/modules/49-concepts-of-time.md",
+   "from": "and it is never an expectation.",
+   "to": "and we do not expect it."
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "and it is never an expectation.",
+   "to": "and we do not expect it."
+  },
+  {
+   "path": "staff/familypieces/together-concepts-of-time.md",
+   "from": "and it's never an expectation.",
+   "to": "and we don't expect it."
+  },
+  {
+   "path": "staff/familypieces/potty.md",
+   "from": "Your child should feel proud of successes and never ashamed of accidents.",
+   "to": "Celebrate successes, and meet accidents calmly and without shame."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "what they do with it rather than claim more.",
+   "to": "what they do with it and claim no more."
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "Children come to know them the way they know a familiar path.",
+   "to": "Children come to know them well over the years."
+  },
+  {
+   "path": "staff/pd/printables/planning-the-garden-year.md",
+   "from": "Children come to know them the way they know a familiar path.",
+   "to": "Children come to know them well over the years."
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "Recited numbers are memorized the way a song is.",
+   "to": "Reciting numbers is a memorized sequence."
+  },
+  {
+   "path": "staff/pd/modules/47-emergent-reader.md",
+   "from": "know letters as familiar friends",
+   "to": "know many letters well"
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "know letters as familiar friends",
+   "to": "know many letters well"
+  },
+  {
+   "path": "staff/pd/modules/49-concepts-of-time.md",
+   "from": "the shape of their day",
+   "to": "the order of their day"
+  },
+  {
+   "path": "staff/pd/modules/49-concepts-of-time.md",
+   "from": "into a window on what a child is thinking.",
+   "to": "into a way to see what a child is thinking."
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "the shape of their day",
+   "to": "the order of their day"
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "into a window on what a child is thinking.",
+   "to": "into a way to see what a child is thinking."
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "turns slowly through what is alive in TREE.",
+   "to": "turns slowly through what is current in TREE."
+  },
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "Writing what we saw keeps the door open.",
+   "to": "Writing what we saw keeps other explanations possible."
+  },
+  {
+   "path": "staff/familypieces/together-garden-as-teacher.md",
+   "from": "opens the door to looking closely.",
+   "to": "invites looking closely."
+  },
+  {
+   "path": "staff/pd/modules/33-many-ways-to-read.md",
+   "from": "A story read straight through carries a child into language, rhythm and feeling.",
+   "to": "A story read straight through lets a child take in language, rhythm and feeling."
+  },
+  {
+   "path": "staff/familypieces/together-many-ways-to-read.md",
+   "from": "A story read straight through carries a child into language, rhythm and feeling.",
+   "to": "A story read straight through lets a child take in language, rhythm and feeling."
+  },
+  {
+   "path": "staff/familypieces/together-many-ways-to-read.md",
+   "from": "and let the language carry your child.",
+   "to": "and let your child take in the language."
+  },
+  {
+   "path": "staff/pd/modules/33-many-ways-to-read.md",
+   "from": "Children are carried by the language and the shape of the story.",
+   "to": "Children take in the language and how the story unfolds."
+  },
+  {
+   "path": "staff/pd/modules/33-many-ways-to-read.md",
+   "from": "which are the roots of reading.",
+   "to": "which reading builds on."
+  },
+  {
+   "path": "staff/familypieces/together-many-ways-to-read.md",
+   "from": "all roots of reading.",
+   "to": "all of which reading builds on."
+  },
+  {
+   "path": "staff/pd/modules/33-many-ways-to-read.md",
+   "from": "Illustrations carry their own story,",
+   "to": "Illustrations tell a story of their own,"
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "Culture is a foundation of child development, at the root of who we are.",
+   "to": "Culture is central to child development and to who we are."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "This is the heart of [Seeing Ourselves]",
+   "to": "This is the focus of [Seeing Ourselves]"
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "what we still carry.",
+   "to": "what we still believe."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "family photos carry identity work through the year.",
+   "to": "family photos continue identity work through the year."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "Repair and responsibility carry justice and action into daily life.",
+   "to": "Repair and responsibility bring justice and action into daily life."
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "That is the heart of our Graphic Languages work,",
+   "to": "That is central to our Graphic Languages work,"
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "often lights up when standing",
+   "to": "is often delighted when standing"
+  },
+  {
+   "path": "staff/familypieces/together-looking-together.md",
+   "from": "often lights up standing",
+   "to": "is often delighted standing"
+  },
+  {
+   "path": "staff/pd/modules/40-questions-worth-asking.md",
+   "from": "catch the thread so it can carry into the next meeting.",
+   "to": "note the idea so it can continue at the next meeting."
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "so one week grows into the next.",
+   "to": "so each week builds on the last."
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "which carries the work home.",
+   "to": "which brings the work home."
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "which keeps a long-term project alive.",
+   "to": "which keeps a long-term project going."
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "held up by Environment as the Third Teacher",
+   "to": "supported by Environment as the Third Teacher"
+  },
+  {
+   "path": "staff/familypieces/together-garden-habitat.md",
+   "from": "keeps the question alive.",
+   "to": "keeps you both wondering."
+  },
+  {
+   "path": "staff/familypieces/together-development-and-anti-bias.md",
+   "from": "keeps it alive in daily life",
+   "to": "keeps it part of daily life"
+  },
+  {
+   "path": "staff/pd/modules/48-emergent-mathematician.md",
+   "from": "Math talk weaves easily into the day,",
+   "to": "Math talk fits easily into the day,"
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "Math talk weaves easily into the day.",
+   "to": "Math talk fits easily into the day."
+  },
+  {
+   "path": "staff/familypieces/together-emergent-reader.md",
+   "from": "some of the richest gifts for a future reader.",
+   "to": "some of the best support for a future reader."
+  },
+  {
+   "path": "staff/familypieces/guidebook.md",
+   "from": "Your own curiosity is the gift.",
+   "to": "Your own curiosity is what matters."
+  },
+  {
+   "path": "staff/familypieces/guidebook.md",
+   "from": "Two phrases carry most of the work.",
+   "to": "Two phrases are enough to begin."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "Sonoma County is a world of wonder.",
+   "to": "Sonoma County is full of things to wonder about."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "A park just down the street is a gift. It offers a chance to step out of our routine and into a world of sights, sounds and smells, even if only for an hour.",
+   "to": "A park just down the street offers a break from our routine, with new sights, sounds and smells, even if only for an hour."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "we ground ourselves and our children in the landscape we call home.",
+   "to": "we and our children come to know the landscape we call home."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "Think of the parks list as a book of questions. It is an invitation to practice the art of noticing with your family.",
+   "to": "The parks list is full of questions to explore. It is an invitation to practice noticing with your family."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "and the language of the land.",
+   "to": "and the ways of the land."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "The land rests.",
+   "to": "Many plants slow down for the season."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "The land is a celebration.",
+   "to": "The land is full of color."
+  },
+  {
+   "path": "staff/familypieces/parks.md",
+   "from": "the cool, damp fog is a gift.",
+   "to": "the cool, damp fog brings relief from the heat."
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "the more teachers talked about math",
+   "to": "the more educators talked about math"
+  }
+ ]
+}
