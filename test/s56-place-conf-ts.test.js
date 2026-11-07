@@ -72,3 +72,15 @@ test('one observation counts for two DRDP measures at most, and the printed DRDP
   assert.doesNotMatch(tree, /label:"Compare every level"/);
   assert.match(tree, /Compare every level of/, 'it stays on screen');
 });
+
+test('forty more books arrive as drafts for the director to vet, each a new page with its reading guide', () => {
+  const d = JSON.parse(fs.readFileSync(path.join(ROOT, 'once/s48-more-books.json'), 'utf8'));
+  assert.equal(d.changes.length, 40);
+  const paths = new Set();
+  for (const c of d.changes) {
+    assert.match(c.path, /^staff\/library\/books\/[a-z0-9-]+\.md$/); assert.ok(!paths.has(c.path)); paths.add(c.path);
+    assert.match(c.create, /^<!--\nlibrary: book\nauthor: .+\nowned: no\nstatus: draft\n/); assert.match(c.create, /\n## Why we chose it\n\n.+\n\n## Kind of reading\n/); assert.match(c.create, /- I wonder .+\./);
+    assert.doesNotMatch(c.create, /[—–]/, 'no dashes');
+  }
+  assert.match(fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8'), /ONCE\.push\(\['s48Books'/);
+});
