@@ -1914,9 +1914,13 @@ A sentence that describes what happened stays. A sentence that does both stays. 
 ${spans.map((p, i) => `${i + 1}. ${p.text}`).join('\n')}
 Reply with only JSON like {"wonder":[3],"why":""} where wonder holds the numbers of the sentences that move, an empty list when none does, and why is one plain short sentence in educator language saying which sentences read as wondering and why, with no colons and no dashes.`;
   let out = null;
-  const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 300 });
+  // the quick model may think before it answers, so the answer has room for that and the short JSON after it
+  const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 });
   if (res.status !== 200) throw new Error('not answered, ' + res.status);
-  try { const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join(''); out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { throw new Error('could not be read'); }
+  let m = null, txt = '';
+  try { m = JSON.parse(res.text); txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join(''); out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); }
+  // why an answer could not be read, its stop reason and length, never its words
+  catch (e) { throw new Error(`could not be read, stopped by ${(m && m.stop_reason) || 'unknown'}, ${txt.length} characters`); }
   const idx = [...new Set((Array.isArray(out && out.wonder) ? out.wonder : []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= spans.length).map(n => n - 1))].sort((a, b) => a - b);
   if (!idx.length || idx.length >= spans.length) return null;
   return Object.assign({ wonderIdx: idx, why: sortWhyClean(out.why) }, applySort(text, idx));
@@ -1965,20 +1969,24 @@ async function sortOne(id, mode) {
 // the night's pass over older observations with no wonder, up to a couple of hundred, each asked once
 async function nightlySortPass() {
   if (!store.ready || store.partial) return null;
-  const counts = { looked: 0, asked: 0, offered: 0, none: 0 };
+  const counts = { looked: 0, asked: 0, offered: 0, none: 0, failed: 0, given: 0 };
   const todo = [];
   for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d) continue;
     if (!sortEnough(d) || d.sorted || d.sortOffer || d.sortDismissed || d.sortChecked) continue; counts.looked++; todo.push(id); }
   const take = todo.sort((a, b) => ((store.recs.notices.get(b).doc.at || 0) - (store.recs.notices.get(a).doc.at || 0))).slice(0, SORT_NIGHT_CAP);
   if (anthropicKey()) for (const id of take) {
     const d = store.recs.notices.get(id).doc; const text = d.noticed;
-    let r; try { r = await sortNoticed(text); } catch (e) { log('Nightly sort pass, an observation was not answered,', e.message); if (/allowance/.test(e.message)) break; continue; }
+    // an observation whose answer could not be read twice is left as it is, so the same ones are not asked every night
+    let r; try { r = await sortNoticed(text); } catch (e) { log('Nightly sort pass, an observation was not answered,', e.message); if (/allowance/.test(e.message)) break; counts.failed++;
+      if (/could not be read/.test(e.message)) { d.sortTries = (d.sortTries || 0) + 1; if (d.sortTries >= 2) { d.sortChecked = Date.now(); counts.given++; } keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id); }
+      continue; }
     counts.asked++;
     if (d.noticed !== text || String(d.wonder || '').trim()) continue;
+    delete d.sortTries;
     if (r) { d.sortOffer = { wonderIdx: r.wonderIdx, why: r.why, at: Date.now() }; counts.offered++; } else { d.sortChecked = Date.now(); counts.none++; }
     keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id);
   }
-  log(`Nightly sort pass, ${counts.looked} observations with no wonder, ${counts.asked} read, ${counts.offered} offered a sort, ${counts.none} left as they are`);
+  log(`Nightly sort pass, ${counts.looked} observations with no wonder, ${counts.asked} read, ${counts.offered} offered a sort, ${counts.none} left as they are${counts.failed ? `, ${counts.failed} not answered, ${counts.given} of them given up after two tries` : ''}`);
   return counts;
 }
 // Yes, No and Put it back on one observation, and the director's Accept all for a class

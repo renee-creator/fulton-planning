@@ -153,10 +153,15 @@ test('the Idea bank in TREE', async t => {
     assert.deepStrictEqual(d.ibNeeds, ['Knocking down and changing things (transformation schema)']); assert.deepStrictEqual(d.ibSys, { 'Listening and sound (auditory)': 'avoid' }); assert.strictEqual(d.ibMode, 'avoid');
     assert.match(await s.p.evaluate(() => document.querySelector('[data-ibiqtry]').closest('.prow').innerText), /Can feed|Supports/);
     await s.close();
-    // an educator reads the pickers, and the team's choice to try a card is added and kept
+    // seeing TREE as an educator, the director only reads the pickers, since nothing is saved that way
+    const v = await signedIn(fx, br, 'Dee', 'director-pass-1', 1280, { name: 'Ann', room: 'West' });
+    await v.p.evaluate(async () => { await ibLoad(); openInquiry('q1'); }); await v.p.waitForSelector('[data-ibiqneed]', { timeout: 15000 });
+    assert.ok(await v.p.evaluate(() => document.querySelector('[data-ibiqneed]').disabled), 'seeing TREE as an educator only reads the pickers');
+    await v.close();
+    // every educator writes a team inquiry, so an educator changes the pickers too, and the team's choice to try a card is added and kept
     const a = await signedIn(fx, br, 'Ann', '1357', 1280);
     await a.p.evaluate(async () => { await ibLoad(); openInquiry('q1'); }); await a.p.waitForSelector('[data-ibiqtry]', { timeout: 15000 });
-    assert.ok(await a.p.evaluate(() => document.querySelector('[data-ibiqneed]').disabled), 'educators read the pickers');
+    assert.ok(await a.p.evaluate(() => !document.querySelector('[data-ibiqneed]').disabled), 'educators change the pickers');
     const id = await a.p.evaluate(() => document.querySelector('[data-ibiqtry]').dataset.ibiqtry);
     assert.strictEqual(await a.p.evaluate(() => (inquiries.get('q1').tries || []).length), 0, 'nothing is added unless the team chooses');
     await a.p.click(`[data-ibiqtry="${id}"]`);
