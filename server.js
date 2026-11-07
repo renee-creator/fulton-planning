@@ -2015,8 +2015,10 @@ setInterval(() => { if (nightlyDue()) nightlyPass().catch(e => log('Nightly pass
    place is read from its words, its Kaymbu subject, its small group's signed-up space on the plan it was kept for, the
    weekly bin it came with, and the calendar sign-up of its class that day. A thread's place is the places of its
    observations and a project's the places of its threads, worked out when asked and never stored. */
+// a calendar space booked for a large group, such as Large group, Tire swing yard, is the place itself, Tire swing yard
+const tidyPlace = n => { const t = String(n || '').trim().replace(/^large group,?\s*/i, ''); return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''; };
 function sitePlaces() {
-  const out = new Map(); const add = (name, words) => { const n = String(name || '').trim(); if (!n) return; const k = n.toLowerCase(); if (!out.has(k)) out.set(k, { name: n, words: new Set() }); for (const w of words || []) { const x = String(w || '').toLowerCase().trim(); if (x.length >= 3) out.get(k).words.add(x); } };
+  const out = new Map(); const add = (name, words) => { const n = tidyPlace(name); if (!n) return; const k = n.toLowerCase(); if (!out.has(k)) out.set(k, { name: n, words: new Set() }); for (const w of words || []) { const x = String(w || '').toLowerCase().trim(); if (x.length >= 3) out.get(k).words.add(x); } };
   const prog = (store.recs.settings.get('program') || {}).doc || {};
   for (const p of Array.isArray(prog.places) ? prog.places : []) add(p, [p]);
   try { for (const s of calendar.spaces()) add(s.name, [s.name]); } catch (e) {}
@@ -2056,11 +2058,12 @@ async function placeOfWithCalendar(obs) {
   const found = placeOf(obs);
   try { if (obs && obs.at && obs.by && calendar.ready) { const day = laDayOf(obs.at); const c = await Promise.race([calendar.today({ director: false, name: obs.by }, day, day), new Promise(r => setTimeout(() => r(null), 4000))]);
     const sp = new Map(calendar.spaces().map(s => [s.id, s.name])); const who = nameKey(obs.by);
-    for (const b of (c && c.bookings) || []) if (b && nameKey(b.by) === who) { const n = sp.get(b.spaceId); if (n && !found.includes(n)) found.push(n); } } } catch (e) {}
+    for (const b of (c && c.bookings) || []) if (b && nameKey(b.by) === who) { const n = tidyPlace(sp.get(b.spaceId)); if (n && !found.includes(n)) found.push(n); } } } catch (e) {}
   return found.slice(0, 4);
 }
 // an observation's place is written the moment it is kept, once its words have settled, and never typed by anyone
-function placeSoon(id) { setTimeout(async () => { const r = store.recs.notices.get(id); const d = r && !r.deleted && r.doc; if (!d) return;
+// a place chosen by hand stays as it was chosen, and TREE never reads it again (November 6, 2026)
+function placeSoon(id) { setTimeout(async () => { const r = store.recs.notices.get(id); const d = r && !r.deleted && r.doc; if (!d || d.placeSet) return;
   try { const pl = await placeOfWithCalendar(d); if (JSON.stringify(pl) === JSON.stringify(d.place || [])) return; d.place = pl; noteChange('notices', id); scheduleSave('notices', id); } catch (e) { log('Place not read for', id, e.message); } }, 1500).unref(); }
 function threadPlace(t) { const out = []; const ids = new Set((t && t.evidence || []).map(e => e && (e.planId || e.id)).filter(Boolean));
   for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; if (!d || !(d.threadId === t.id || ids.has(id))) continue; for (const pl of Array.isArray(d.place) ? d.place : placeOf(d)) if (!out.includes(pl)) out.push(pl); }
@@ -3044,6 +3047,10 @@ async function handle(req, res) {
     // conference notes reach a family only when the director or the office shares them, the same check the Family page
     // makes, so an educator's save never shares notes or takes them away
     // conference notes are never shared with families, so nobody's save can mark them shared
+    // an observation's place is written by TREE or chosen through Change the place, so no other save changes it
+    if (kind === 'notices' && op !== 'delete') { const PL = ['place', 'placeSet'];
+      if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of PL) delete body.patch[k]; }
+      if (body.data && typeof body.data === 'object' && cur && !cur.deleted) { body.data = Object.assign({}, body.data); for (const k of PL) { if (cur.doc[k] !== undefined) body.data[k] = cur.doc[k]; else delete body.data[k]; } } }
     if (kind === 'conferences') {
       const SH = ['sharedWithFamily', 'sharedAt'];
       if (body.patch && typeof body.patch === 'object') { body.patch = Object.assign({}, body.patch); for (const k of SH) delete body.patch[k]; }
@@ -3258,6 +3265,16 @@ async function handle(req, res) {
   if (path === '/api/projects/observations') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
     const pr = store.recs.projects.get(String(body.id || '')); const x = pr && !pr.deleted && pr.doc; if (!x) { err(req, res, 404, 'That project is not here.'); return; }
     json(req, res, 200, { id: x.id, ids: projectNotices(x).map(n => n.id), place: projectPlace(x) }); return; }
+  /* the places an observation can be set to, and setting them by hand. The educator who kept the observation and the
+     director choose from the site's places, up to four. Asked with no id, it lists the places. */
+  if (path === '/api/notices/place') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
+    const names = [...new Set(sitePlaces().map(p => p.name))].sort((a, b) => a.localeCompare(b));
+    if (!body.id) { json(req, res, 200, { places: names }); return; }
+    const id = String(body.id); const r = store.recs.notices.get(id); const d = r && !r.deleted && r.doc; if (!d) { err(req, res, 404, 'That observation is not here.'); return; }
+    if (!isDirector(me.name) && ![d.by, d.keptBy].some(n => n && nameKey(n) === nameKey(me.name))) { err(req, res, 403, 'The educator who kept this observation, or the director, changes its place.'); return; }
+    const want = [...new Set((Array.isArray(body.place) ? body.place : []).map(x => tidyPlace(x)).filter(x => names.includes(x)))].slice(0, 4);
+    d.place = want; d.placeSet = { by: me.name, at: Date.now() }; noteChange('notices', id); scheduleSave('notices', id); log('Place set by hand for', id, 'by', me.name);
+    json(req, res, 200, { id, place: d.place, placeSet: d.placeSet }); return; }
   // where a thread or a project happens, read from its observations
   if (path === '/api/place') { if (kitchenOnly) { err(req, res, 403, 'This is not open here.'); return; }
     const kind = String(body.kind || ''), id = String(body.id || ''); const r = (kind === 'threads' || kind === 'projects' || kind === 'notices') && store.recs[kind].get(id); const d = r && !r.deleted && r.doc;

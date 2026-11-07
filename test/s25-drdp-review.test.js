@@ -6,9 +6,10 @@ const assert = require('node:assert');
 const fs = require('fs'), path = require('path');
 const { start, browser, signedIn } = require('./fixture.js');
 
+// one observation counts for two measures at most, so Pip's third comes from another observation (November 6, 2026)
 const sug = (code, level, at) => ({ code, level, view: 'ptk', status: 'suggested', at, evidence: 'Built a tall tower and tried again when it fell.', src: { kind: 'notices', id: 'n1', title: 'Block tower', at } });
 const more = put => {
-  put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', birthdate: '2022-03-01', drdp: { items: { a1: sug('ATL 1', 'Building Earlier', 3), a2: sug('ATL 2', 'Building Earlier', 2), a3: sug('ATL 3', 'Building Middle', 1) } } });
+  put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', birthdate: '2022-03-01', drdp: { items: { a1: sug('ATL 1', 'Building Earlier', 3), a2: sug('ATL 2', 'Building Earlier', 2), a3: Object.assign(sug('ATL 3', 'Building Middle', 1), { src: { kind: 'notices', id: 'n2', title: 'Ramps', at: 1 } }) } } });
   put('children/ivy.json', { first: 'Ivy', last: 'Test', classroom: 'West', status: 'active', birthdate: '2022-05-01', drdp: { items: { b1: sug('ATL 1', 'Building Middle', 1), b2: sug('ATL 2', 'Building Middle', 2) } } });
   put('children/oak.json', { first: 'Oak', last: 'Test', classroom: 'North', status: 'active', birthdate: '2022-05-01', drdp: { items: { c1: sug('ATL 1', 'Building Middle', 1) } } });
 };

@@ -202,8 +202,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
     if(b.dataset.idea!=null){ideaSel=b.dataset.idea;render();window.scrollTo(0,0);return}
     const c=ideaCard(ideaSel);if(!c)return;const name=c.title.replace(/[^A-Za-z0-9 ,'-]/g,"").trim()||"Idea";
     try{if(b.dataset.ideaprint==="word")ideaSave(await ideaWord(c),name+".docx");else ideaPreview(await ideaPdf(c),name+".pdf")}catch(er){alert("The page could not be made. Check the connection and try again.")}});
-  function slotList(k){if(!k.slots.length)return `<p class="small muted" style="margin:4px 0 0">No times are open right now. The school will let you know when they are.</p>`;
-    const byDay={};k.slots.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
+  function slotList(k,list){list=list||k.slots;if(!list.length)return `<p class="small muted" style="margin:4px 0 0">No times are open right now. The school will let you know when they are.</p>`;
+    const byDay={};list.forEach(s=>(byDay[s.date]=byDay[s.date]||[]).push(s));
     return Object.entries(byDay).map(([d,ss])=>`<div class="slotday"><div class="small"><b>${esc(day(d))}</b></div><div class="slots">${ss.map(s=>`<button class="slot ${s.mine?"on":""}" data-book="${esc(s.id)}" data-kid="${esc(k.id)}" ${s.mine?'aria-pressed="true"':""}>${esc(time(s.time))}${s.with?`<span class="small"> · ${esc(s.with)}</span>`:""}</button>`).join("")}</div></div>`).join("")}
   function welcomeHtml(){const ks=D.children.filter(k=>k.isNew);
     return `<section class="card"><h2>Welcome to Fulton Community School</h2><details class="letter" ${LS.get("fam-letter")||!D.children.some(k=>k.isNew)?"":"open"}><summary>Our welcome letter</summary><div class="md">${md(D.welcome)}</div></details></section>`+
@@ -225,8 +225,8 @@ details>summary{cursor:pointer;font-weight:700}.shared{margin-top:8px}.shared h3
 </section>`}).join("")}
   function kidsHtml(){return D.children.map(k=>{const c=k.conference;let h=`<section class="card"><h2>${esc(k.first)}</h2>`;
       if(k.aboutMe)h+=`<div class="sub"><div class="top"><b>All About Me book</b><button class="link small" data-form="aam|${esc(k.id)}">${k.aboutMe.at?"Open it":"Make it"}</button></div><div class="small muted">${k.aboutMe.done?esc(T("All About Me book, made",{pages:k.aboutMe.pages.length,first:k.first})):esc(T("All About Me book, on a child's page"))}</div></div>`;
-      h+=`<div class="sub"><b>Family conference</b>${c?`<div>${esc(day(c.date))}${c.time?" at "+esc(time(c.time)):""}${c.with?" with "+esc(c.with):""}${c.format?" · "+esc(c.format):""}</div>`:`<div class="small muted">${k.slotPurpose==="conference"?"Choose a time below.":"Not scheduled yet. The school will let you know when sign-ups open."}</div>`}
-        ${k.slotPurpose==="conference"?`<div style="margin-top:6px">${slotList(k)}</div>`:""}</div>`;
+      h+=`<div class="sub"><b>Family conference</b>${c?`<div>${esc(day(c.date))}${c.time?" at "+esc(time(c.time)):""}${c.with?" with "+esc(c.with):""}${c.format?" · "+esc(c.format):""}</div>`:`<div class="small muted">${k.slotPurpose==="conference"||(k.confSlots||[]).length?"Choose a time below.":"Not scheduled yet. The school will let you know when sign-ups open."}</div>`}
+        ${k.slotPurpose==="conference"?`<div style="margin-top:6px">${slotList(k)}</div>`:(k.confSlots||[]).length?`<div style="margin-top:6px">${slotList(k,k.confSlots)}</div>`:""}</div>`;
       // once the family sends their thoughts the box closes, and it opens again for the next conference
       if(k.reflections){const open=openRefl===k.id;const sent=!!k.reflectedAt;
         h+=`<div class="sub"><div class="top"><b>Before the conference</b>${open?`<button class="link small" data-refl="${esc(k.id)}">Close</button>`:sent?`<button class="link small" data-refl="${esc(k.id)}">Change</button>`:""}</div>
