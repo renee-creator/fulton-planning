@@ -356,3 +356,46 @@ function ideaShare(c){if(!c.home){toast("Only a card with an At home side can be
   shareSt={id:"post"+Date.now().toString(36),status:"draft",createdAt:Date.now(),src,one:true,pick:"",ids:ns.map(n=>n.id),off:[],add:[],titleOn:true,title:c.title,linesOn:false,menuOn:false,farmsOn:false,lines:{},quote:"",quotePhoto:"none",wordsOn:false,words:{},cardsOn:true,cards:P.cards,caption:P.caption,tags:P.tags,at:Date.now()};
   shareSave();goView("share");shareCheckFaces()}
 window.TREE_IDEA_SHARE=id=>{const c=ibCard(id);if(c)ideaShare(c)};
+
+/* ---------- ideas suggested from what the team wrote ----------
+   Inside What we will try, TREE reads the inquiry's own words, what we are seeing, when and where, the guesses, what was tried
+   and what happened, with its observations and threads, and suggests four or five Idea bank cards, each with one line on why it
+   connects to this child. A card already tried stays in the list with when it was tried, since a strategy is often tried again.
+   Nothing is added unless the team taps We'll try this. The suggestions are kept with the inquiry until its words change
+   (November 6, 2026). */
+const ibSugBusy={};
+function ibSugText(x){return [x.name,x.see,x.whenwhere,x.relation,...(x.hyps||[]).filter(h=>!h.aside).map(h=>h.text),...(x.tries||[]).map(o=>[o.text,o.result].filter(Boolean).join(". ")),x.watch].filter(t=>String(t||"").trim()).join("\n")}
+function ibSugKey(x){const s=ibSugText(x);let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return String(h)}
+async function ibSuggest(x){if(!ib||ibSugBusy[x.id]||typeof askRead!=="function"||!sample)return;const words=ibSugText(x).trim();if(words.length<20)return;
+  ibSugBusy[x.id]=true;const key=ibSugKey(x);
+  try{const cards=ibCards().map(c=>`${c.id} | ${c.title} | ${String(c.summary||"").slice(0,90)}`).join("\n");
+    const evid=typeof inqDigest==="function"?inqDigest(x).slice(0,6000):"";
+    const prompt=`You are helping the team at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, choose possibilities to try for a team inquiry. A team inquiry is how the team reflects on its own practice and on a child's development. It is never about labeling or fixing a child. Our guidance is relationship-based, positive discipline, connection first, with changes the adults make to the day, the space and the transitions, and guiding with the children. Never suggest time-out, rewards, punishment or leaving a child out.
+Choose four or five Idea bank cards from the list below that could help, the clearest first. A card the team has already tried may be chosen again when it still fits, since a strategy often needs to be tried again or offered differently. For each, write one sentence on why it connects to what the team wrote about this child, using only what is written below. Write in plain, warm, professional language, call adults educators, never use em dashes or colons, and never label a child.
+Return only JSON {"ideas":[{"id":"a card id from the list","why":"one sentence"}]}
+
+What the team wrote.
+${words}
+${evid?"\nThe evidence.\n"+evid:""}
+
+The Idea bank cards, id | title | what it is.
+${cards}`;
+    const out=await askRead(prompt,{purpose:"ideas",cache:false});
+    const items=(Array.isArray(out&&out.ideas)?out.ideas:[]).filter(i=>i&&ibCard(String(i.id||"").trim())).slice(0,5).map(i=>({id:String(i.id).trim(),why:String(i.why||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,". ").trim()}));
+    x.ibSug={key,at:Date.now(),items};if(typeof saveInquiry==="function")saveInquiry(x);if(view==="inquiries"&&typeof renderMain==="function")renderMain()}
+  catch(e){x.ibSug={key,at:Date.now(),items:[],failed:true};if(view==="inquiries"&&typeof renderMain==="function")renderMain()}
+  finally{ibSugBusy[x.id]=false}}
+function ibSuggestHtml(x){if(!ib){ibLoad();return ""}if(typeof planResOk==="function"&&!planResOk())return "";
+  const fresh=x.ibSug&&x.ibSug.key===ibSugKey(x),dir=isDirector()&&!VIEW_AS;
+  if(!fresh&&dir&&!ibSugBusy[x.id]&&ibSugText(x).trim().length>=20)setTimeout(()=>ibSuggest(x),0);
+  if(ibSugBusy[x.id]&&!fresh)return `<div class="ref"><div class="lbl">Ideas from what we wrote</div><div class="cnt"><span class="spin"></span> Reading the inquiry</div></div>`;
+  const items=(x.ibSug&&x.ibSug.items)||[];if(!items.length)return "";
+  const triedAt=id=>(x.tries||[]).filter(o=>o.idea===id).map(o=>o.at).filter(Boolean).sort((a,b)=>b-a)[0];
+  return `<div class="ref"><div class="lbl">Ideas from what we wrote</div><div class="hint">Suggested from this inquiry's own words. The team decides what to try.</div>
+    ${items.map(i=>{const c=ibCard(i.id);if(!c)return "";const t=triedAt(c.id);return ibRowHtml({card:c,why:i.why+(t?" Tried "+shortDate(t)+".":""),tips:[]},()=>VIEW_AS?"":`<button class="btn small" data-ibsugtry="${esc(c.id)}">${t?"Try it again":"We'll try this"}</button>`)}).join("")}</div>`}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-ibsugtry]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const c=ibCard(t.dataset.ibsugtry);if(!c)return;const i=((x.ibSug&&x.ibSug.items)||[]).find(y=>y.id===c.id);
+  const key=x.ibSug&&x.ibSug.key;x.tries=[...(x.tries||[]),{id:uid(),text:c.title+", from the Idea bank."+(i&&i.why?" "+i.why:""),idea:c.id,by:whoAmI(),at:Date.now(),curriculum:false,result:""}];
+  // adding a try changes the inquiry's words, and the suggestions stay as they were until the team writes more
+  if(x.ibSug)x.ibSug.key=ibSugKey(x);saveInquiry(x);renderMain();toast("Added to What we will try.")});

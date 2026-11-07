@@ -10555,6 +10555,7 @@ function renderInquiry(x){
   h+=ibInquiryHtml(x);
   h+=`<section class="card"><div class="lbl">What we will try</div>
     <details class="helpme"><summary>What belongs here</summary><div class="hint">Guided by relationship-based, positive discipline. Connection first, such as time with an educator the child trusts. Changes the adults make, to a transition, the space, the warning, a role a child is given or who goes with them. Guiding with the children, through a meeting time conversation where they help decide an expectation and hear why it matters, or support for peers solving a problem together. Never a time-out or a punishment. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div></details>
+    ${typeof ibSuggestHtml==="function"?ibSuggestHtml(x):""}
     ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${o.idea?`<div class="actions" style="margin:0"><button class="linkbtn" data-ibopen="${esc(o.idea)}">Open the card in the Idea bank</button></div>`:""}${iqAssistHtml(x,"try:"+o.id)}
       <label class="cnt"><input type="checkbox" data-iqtcur="${esc(o.id)}" ${o.curriculum?"checked":""}> Part of the curriculum</label>
       <textarea data-iqt="${o.id}|result" rows="1" placeholder="What happened when we tried it">${esc(o.result||"")}</textarea>
