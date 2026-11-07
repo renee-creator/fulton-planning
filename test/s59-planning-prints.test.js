@@ -68,7 +68,7 @@ test('the planning resources prints keep to their pages and read as sentences', 
   assert.ok(r.season['What we harvest'].includes('Mullein, in flower for the pollinators'));
   assert.ok(r.season['What we harvest'].includes('Roses, partly edible, the part an adult names'));
   assert.ok(!JSON.stringify(r.season).includes('to gather for'), 'no "to gather for pollinator"');
-  assert.ok(r.season['What we preserve'].some(x => /is for looking, never eating/.test(x)));
+  assert.ok(r.season['What we preserve'].some(x => /is for looking only/.test(x)));
   assert.ok(r.ra.big && r.ra.n === 14 && r.ra.pages >= 2, 'a long story is set large, its pages as paragraphs');
   assert.ok(r.short.one && r.short.steps === 6);
   assert.deepStrictEqual(r.bookG, ['I wonder how the dog feels.'], 'a bare I notice is left out');
