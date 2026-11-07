@@ -12669,7 +12669,7 @@ async function halfSheets(docs,name){
   let L;try{L=await TREE_KIT.pdfLib()}catch(e){toast("The PDF tool did not load.");return}
   const src=await L.PDFDocument.load(await blob.arrayBuffer());const out=await L.PDFDocument.create();const pages=await out.embedPages(src.getPages());
   const H=TREE_KIT.SIZES.half;
-  for(let i=0;i<pages.length;i+=2){const sh=out.addPage([H.h,H.w]);for(const k of [0,1]){const pg=pages[i+k];if(!pg)continue;const s=Math.min(H.w/pg.width,H.h/pg.height);sh.drawPage(pg,{x:k*H.w+(H.w-pg.width*s)/2,y:(H.h-pg.height*s)/2,xScale:s,yScale:s})}}
+  for(let i=0;i<pages.length;i+=2){const sh=out.addPage([2*H.w,H.h]);for(const k of [0,1]){const pg=pages[i+k];if(!pg)continue;const s=Math.min(H.w/pg.width,H.h/pg.height);sh.drawPage(pg,{x:k*H.w+(H.w-pg.width*s)/2,y:(H.h-pg.height*s)/2,xScale:s,yScale:s})}}
   out.setTitle(name);out.setCreator("Fulton Community School");out.setProducer("TREE");
   await saveFile(new Blob([await out.save()],{type:"application/pdf"}),safeFile(name)+".pdf")}
 // a thread's sheets for the classroom. Each photo observation with the children's words on it, as the wall shows a moment
@@ -15315,7 +15315,10 @@ function enrollReadHtml(d){const rows=Object.entries(d).filter(([k,v])=>v!==""&&
 async function enrollPacket(c){
   const ef=c.enrollForm;if(!ef){toast("The family has not typed the enrollment information yet.");return}
   toast("Filling in the forms…");if(!window.fillEnrollForms)await loadScript("enroll-forms.js","fillEnrollForms");
-  const pa=(c.parents||[]).find(p=>p&&has(p.email));const bytes=await window.fillEnrollForms(ef.data||{},{agreement:c.familyAgreement||null,enrollDate:c.enrollDate||"",classroom:c.classroom||"",schedule:c.schedule||"",email:pa?pa.email:"",aa:(ptCfg().aa)||{}});if(!(c.onboarding||{}).printed)db.doc("children/"+c.id).update({onboarding:Object.assign({},c.onboarding||{},{printed:true})}).catch(()=>{});
+  // the agreement's terms come from staff/wording/agreement.md, read again when the page opened before the records were ready
+  if(!(wordsDoc("agreement").parts||[]).length){try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}}
+  if(!(wordsDoc("agreement").parts||[]).some(p=>/^page1 /.test(p.key))){toast("The admission agreement's terms have not loaded yet. Try again in a minute.");return}
+  const pa=(c.parents||[]).find(p=>p&&has(p.email));const bytes=await window.fillEnrollForms(ef.data||{},{agreementWords:wordsDoc("agreement"),agreement:c.familyAgreement||null,enrollDate:c.enrollDate||"",classroom:c.classroom||"",schedule:c.schedule||"",email:pa?pa.email:"",aa:(ptCfg().aa)||{}});if(!(c.onboarding||{}).printed)db.doc("children/"+c.id).update({onboarding:Object.assign({},c.onboarding||{},{printed:true})}).catch(()=>{});
   const blob=new Blob([bytes],{type:"application/pdf"});saveFile(blob,`Enrollment forms ${kidName(c)}.pdf`);toast("The forms are ready to print.")}
 // a signed admission agreement is reopened by the office when something needs to change. The signed version is kept.
 document.addEventListener("click",e=>{const b=e.target.closest("[data-agreopen]");if(!b)return;if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const c=children.get(b.dataset.agreopen);if(!c||!c.familyAgreement)return;

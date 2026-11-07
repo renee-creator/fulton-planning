@@ -663,7 +663,7 @@ function printBlocks(body){const out=[];const lines=String(body||"").split("\n")
     if(/^\s*\d+\.\s+/.test(l)){const items=[];while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){items.push(strip(lines[i].replace(/^\s*\d+\.\s+/,"")));i++}out.push({t:"list",label:"",items,numbered:true});continue}
     if(/^\s*#{3,}\s+/.test(l)){out.push({t:"sub",text:strip(l.replace(/^\s*#+\s+/,""))});i++;continue}
     if(!l.trim()){i++;continue}
-    const para=[];while(i<lines.length&&lines[i].trim()&&!/^\s*([-*]|\d+\.|\||#{3,})\s*/.test(lines[i])){para.push(lines[i].trim());i++}out.push({t:"text",label:"",text:strip(para.join(" "))})}
+    const para=[];while(i<lines.length&&lines[i].trim()&&!/^\s*(\||[-*]\s|\d+\.\s|#{3,}\s)/.test(lines[i])){para.push(lines[i].trim());i++}out.push({t:"text",label:"",text:strip(para.join(" "))})}
   return out}
 // a card or a sign prints centred, each "**Label.** words" paragraph as a part with its small label, and a sheet keeps the full page
 function cardBlocks(body){if(/^\s*\|/m.test(String(body||"")))return printBlocks(body);const out=[];
