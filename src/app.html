@@ -10550,7 +10550,7 @@ function renderInquiry(x){
     ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier guesses, set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${esc(o.id)}">Bring back</button></span></div>`).join("")}</div></details>`:""}
     <label class="cnt" style="margin-top:8px">Read it through a lens <select data-iqlens="1" style="width:auto"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${x.lensId===l.id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></label>
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
-      <div class="actions"><button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
+      <div class="actions">${isDirector()&&!VIEW_AS?(typeof ibBusyMap!=="undefined"&&ibBusyMap[x.id+"lens"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-iblensdraft="1">Draft from the evidence</button>`):""}<button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
   h+=ibInquiryHtml(x);
   h+=`<section class="card"><div class="lbl">What we will try</div>

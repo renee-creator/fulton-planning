@@ -4927,7 +4927,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="480f9606f8c0";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="c9a56b38dc40";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6584,7 +6584,8 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
   const triedHtml=before.length?`<section class="card"><div class="lbl">What we tried before this inquiry</div><div class="hint">The first steps the class tried and wrote down under What are you seeing?</div>
     ${before.map(t=>`<div class="pdir"><b>${esc(t.step)}</b>${has(t.happened)?`<div>${esc(t.happened)}</div>`:""}<div class="cnt">${esc([t.room?t.room+" class":"",t.by,t.at?shortDate(t.at):""].filter(has).join(", "))}</div></div>`).join("")}</section>`:"";
   const devHtml=`<section class="card"><div class="lbl">Could this fit this child's age and stage (developmental stage)?</div><div class="hint">Think about development first. ${esc(IB_DEV_NOTE)}</div>
-    ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}${IB_WHEEL}</section>`;
+    ${typeof ibAgeHtml==="function"?ibAgeHtml(x):""}
+    ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea><div class="actions">${ibBusyMap[x.id+"dev"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-ibdevdraft="1">Draft from the evidence</button>`}</div>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}${IB_WHEEL}</section>`;
   return `${triedHtml}${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
     <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
@@ -6666,6 +6667,67 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-ibsugtry]"
   const key=x.ibSug&&x.ibSug.key;x.tries=[...(x.tries||[]),{id:uid(),text:c.title+", from the Idea bank."+(i&&i.why?" "+i.why:""),idea:c.id,by:whoAmI(),at:Date.now(),curriculum:false,result:""}];
   // adding a try changes the inquiry's words, and the suggestions stay as they were until the team writes more
   if(x.ibSug)x.ibSug.key=ibSugKey(x);saveInquiry(x);renderMain();toast("Added to What we will try.")});
+
+/* ---------- age and stage in a team inquiry ----------
+   Each child from the inquiry's observations, with their age and class, and what we typically see at that age from The
+   Growing Child in our PD, read from the module so it changes when the module does. A draft of the team's note can be made
+   from the observations and that part of the module, for the team to edit (November 6, 2026). */
+let ibGrow=null,ibGrowAsked=false;const ibBusyMap={};
+async function ibGrowLoad(){if(ibGrow||ibGrowAsked||!window.FP_API)return;ibGrowAsked=true;
+  try{const j=await window.FP_API("/api/staff/g/modules",{});const m=(j&&j.modules&&j.modules.development)||null;const secs=(m&&m.depth&&m.depth.sections)||[];
+    const reading=(secs.find(s=>/^reading$/i.test(s.heading))||{}).body||"";const subs=reading.split(/^###\s+/m).slice(1).map(s=>{const i=s.indexOf("\n");return {h:s.slice(0,i).trim(),b:s.slice(i+1).trim()}});
+    ibGrow={subs};if(view==="inquiries"&&typeof renderMain==="function")renderMain()}catch(e){ibGrow={subs:[]}}}
+function ibGrowFor(months){if(!ibGrow||months==null)return [];const out=[];
+  for(const s of ibGrow.subs){const a=s.h.match(/ages\s+(\d+)\s+to\s+(\d+)(\s+and older)?/i);if(!a)continue;const lo=+a[1]*12,hi=a[3]?999:+a[2]*12-1;if(months>=lo&&months<=hi){out.push(s);break}}
+  if(months>=42&&months<=54){const f=ibGrow.subs.find(s=>/social shift at four/i.test(s.h));if(f)out.push(f)}
+  return out}
+// a markdown table from the module as a plain table, other lines as the guide's own formatting
+function ibGrowMd(t){const L=String(t||"").split("\n");let out="",rows=[];const flush=()=>{if(!rows.length)return;const cells=r=>r.replace(/^\s*\||\|\s*$/g,"").split("|").map(c=>c.trim());const body=rows.filter(r=>!/^\s*\|?\s*-{3}/.test(r));
+    out+=`<table class="ibgrow" style="width:100%;border-collapse:collapse;margin:6px 0">${body.map((r,i)=>`<tr>${cells(r).map(c=>i?`<td style="vertical-align:top;padding:4px 6px;border-top:1px solid var(--line)">${esc(c).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")}</td>`:`<th style="text-align:left;padding:4px 6px">${esc(c)}</th>`).join("")}</tr>`).join("")}</table>`;rows=[]};
+  let txt=[];const flushTxt=()=>{if(txt.length){out+=guideMd(txt.join("\n"));txt=[]}};
+  for(const l of L){if(/^\s*\|/.test(l)){flushTxt();rows.push(l)}else{flush();txt.push(l)}}flush();flushTxt();return out}
+// the part of a section on what we typically see, or its opening when it has none
+function ibGrowPart(s){const m=s.b.match(/\*\*What we typically see[^*]*\*\*\s*\n([\s\S]*?)(?=\n\*\*[^*\n]+\*\*\s*\n|$)/i);const lead=s.b.split(/\n\s*\n/)[0];return {lead,see:m?m[1].trim():""}}
+function ibAgeHtml(x){const kids=typeof inqChildren==="function"?inqChildren(x):[];if(!kids.length)return "";ibGrowLoad();
+  return kids.slice(0,6).map(c=>{const mo=kidMonths(c);const age=kidAgeText(c);const parts=ibGrowFor(mo);
+    return `<div class="pdir"><b>${esc(c.first||"")}${c.last?" "+esc(c.last[0])+".":""}</b> <span class="cnt">${esc([age,c.room?c.room+" class":""].filter(Boolean).join(", "))}</span>
+      ${parts.map(s=>{const p=ibGrowPart(s);return `<details style="margin-top:4px"><summary class="linkbtn">What we typically see, ${esc(s.h.replace(/^.*?,\s*/,"").replace(/^the\s+/i,"")||s.h)}</summary><div class="prose" style="margin-top:6px">${guideMd(p.lead)}${p.see?ibGrowMd(p.see):""}</div><div class="cnt">From The Growing Child in our PD.</div></details>`}).join("")}</div>`}).join("")}
+async function ibDevDraft(x){if(typeof askRead!=="function"||!sample)return toast("Drafting needs TREE to be online.");const kids=typeof inqChildren==="function"?inqChildren(x):[];
+  const evid=typeof inqDigest==="function"?inqDigest(x).slice(0,6000):"";if(!evid.trim())return toast("Add an observation or a thread first, so there is evidence to draft from.");
+  await ibGrowLoad();const ages=kids.map(c=>{const mo=kidMonths(c);const g=ibGrowFor(mo).map(s=>{const p=ibGrowPart(s);return s.h+". "+p.lead+" "+p.see}).join("\n");return `${c.first}, ${kidAgeText(c)}${c.room?", "+c.room+" class":""}.${g?"\nWhat we typically see at this age, from our PD.\n"+g:""}`}).join("\n\n");
+  ibBusyMap[x.id+"dev"]=true;renderMain();
+  try{const out=await askRead(`You are helping the director of Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, write a team inquiry's note on whether what the team is seeing could fit the child's age and stage (developmental stage). A team inquiry is never about labeling or fixing a child. A behavior can be expected for a child's age and stage (developmentally appropriate) and still need our guidance, so everyone stays safe and included (socially acceptable).
+Using only the evidence and the ages below, write three or four sentences. Say each child's age, what in the evidence fits what we typically see at that age, and anything in the evidence the team may want to keep watching. Add no new facts, no diagnosis and no label. Use plain, warm, professional language, call adults educators, use both the everyday term and the professional term together when you name a concept, and never use em dashes or colons.
+Return only JSON {"note":"the note"}
+
+The children and their ages.
+${ages||"No child is named in the observations."}
+
+The evidence.
+${evid}`,{purpose:"inquiry",cache:false});
+    const t=String((out&&out.note)||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,". ").trim();if(!t)return toast("There was not enough to draft from.");
+    x.ibDev=has(x.ibDev)?String(x.ibDev).trim()+"\n\n"+t:t;saveInquiry(x);toast("A draft is in the note. Edit it with the team.")}
+  catch(e){toast(typeof assistError==="function"?assistError(e,"Nothing changed."):"Nothing changed.")}finally{ibBusyMap[x.id+"dev"]=false;renderMain()}}
+// the lens questions drafted together from the evidence, filling only the ones the team has left empty
+async function ibLensDraft(x){if(typeof askRead!=="function"||!sample)return toast("Drafting needs TREE to be online.");const L=(typeof LENSES!=="undefined"?LENSES:[]).find(l=>l.id===x.lensId);if(!L)return;
+  const empty=L.questions.filter(q=>!has((x.lensNotes||{})[q]));if(!empty.length)return toast("Every question already has an answer.");
+  const evid=typeof inqDigest==="function"?inqDigest(x).slice(0,6000):"";if(!evid.trim())return toast("Add an observation or a thread first, so there is evidence to draft from.");
+  ibBusyMap[x.id+"lens"]=true;renderMain();
+  try{const out=await askRead(`You are helping the team at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, read a team inquiry through the lens ${L.name}. Answer each question below in one or two sentences using only the evidence. When the evidence does not say, write an empty string for that question. Add no new facts and no label. Use plain, warm, professional language, call adults educators, and never use em dashes or colons.
+Return only JSON {"answers":[{"q":"the question exactly","a":"the answer"}]}
+
+The questions.
+${empty.join("\n")}
+
+The evidence.
+${evid}`,{purpose:"inquiry",cache:false});
+    const ans=Array.isArray(out&&out.answers)?out.answers:[];let n=0;x.lensNotes=Object.assign({},x.lensNotes||{});
+    for(const q of empty){const a=ans.find(y=>String(y.q||"").trim()===q);const t=String((a&&a.a)||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s/g,". ").trim();if(t){x.lensNotes[q]=t;n++}}
+    if(n){saveInquiry(x);toast(n===1?"1 answer drafted. Edit it with the team.":n+" answers drafted. Edit them with the team.")}else toast("The evidence does not say enough for these questions yet.")}
+  catch(e){toast(typeof assistError==="function"?assistError(e,"Nothing changed."):"Nothing changed.")}finally{ibBusyMap[x.id+"lens"]=false;renderMain()}}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-ibdevdraft],[data-iblensdraft]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!isDirector())return;
+  if(t.dataset.ibdevdraft)ibDevDraft(x);else ibLensDraft(x)});
 
 /* ---------- Walk safety ----------
    Fulton's walks, such as creek walks and walks to the garden or the farm. On a day a walk is on the calendar or in a plan,
@@ -10974,7 +11036,7 @@ function renderInquiry(x){
     ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier guesses, set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${esc(o.id)}">Bring back</button></span></div>`).join("")}</div></details>`:""}
     <label class="cnt" style="margin-top:8px">Read it through a lens <select data-iqlens="1" style="width:auto"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${x.lensId===l.id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></label>
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
-      <div class="actions"><button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
+      <div class="actions">${isDirector()&&!VIEW_AS?(typeof ibBusyMap!=="undefined"&&ibBusyMap[x.id+"lens"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-iblensdraft="1">Draft from the evidence</button>`):""}<button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
   h+=ibInquiryHtml(x);
   h+=`<section class="card"><div class="lbl">What we will try</div>
