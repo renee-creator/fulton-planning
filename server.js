@@ -764,6 +764,8 @@ ONCE.push(['s45CloseSupervision', () => staff.once.edits('s45CloseSupervision', 
 ONCE.push(['s46DriedRecipes', () => staff.once.edits('s46DriedRecipes', recsEdit)]);
 ONCE.push(['s47Pictures', () => staff.once.edits('s47Pictures', recsEdit)]);
 ONCE.push(['s48Books', () => staff.once.edits('s48Books', recsEdit)]);
+// the PD library's out of date facts, sign-in, conference booking, meetings, small group, the go-to person and DRDP, November 7, 2026
+ONCE.push(['s49PdRefresh', () => staff.once.edits('s49PdRefresh', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */

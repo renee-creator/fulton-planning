@@ -1242,6 +1242,7 @@ module.exports = function staffModule(o) {
     s47Pictures: ['code:once/s47-pictures.json', 'Our own picture set, and recipe lines that name their pictures, November 5, 2026'],
     // November 6, 2026. Forty more books, Spanish and bilingual, nature information, our animals and farm, and feelings and friendship
     s48Books: ['code:once/s48-more-books.json', 'Forty more books for the collection, each waiting for the director to vet it'],
+    s49PdRefresh: ['code:once/s49-pd-refresh.json', 'PD library, out of date facts brought up to date, November 7, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

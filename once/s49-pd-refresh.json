@@ -1,0 +1,201 @@
+{
+ "name": "s49PdRefresh",
+ "note": "PD library, out of date facts brought up to date, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "The first time, an educator types their first name and the six-number start code from the director, then chooses their own four numbers. Those four numbers are their TREE passcode from then on. Anyone who forgets them asks the director for a new start code.",
+   "to": "The first time, an educator types their first name, leaves the passcode empty and chooses their own four numbers. Those four numbers are their TREE passcode from then on. Anyone who forgets them asks the director to clear them, then signs in with an empty passcode to choose new ones."
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "![The sign-in page. First name, then the start code the first time, then your own four numbers.]",
+   "to": "![The sign-in page. First name, then your own four numbers.]"
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "- Have each new educator's start code ready.",
+   "to": "- Add each new educator under Sign-ins before the session."
+  },
+  {
+   "path": "staff/pd/printables/getting-into-tree.md",
+   "from": "**The first time.** Type your first name and the six-number start code from the director.",
+   "to": "**The first time.** Type your first name and leave the passcode empty, then choose four numbers."
+  },
+  {
+   "path": "staff/pd/printables/getting-into-tree.md",
+   "from": "**Forgot them?** Ask the director for a new start code.",
+   "to": "**Forgot them?** Ask the director to clear them, then sign in with an empty passcode and choose new ones."
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "with Planning resources below them, the Idea bank, Garden, Artists, Museums, Recipes and Songs and stories.",
+   "to": "with Planning resources below them, the Idea bank, Garden, Artists, Recipes and Songs and stories."
+  },
+  {
+   "path": "staff/pd/modules/41-getting-into-tree.md",
+   "from": "- **Educators** holds your own growth, the PD library, Policies and Procedures and your records.",
+   "to": "- **Educators** holds your own growth, the PD library, Policies and Procedures and your records.\n- **Places to explore**, in the PD library, holds parks, museums and cultural places for families and educators. Families see the same list on the Family page."
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "The school's resources, the Garden, Recipes, Songs and stories, Artists, Museums and the Weekly bin,",
+   "to": "The school's resources, the Garden, Recipes, Songs and stories, Artists and the Weekly bin,"
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "- **Museums and cultural places** holds the places we can visit or learn from.\n",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/printables/getting-into-tree.md",
+   "from": "**Documentation.** Slides, Stories, the Garden, Recipes, Songs and stories, Artists and Museums.",
+   "to": "**Documentation.** Slides, Stories, the Garden, Recipes, Songs and stories and Artists."
+  },
+  {
+   "path": "staff/pd/printables/planning-in-tree.md",
+   "from": "\n\n**Museums.** Under Documentation. Places to visit and learn from.",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "**Setting up conferences.** Families book through SignUpGenius, and TREE reads the booked times. Slots are on Mondays, mornings if staffing and the lunch schedule allow, and afternoons work best. Offer in-person or virtual times, so working families can attend. Announce the sign-up in the class newsletters several times. In TREE, Families to reach lists the families who have not signed up, with their emails and the sign-up link.",
+   "to": "**Setting up conferences.** Families book their conference time in TREE. Monday mornings work best, and we offer in-person or virtual times so working families can attend. Announce booking in the class newsletters more than once. In TREE, Families to reach lists the families who have not booked yet."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "- **DRDP evidence.** Press Add them all.",
+   "to": "- **DRDP evidence.** Tick the evidence to bring in, then press Add the ones ticked."
+  },
+  {
+   "path": "staff/pd/depth/families.md",
+   "from": "We ask each family for 10 volunteer hours a year, and these can count toward them where they fit.",
+   "to": "We ask each family for 10 hours of participation per child each year, and these can count toward them where they fit."
+  },
+  {
+   "path": "staff/pd/depth/collaboration.md",
+   "from": "- **Meetings.** A weekly meeting of 45 to 60 minutes for each class team, and a monthly extended meeting across classes, held in the class without children present.",
+   "to": "- **Meetings.** Each class team meets on the Mondays without an all-staff meeting. The whole staff meets for the all-staff and PD meeting on the first Monday of each month."
+  },
+  {
+   "path": "staff/pd/printables/collaboration.md",
+   "from": "**Meetings.** Weekly, 45 to 60 minutes, for each class team. Monthly across classes, in the class without children present.",
+   "to": "**Meetings.** Each class team meets on the Mondays without an all-staff meeting. The whole staff meets for the all-staff and PD meeting on the first Monday of each month."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "a way to defend the child's brilliance to parents and the state, and never as scores.",
+   "to": "a way to show families the depth of each child's thinking, and never as scores."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "a way to defend the child's brilliance to parents and the state.",
+   "to": "a way to show families the depth of each child's thinking."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Aligned with the PTKLF, it bridges the creative emergent project and state aligned accountability.",
+   "to": "Aligned with the PTKLF, it connects the emergent project to evidence we keep for our own reflection."
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "**Over time.** A level rests on several pieces of evidence, and the strongest reading from this school year stands. One good day or one hard day never decides it.",
+   "to": "**Over time.** A level rests on a pattern across several observations from this school year. One good day or one hard day never decides it."
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "Choose the measure the evidence shows most clearly.",
+   "to": "Choose the one or two measures the evidence shows most clearly."
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "- **The moment comes first.** We never stop a child's play or work to test a measure. Educators watch, listen and document, and read the evidence afterward.",
+   "to": "- **The moment comes first.** We never stop a child's play or work to test a measure. Educators watch, listen and document, and read the evidence afterward.\n- **One observation, two measures at most.** TREE offers up to four measures to choose from, and one observation counts toward no more than two for a child.\n- **The observation stays as written.** Educators never change an observation or their image of the child to fit a measure. The measure is read from the observation."
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "desc: How our educators protect small group time each day,",
+   "to": "desc: How our educators protect small group time,"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "Small group work protects one thing every day. An educator spends time with a small, known group of children.",
+   "to": "Small group work protects time for a small, known group of children and one educator."
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "desc: How our educators protect small group time each day,",
+   "to": "desc: How our educators protect small group time,"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "Small group work protects one thing every day. An educator spends time with a small, known group of children.",
+   "to": "Small group work protects time for a small, known group of children and one educator."
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "Small group happens twice a day. In the morning it begins soon after arrival, once every member of the group has arrived. In the afternoon it runs until the class comes back together. The same educator stays with the same group for the whole sitting, without interruption.",
+   "to": "Small group is scheduled in the morning, most often Tuesday to Friday. It can come together again at any time of day when the children's interests and needs call for it. The same educator stays with the same group for the whole sitting, without interruption."
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "**Timing.** Small group happens twice a day. In the morning it begins soon after arrival, once every member of the group has arrived. In the afternoon it runs until the class comes back together. The same educator stays with the same group for the whole sitting, without interruption.",
+   "to": "**Timing.** Small group is scheduled in the morning, most often Tuesday to Friday. It can come together again at any time of day when the children's interests and needs call for it. The same educator stays with the same group for the whole sitting, without interruption."
+  },
+  {
+   "path": "staff/familypieces/together-smallgroup.md",
+   "from": "Every day, your child spends time with a small, familiar group of children and the same educator.",
+   "to": "Most mornings, your child spends time with a small, familiar group of children and the same educator."
+  },
+  {
+   "path": "staff/familypieces/together-smallgroup.md",
+   "from": "Small group happens twice a day, soon after arrival in the morning and again in the afternoon. The same educator stays with the same group for the whole time.",
+   "to": "Small group meets in the morning, and it can come together again at other times of the day when the children's interests and needs call for it. The same educator stays with the same group for the whole time."
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "The new educator has a go-to person for everyday questions. The mentor works alongside that person and the director, and stays close to the practice itself, in the room with children.",
+   "to": "Every new educator has a go-to person, the first one they turn to with any question in their first weeks. They also learn beside an experienced educator in their class, who mentors them on the floor and stays close to the practice itself. Sometimes one person holds both roles. Both work alongside the director."
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "Every new educator also has a go-to person in the office for everyday questions about paperwork, schedules and where things are. The mentor works alongside that person and the director, and stays close to the practice itself, in the room with children.",
+   "to": "Every new educator has a go-to person, the first one they turn to with any question in their first weeks. They also learn beside an experienced educator in their class, who mentors them on the floor and stays close to the practice itself. Sometimes one person holds both roles. Both work alongside the director."
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "prepare a short staff meeting presentation about a project, and meet with the director for a 90-day review of strengths, growth and goals. Through all three phases, mentor and new educator check in every week or two.",
+   "to": "prepare a short staff meeting presentation about a project. The new educator has a brief check-in with the director at the end of each of the first weeks, then the monthly check-in with the director. At two months, they have a starting-point conversation with the director, with no scores until the end of the year."
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "- **The office go-to person.** For every new educator.\n- **The twelve week plan.** With check-ins every week or two and the 90-day review.",
+   "to": "- **The go-to person.** For every new educator.\n- **The class mentor.** An experienced educator in the new educator's class.\n- **The twelve week plan.** With brief check-ins with the director at the end of each of the first weeks, then monthly, and the starting-point conversation at two months."
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": " Complete a 90 day review with the director on strengths, areas for growth and professional goals.",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "**Ongoing development.** Mentor and new educator, or director, meet every week or two.",
+   "to": "**Ongoing development.** The new educator has a brief check-in with the director at the end of each of the first weeks, then the monthly check-in with the director."
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "finishing their Growth Plan goals, with no scores until the end of the year. Around ninety days, the new educator and the director look back together at strengths and areas for growth and set professional goals, held in the Educator Reflection and Growth Plan and kept in view through the Focus Until Next Time.",
+   "to": "setting their Educator Reflection and Growth Plan goals, with no scores until the end of the year. The goals stay in view through the Focus Until Next Time."
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "- **The office go-to person** for every new educator.\n- **The twelve week plan,** the two month starting point conversation and the ninety day look back.",
+   "to": "- **The go-to person** for every new educator.\n- **The class mentor,** an experienced educator in the new educator's class.\n- **The twelve week plan,** with brief check-ins with the director, then monthly, and the two month starting point conversation."
+  },
+  {
+   "path": "staff/pd/printables/mentor.md",
+   "from": "Your mentor and the office go-to person are here for you.",
+   "to": "Your go-to person and your class mentor are here for you."
+  }
+ ]
+}
