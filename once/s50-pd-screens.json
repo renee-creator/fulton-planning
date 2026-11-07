@@ -1,0 +1,211 @@
+{
+ "name": "s50PdScreens",
+ "note": "PD library, TREE series and Licensing matched to TREE today, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "- **What I wonder** holds a question the moment raises, or a note for the team. It is optional, and it is always a question.",
+   "to": "- **What I wonder** holds a wondering, an educator note, or context that helps the team read the moment. TREE shows it exactly as written."
+  },
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "3. Write What I noticed, and What I wonder if you have a question.",
+   "to": "3. Write What I noticed, then What I wonder, a wondering, a note or context."
+  },
+  {
+   "path": "staff/pd/howto/01-keeping-an-observation.md",
+   "from": "3. Write What I noticed, and What I wonder if you like.",
+   "to": "3. Write What I noticed, then What I wonder, a wondering, a note or context."
+  },
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "4. Choose the class and tap the children in the observation.",
+   "to": "4. Tick the class or classes, and tap the children in the observation."
+  },
+  {
+   "path": "staff/pd/howto/01-keeping-an-observation.md",
+   "from": "4. Choose the class and tap the children in the observation.",
+   "to": "4. Tick the class or classes, and tap the children in the observation."
+  },
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "Email the Moments to the TREE mailbox, with the class and your first name in the subject line, so TREE knows whose observation it is.",
+   "to": "Email the Moments to the TREE mailbox, with the class and your first name in the subject line. A Moment from a small group is credited to that group's lead automatically. TREE sorts each caption into What I noticed and What I wonder as it arrives, and Put it back undoes the sort."
+  },
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "### Finding and changing observations",
+   "to": "### Video clips\n\nOn Today, Send a clip sends a video of up to three minutes from your phone. TREE reads it into a draft observation with still photos. Nothing is kept until you read it and tap Keep this observation.\n\n### Saved as you write\n\nTREE saves an observation as a draft from its first word or photo. Unfinished ones wait under Your drafts, and on Today as An observation to finish.\n\n### Finding and changing observations"
+  },
+  {
+   "path": "staff/pd/howto/01-keeping-an-observation.md",
+   "from": "6. Press Keep this observation.",
+   "to": "6. Press Keep this observation.\n\nTREE saves an observation as a draft from its first word or photo, so nothing is lost if you leave the page. Unfinished ones wait under Your drafts, and on Today as An observation to finish. Send a clip on Today turns a video of up to three minutes into a draft observation."
+  },
+  {
+   "path": "staff/pd/modules/42-observing-in-tree.md",
+   "from": "Writing what we saw instead keeps the door open.",
+   "to": "Writing what we saw keeps the door open."
+  },
+  {
+   "path": "staff/pd/modules/43-planning-in-tree.md",
+   "from": "or open Today and tap Write my plan.",
+   "to": "or open Today and tap Write my plan, or Start it beside this week's plan."
+  },
+  {
+   "path": "staff/pd/printables/planning-in-tree.md",
+   "from": "**Garden.** Under Documentation.",
+   "to": "**Garden.** Under Plans, in Planning resources."
+  },
+  {
+   "path": "staff/pd/printables/planning-in-tree.md",
+   "from": "**Recipes.** Under Documentation.",
+   "to": "**Recipes.** Under Plans, in Planning resources."
+  },
+  {
+   "path": "staff/pd/printables/planning-in-tree.md",
+   "from": "**Songs and stories.** Under Documentation.",
+   "to": "**Songs and stories.** Under Plans, in Planning resources."
+  },
+  {
+   "path": "staff/pd/printables/planning-in-tree.md",
+   "from": "**Artists.** Under Documentation.",
+   "to": "**Artists.** Under Plans, in Planning resources."
+  },
+  {
+   "path": "staff/pd/printables/planning-in-tree.md",
+   "from": "**Weekly bin.** Under Plans. This week's produce and food explorations.",
+   "to": "**Weekly bin.** Under Plans. This week's produce and food explorations.\n\n**Idea bank.** Under Plans, in Planning resources. Invitations and provocations for every material, space and season, and simple invitations ready to offer."
+  },
+  {
+   "path": "staff/pd/printables/getting-into-tree.md",
+   "from": "**Plans.** This week, the Weekly bin, All plans, Threads, Projects, Inquiries and the Lens.",
+   "to": "**Plans.** This week, the Weekly bin, All plans, Threads, Projects, Inquiries and the Lens, with Planning resources, the Idea bank, Garden, Artists, Recipes and Songs and stories."
+  },
+  {
+   "path": "staff/pd/printables/getting-into-tree.md",
+   "from": "**Documentation.** Slides, Stories, the Garden, Recipes, Songs and stories and Artists.",
+   "to": "**Documentation.** Slides and Stories."
+  },
+  {
+   "path": "staff/pd/howto/02-writing-a-plan.md",
+   "from": "4. TREE saves as you type. When every box is written, press Send to Renee.",
+   "to": "4. TREE saves as you type. When every box but Final remarks is written, press Send to the director."
+  },
+  {
+   "path": "staff/pd/howto/02-writing-a-plan.md",
+   "from": "The Evidence button beside the plan",
+   "to": "The evidence beside the plan"
+  },
+  {
+   "path": "staff/pd/howto/03-making-documentation.md",
+   "from": "1. Open Documentation. Slides, Walls and Stories each start from observations.",
+   "to": "1. Open Documentation. Slides and Stories each start from observations."
+  },
+  {
+   "path": "staff/pd/licensing/15-toileting-and-diapering.md",
+   "from": "During toilet learning a child wears a diaper or pull-up, a child moves to underwear once reliably toilet trained with fewer than three accidents a week, and daily soiling means a diaper or pull-up.",
+   "to": "During toilet learning a child wears a diaper or pull-up. A child comes to school in underwear once they are fully independent in the bathroom and tell an educator when they need to go, since our bathrooms are a walk from the classes. Daily soiling means a diaper or pull-up."
+  },
+  {
+   "path": "staff/pd/licensing/16-sunscreen.md",
+   "from": "Educators reapply sunscreen after lunch or after nap.",
+   "to": "Educators reapply our school's sunscreen after lunch or after nap."
+  },
+  {
+   "path": "staff/pd/licensing/09-water-activities.md",
+   "from": "On a creek walk there is at least one adult for every six children, and every child stays within an educator’s reach near the water.",
+   "to": "On a creek walk there is at least one adult for every six children, and every child stays within an educator’s reach near the water. A child on a creek walk holds an educator’s hand until the group returns. A child not ready to walk safely stays at school with another educator."
+  },
+  {
+   "path": "staff/pd/licensing/22-official-trainings.md",
+   "from": "- **Mandated Reporter Training.**",
+   "to": "- **Active supervision.** Every educator completes the CCLD active supervision video and handouts.\n- **Water safety.** Every educator holds a current water safety certificate, since we take creek walks.\n- **Mandated Reporter Training.**"
+  },
+  {
+   "path": "staff/pd/licensing/02-educator-child-ratios.md",
+   "from": "Renee keeps a current list",
+   "to": "The director keeps a current list"
+  },
+  {
+   "path": "staff/pd/licensing/04-daily-health-check-isolation-for-illness-and-obs.md",
+   "from": "the wellness policy and to Renee. When a child needs to go home because of illness, inform Renee,",
+   "to": "the wellness policy and to the director. When a child needs to go home because of illness, inform the director,"
+  },
+  {
+   "path": "staff/pd/licensing/05-medications-and-health-related-services.md",
+   "from": "has hit their head, inform Renee,",
+   "to": "has hit their head, inform the director,"
+  },
+  {
+   "path": "staff/pd/licensing/06-food-service-allergy-plans-and-the-nut-free-envi.md",
+   "from": "tell the chef and Renee about",
+   "to": "tell the chef and the director about"
+  },
+  {
+   "path": "staff/pd/licensing/10-incident-reporting.md",
+   "from": "Your part is to tell Renee promptly",
+   "to": "Your part is to tell the director promptly"
+  },
+  {
+   "path": "staff/pd/licensing/10-incident-reporting.md",
+   "from": "Inform Renee, write the report",
+   "to": "Inform the director, write the report"
+  },
+  {
+   "path": "staff/pd/licensing/10-incident-reporting.md",
+   "from": "When Renee is away, Destiny in the office files the Licensing report and lets Renee know.",
+   "to": "When the director is away, the office files the Licensing report and lets the director know."
+  },
+  {
+   "path": "staff/pd/licensing/14-mandated-reporting.md",
+   "from": "telling Renee or a co-educator",
+   "to": "telling the director or a co-educator"
+  },
+  {
+   "path": "staff/pd/licensing/14-mandated-reporting.md",
+   "from": "Then let Renee know a report was made, so she can file",
+   "to": "Then let the director know a report was made, so the director can file"
+  },
+  {
+   "path": "staff/pd/licensing/21-calling-in-late-or-sick.md",
+   "from": "Renee is your point of contact, and calling very late at night or early in the morning is fine. First call Renee at (707) 529-2035 and leave a message or send a text,",
+   "to": "The director is your point of contact, and calling very late at night or early in the morning is fine. First call the director's cell phone, saved in the contacts on the school phones, and leave a message or send a text,"
+  },
+  {
+   "path": "staff/pd/licensing/21-calling-in-late-or-sick.md",
+   "from": "text or email Renee, and please use her cell phone,",
+   "to": "text or email the director, and please use the director's cell phone,"
+  },
+  {
+   "path": "staff/pd/licensing/21-calling-in-late-or-sick.md",
+   "from": "and text Renee with the reason.",
+   "to": "and text the director with the reason."
+  },
+  {
+   "path": "settings/program.json",
+   "set": "proofSave",
+   "value": true
+  },
+  {
+   "path": "staff/policies/teacher/new-educator-onboarding.json",
+   "from": "She answers your questions, walks you through paperwork and routines, and checks in with you briefly at the end of each of your first weeks.",
+   "to": "She answers your questions and walks you through paperwork and routines. The director checks in with you briefly at the end of each of your first weeks."
+  },
+  {
+   "path": "staff/policies/teacher/new-educator-onboarding.json",
+   "from": "First weeks check-ins with Destiny",
+   "to": "First weeks check-ins with the director"
+  },
+  {
+   "path": "staff/handbook/new-educator-onboarding.json",
+   "from": "She answers your questions, walks you through paperwork and routines, and checks in with you briefly at the end of each of your first weeks.",
+   "to": "She answers your questions and walks you through paperwork and routines. The director checks in with you briefly at the end of each of your first weeks."
+  },
+  {
+   "path": "staff/handbook/new-educator-onboarding.json",
+   "from": "First weeks check-ins with Destiny",
+   "to": "First weeks check-ins with the director"
+  }
+ ]
+}

@@ -295,7 +295,7 @@ async function pageRecords(my){const who=D()&&st.who?st.who:meName();if(!st.doc|
   draw(my,`${head(mine?"My records":"Records",mine?"My records":p.name+"'s records",`Dates and certificates only, never health details. Only ${mine?"you":H(p.name)} and the director see this page. TREE reminds ${mine?"you":"them"} and the director ${H(lead)} days before anything expires.`)}
     ${!mine&&dir?`<div class="actions" style="margin:0 0 10px">${isFormerName(p.name)?`<button class="chip-btn back" data-tview="stformer">‹ ${H(p.name)}, a former educator</button>`:`<button class="chip-btn back" data-tview="stteam">‹ All educators</button>`}</div>`:""}
     ${card("About",`<div class="cnt">${H([whoRole(p),roomName(p),pr.startDate?"Started "+fd(pr.startDate):"",pr.planHour?"Monday planning hour at "+hourText(pr.planHour):""].filter(Boolean).join(", "))}</div>
-      ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person. <button class="btn small ghost" data-stgoto="${H(n.name)}">Note this week's check-in</button> <span class="cnt">${(n.checkins||[]).length?`Check-ins noted ${H((n.checkins||[]).map(c=>fd(c.week)).join(", "))}`:"No check-in noted yet"}</span></div>`).join(""):""}
+      ${goTo?`<div style="margin-top:6px">Go-to person, <b>${H(goTo)}</b></div>`:""}${paired.length?paired.map(n=>`<div style="margin-top:6px">You are <b>${H(n.name)}</b>'s go-to person.</div>`).join(""):""}
       ${dir&&!mine?`<div class="actions">${(st.people||[]).find(x=>x.name===p.name&&x.newHire)?`<button class="btn small" data-staccess="full">Turn on full access to the school, the children and their work</button>`:""}<button class="btn small ghost" data-stfile="all">Print the file</button></div>`:""}`,printBar("record"))}
     ${card("Records and certificates",itemsHtml+(dir?chosenHtml(p):""))}
     ${await noticesRecCard(who,dir,mine)}
@@ -480,7 +480,7 @@ function checklist(p,pcs,start){const pw=p.paperwork||{},rd=(p.pd&&p.pd.read)||{
     {label:C[5],done:!!(((p.items||{}).mandated||{}).files||[]).length},{label:C[6],done:lic.length&&licDone===lic.length,note:`${licDone} of ${lic.length}`},
     {label:"Licensing and safety review with the director",done:(L.length&&marked===L.length)||!!(p.checklist||{}).review8,note:`${marked} of ${L.length} marked`,dirTick:true,key:"review8"},
     {label:"Active Supervision Training",done:!!((p.items||{}).activesup||{}).date,note:((p.items||{}).activesup||{}).date?"Done "+fd(p.items.activesup.date):"Due",links:true},
-    {label:"First weeks check-ins with "+(p.goTo||B.goTo||"the go-to person"),done:ci>=4,note:ci?`Noted ${ci===1?"once":ci+" times"}`:"Not yet",goto:true},
+    {label:"First weeks check-ins with the director",done:ci>=4,note:ci?`Noted ${ci===1?"once":ci+" times"}`:"Not yet",goto:true},
     {label:C[9],done:!!p.planStarted,note:p.planStarted?"Started":"Not yet",view:"stplan"},
     {label:C[10].replace(/^Starting-point conversation, scheduled two months from the start date/,"Starting-point conversation"),done:!!(p.checklist||{}).starting,note:sp?(sp<=today()?"Due now, from "+fd(sp):"Scheduled for "+fd(sp)):"Once the start date is set",dirTick:true,key:"starting"}]}
 function seqHtml(wk,pcs,p){const dn=(p.pd&&p.pd.done)||{};const first=(pcs.licensing||[]).filter(x=>x.week===1);

@@ -6,7 +6,7 @@
    Everything here is kept in the records under staff/, beside the records pages, and travels only through the
    /api/staff/g/ requests below. The server decides who receives each part. An educator's evaluation, journal and
    check-in notes are sent to that educator and the director and to no one else. The journal opens only with the
-   reader's own TREE passcode, each time. The go-to person sees the pairing and the first weeks check-ins, never these.
+   reader's own TREE passcode, each time. The go-to person sees the pairing only, never these.
 
    The director keeps all of it visible only to her until she turns it on for educators in Settings. Names, dates and
    the year's settings live in the records, never in this file, which anyone can read. */

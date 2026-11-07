@@ -72,7 +72,7 @@ module.exports = function staffModule(o) {
   const DIRECTOR_PAPERS = ['quickbooks', 'idseen'];
   const CHECKLIST = [
     'Paperwork uploaded and clearances received', 'Immunization records or exemptions uploaded', 'Welcome and philosophy read', 'Who\'s who read', 'TREE How To guides read',
-    'Mandated reporter certificate uploaded', 'Licensing at Fulton Community School pieces finished', 'Licensing and safety review with you', 'First weeks check-ins with their go-to person',
+    'Mandated reporter certificate uploaded', 'Licensing at Fulton Community School pieces finished', 'Licensing and safety review with you', 'First weeks check-ins with you',
     'Educator Reflection and Growth Plan started', 'Starting-point conversation, scheduled two months from the start date'];
   const DRILL_TYPES = ['Fire', 'Earthquake', 'Lockdown', 'Evacuation', 'Shelter in place', 'Other'];
   const REMIND_TYPES = { expiry: 'Certificates and trainings before they expire', flu: 'The yearly flu shot', hsa: 'Healthy Schools Act training each year', semester: 'Proof of enrollment each semester, below twelve units', drill: 'A drill when three months pass without one' };
@@ -474,7 +474,7 @@ module.exports = function staffModule(o) {
     return [...names.values()].filter(n => !isFormerEducator(n)).map(n => ({ name: n, role: whoRole(n), room: roomOf(n) })).sort((a, b) => (a.role === 'Director' ? -1 : b.role === 'Director' ? 1 : 0) || a.name.localeCompare(b.name));
   }
   // one go-to person for every new educator, a program setting the director can change. It is shown to both, and the
-  // new educator's first weeks check-ins are kept on their record. The go-to person sees only these, never growth.
+  // new educator's first weeks check-ins with the director are kept on their record. The go-to person sees only the pairing, never growth.
   const goToName = () => { const g = String(school().goTo || ''); return g && !isFormerEducator(g) ? g : ''; };
   const goToOf = name => inNewEd(name) && goToName() && nameKey(goToName()) !== nameKey(name) ? goToName() : '';
   const pairedWith = name => goToName() && nameKey(goToName()) === nameKey(name) ? staffNames().filter(n => nameKey(n) !== nameKey(name) && inNewEd(n) && !isDirector(n)) : [];
@@ -1243,6 +1243,7 @@ module.exports = function staffModule(o) {
     // November 6, 2026. Forty more books, Spanish and bilingual, nature information, our animals and farm, and feelings and friendship
     s48Books: ['code:once/s48-more-books.json', 'Forty more books for the collection, each waiting for the director to vet it'],
     s49PdRefresh: ['code:once/s49-pd-refresh.json', 'PD library, out of date facts brought up to date, November 7, 2026'],
+    s50PdScreens: ['code:once/s50-pd-screens.json', 'PD library, TREE series and Licensing matched to TREE today, November 7, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
