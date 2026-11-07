@@ -3226,6 +3226,9 @@ const SLIDE_QUOTES=[["The environment is the third teacher.", "Loris Malaguzzi"]
 let deck=LS.get("tree.deck",null)||null;
 function deckSave(){LS.set("tree.deck",deck)}
 // a slide with no title, words or photo prints as a blank sheet, so a deck leaves it out and the page offers to remove it
+// a slide with no title and no photo, and none of the team's or children's words, would print as a page with only a
+// date and a name, so it does not print
+const slideBare=s=>slideEmpty(s);
 const slideEmpty=s=>!String(s.title||"").trim()&&!has(s.text)&&!(s.quotes||[]).some(q=>has(q.words))&&!slidePhotos(s).length;
 function renderSlides(){
   const ss=[...slides.values()].sort((a,b)=>(b.at||0)-(a.at||0));
@@ -3878,6 +3881,10 @@ const stReady=st=>st&&st.kind==="ready";
 const stReviewed=st=>!!(st&&st.reviewed);
 const stId=()=>"st"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const stPageId=()=>"p"+Math.random().toString(36).slice(2,8);
+// the title and the line under the cover that TREE drafts write a class's name with class in lowercase, as North class.
+// Words educators quote stay as they wrote them, so only the cover's two lines are changed, and only when printed.
+const classCase=t=>{let s=String(t||"");for(const r of (CLASSROOMS.length?CLASSROOMS:["North","South","West","East"]))s=s.replace(new RegExp("\\b("+r.replace(/[^A-Za-z ]/g,"")+") Class\\b","g"),"$1 class");return s};
+const stPrintCase=st=>st?Object.assign({},st,{title:classCase(st.title),cover:classCase(st.cover)}):st;
 const stTitle=st=>st&&String(st.title||"").trim()?st.title:"A story";
 // the children in a story are the children tagged in the photos it uses, so a child who is not in a photo is never in it
 function storyPhotoIds(st){const ids=[st.coverPhoto,...(st.pages||[]).map(p=>p.photo),st.care&&st.care.photo].filter(Boolean);return [...new Set(ids)].filter(id=>{const n=notices.get(id);return n&&n.photo})}
@@ -4121,7 +4128,7 @@ async function storyDraftRun(st){
       return {heading:clean(p?.heading),photo:id,lines:(Array.isArray(p?.lines)?p.lines:String(p?.lines||"").split("\n")).map(clean).filter(Boolean).slice(0,4)}}).filter(p=>p.lines.length);
     if(!pages.length){toast("No pages came back. Try again in a moment.");return}
     const qs=(Array.isArray(out?.questions)?out.questions:[]).map(clean).filter(Boolean).slice(0,4);
-    storyDraft={id:st.id,title:clean(out?.title),cover:clean(out?.cover),pages,questions:qs,families:clean(out?.families)};
+    storyDraft={id:st.id,title:classCase(clean(out?.title)),cover:classCase(clean(out?.cover)),pages,questions:qs,families:clean(out?.families)};
   }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   finally{stBusy=false;if(view==="story")renderStory()}
 }
@@ -4215,7 +4222,7 @@ function storyPortfolioDoc(st,mode,c){
   const mine=storyPhotoIds(st).filter(id=>{const n=notices.get(id);return n&&(n.children||[]).includes(c.id)}).slice(0,3);
   const lines=(st.pages||[]).map(p=>[p.heading?p.heading+".":"",p.lines].filter(has).join(" ").replace(/\s*\n\s*/g," ")).filter(has).join("\n\n");
   const all=lines+"\n"+st.title;
-  return {centered:true,display:true,type:"report",acc:"story",flow:true,title:displayText(focusText(stTitle(st),c),mode,all),details:[st.classroom?st.classroom+" class":"",st.cover?focusText(st.cover,c):""].filter(Boolean),
+  return {centered:true,display:true,type:"report",acc:"story",flow:true,title:displayText(focusText(classCase(stTitle(st)),c),mode,all),details:[st.classroom?st.classroom+" class":"",st.cover?focusText(classCase(st.cover),c):""].filter(Boolean),
     photos:mine.map(id=>notices.get(id)).flatMap(momentPhotos),blocks:lines?[{t:"para",text:displayText(focusText(lines,c),mode,all)}]:[]};
 }
 /* the story as a book, a landscape letter page for each sheet */
@@ -4254,7 +4261,7 @@ function stLetterTile(first,A){A=A||ACC.story;const c=document.createElement("ca
   const url=c.toDataURL("image/jpeg",.9);const b64=atob(url.split(",")[1]);const bytes=new Uint8Array(b64.length);for(let i=0;i<b64.length;i++)bytes[i]=b64.charCodeAt(i);return {url,bytes}}
 async function stSquaresReady(pages){const ids=pages.filter(p=>p.kind==="community").flatMap(p=>p.kids.map(k=>k.photo)).filter(Boolean);
   await Promise.all(ids.map(id=>new Promise(ok=>{const ph=photoCache.get(id);if(!ph||!ph.url)return ok();const im=new Image();im.onload=()=>{stSquare(id);ok()};im.onerror=()=>ok();im.src=ph.url})))}
-async function storyPdf(st){
+async function storyPdf(st){st=stPrintCase(st);
   if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}
   const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
@@ -4298,7 +4305,7 @@ async function storyPdf(st){
     doc.setFontSize(7.5);doc.text(foot+"    ·    Page "+(i+1)+" of "+pages.length,W/2,H-18,{align:"center"})});
   await saveFile(doc.output("blob"),safeFile(`Story ${stTitle(st)}`)+".pdf");
 }
-async function storyDocx(st){
+async function storyDocx(st){st=stPrintCase(st);
   let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
   const pages=storyBook(st);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
@@ -4336,7 +4343,7 @@ async function storyDocx(st){
   await saveFile(await TREE_KIT.wordBlob(X,d),safeFile(`Story ${stTitle(st)}`)+".docx");
 }
 /* the small book, a half-letter page for each page of the story, for a family to keep at home or a child to hold */
-async function storySmallPdf(st){
+async function storySmallPdf(st){st=stPrintCase(st);
   if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
@@ -4397,7 +4404,7 @@ async function storyBooklet(bytes,n){
   out.setTitle("Small book");out.setCreator("Fulton Community School");out.setProducer("TREE");
   return new Blob([await out.save()],{type:"application/pdf"});
 }
-async function storySmallDocx(st){
+async function storySmallDocx(st){st=stPrintCase(st);
   let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load.");return}
   const pages=storyBook(st,true);if(pages.length<2){toast("Write at least one page first.");return}
   await loadPrintFonts();await storyPhotos(st,pages);await stSquaresReady(pages);
@@ -4576,8 +4583,21 @@ function portfolioItems(c){
     const k=n.group?"g|"+n.group:String(n.noticed||"").trim().toLowerCase()+"|"+(n.classroom||"");const g=groups.get(k);
     if(g&&n.photo&&g.n.photo)g.more.push(n);else groups.set(g?k+"|"+n.id:k,{kind:"notices",at:n.at||0,n,more:[]})}
   const sts=kidStories(c).filter(st=>stReviewed(st)&&kidInPortfolio(c,"stories",st.id)).map(st=>({kind:"stories",at:st.at||0,st}));
-  return [...groups.values(),...ss,...sts].sort((a,b)=>a.at-b.at);
+  return [...pfNear([...groups.values()]),...ss,...sts].sort((a,b)=>a.at-b.at);
 }
+// photo pieces from the same day that tell the same moment, such as Flower picking for the piazza and Picking flowers for
+// the Piazza, share one page, the one with the most words first, up to three photos
+const PF_STOP=new Set("a an and the of to for in on at with we our is are was were it its this that they them from by".split(" "));
+const pfWords=t=>new Set(String(t||"").toLowerCase().replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>2&&!PF_STOP.has(w)).map(w=>w.replace(/(ing|s)$/,"")));
+const pfSame=(a,b)=>{if(!a.size||!b.size)return false;let n=0;for(const w of a)if(b.has(w))n++;return n/Math.min(a.size,b.size)>=.75};
+function pfNear(list){const out=[];
+  for(const g of list.sort((a,b)=>a.at-b.at)){const n=g.n,day=iso(new Date(n.at||0));
+    const hit=n.photo&&out.find(o=>o.kind==="notices"&&o.n.photo&&iso(new Date(o.n.at||0))===day&&(o.n.classroom||"")===(n.classroom||"")&&1+o.more.length+1+g.more.length<=3&&
+      (pfSame(pfWords(momentTitle(o.n)),pfWords(momentTitle(n)))||pfSame(pfWords(momentBody(o.n)),pfWords(momentBody(n)))));
+    if(!hit){out.push(g);continue}
+    const all=[hit.n,...hit.more,n,...g.more],lead=all.reduce((a,b)=>String(momentBody(b)).length>String(momentBody(a)).length?b:a);
+    hit.n=lead;hit.more=all.filter(x=>x!==lead);hit.at=Math.min(hit.at,g.at)}
+  return out}
 const pfItemId=x=>x.kind==="slides"?x.s.id:x.kind==="stories"?x.st.id:x.n.id;
 // the DRDP page closes the portfolio, with the levels educators have accepted and the evidence behind each
 function portfolioDrdpDoc(c,mode,view){
@@ -4958,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="0d4a983b5dbc";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="ac547ddf1162";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8630,7 +8650,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","b3bc800cd8").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","0b9f518f75").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -9057,13 +9077,18 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#pview"))pvClose()});
 // a completed plan prints only what was written, each box as tall as its words
 // text kept short ends at a sentence, or at a word for a short label, never part way through a word
-function sentCut(t,max){t=String(t||"").trim();if(max&&t.length>max)t=t.slice(0,max);if(/[.?!]["')]?$/.test(t))return t;
-  const m=t.match(/^[\s\S]*[.?!]["')]?(?=\s)/);return m&&m[0].length>20?m[0]:t.replace(/\s+\S*$/,"").replace(/[,;:]$/,"")+(t?".":"")}
+function sentCut(t,max){t=String(t||"").trim();if(max&&t.length>max)t=t.slice(0,max);
+  // a child's initial, such as P., is not the end of a sentence, so a cut never leaves one alone at the end
+  const ini=/(^|\s)[A-Z]\.$/;if(ini.test(t)&&t.length>20)return sentCut(t.replace(/\s*[A-Z]\.$/,""));
+  if(/[.?!]["')]?$/.test(t))return t;
+  const m=t.match(/^[\s\S]*[.?!]["')]?(?=\s)/);if(m&&ini.test(m[0])&&m[0].length>20)return sentCut(m[0].replace(/\s*[A-Z]\.$/,""));return m&&m[0].length>20?m[0]:t.replace(/\s+\S*$/,"").replace(/[,;:]$/,"")+(t?".":"")}
 function wordCut(t,max){t=String(t||"").trim();if(t.length<=max)return t;return t.slice(0,max+1).replace(/\s+\S*$/,"").replace(/[,;:]$/,"")}
 function planBlocks(p){const L=planBlocks0(p);if(p.blank||p.blocks||p.type==="story")return L;
   const has_=t=>!!clean(t||"").trim(),webHas=w=>!!w&&(has_(w.focus)||(w.branches||[]).some(b=>has_(b.name)||has_(b.materials)));
   const out=[];for(const b of L){if(b.t==="break")continue;
-    if(b.t==="web"){if(webHas(b.web))out.push(b);continue}
+    // the web keeps its three boxes under it, as on the blank form, so the sheet is not left half empty
+    if(b.t==="web"){if(webHas(b.web)){out.push(b);const nx=L[L.indexOf(b)+1];if(nx&&nx.t==="cols"){nx._web=true;out.push(Object.assign({},nx,{w:1,underWeb:true}))}}continue}
+    if(b._web){delete b._web;continue}
     if(b.t==="sec"){if(has_(b.text))out.push(Object.assign({},b,{w:0}));continue}
     if(b.t==="cols"){const cs=b.cols.filter(c=>has_(c.text));if(cs.length)out.push(Object.assign({},b,{w:0,cols:cs.map(c=>Object.assign({},c,{w:cs.length===b.cols.length?c.w:undefined}))}));continue}
     out.push(b)}
@@ -9080,9 +9105,9 @@ function planBlocks0(p){
     sec("Curriculum brainstorm",f.brainstorm,.8),{t:"web",web:p.web||blankWeb(),blank:B},
     cols([{label:"Languages of expression",text:(p.web?.languages||[]).join("\n")},{label:"Open questions",text:p.web?.questions},{label:"Notes for the environment",text:p.web?.environment}],1)];
   if(p.type==="individual"){
-    const focus=B?"Small group or classroom area":isGardenPlan(p)?gardenGroupName()+" group, "+((p.children||[]).map(id=>children.get(id)).filter(Boolean).map(kidName).join(", ")||"children from any class"):(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
+    const focus=B?"":isGardenPlan(p)?gardenGroupName()+" group, "+((p.children||[]).map(id=>children.get(id)).filter(Boolean).map(kidName).join(", ")||"children from any class"):(p.focus==="area"?"Classroom area":((p.groups||[]).length?p.groups.join(" and ")+" group"+(p.groups.length>1?"s":""):"Small group"));
     const join=(a,label,list)=>[a||"",(list||[]).length?label+". "+list.join(", "):""].filter(Boolean).join("\n");
-    return [cols([{label:"Focus",text:focus,w:.5},{label:p.focus==="area"?"Area of the classroom":"Where",text:p.where||""}],.2),cols([{label:p.focus==="area"||B?"Area exploration":"Area exploration, the thread",text:f.area,w:.62},{label:"Anticipated dates",text:f.dates,w:.38}],.5),sec("Observation rationale",f.observation,1.4),sec("Intent",f.intent),
+    return [cols([{label:"Focus",text:focus,w:.5,hint:B?"Small group or classroom area":""},{label:p.focus==="area"?"Area of the classroom":"Where",text:p.where||""}],.2),cols([{label:p.focus==="area"||B?"Area exploration":"Area exploration, the thread",text:f.area,w:.62},{label:"Anticipated dates",text:f.dates,w:.38}],.5),sec("Observation rationale",f.observation,1.4),sec("Intent",f.intent),
       sec("Possible activities and materials",join(f.materials,"Documentation",p.docplan),1.05),sec("Questions and languages",join(f.questions,"Languages to keep open",p.languages),.9),sec("Final remarks",f.remarks,1.15)];
   }
   return [sec("Where",(p.setting||[]).join(", "),.3),sec("The thread we are following",f.thread),sec("My intention",f.intention),sec("Guiding questions",f.questions),
@@ -9112,13 +9137,13 @@ function layoutPlan(doc,p,pageAcc,countOnly){
     // the curriculum brainstorm and the web share the second sheet
     if(b.t==="break"){flush();continue}
     if(b.t==="sub"){if(avail()<24+90)flush();page.items.push({t:"sub",text:b.text,h:16,w:0});continue}
-    if(b.t==="web"){const h=318;if(avail()<h)flush();page.items.push({t:"web",web:b.web,blank:b.blank,h,w:0});continue}
+    if(b.t==="web"){const h=webPlanH(doc,b.web,b.blank);if(avail()<h)flush();page.items.push({t:"web",web:b.web,blank:b.blank,h,w:0});continue}
     if(b.t==="cols"){
       const n=b.cols.length,gw=CW-PG.gap*(n-1);const ws=b.cols.map(c=>gw*(c.w||1/n));const ls=b.cols.map((c,i)=>wrap(doc,c.text,ws[i]-22));
       const h=natH(Math.max(b.min||0,...ls.map(l=>l.length)),blank);
       if(h>PG.bottom-PG.topN){b.cols.forEach(c=>blocks.splice(bi+1,0,{t:"sec",label:c.label,text:c.text,w:b.w}));continue}
       if(h>avail())flush();
-      page.items.push({t:"cols",cols:b.cols.map((c,i)=>({label:c.label,lines:ls[i],w:ws[i]})),h,w:filled&&!ls.some(l=>l.length)?0:b.w});continue}
+      page.items.push({t:"cols",cols:b.cols.map((c,i)=>({label:c.label,lines:ls[i],w:ws[i],hint:c.hint})),h:b.underWeb?Math.max(h,natH(3,blank)):h,w:b.underWeb?1:filled&&!ls.some(l=>l.length)?0:b.w});continue}
     let lines=wrap(doc,b.text,CW-22),cont=false;
     while(true){const h=natH(Math.max(lines.length,cont?0:(b.min||0)),blank);const a=avail();
       if(b.tail&&h>a&&page.items.length)break;
@@ -9140,7 +9165,7 @@ function layoutPlan(doc,p,pageAcc,countOnly){
     let y=pg.top;
     for(const it of pg.items){
       if(it.t==="sec")box(doc,M,y,CW,it.h,it.label,it.lines,A,it.cont);
-      else if(it.t==="cols"){let x=M;it.cols.forEach(c=>{box(doc,x,y,c.w,it.h,c.label,c.lines,A);x+=c.w+PG.gap})}
+      else if(it.t==="cols"){let x=M;it.cols.forEach(c=>{box(doc,x,y,c.w,it.h,c.label,c.lines,A,false,c.hint);x+=c.w+PG.gap})}
       else if(it.t==="sub"){doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(34,51,42);doc.text(clean(it.text),M,y+11);doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(M,y+15,M+28,y+15)}
       else if(it.t==="web")webBox(doc,M,y,CW,it.h,it.web,it.blank,A);
       y+=it.h+PG.gap;
@@ -9182,18 +9207,28 @@ function headerCont(doc,p,A){
   doc.text(clean(metaRows(p).map(r=>r[1]).filter(Boolean).join("  •  ")),PW-M,57,{align:"right"});
   doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.line(M,64,PW-M,64);
 }
-function box(doc,x,y,w,h,label,lines,A,cont){
+function box(doc,x,y,w,h,label,lines,A,cont,hint){
   doc.setFillColor(...A.t);doc.roundedRect(x,y,w,PG.strip,5,5,"F");doc.rect(x,y+PG.strip-5,w,5,"F");
   doc.setDrawColor(205,215,208);doc.setLineWidth(.7);doc.roundedRect(x,y,w,h,5,5,"S");
   doc.setFont("helvetica","bold");doc.setFontSize(7.3);doc.setTextColor(...A.c);doc.setCharSpace(.8);
   const lab=clean(label.toUpperCase()+(cont?"  (CONTINUED)":""));doc.text(doc.splitTextToSize(lab,w-20)[0],x+11,y+12.6);doc.setCharSpace(0);
   doc.setFont("helvetica","normal");doc.setFontSize(PG.fs);doc.setTextColor(34,48,40);
   const y0=y+PG.strip+PG.padT;lines.forEach((l,i)=>doc.text(l,x+11,y0+i*PG.lh));
+  // a hint on a blank form prints small and light in the label strip, so it never reads as if it were an answer
+  if(hint&&!lines.length){doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(165,174,168);doc.text(clean(hint),x+w-11,y+12.6,{align:"right"})}
   let ly=lines.length?y0+(lines.length-1)*PG.lh+PG.lh+6:y+PG.strip+PG.lh+8;
   doc.setDrawColor(222,229,224);doc.setLineWidth(.5);doc.setLineDashPattern([.8,2.2],0);
   if(RULED)for(;ly<y+h-9;ly+=18)doc.line(x+11,ly,x+w-11,ly);
   doc.setLineDashPattern([],0);
 }
+// a branch's box grows to hold its whole name, and its materials up to four lines
+function webBranchLines(doc,b,blank,bw){
+  doc.setFont("helvetica","bold");doc.setFontSize(8.8);const nl=blank?[]:doc.splitTextToSize(clean(b.name),bw-16).slice(0,5);
+  doc.setFont("helvetica","normal");doc.setFontSize(7.8);const ml=blank?[]:upTo(doc.splitTextToSize(clean(b.materials),bw-16),4);
+  return {nl,ml,bh:blank?56:Math.max(32,14+nl.length*11.5+ml.length*10+4)}}
+// the web is as tall as its tallest branch needs, so a branch above or below the centre never runs into it
+function webPlanH(doc,web,blank){if(blank||!web)return 318;const br=(web.branches||[]).filter(b=>b.name||b.materials);
+  const tall=Math.max(0,...br.map(b=>webBranchLines(doc,b,false,150).bh));return Math.round(318+Math.max(0,tall-74)*1.6)}
 function webBox(doc,x,y,w,h,web,blank,A){
   doc.setFillColor(...A.t);doc.roundedRect(x,y,w,PG.strip,5,5,"F");doc.rect(x,y+PG.strip-5,w,5,"F");
   doc.setDrawColor(205,215,208);doc.setLineWidth(.7);doc.roundedRect(x,y,w,h,5,5,"S");
@@ -9213,9 +9248,7 @@ function webBox(doc,x,y,w,h,web,blank,A){
   const fl=blank?["Central focus"]:doc.splitTextToSize(clean(web.focus||"Central focus"),160).slice(0,3);
   fl.forEach((l,i)=>doc.text(l,cx,cy-(fl.length-1)*6.5+i*13+3.5,{align:"center"}));
   br.forEach((b,i)=>{const [bx,by]=pts[i];const bw=150;
-    doc.setFont("helvetica","bold");doc.setFontSize(8.8);const nl=blank?[]:upTo(doc.splitTextToSize(clean(b.name),bw-16),2);
-    doc.setFont("helvetica","normal");doc.setFontSize(7.8);const ml=blank?[]:upTo(doc.splitTextToSize(clean(b.materials),bw-16),4);
-    const bh=blank?56:Math.max(32,14+nl.length*11.5+ml.length*10+4);
+    const {nl,ml,bh}=webBranchLines(doc,b,blank,bw);
     doc.setDrawColor(205,215,208);doc.setFillColor(255,255,255);doc.setLineWidth(.8);doc.roundedRect(bx-bw/2,by-bh/2,bw,bh,5,5,"FD");
     doc.setFillColor(...A.c);doc.rect(bx-bw/2+10,by-bh/2,24,2.4,"F");
     let ty=by-bh/2+15;doc.setFont("helvetica","bold");doc.setFontSize(8.8);doc.setTextColor(28,42,34);nl.forEach(l=>{doc.text(l,bx,ty,{align:"center"});ty+=11.5});
@@ -9239,7 +9272,7 @@ function webSvgString(web,blank,A){
   const longF=!blank&&String(web.focus||"").length>58;
   const fl=blank?["Central focus"]:wrapWords(web.focus||"Central focus",longF?27:22).slice(0,longF?4:3);
   fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*(longF?9.5:11)+i*(longF?19:22)+7}" text-anchor="middle" font-family="TA, Andika, Helvetica, Arial, sans-serif" font-size="${longF?16:19}" font-weight="700" fill="${acc}">${e(l)}</text>`);
-  br.forEach((b,i)=>{const [x,y]=pts[i];const nl=blank?[]:wrapWords(b.name,24).slice(0,2);const ml=blank?[]:wrapWords(b.materials,30).slice(0,4);const bw=236,bh=blank?84:Math.max(52,22+nl.length*20+ml.length*17+6);
+  br.forEach((b,i)=>{const [x,y]=pts[i];const nl=blank?[]:wrapWords(b.name,24).slice(0,4);const ml=blank?[]:wrapWords(b.materials,30).slice(0,4);const bw=236,bh=blank?84:Math.max(52,22+nl.length*20+ml.length*17+6);
     s+=`<rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="8" fill="#ffffff" stroke="${line}" stroke-width="1.6"/><rect x="${x-bw/2+14}" y="${y-bh/2}" width="36" height="4" fill="${acc}"/>`;
     let ty=y-bh/2+26;nl.forEach(l=>{s+=`<text x="${x}" y="${ty}" text-anchor="middle" font-family="TA, Andika, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" fill="${ink}">${e(l)}</text>`;ty+=20});
     ml.forEach(l=>{s+=`<text x="${x}" y="${ty}" text-anchor="middle" font-family="TA, Andika, Helvetica, Arial, sans-serif" font-size="13" fill="${muted}">${e(l)}</text>`;ty+=17});
@@ -10749,7 +10782,10 @@ function farmWallDoc(title,top,nFarms,nSonoma,meta){const blocks=[];
 function farmWallMonth(month){const F=farmMonthData(month);const d=farmWallDoc(`Where our food came from in ${F.name}`,F.top,F.farms.length,F.sonoma);
   // the range of tastes, in large type under the farms
   if(F.fruits.length+F.vegs.length||F.dishes)d.blocks.push(dText("",`${F.fruits.length+F.vegs.length} fruits and vegetables and ${F.dishes} different dishes this month.`));
-  for(const n of foodPhotos(F.from,F.to,2))d.blocks.push(dPhoto(n,200));return d}
+  {const r=foodPhotoRow(foodPhotos(F.from,F.to,2),150);if(r)d.blocks.push(r)}return d}
+// the kitchen's photos side by side, each captioned with its moment's title, so they sit on the page with the words
+function foodPhotoRow(ns,maxH){ns=(ns||[]).filter(Boolean);if(!ns.length)return null;
+  return {t:"photos",maxH,items:ns.map(n=>({key:n.id,src:photoSrc(n),cap:shareScrub(momentHeading(n)||"")}))}}
 
 
 /* ---------- DRDP report ----------
@@ -10879,10 +10915,12 @@ const farmPostMade=m=>[...posts.values()].some(x=>x&&!x.deleted&&x.farmMonth===m
 
 /* printouts. Each comes as a PDF and a Word file through the print buttons, and none of them names Claude. */
 // the quarter's story for CDFA, donors and the next grant
+// once, twice, three times, and from four on the number, as a person would say it
+const timesWord=n=>n===1?"once":n===2?"twice":n===3?"three times":n+" times";
 function impactDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const tot=lines.reduce((t,x)=>t+(Number(x.total)||0),0);
   const prods=[...new Set(lines.map(x=>gKey(x.producer)))];const son=[...new Set(lines.filter(x=>gTownCounty(fTown(x.producer))==="Sonoma").map(x=>gKey(x.producer)))];
   const F=foodMoments(from,to);const fam=gList("families").filter(x=>x.date>=from&&x.date<=to);const blocks=[];
-  blocks.push(dLead("",`${gMoney(tot)} went to ${prods.length} California farm${prods.length===1?"":"s"}, producers and food hubs${son.length?`, ${son.length} of them in Sonoma County`:""}. ${F.conf.length?` The children took part in ${F.conf.length} hands-on food experience${F.conf.length===1?"":"s"} the director confirmed.`:F.found.length?` The educators' observations hold ${F.found.length} moment${F.found.length===1?"":"s"} of children with food.`:""}${fam.length?` Families shared food from home ${fam.length} time${fam.length===1?"":"s"}.`:""}`));
+  blocks.push(dLead("",`${gMoney(tot)} went to ${prods.length} California farm${prods.length===1?"":"s"}, producers and food hubs${son.length?`, ${son.length} of them in Sonoma County`:""}. ${F.conf.length?` The children took part in ${F.conf.length} hands-on food experience${F.conf.length===1?"":"s"} the director confirmed.`:F.found.length?` The educators' observations hold ${F.found.length} moment${F.found.length===1?"":"s"} of children with food.`:""}${fam.length?` Families shared food from home ${timesWord(fam.length)}.`:""}`.replace(/\s{2,}/g," ").trim()));
   const qs=(F.conf.length?F.conf:F.found).filter(n=>sentFit(momentBody(n),360).length>60).slice(0,2);
   if(qs.length){blocks.push(dSub("In the educators' words"));for(const n of qs)blocks.push(dQuote(shareScrub(sentFit(momentBody(n),360)),n.by||"An educator",shortDate(n.at)))}
   const ph=foodPhotos(from,to,1)[0];if(ph)blocks.push(dPhoto(ph,300,true));
@@ -10897,19 +10935,53 @@ function tourDoc(){const ys=ptYearStart(),to=iso(new Date());const lines=gLines(
   blocks.push(dText("This school year",`${farms.size} local farms and producers have grown our food${son?`, ${son} of them here in Sonoma County`:""}. Each class opens a FEED Sonoma bin of fresh produce every week, and the children wash, prepare, taste and share it together.`));
   if(st.length)blocks.push(dText("Our staples",kCap(kList(st.map(x=>x.food+(x.maker?" from "+x.maker:""))))+"."));
   blocks.push(dText("Scraps","What is left goes to our chickens and goats at the end of each day."));
-  for(const n of foodPhotos(addDays(to,-120),to,2))blocks.push(dPhoto(n,220));
+  {const r=foodPhotoRow(foodPhotos(addDays(to,-120),to,2),170);if(r)blocks.push(r)}
   blocks.push(dText("",F2S_FUND));
   return {display:true,type:"report",acc:"smallgroup",title:"Food at Fulton Community School",meta:[["Fulton Community School","1225 Fulton Road, Santa Rosa"]],blocks}}
 // a thank-you card for each farm the school ate from in the quarter, with space for the children's drawings
-function thanksDocs(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const by=new Map();
-  for(const x of lines){if(kIsStaple({food:x.item,farm:x.producer}))continue;const k=gKey(x.producer);const e=by.get(k)||{farm:x.producer,foods:new Set()};e.foods.add(foodName(x.item));by.set(k,e)}
-  for(const b of binAll().filter(b=>b.date>=from&&b.date<=to))for(const i of b.items||[])for(const f of i.farms||[]){const k=gKey(f);const e=by.get(k)||{farm:f,foods:new Set()};e.foods.add(foodName(i.name));by.set(k,e)}
+// what a farm's card thanks it for. An order line for a whole bin, such as FEED Bin - 'Ohana / Large, is the weekly
+// produce bins, and a name with a second name after a star, such as maitake frondosa * hen of the woods, keeps the first
+const thanksFood=t=>{const s=String(t||"");if(/\bbins?\b/i.test(s))return "weekly produce bins";return foodName(s.split("*")[0])};
+function thanksCards(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const by=new Map();
+  for(const x of lines){if(kIsStaple({food:x.item,farm:x.producer}))continue;const k=gKey(x.producer);const e=by.get(k)||{key:k,farm:x.producer,foods:new Set()};e.foods.add(thanksFood(x.item));by.set(k,e)}
+  for(const b of binAll().filter(b=>b.date>=from&&b.date<=to))for(const i of b.items||[])for(const f of i.farms||[]){const k=gKey(f);const e=by.get(k)||{key:k,farm:f,foods:new Set()};e.foods.add(thanksFood(i.name));by.set(k,e)}
   const pics=foodPhotos(from,to,12);
-  return [...by.values()].filter(e=>e.foods.size).slice(0,20).map((e,i)=>{const foods=[...new Set([...e.foods].filter(Boolean))].slice(0,5);const blocks=[];
-    blocks.push(dLead("",`Thank you for the ${kList(foods)} you grew for our children this season.`));
-    const pic=pics.find(n=>foods.some(f=>String(n.noticed||"").toLowerCase().includes(f.split(" ")[0])))||pics[i%Math.max(1,pics.length)];if(pic)blocks.push(dPhoto(pic,230,true));
+  return [...by.values()].filter(e=>e.foods.size).slice(0,20).map((e,i)=>{const foods=[...new Set([...e.foods].filter(Boolean))].slice(0,5);
+    const bins=foods.includes("weekly produce bins"),grown=foods.filter(f=>f!=="weekly produce bins");
+    const words=grown.length?`Thank you for the ${kList(grown)} you grew for our children this season.`+(bins?" And thank you for our weekly produce bins.":""):"Thank you for the weekly produce bins you brought our children this season.";
+    const pic=pics.find(n=>grown.some(f=>String(n.noticed||"").toLowerCase().includes(f.split(" ")[0])))||pics[i%Math.max(1,pics.length)];
+    return {key:e.key,farm:e.farm,words,pic}})}
+function thanksDocs(q,keys){return thanksCards(q).filter(c=>!keys||keys.includes(c.key)).map(c=>{const blocks=[dLead("",c.words)];if(c.pic)blocks.push(dPhoto(c.pic,230,true));
     blocks.push(dText("From the children","\n\n\n\n\n"));
-    return {display:true,type:"report",acc:"smallgroup",title:"Thank you, "+e.farm,meta:[["From","the children and educators of Fulton Community School"]],blocks}})}
+    return {display:true,type:"report",acc:"smallgroup",title:"Thank you, "+c.farm,meta:[["From","the children and educators of Fulton Community School"]],blocks}})}
+/* The thank-you cards, two to a letter page turned sideways, each a half-letter card with a dotted line to cut between
+   them. The card has the farm's name, the thanks, a photo when one fits, and a ruled space for the children's marks. */
+let thanksPick=new Set();
+async function thanksPdf(q,keys){const cards=thanksCards(q).filter(c=>!keys||keys.includes(c.key));if(!cards.length){toast("Tick one or more first.");return}
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();
+  const withPic=cards.filter(c=>c.pic);if(withPic.length)await loadPhotos([{blocks:withPic.map(c=>dPhoto(c.pic,200,true))}]);
+  const H=TREE_KIT.SIZES.half,doc=TREE_KIT.pdf({unit:"pt",format:"letter",orientation:"landscape"}),A=ACC.smallgroup,CW=H.w,CH=H.h,m=30;
+  const card=(c,x0)=>{const W=CW-2*m;let y=m+6;
+    pfont(doc,"fs",8.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School",x0+m,y);y+=24;
+    let ts=24,tl;for(;;){pfont(doc,"bs",ts);tl=doc.splitTextToSize(clean("Thank you, "+c.farm),W);if(tl.length<=2||ts<=17)break;ts-=1}
+    doc.setTextColor(...D_INK);tl.slice(0,2).forEach(l=>{doc.text(l,x0+m,y);y+=ts*1.12});y+=2;
+    pfont(doc,"fr",9.5);doc.setTextColor(...D_MUTED);doc.text("From the children and educators of Fulton Community School",x0+m,y);y+=10;
+    doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(x0+m,y,x0+m+W,y);y+=16;
+    let ws=15,wl;for(;;){pfont(doc,"bm",ws);wl=doc.splitTextToSize(clean(c.words),W-24);if(wl.length<=4||ws<=12)break;ws-=.5}
+    const bh=wl.length*ws*1.3+20;doc.setFillColor(...A.t);doc.roundedRect(x0+m,y,W,bh,8,8,"F");doc.setTextColor(...D_INK);wl.forEach((l,i)=>doc.text(l,x0+m+12,y+10+ws+i*ws*1.3));y+=bh+12;
+    const foot=CH-m,space=150;const im=c.pic&&photoCache.get(c.pic.id);
+    if(im&&foot-y-space>90){const mh=Math.min(170,foot-y-space-12);let pw=W,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}doc.addImage(im.url,"JPEG",x0+m+(W-pw)/2,y,pw,ph,undefined,"FAST");y+=ph+12}
+    pfont(doc,"fs",10);doc.setTextColor(...deep(A.c));doc.text("From the children",x0+m,y+10);y+=18;
+    doc.setDrawColor(...D_HAIR);doc.setLineWidth(.8);doc.roundedRect(x0+m,y,W,foot-y,8,8,"S")};
+  for(let i=0;i<cards.length;i+=2){if(i)doc.addPage("letter","landscape");card(cards[i],0);if(cards[i+1])card(cards[i+1],CW);
+    if(cards[i+1]){doc.setDrawColor(150,160,154);doc.setLineWidth(.6);doc.setLineDashPattern([3,3],0);doc.line(CW,14,CW,CH-14);doc.setLineDashPattern([],0);pfont(doc,"fr",7);doc.setTextColor(150,160,154);doc.text("Cut here",CW+4,CH-16)}}
+  await saveFile(doc.output("blob"),safeFile(`Farm thank-you cards ${periodName(q)}${keys?" chosen":""}`)+".pdf")}
+// the farms to choose from, ticked to print one, some or all
+function thanksPickHtml(q){const cs=thanksCards(q);if(!cs.length)return "";
+  return `<details class="pmenu"><summary class="btn small ghost">Choose thank-you cards</summary><div class="pmenu-list" style="max-height:320px;overflow:auto">
+    ${cs.map(c=>`<label class="cnt" style="display:block"><input type="checkbox" data-thpick="${esc(c.key)}" ${thanksPick.has(c.key)?"checked":""}> ${esc(c.farm)}</label>`).join("")}
+    <div class="actions"><button class="btn small" data-print="fthanks" data-id="${esc(q)}" data-pick="1">Print the ticked ones</button><button class="linkbtn" data-print="fthanks" data-id="${esc(q)}">Print all ${cs.length}</button></div></div></details>`}
+document.addEventListener("change",e=>{const t=e.target.closest&&e.target.closest("[data-thpick]");if(!t)return;if(t.checked)thanksPick.add(t.dataset.thpick);else thanksPick.delete(t.dataset.thpick)});
 // the month's recipe, as the kitchen wrote it, for families
 // the recipe of the month, from the recipe library, sized for a family at home. A month from before the library keeps its own words.
 function recipeCardText(x){if(!x)return "";const L=k=>libLines(recPart(x,k));const out=[];if(L("Ingredients").length)out.push("Ingredients\n"+L("Ingredients").join("\n"));if(L("Steps").length)out.push("Steps\n"+L("Steps").map((l,i)=>(i+1)+". "+l).join("\n"));
@@ -10925,7 +10997,7 @@ function madeForSchoolHtml(){const b=binCurrent(),bn=binNoteRec(b),pm=mShift(mNo
     <div class="gmade"><div><b>This week's bin note for families</b><div class="cnt">${!b?"The bin list has not arrived yet.":!bn?"TREE writes it as soon as the bin list arrives.":bn.status==="posted"?"On the Family page.":"Ready for you to read."}</div>
       ${b&&bn?`<textarea id="g-binnote" aria-label="The bin note" rows="5" style="width:100%">${esc(bn.text||"")}</textarea><div class="actions"><button class="btn small" data-gbn="post">${bn.status==="posted"?"Update the Family page":"Put it on the Family page"}</button><button class="btn small ghost" data-gbn="copy">Copy for Kaymbu</button><button class="linkbtn" data-gbn="again">Write it again</button></div>`:b?`<div class="actions"><button class="btn small ghost" data-gbn="again">Write it now</button></div>`:""}</div>
     <div><b>Farm of the month</b><div class="cnt">${(()=>{const fm=farmOfMonth(pm).best;return fm?`${esc(fm.farm)} for ${esc(parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"}))}${farmPostMade(pm)?", the post is started in Share":""}.`:"No farm in last month's orders yet."})()}</div><div class="actions"><button class="btn small ghost" data-gfom="${pm}">${farmPostMade(pm)?"Start it again":"Start the post in Share"}</button></div></div>
-    <div><b>Printouts</b><div class="actions" style="flex-wrap:wrap">${printBtns("fimpact",lq,"Impact story, "+quarterName(lq))}${printBtns("fthanks",lq,"Farm thank-you cards")}${printBtns("ftour","","Food at Fulton Community School for tours")}${printBtns("farmwall",pm,"Where our food came from")}${has(mrec.recipeCard)?printBtns("frecipe",m,"Recipe card"):""}</div>
+    <div><b>Printouts</b><div class="actions" style="flex-wrap:wrap">${printBtns("fimpact",lq,"Impact story, "+quarterName(lq))}${printBtns("fthanks",lq,"Farm thank-you cards")}${thanksPickHtml(lq)}${printBtns("ftour","","Food at Fulton Community School for tours")}${printBtns("farmwall",pm,"Where our food came from")}${has(mrec.recipeCard)?printBtns("frecipe",m,"Recipe card"):""}</div>
       <div class="cnt">The recipe card comes once the kitchen writes the recipe on the Kitchen page.</div></div></div></div></details>`}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gbn],[data-gfom]");if(!t)return;e.stopImmediatePropagation();
   if(t.dataset.gfom){farmPostStart(t.dataset.gfom);return}
@@ -10947,6 +11019,8 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
   for(const it of w.items){const k=kPlural(it.food||it.name);const e=seen.get(k)||{food:k,farms:[]};if(it.farm&&!e.farms.some(f=>f.farm===it.farm))e.farms.push({farm:it.farm,town:farmTown(it.farm)});seen.set(k,e)}
   // the count is the farms on the page, so the sheet always adds up
   const rows=[...seen.values()].slice(0,10),farms=[...new Set(rows.flatMap(r=>r.farms.map(f=>f.farm)))];
+  // with nothing ordered from a farm yet, there is no sheet to print
+  if(!rows.length||!farms.length)return null;
   return farmWallDoc("This week our food came from",rows,farms.length,farms.filter(f=>gTownCounty(farmTown(f))==="Sonoma").length,[["Week of",parseIso(monday).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})]])}
 // the newsletter's section, the same content in a few sentences
 // staples from the same maker are named together, so olive oil and avocado oil from Costco reads once
@@ -11013,9 +11087,9 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
 const kCanEdit=()=>isDirector()||isKitchenUser();
 // every dish ever on a menu, how often and when it was last served
-function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","3b9595d021").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","3b9595d021").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function kMonthMenu(...a){return lazyLoad("kitchen","3b9595d021").then(()=>kMonthMenu(...a))}
+function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","02342b8884").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","02342b8884").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function kMonthMenu(...a){return lazyLoad("kitchen","02342b8884").then(()=>kMonthMenu(...a))}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */
@@ -13439,7 +13513,9 @@ function momentDoc(n,mode,focus){
   // portfolio only that child's own words are lifted out.
   const lift=text=>childLines(text,false).filter(l=>l.name&&!l.title&&(!focus||l.name===focus.first));
   const flush=()=>{if(buf.length){const raw=buf.join("\n");blocks.push({t:"para",text:displayText(raw,mode,all)});for(const l of lift(raw))blocks.push({t:"quote",words:displayText(l.words,mode,all),by:credit(l.name,mode)})}buf=[]};
-  for(const raw of momentBody(n).split("\n")){const l=raw.trim();if(!l)continue;const m=l.match(NAMED_LINE);
+  // the first line of the words is left out when it only repeats the title the piece already prints
+  const tKey=v=>String(v||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();const ttl=momentBody(n).split("\n").filter(x=>x.trim()).length>1?tKey(momentTitle(n)):"";let lead=true;
+  for(const raw of momentBody(n).split("\n")){const l=raw.trim();if(!l)continue;if(lead){lead=false;if(ttl&&tKey(l)===ttl)continue}const m=l.match(NAMED_LINE);
     if(m){flush();blocks.push({t:"quote",words:displayText(m[2].trim(),mode,all),by:credit(m[1],mode)})}else buf.push(l)}
   flush();
   if(has(n.wonder))blocks.push({t:"box",text:displayText(wonderLine(n.wonder),mode,all)});
@@ -13452,7 +13528,7 @@ async function decodeImage(blob){
 }
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
 async function loadPhotos(docs,quiet){const say=quiet?()=>{}:progress;
-  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="grid"||b.t==="stages"||b.t==="stagegrid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
+  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="photos"?(b.items||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):b.t==="grid"||b.t==="stages"||b.t==="stagegrid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
   let missed=0,got=0;const n=want.length;if(n)say(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
   await Promise.all(want.map(async b=>{try{
     const r=await fetchPhoto(b.src);const blob=await r.blob();
@@ -13564,7 +13640,7 @@ function wallProposal(x){
   const sid=()=>"w"+Math.random().toString(36).slice(2,8);
   const ms=wallPhotoMoments(x);const words=projChildWords(x);
   const sheets=[{id:sid(),kind:"begin",title:"Where it began",photos:ms[0]?[ms[0].id]:[],text:"",quotes:words.filter(w=>!ms[0]||w.at<=(ms[0].at||0)+864e5).slice(0,3),include:true}];
-  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:momentHeading(n)||("The "+shortDate(n.at).replace(/, \d{4}$/,"")),photos:[n.id],text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true});
+  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:momentTitle(n)||shortDate(n.at),photos:[n.id],text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true});
   sheets.push({id:sid(),kind:"now",title:"Where it is now",photo:"",text:"",quotes:words.slice(-3),include:true});
   if(sheets[0].photos[0]&&sheets[1]&&sheets[1].photos[0]===sheets[0].photos[0])sheets[0].photos=[];
   return {sheets,at:Date.now(),by:whoAmI()};
@@ -13578,16 +13654,18 @@ function wallSync(x){const w=x.wall;if(!w||!Array.isArray(w.sheets)||!isDirector
     if(grp.some(g=>used.has(g.id))||used.has(n.id))continue;add.push(grp.length?grp:[n])}
   if(!add.length)return 0;
   for(const grp of add){const n=grp[0];
-    const sh={id:"w"+Math.random().toString(36).slice(2,8),kind:"moment",title:momentHeading(n)||("The "+shortDate(n.at).replace(/, \d{4}$/,"")),photos:grp.slice(0,3).map(g=>g.id),text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true,added:Date.now()};
+    const sh={id:"w"+Math.random().toString(36).slice(2,8),kind:"moment",title:momentTitle(n)||shortDate(n.at),photos:grp.slice(0,3).map(g=>g.id),text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true,added:Date.now()};
     const a=w.sheets,at=s2=>{const m=notices.get(wallPhotos(s2)[0]);return m?m.at||0:0};
     let i=a.findIndex(s2=>s2.kind==="moment"&&at(s2)>(n.at||0));if(i<0)i=a.findIndex(s2=>s2.kind==="now");if(i<0)i=a.length;a.splice(i,0,sh)}
   saveProject(x);return add.length}
+// the same sheets as a poster, 18 by 24 inches, the size the recipe demonstration posters use
+const wallPosterBtn=x=>TREE_KIT.SIZES&&TREE_KIT.SIZES.poster?`<button class="btn small ghost" data-print="wallposter" data-id="${esc(x.id)}">Poster, 18 by 24</button>`:"";
 function wallSheet(x,id){return ((x.wall&&x.wall.sheets)||[]).find(s=>s.id===id)}
 function projWallHtml(x){
   const w=x.wall;const ms=wallPhotoMoments(x);
   if(!wallOpen[x.id])return `<section class="card"><div class="secthead"><h3 style="font-size:17px">The wall</h3>${w?`<span class="cnt">${w.sheets.filter(s=>s.include).length} sheets${(()=>{const e=w.sheets.filter(s=>s.include&&!has(s.text)).length;return e?`, ${e} still need the team's words`:" ready"})()}</span>`:""}</div>
     <div class="hint">A run of sheets that hang in order and tell the project as it grew, each with a photo, the children's words, and a few lines from the team.</div>
-    <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF")+printBtns("wallkids",x.id,"Print for the classroom"):""}</div></section>`;
+    <div class="actions"><button class="btn small ghost" data-pwall="1">${w?"Open the wall":"Plan the wall"}</button>${w&&w.sheets.some(s=>s.include)?printBtns("wall",x.id,"Wall PDF")+wallPosterBtn(x)+printBtns("wallkids",x.id,"Print for the classroom"):""}</div></section>`;
   const sheets=w.sheets;
   const sheetHtml=(sh,i)=>{const sel=wallPhotos(sh);const n=notices.get(sel[0]);const sg=wallSug[sh.id];
     const pool=projChildWords(x);const chosen=new Set((sh.quotes||[]).map(q=>q.words.toLowerCase()));
@@ -13611,7 +13689,7 @@ function projWallHtml(x){
   return `<section class="card" id="pwall"><div class="secthead"><h3 style="font-size:17px">The wall</h3><span class="cnt">${sheets.filter(s=>s.include).length} of ${sheets.length} sheets will hang</span></div>
     <div class="hint">Each sheet prints on its own page, in this order. Every word on it comes from the children or from the team.</div>
     <div class="prow" style="border-top:none;padding-top:0"><span class="cnt">Children's names on the wall</span><div class="seg" role="group" aria-label="Children's names on the wall">${NAME_MODES.map(([k,l])=>`<button data-wnames="${k}" aria-pressed="${wallNames(x)===k}">${l}</button>`).join("")}</div></div>
-    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}${printBtns("wallkids",x.id,"Print for the classroom")}${sample?(()=>{const empty=sheets.filter(s=>s.include&&!has(s.text)&&!(wallSug[s.id]&&/working|ready/.test(wallSug[s.id].status))).length,ready=sheets.filter(s=>wallSug[s.id]&&wallSug[s.id].status==="ready").length,busy=!!wallAll[x.id];
+    <div class="actions">${printBtns("wall",x.id,"Wall PDF",true)}${wallPosterBtn(x)}${printBtns("wallkids",x.id,"Print for the classroom")}${sample?(()=>{const empty=sheets.filter(s=>s.include&&!has(s.text)&&!(wallSug[s.id]&&/working|ready/.test(wallSug[s.id].status))).length,ready=sheets.filter(s=>wallSug[s.id]&&wallSug[s.id].status==="ready").length,busy=!!wallAll[x.id];
       return (busy?`<span class="hint"><span class="spin"></span> Drafting ${wallAll[x.id]}</span>`:empty?`<button class="btn small" data-wsdraftall="1">Draft every empty sheet (${empty})</button>`:"")+(ready>1&&!busy?`<button class="btn small" data-wsuseall="1">Use all ${ready} drafts</button>`:"")})():""}<button class="btn small ghost" data-wsadd="1">Add a sheet</button><button class="linkbtn" data-wsfresh="1">Start again from the timeline</button><button class="linkbtn" data-pwallshut="1">Close</button></div>
     <div style="display:grid;gap:14px">${sheets.map(sheetHtml).join("")}</div></section>`;
 }
@@ -13663,15 +13741,63 @@ ${src}`;
 // photos on a wall sheet, up to three. Sheets made before there could be several keep their one photo.
 function wallPhotos(sh){return (Array.isArray(sh.photos)?sh.photos:(sh.photo?[sh.photo]:[])).filter(id=>{const n=notices.get(id);return n&&n.photo}).slice(0,3)}
 function wallNames(x){return (x.wall&&x.wall.names)||PRINT.names}
-function wallSheetDoc(x,sh){
+// a child's words keep only the print's own quote marks, so a quote written with its marks never prints them twice
+const wallWords=w=>String(w||"").trim().replace(/^[\s"“”‘]+/,"").replace(/[\s"“”]+$/,"").trim();
+// a title made from a date when the wall was planned, such as The October 28, reads as the moment's own title instead
+const wallDateTitle=t=>/^The [A-Z][a-z]+ \d{1,2}$/.test(String(t||"").trim());
+function wallTitle(x,sh,n){const t=String(sh.title||"").trim();if(t&&!wallDateTitle(t))return t;
+  // the moment's first line when it is short and whole, otherwise the project's name, with the date in the line beneath
+  const f=n?String(n.noticed||"").split("\n")[0].trim().replace(/[.,;:!?]+$/,""):"";return f&&f.length<=44&&!/ - /.test(f)?f:x.name}
+// a sheet holds about three of the children's quotes and about sixty words of them, so nothing has to be set small
+const WALL_QUOTES=3,WALL_WORDS=60;
+function wallQuoteRuns(qs){const wc=q=>q.words.split(/\s+/).filter(Boolean).length,tot=qs.reduce((n,q)=>n+wc(q),0);
+  // as few sheets as hold them, shared evenly, so a sheet is never left with one short quote
+  const k=Math.max(1,Math.ceil(qs.length/WALL_QUOTES),Math.ceil(tot/WALL_WORDS)),per=Math.ceil(qs.length/k),runs=[];
+  for(let i=0;i<qs.length;i+=per)runs.push(qs.slice(i,i+per));return runs}
+// one sheet as the team planned it, or, with part, the sheets it is set across. The first carries the photos and the
+// team's words, and the children's words that do not fit go on to the next, titled continued.
+function wallSheetDoc(x,sh,part){
   const mode=wallNames(x);const ns=wallPhotos(sh).map(id=>notices.get(id));const n=ns[0];
   const all=(sh.quotes||[]).map(q=>q.name+" - "+q.words).join("\n")+"\n"+(sh.text||"")+"\n"+ns.map(m=>m.noticed).join("\n");
-  const blocks=[];if(has(sh.text))blocks.push({t:"box",text:displayText(sh.text,mode,all)});
-  (sh.quotes||[]).forEach(q=>blocks.push({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
+  const seen=new Set(),qs=[];for(const q of sh.quotes||[]){const w=wallWords(q.words),k=w.toLowerCase().replace(/[^a-z0-9]+/g," ").trim();if(!w||seen.has(k))continue;seen.add(k);qs.push({name:q.name,words:w})}
+  const runs=wallQuoteRuns(qs);const title=displayText(wallTitle(x,sh,n),mode,all);
   const details=n?momentDetails(n):[x.home?x.home+" class":"",weeksSpan(projWeeks(x))||""];
-  return {centered:true,display:true,type:"report",acc:"story",title:displayText(sh.title||x.name,mode,all),details,photos:ns.flatMap(momentPhotos),blocks};
+  const make=(i,list)=>{const blocks=[];
+    if(!i&&has(sh.text))blocks.push({t:"box",text:displayText(sh.text,mode,all)});
+    // a sheet with a photo and nothing written under it carries a line from the observation as its caption
+    if(!i&&!has(sh.text)&&!qs.length&&n){const b=momentBody(n),c=b?sentFit(b.split("\n").filter(has).join(" "),170):"";if(has(c)&&c.toLowerCase()!==title.toLowerCase())blocks.push({t:"para",text:displayText(c,mode,all)})}
+    list.forEach(q=>blocks.push({t:"quote",words:displayText(q.words,mode,all),by:credit(q.name,mode)}));
+    return {centered:true,display:true,type:"report",acc:"story",title:i?title+", continued":title,details,photos:i?[]:ns.flatMap(momentPhotos),blocks}};
+  const docs=(runs.length?runs:[[]]).map((r,i)=>make(i,r));
+  return part?docs:docs[0];
 }
-function wallDocs(x){return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).map(sh=>wallSheetDoc(x,sh))}
+function wallDocs(x){return ((x.wall&&x.wall.sheets)||[]).filter(s=>s.include).flatMap(sh=>wallSheetDoc(x,sh,true))}
+/* The wall at a readable size. Each sheet is measured before it prints, and while its words would be set smaller than
+   their usual size a quote moves on to the next sheet. When the team's own words are still too long for one sheet, the
+   sheet prints at its usual size over two and the educator hears which one to shorten, so type never shrinks. */
+const WALL_MIN=.95;
+async function wallReadyDocs(x){const docs=wallDocs(x);
+  if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf)return {docs,long:[]};
+  try{await loadPrintFonts()}catch(e){}
+  const doc=TREE_KIT.pdf({unit:"pt",format:"letter"}),A=ACC.story,out=[],long=[];
+  const sz=d=>{try{return cLayout(doc,d,A)}catch(e){return {s:1,over:false}}};
+  for(const d0 of docs){let cur=Object.assign({},d0,{minS:WALL_MIN}),spill=[];
+    while(true){const L=sz(cur);if(!L.over&&L.s>=WALL_MIN)break;const qi=cur.blocks.map(b=>b.t).lastIndexOf("quote");
+      if(qi<0||cur.blocks.filter(b=>b.t==="quote").length<2){if(has(cur.title))long.push(cur.title);cur=Object.assign({},cur,{flow:false,minS:WALL_MIN});break}
+      spill.unshift(cur.blocks[qi]);cur=Object.assign({},cur,{blocks:cur.blocks.filter((b,i)=>i!==qi)})}
+    out.push(cur);
+    if(spill.length){const base=/, continued$/.test(cur.title)?cur.title:cur.title+", continued";out.push(Object.assign({},cur,{title:base,photos:[],blocks:spill}))}}
+  return {docs:out,long:[...new Set(long)]}}
+function wallLongWarn(long){if(long.length)setTimeout(()=>toast(`${long.length===1?"“"+long[0]+"” has":long.length+" sheets have"} more of the team's words than fit at a readable size, so it carries on to a second sheet. Shorten the words to keep it on one.`),1600)}
+// the wall's sheets made larger for a poster, 18 by 24 inches, each letter sheet set whole onto its own poster sheet
+async function wallPoster(docs,name){
+  if(docs.some(d=>(d.photos||[]).length))await loadPhotos(docs);
+  const blob=await makePdf(docs,"",'quiet');if(!blob)return;
+  let L;try{L=await TREE_KIT.pdfLib()}catch(e){toast("The PDF tool did not load.");return}
+  const src=await L.PDFDocument.load(await blob.arrayBuffer());const out=await L.PDFDocument.create();const pages=await out.embedPages(src.getPages());const P=TREE_KIT.SIZES.poster;
+  for(const pg of pages){const land=pg.width>pg.height,W=land?P.h:P.w,H=land?P.w:P.h;const sh=out.addPage([W,H]);const s=Math.min(W/pg.width,H/pg.height);sh.drawPage(pg,{x:(W-pg.width*s)/2,y:(H-pg.height*s)/2,xScale:s,yScale:s})}
+  out.setTitle(name);out.setCreator("Fulton Community School");out.setProducer("TREE");
+  await saveFile(new Blob([await out.save()],{type:"application/pdf"}),safeFile(name)+".pdf")}
 /* Print for the classroom. The sheets at child height, half letter, two to each letter page turned sideways, made through
    the print kit from the same centred layout as the wall, then set two to a page (November 4, 2026) */
 async function halfSheets(docs,name){
@@ -13839,6 +13965,8 @@ const dq=(doc,t)=>doc.__pf?"\u201C"+t+"\u201D":'"'+t+'"';
 const deep=c=>c.map(v=>Math.round(v*.8));
 function displayHead(doc,p,A,dry){
   const {m,w}=DG;let y=DG.top;
+  // a sheet with no title and no facts, such as two pieces of a family copy, opens with its first piece, never with an empty rule
+  if(p.noTitle&&!has(p.title)&&!(p.meta||[]).some(r=>has(Array.isArray(r)?r[1]:r))){if(PRINT.schoolDocs&&!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School",m,y+8)}return y+(PRINT.schoolDocs?30:4)}
   if(PRINT.schoolDocs){if(!dry){pfont(doc,"fs",9.5);doc.setTextColor(...deep(A.c));doc.text("Fulton Community School",m,y+8)}y+=22}
   let ts=p.visual?46:38,tl;for(;;){pfont(doc,"bs",ts);tl=doc.splitTextToSize(clean(p.title||""),w);if(tl.length<=(p.visual?2:ts>30?1:2)||ts<=24)break;ts-=2}
   tl=tl.slice(0,3);const tlh=ts*1.12;
@@ -14002,6 +14130,12 @@ function displayAtoms(doc,p,A,s){
     else if(b.t==="sub"){gap(14);sub=b.text;const i0=atoms.length;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:6*s,keep:true,gap:false,draw(){}});if(atoms[i0])atoms[i0].isSub=true}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item","table","figures","small"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(12);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(8)}
     else if(b.t==="web"){const n=(b.web.branches||[]).filter(x=>x.name||x.materials).length;push({h:webHeight(n)[0],min:webHeight(n)[1]*.8,draw(y){displayWeb(doc,m,y,w,this.h,b.web,A)}});gap(6)}
+    // photos side by side, each with its caption under it, so a pair sits in one row under the words
+    else if(b.t==="photos"){const T=(b.items||[]).map(x=>Object.assign({im:photoCache.get(x.key)},x)).filter(x=>x.im);if(T.length){const g=16,n=T.length,cw=(w-g*(n-1))/n,mh=(b.maxH||170)*Math.min(Math.max(s,.8),1.15),cz=Z.small,clh=Z.slh;
+      const D=T.map(x=>{let pw=cw,ph=pw*x.im.h/x.im.w;if(ph>mh){ph=mh;pw=ph*x.im.w/x.im.h}return Object.assign(x,{pw,ph,cl:has(x.cap)?wrap(x.cap,"fr",cz,cw).slice(0,2):[]})});
+      const rh=Math.max(...D.map(x=>x.ph)),ch=Math.max(...D.map(x=>x.cl.length))*clh;
+      gap(6);push({h:rh+(ch?6+ch:0),keep:true,draw(y){D.forEach((x,i)=>{const x0=m+i*(cw+g);doc.addImage(x.im.url,"JPEG",x0+(cw-x.pw)/2,y+(rh-x.ph),x.pw,x.ph,undefined,"FAST");
+        pfont(doc,"fr",cz);doc.setTextColor(...D_MUTED);x.cl.forEach((l,k)=>doc.text(l,x0+cw/2,y+rh+6+cz+k*clh,{align:"center"}))})}});gap(8)}}
     else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const fw=b.full?w:Math.min(w*.72,b.maxW?b.maxW*Math.min(Math.max(s,.85),1.1):1e9),fx=m,mh=(b.maxH||260)*Math.min(s,1.15);let pw=fw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
       gap(6);push({h:ph,keep:true,draw(y){doc.addImage(im.url,"JPEG",fx+(b.full?(fw-pw)/2:0),y,pw,ph,undefined,"FAST")}});gap(8)}}
     // a plant's stage photos on its full page, two across, each cut to the same frame, with its word and credit beneath
@@ -14114,12 +14248,13 @@ function cWords(doc,md,A,s,cx,w,y0,ops){
   const B=md.blocks||[];let y=y0;const put=o=>{if(ops)ops.push(o)};
   const oq=doc.__pf?"“":'"',cq=doc.__pf?"”":'"';
   B.forEach((b,i)=>{
-    if(b.t==="para"){const z=12.5*s,lh=z*1.45;cwrap(doc,"fr",z,b.text,w).forEach(l=>{put({t:"text",x:cx,y:y+z,k:"fr",s:z,c:D_INK,txt:l});y+=lh});y+=10*s}
+    // words that run past five lines read left aligned, as long writing does, and short ones stay centred
+    if(b.t==="para"){const z=12.5*s,lh=z*1.45;const ls=cwrap(doc,"fr",z,b.text,w),lf=ls.length>5;ls.forEach(l=>{put({t:"text",x:lf?cx-w/2:cx,y:y+z,k:"fr",s:z,c:D_INK,txt:l,left:lf});y+=lh});y+=10*s}
     else if(b.t==="quote"){if(B[i-1]&&B[i-1].t==="quote"){put({t:"dot",x:cx,y:y+3*s,r:2.2,c:A.c});y+=13*s}
       const z=15*s,lh=z*1.28;cwrap(doc,"bm",z,oq+b.words+cq,w*.9).forEach(l=>{put({t:"text",x:cx,y:y+z*.86,k:"bm",s:z,c:D_INK,txt:l});y+=lh});
       if(has(b.by)){put({t:"text",x:cx,y:y+9.5*s,k:"fr",s:9.5*s,c:D_MUTED,txt:ct(doc,b.by)});y+=14*s}y+=6*s}
     else if(b.t==="box"){const z=13*s,pad=14*s,lh=z*1.42;const ls=cwrap(doc,"bm",z,b.text,w-2*pad);const h=ls.length*lh+2*pad-3*s;
-      if(i>0)y+=4*s;put({t:"rect",x:cx-w/2,y,w,h,r:10,fill:A.t});ls.forEach((l,j)=>put({t:"text",x:cx,y:y+pad+z*.84+j*lh,k:"bm",s:z,c:D_INK,txt:l}));y+=h+14*s}
+      const lf=ls.length>5;if(i>0)y+=4*s;put({t:"rect",x:cx-w/2,y,w,h,r:10,fill:A.t});ls.forEach((l,j)=>put({t:"text",x:lf?cx-w/2+pad:cx,y:y+pad+z*.84+j*lh,k:"bm",s:z,c:D_INK,txt:l,left:lf}));y+=h+14*s}
     else if(b.t==="sect"){const lz=9.2*Math.min(s,1.25),z=13*s,lh=z*1.6,wk=b.strong?"bs":"fr";
       if(i>0&&B[i-1].t==="sect")y+=20*s;
       if(has(b.label)){put({t:"text",x:cx,y:y+lz,k:"fs",s:lz,c:deep(A.c),cs:lz*.16,txt:ct(doc,b.label).replace(/[.]+$/,"").toUpperCase()});y+=lz+8*s}
@@ -14192,6 +14327,8 @@ function cLayout(doc,md,A){
     if(!s&&!md.flow){minP=H*.5;s=CSCALES.filter(k=>k<=cap[0]).find(k=>meas(k,ww)<=H-minP-gap)}
     // a card made to stay on one page, such as an animal card, lets the photo give a little more before it carries on
     if(!s&&md.onePage){minP=H*.36;s=CSCALES.filter(k=>k<=cap[0]).find(k=>meas(k,ww)<=H-minP-gap)}
+    // a sheet that must keep its words at a readable size lets the photo give a little more room first
+    if(md.minS&&(!s||s<md.minS)){for(const f of [.45,.4,.36]){const k=CSCALES.filter(k=>k<=cap[0]&&k>=md.minS).find(k=>meas(k,ww)<=H-H*f-gap);if(k){minP=H*f;s=k;break}}}
     if(!s){s=.8;over=true}
     let wh=meas(s,ww);const lay=cPhotos(ps,CM,top,W,Math.max(minP,H-(wh?wh+gap:0)));
     // a wide photo leaves room below it, so the words grow into it
@@ -14284,14 +14421,14 @@ function cSplitBlock(b){const lines=Array.isArray(b.lines)&&b.lines.length>1?b.l
   return [Object.assign({},b,{text:parts.slice(0,k).join(j).trim()}),Object.assign({},b,{text:parts.slice(k).join(j).trim(),label:b.label?b.label+", continued":b.label})]}
 function cContinue(doc,md,A,L0){let rest=[...(md.blocks||[])];const sheets=[],pages=[];let first=true,guard=0;
   while(rest.length&&guard++<60){const base=first?md:Object.assign({},md,{photos:[],title:(md.title||"")+", continued",sub:""});
-    let k=rest.length,T=null;for(;k>0;k--){T=cLayout(doc,Object.assign({},base,{blocks:rest.slice(0,k)}),A);if(!T.over&&!(T.s<.8))break}
+    let k=rest.length,T=null;for(;k>0;k--){T=cLayout(doc,Object.assign({},base,{blocks:rest.slice(0,k)}),A);if(!T.over&&!(T.s<(md.minS||.8)))break}
     if(k===0){const sp=cSplitBlock(rest[0]);if(sp){rest=[...sp,...rest.slice(1)];continue}
       k=1;T=cLayout(doc,Object.assign({},base,{blocks:rest.slice(0,1)}),A)}
     const sh=Object.assign({},base,{blocks:rest.slice(0,k)});sheets.push(sh);pages.push(T);rest=rest.slice(k);first=false}
   if(!pages.length)return {sheets:[md],pages:[L0],over:L0.over};
   return {sheets,pages,over:pages.some(p=>p.over)}}
 function cFlow0(doc,md,A){
-  const L=cLayout(doc,md,A);if(md.plantCard)return {sheets:[md],pages:[L],over:L.over};if(!L.over&&(md.flow||!(L.s<.8)))return {sheets:[md],pages:[L],over:false};
+  const L=cLayout(doc,md,A);if(md.plantCard)return {sheets:[md],pages:[L],over:L.over};if(!L.over&&(md.flow||!(L.s<(md.minS||.8))))return {sheets:[md],pages:[L],over:false};
   if(!md.flow||!(md.photos||[]).length)return cContinue(doc,md,A,L);
   const B=md.blocks||[];let k=B.length-1;
   for(;k>0;k--){const T=cLayout(doc,Object.assign({},md,{blocks:B.slice(0,k)}),A);if(!T.over&&T.s>=1)break}
@@ -14306,7 +14443,7 @@ function cFlow0(doc,md,A){
 function cReady(md){return Object.assign({},md,{photos:(md.photos||[]).map(p=>{const im=photoCache.get(p.key);return im?Object.assign({},p,{w:im.w,h:im.h}):null}).filter(Boolean)})}
 function cDraw(doc,ops){for(const o of ops){
   if(o.t==="text"){pfont(doc,o.k,o.s);doc.setTextColor(...o.c);
-    if(o.cs){const tw=doc.getTextWidth(o.txt)+o.cs*(o.txt.length-1);doc.text(o.txt,o.x-tw/2,o.y,{charSpace:o.cs})}else doc.text(o.txt,o.x,o.y,{align:"center"})}
+    if(o.cs){const tw=doc.getTextWidth(o.txt)+o.cs*(o.txt.length-1);doc.text(o.txt,o.x-tw/2,o.y,{charSpace:o.cs})}else if(o.left)doc.text(o.txt,o.x,o.y);else doc.text(o.txt,o.x,o.y,{align:"center"})}
   else if(o.t==="img"){const im=photoCache.get(o.key);if(!im)continue;
     if(o.cover){const r=Math.max(o.w/im.w,o.h/im.h),w=im.w*r,h=im.h*r;try{doc.saveGraphicsState();doc.rect(o.x,o.y,o.w,o.h,null);doc.clip();doc.discardPath();doc.addImage(im.url,"JPEG",o.x+(o.w-w)/2,o.y+(o.h-h)/2,w,h,undefined,"FAST");doc.restoreGraphicsState()}catch(e){doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}}
     else doc.addImage(im.url,"JPEG",o.x,o.y,o.w,o.h,undefined,"FAST")}
@@ -14326,7 +14463,7 @@ function cPreview(md){
     const svg=L=>{const cover=L.ops.filter(o=>o.t==="img"&&o.cover&&!o.grid);
       let h=`<svg viewBox="0 0 ${L.PW} ${L.PH}" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="white-space:pre${cover.length?";position:relative":""}" role="img" aria-label="How the sheet prints">${cover.length?"":`<rect width="${L.PW}" height="${L.PH}" fill="#ffffff"/>`}`;
       for(const o of L.ops){if(o.cover&&!o.grid)continue;
-        if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="middle"${o.cs?` letter-spacing="${o.cs.toFixed(2)}"`:""}>${esc(o.txt)}</text>`;
+        if(o.t==="text")h+=`<text x="${o.x.toFixed(1)}" y="${o.y.toFixed(1)}" font-family="${fam(o.k)}" font-weight="${wt(o.k)}" font-size="${o.s.toFixed(2)}" fill="${rgb(o.c)}" text-anchor="${o.left?"start":"middle"}"${o.cs?` letter-spacing="${o.cs.toFixed(2)}"`:""}>${esc(o.txt)}</text>`;
         else if(o.t==="img")h+=`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" fill="#eef1ec"/>`;
         else if(o.t==="rect")h+=(o.after?"":`<rect x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="${o.r}" fill="${rgb(o.fill)}"/>`);
         else if(o.t==="line")h+=`<line x1="${o.x1}" y1="${o.y1}" x2="${o.x2}" y2="${o.y2}" stroke="${rgb(o.c)}" stroke-width="${o.w}"/>`;
@@ -14351,7 +14488,7 @@ async function sheetJpg(md,longSide){
   const pics={};for(const o of L.ops)if(o.t==="img"&&!pics[o.key]){const im=photoCache.get(o.key);if(im)pics[o.key]=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=im.url})}
   const ops=[...L.ops.filter(o=>o.cover),...L.ops.filter(o=>!o.cover)];
   for(const o of ops){
-    if(o.t==="text"){g.font=face(o.k).replace("%s",(o.s*k).toFixed(1));g.fillStyle=rgb(o.c);g.textAlign="center";if("letterSpacing" in g)g.letterSpacing=o.cs?(o.cs*k).toFixed(1)+"px":"0px";g.fillText(o.txt,o.x*k,o.y*k)}
+    if(o.t==="text"){g.font=face(o.k).replace("%s",(o.s*k).toFixed(1));g.fillStyle=rgb(o.c);g.textAlign=o.left?"left":"center";if("letterSpacing" in g)g.letterSpacing=o.cs?(o.cs*k).toFixed(1)+"px":"0px";g.fillText(o.txt,o.x*k,o.y*k)}
     else if(o.t==="img"){const im=pics[o.key];if(!im)continue;if(o.cover){const r=Math.max(o.w/im.width,o.h/im.height),w=im.width*r,h=im.height*r;g.save();g.beginPath();g.rect(o.x*k,o.y*k,o.w*k,o.h*k);g.clip();g.drawImage(im,(o.x+(o.w-w)/2)*k,(o.y+(o.h-h)/2)*k,w*k,h*k);g.restore()}else g.drawImage(im,o.x*k,o.y*k,o.w*k,o.h*k)}
     else if(o.t==="rect"){g.fillStyle=rgb(o.fill);g.beginPath();if(g.roundRect)g.roundRect(o.x*k,o.y*k,o.w*k,o.h*k,(o.r||0)*k);else g.rect(o.x*k,o.y*k,o.w*k,o.h*k);g.fill()}
     else if(o.t==="line"){g.strokeStyle=rgb(o.c);g.lineWidth=o.w*k;g.beginPath();g.moveTo(o.x1*k,o.y1*k);g.lineTo(o.x2*k,o.y2*k);g.stroke()}
@@ -14544,6 +14681,8 @@ async function displayDocx(ch,p,D,A){
       const nx=B[bi+1],nx2=B[bi+2];if(nx&&nx.t==="quote"&&!(nx2&&nx2.t==="quote")){ch.push(spacer(100),...quoteP(nx));bi++}}
     else if(b.t==="qa"){ch.push(para(run(b.q,"fs",9.8*s,MUT),{keepNext:true,spacing:{before:120,after:20}}),...body(b.a))}
     else if(b.t==="sub"){ch.push(para(run(b.text,"bs",16.5*s),{keepNext:true,spacing:{before:280,after:120}}))}
+    else if(b.t==="photos"){for(const x of b.items||[]){const im=photoCache.get(x.key);if(!im)continue;const mw=300,mh=(b.maxH||170)*96/72;let pw=mw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
+      ch.push(para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(pw),height:Math.round(ph)}}),{alignment:AlignmentType.CENTER,spacing:{after:60}}));if(has(x.cap))ch.push(para(run(x.cap,"fr",9.4*s,MUT),{alignment:AlignmentType.CENTER,spacing:{after:160}}))}}
     else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const mw=b.full?640:470,mh=(b.maxH||260)*96/72;let pw=mw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
       ch.push(para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(pw),height:Math.round(ph)}}),{alignment:b.full?AlignmentType.CENTER:AlignmentType.LEFT,spacing:{after:160}}))}}
     else if(b.t==="stagegrid"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key));const cw=Math.floor(W/2);
@@ -14565,11 +14704,11 @@ async function printsClick(t){
   // the official wording of each DRDP level, for any print that carries a level
   if(/drdp|portfolio|conf|fam|slide/i.test(t.dataset.print||""))try{await loadDrdpTxt()}catch(e){}
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
-  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))){await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="photos"))){await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Observation ${momentTitle(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="story"){const st=stories.get(t.dataset.id);if(st)await (word?storyDocx:storyPdf)(st);return true}
   if(kind==="storysmall"){const st=stories.get(t.dataset.id);if(st)await (word?storySmallDocx:storySmallPdf)(st);return true}
-  if(kind==="slide"){const s=slides.get(t.dataset.id);if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
+  if(kind==="slide"){const s=slides.get(t.dataset.id);if(s&&slideBare(s)){toast("This slide has no title and no photo yet, so there is nothing to print. Add a title or a photo first.");return true}if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
   // the child's DRDP on its own, the accepted levels with their evidence, as it closes a portfolio
   if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
@@ -14607,9 +14746,10 @@ async function printsClick(t){
   if(kind==="tstory"){const th=threads.get(t.dataset.id);if(th&&th.story)out([threadStoryDoc(th)],`Project story ${th.name}`);return true}
   if(kind==="pstory"){const x=projId&&projects.get(projId);const s=x&&(x.stories||[]).find(s=>s.id===t.dataset.id);if(s)out([projectStoryDoc(x,s)],`Project story ${x.name}${s.label?" "+s.label:""}`);return true}
   if(kind==="projects"){const all=[...projects.values()].sort((a,b)=>(a.status==="closed")-(b.status==="closed")||(b.updatedAt||0)-(a.updatedAt||0));if(!all.length){toast("There are no projects to print yet.");return true}out(all.map(x=>projectDoc(x,long)),`Fulton Community School projects ${mondayOf(new Date())}`);return true}
-  if(kind==="wall"){const x=projects.get(t.dataset.id);if(x){const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}await out(docs,`Wall ${x.name}`)}return true}
+  if(kind==="wall"||kind==="wallposter"){const x=projects.get(t.dataset.id);if(x){if(!wallDocs(x).length){toast("Choose at least one sheet to hang.");return true}const {docs,long}=await wallReadyDocs(x);
+    if(kind==="wallposter"&&!word){await wallPoster(docs,`Wall ${x.name} poster`);wallLongWarn(long);return true}await out(docs,`Wall ${x.name}`);wallLongWarn(long)}return true}
   // child height. The wall's sheets, or a thread's moments with the children's words, at half letter, two to a letter page
-  if(kind==="wallkids"){const x=projects.get(t.dataset.id);if(!x)return true;const docs=wallDocs(x);if(!docs.length){toast("Choose at least one sheet to hang.");return true}if(word){await out(docs,`For the classroom ${x.name}`);return true}await halfSheets(docs,`For the classroom ${x.name}`);return true}
+  if(kind==="wallkids"){const x=projects.get(t.dataset.id);if(!x)return true;if(!wallDocs(x).length){toast("Choose at least one sheet to hang.");return true}const {docs,long}=await wallReadyDocs(x);if(word){await out(docs,`For the classroom ${x.name}`);return true}await halfSheets(docs,`For the classroom ${x.name}`);wallLongWarn(long);return true}
   if(kind==="threadkids"){const th=threads.get(t.dataset.id);if(!th)return true;const docs=threadKidDocs(th);if(!docs.length){toast("No photo observation with the children's words in this thread yet.");return true}if(word){await out(docs,`For the classroom ${th.name}`);return true}await halfSheets(docs,`For the classroom ${th.name}`);return true}
   // the week's place sheet, from the server, one centred letter page
   if(kind==="placesheet"){let j=null;try{j=await window.FP_API("/api/place-sheet",{week:mondayOf(new Date()),room:t.dataset.id||""})}catch(e){toast(e&&e.message||"The place sheet could not be read.");return true}
@@ -14624,7 +14764,7 @@ async function printsClick(t){
   if(kind==="drdprep"){const ds=drdpReportDocs(t.dataset.id);if(!ds.length){toast("No class has children on the roster.");return true}await out(ds,`DRDP evidence ${t.dataset.id==="All"?"all classes":t.dataset.id}`);return true}
   if(kind==="fimpact"){await out([impactDoc(t.dataset.id)],`Farm to School impact ${periodName(t.dataset.id)}`);return true}
   if(kind==="ftour"){await out([tourDoc()],"Food at Fulton Community School");return true}
-  if(kind==="fthanks"){const ds=thanksDocs(t.dataset.id);if(!ds.length){toast("No farm is in the orders or bins for that quarter yet.");return true}await out(ds,`Farm thank-you cards ${periodName(t.dataset.id)}`);return true}
+  if(kind==="fthanks"){const keys=t.dataset.pick?[...thanksPick]:null;if(keys&&!keys.length){toast("Tick one or more first.");return true}const ds=thanksDocs(t.dataset.id,keys);if(!ds.length){toast("No farm is in the orders or bins for that quarter yet.");return true}if(!word){await thanksPdf(t.dataset.id,keys);return true}await out(ds,`Farm thank-you cards ${periodName(t.dataset.id)}`);return true}
   if(kind==="frecipe"){if(!libData)await loadLibrary();const d=recipeDoc(t.dataset.id);if(!d){toast("Write the recipe on the Kitchen page first.");return true}await out([d],`Recipe ${MENU_MONTH(t.dataset.id)}`);return true}
   if(kind==="aboutme"){const c=children.get(t.dataset.id);if(!c||!c.aboutMe){toast("The family has not made the book yet.");return true}
     const docs=(c.aboutMe.pages||[]).map((p,i)=>{const blocks=[];const ph=(p.photos||[]).map(id=>({id:"am-"+id,photo:{id}}));
