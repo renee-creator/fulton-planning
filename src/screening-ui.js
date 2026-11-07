@@ -299,6 +299,9 @@ async function scrFill(doc,pages,F,x,cp,c){const H=F.size[1];const font=await do
   T(1,cv.date,day);T(S.page,S.date,day);
   const who=String(cp.who||"").trim().split(/\s+/);if(who[0]){T(1,cv.pfirst,who.slice(0,-1).join(" ")||who[0]);if(who.length>1)T(1,cv.plast,who[who.length-1])}
   if(cp.rel&&cv.rel&&cv.rel[cp.rel])dot(1,cv.rel[cp.rel],F.tool==="asq3"?3.3:3.6);
+  // an educator filling it out gives the school's address, phone and the class email, from School Contact Information
+  if(cp.rel==="teacher"||cp.rel==="provider"){const room=String(c.classroom||"").trim();const mail=/^(north|south|west)$/i.test(room)?room.toLowerCase()+"@childfamilycommunity.com":"";
+    T(1,cv.street,"Fulton Community School, 1225 Fulton Road",{max:F.tool==="asq3"?205:200});T(1,cv.city,"Santa Rosa");T(1,cv.state,"CA");T(1,cv.zip,"95401");T(1,cv.country,"USA");T(1,cv.phone,"707-523-8035");T(1,cv.email,mail)}
   if(cv.age&&x.age)T(1,cv.age,scrAgeText(scrAge(c.dob,cp.date||x.date)||x.age));
   if(S.age&&x.age)T(S.page,S.age,scrAgeText(scrAge(c.dob,cp.date||x.date)||x.age));
   if(S.who)T(S.page,S.who,cp.who,{max:110});

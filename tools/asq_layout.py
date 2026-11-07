@@ -141,6 +141,14 @@ def asq3(path, fid):
                   'dob': label_above(cover, r'^Child.s date of birth'), 'gender': gender,
                   'pfirst': label_above(cover, r'^First name'), 'plast': label_above(cover, r'^Last name'), 'rel': rel,
                   'program': label_at(cover, r'^Program name'), 'childId': label_at(cover, r'^Child ID')}
+    # the address lines, for an educator filling it out, written on the row of each line
+    C = F['cover']; C['street'] = label_above(cover, r'^Street address'); C['city'] = label_above(cover, r'^City'); C['country'] = label_above(cover, r'^Country')
+    C['email'] = label_above(cover, r'^E-?\s?mail')
+    for k, pat in (('state', r'^State/'), ('zip', r'^ZIP/')):
+        w = find(cover, pat, 400)
+        if w: C[k] = [R(w['x0'] + 2), R(w['top'] - 4)]
+    w = find(cover, r'^Other\s*$', 465)
+    if w: C['phone'] = [R(w['x0'] + 2), R(w['top'] - 4)]
     # the questions, area by area, page by page
     area = None
     for pi in range(1, N):
@@ -280,6 +288,13 @@ def asqse2(path, fid):
     for k, pat in (('pfirst', r'^First name'), ('plast', r'^Last name')):
         w = find(cover, pat, 340)
         if w: F['cover'][k] = [R(w['x0'] + 2), R(w['top'] + 22)]
+    # the address lines, written under each label as the names are, and the email after its label
+    C = F['cover']
+    for k, pat, below in (('street', r'^Street address', 370), ('city', r'^City', 400), ('state', r'^(State/)?province', 400), ('zip', r'^ZIP/postal', 400), ('country', r'^Country', 440), ('phone', r'^(Other telephone )?number:', 445)):
+        ws_ = [w for w in words(cover) if re.search(pat, w['text']) and w['top'] > below]
+        if k == 'phone': ws_ = [w for w in ws_ if w['x0'] > 380]
+        if ws_: C[k] = [R(ws_[0]['x0'] + 2), R(ws_[0]['top'] + 22)]
+    C['email'] = label_at(cover, r'^E-?\s?mail')
     pn = 0
     for pi in range(1, N):
         p = pages[pi]; t = p.extract_text() or ''
