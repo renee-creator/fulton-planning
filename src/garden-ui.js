@@ -40,8 +40,8 @@ const GDN_STAGE={plan:"Planning",plant:"Planting",tend:"Tending",harvest:"Harves
    from its three months and the plants, the animals' care and that season's gathering, with the season's own words
    from its page in the records. Seasons organize the garden's work only. */
 // the label "Look, don't eat" used inside a sentence reads as words, so "California sage is Look, don't eat" prints as
-// "California sage is for looking, never eating"
-const gdnLines=t=>String(t||"").split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").replace(/\b(is|are) Look, don't eat\b/g,"$1 for looking, never eating").trim()).filter(Boolean);
+// "California sage is for looking only"
+const gdnLines=t=>String(t||"").split("\n").map(l=>l.replace(/^\s*[-*]\s+/,"").replace(/\b(is|are) Look, don't eat\b/g,"$1 for looking only").trim()).filter(Boolean);
 const gdnPage=k=>(gdn&&gdn.library&&gdn.library[k])||null;
 const gdnPart=(k,name)=>{const pg=gdnPage(k);const x=pg&&(pg.parts||[]).find(p=>p.key===name);return x?x.text:""};
 const gdnFoodRule=()=>(wordsOf("food-rule").rule||"").trim();
