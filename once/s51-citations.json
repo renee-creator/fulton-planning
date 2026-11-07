@@ -1,0 +1,981 @@
+{
+ "name": "s51Citations",
+ "note": "PD library citations corrected after the fact check, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Julianne Wurm describes observation, reflection and documentation as a continuous cycle, where each step creates the conditions for the next.",
+   "to": "Observation, reflection and documentation form a continuous cycle, and each step creates the conditions for the next."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "\"Listening means being open to differences, recognizing the value of another's point of view.\" Loris Malaguzzi",
+   "to": "\"Listening as welcoming and being open to differences, recognizing the value of the other's point of view and interpretation.\" Carlina Rinaldi, Making Learning Visible, 2001"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "Wurm describes repetition as the clearest signal that something is unresolved for the child. NAEYC identifies sustained emotional engagement as one of the clearest signs of meaningful learning.",
+   "to": "Repetition often signals that something is still unresolved for the child. Sustained focus and strong feeling around a question are signs worth following."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "\"The teacher must at times be the prophet... but more than anything, the teacher must be the observer.\" Loris Malaguzzi",
+   "to": "Loris Malaguzzi placed observation at the center of the educator's work, ahead of predicting where children's thinking will go."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "\"Documentation is not what we do after... it is the substance of our professional dialogue.\" Carlina Rinaldi",
+   "to": "Carlina Rinaldi describes documentation as part of the learning process itself, a trace educators return to together in professional dialogue."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "\"Children's theories are their way of making sense of the world. They are fragile, poetic, and rigorous.\" Carlina Rinaldi",
+   "to": "Carlina Rinaldi writes that children build theories to explain the world, and that they share, test and revise those theories with others."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "pride when it does, and NAEYC names this self directed emotional investment as the hallmark of meaningful learning.",
+   "to": "pride when it does. Sustained focus and strong feeling around a question are signs worth following."
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "- [In Dialogue with Reggio Emilia, Listening, Researching and Learning, second edition, Carlina Rinaldi, Routledge, 2021](https://routledge.com/In-Dialogue-with-Reggio-Emilia-Listening-Researching-and-Learning/Rinaldi/p/book/9780367427047)",
+   "to": "- [In Dialogue with Reggio Emilia, Listening, Researching and Learning, second edition, Carlina Rinaldi, Routledge, 2021](https://routledge.com/In-Dialogue-with-Reggio-Emilia-Listening-Researching-and-Learning/Rinaldi/p/book/9780367427047)\n- [The Pedagogy of Listening, Carlina Rinaldi, in Making Learning Visible, Reggio Children, 2001](https://onlineacademiccommunity.uvic.ca/pedagogicalexplorations/wp-content/uploads/sites/4432/2019/09/The-Pedagogy-of-Listening-.pdf)"
+  },
+  {
+   "path": "staff/pd/printables/researcher.md",
+   "from": "\"Children's theories are their way of making sense of the world. They are fragile, poetic, and rigorous.\" Carlina Rinaldi",
+   "to": "Carlina Rinaldi writes that children build theories to explain the world, and that they share, test and revise those theories with others."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "\"... teachers must learn to interpret ongoing processes, rather than wait to evaluate results.\" Loris Malaguzzi",
+   "to": "Julianne Wurm writes that educators learn to interpret learning while it is still happening."
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "\"Documentation is not about what we do, but what we are searching for.\" Carlina Rinaldi",
+   "to": "Carlina Rinaldi describes documentation as visible listening, a trace that lets children, families and educators return to their questions and to what they are searching for."
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "\"The most notable thing about a 'Good job!' is that it's not an affirmation... but a way of doing things to children to get them to comply with our wishes.\" (Alfie Kohn, Five Reasons to Stop Saying \"Good Job!\") Put more briefly, \"Praise is a way of doing things to children to get them to comply with our wishes.\" (Alfie Kohn)",
+   "to": "Alfie Kohn writes that praise used this way is \"a way of doing something to children to get them to comply with our wishes.\""
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "3. **Losing interest.** Focus shifts to the reward and away from the work.\n4. **Reducing risks.** Fear of losing the praise status.",
+   "to": "3. **Stealing a child's pleasure.** The adult decides how the child should feel about their own work.\n4. **Losing interest.** Focus shifts to the reward and away from the work."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\"The most notable thing about a 'Good job!' is that it's not an affirmation... but a way of doing things to children to get them to comply with our wishes.\" (Alfie Kohn, Five Reasons to Stop Saying \"Good Job!\") Put more briefly, \"Praise is a way of doing things to children to get them to comply with our wishes.\" (Alfie Kohn)",
+   "to": "Alfie Kohn writes that praise used this way is \"a way of doing something to children to get them to comply with our wishes.\""
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "3. **Losing interest.** Focus shifts to the reward and away from the work.\n4. **Reducing risks.** Fear of losing the praise status.",
+   "to": "3. **Stealing a child's pleasure.** The adult decides how the child should feel about their own work.\n4. **Losing interest.** Focus shifts to the reward and away from the work."
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "\n\n**Stealing pride**, where the adult decides how the child should feel, is sometimes counted among the five, with risk and achievement joined into one reason. Children repeat safe successes to make sure they get the praise.",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\n\n**Stealing pride**, where the adult decides how the child should feel, is sometimes counted in place of reducing achievement, with risk and achievement joined into one reason, since children repeat safe successes to make sure they get the praise.",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "Tom Drummond writes that \"presence is the prerequisite for care,\" and he describes",
+   "to": "Tom Drummond writes that presence is the prerequisite for care, and he describes"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\"Enterprise Talk is the adult's contribution to the child's pursuit of their own purpose.\" (Tom Drummond, Guidelines for Enterprise Talk)",
+   "to": "Tom Drummond describes Enterprise Talk as the adult's contribution to the child's pursuit of their own purpose."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\"Presence is the prerequisite for care. Presence is a choice. It is a choice to sit down or stand nearby and choose to be right here, right now, for these children.\" (Tom Drummond, Leadership and Care)",
+   "to": "Tom Drummond describes presence as the prerequisite for care, and as a choice to sit down or stand nearby and be right here, right now, for these children."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\"By narrating instead of judging, we leave the child's internal satisfaction intact and their curiosity uninterrupted.\" (Tom Drummond, Guidelines for Enterprise Talk)",
+   "to": "Tom Drummond suggests narrating what a child is doing, so the child's own satisfaction and curiosity stay with the child."
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "\"By narrating instead of judging, we leave the child's internal satisfaction intact and their curiosity uninterrupted.\" (Tom Drummond, Guidelines for Enterprise Talk)",
+   "to": "Tom Drummond suggests narrating what a child is doing, so the child's own satisfaction and curiosity stay with the child."
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "\"Educators avoid conversing with other adults in the presence of children about matters not related to the children.\" (NAEYC 2025 Standards, 1.B.2)",
+   "to": "Our educators keep adult conversation in front of children to matters about the children."
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "\n- [Early Learning Program Accreditation Standards, standard 1.B.2, National Association for the Education of Young Children, 2025](https://www.naeyc.org/accreditation/early-learning/standards)",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\"Educators avoid conversing with other adults in the presence of children about matters not related to the children.\" (NAEYC 2025 Standards, 1.B.2)",
+   "to": "Our educators keep adult conversation in front of children to matters about the children."
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "\n- [Early Learning Program Accreditation Standards, standard 1.B.2, National Association for the Education of Young Children, 2025](https://www.naeyc.org/accreditation/early-learning/standards)",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "\"Education is not preparation for life; education is life itself.\" Attributed to John Dewey",
+   "to": "\"I believe that education, therefore, is a process of living and not a preparation for future living.\" John Dewey, My Pedagogic Creed, 1897"
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "\"We value space because of its power to organize and promote pleasant relationships... to provide changes, to promote choices and problem solving.\" Loris Malaguzzi",
+   "to": "\"We value space because of its power to organize and promote pleasant relationships among people of different ages, create a handsome environment, provide changes, promote choices and activity, and its potential for sparking all kinds of social, affective, and cognitive learning.\" Loris Malaguzzi, quoted in Lella Gandini, The Hundred Languages of Children, third edition, 2011"
+  },
+  {
+   "path": "staff/pd/modules/36-autonomy-agency-and-invitation.md",
+   "from": "- [In the Spirit of the Studio, Learning from the Atelier of Reggio Emilia, second edition, Lella Gandini, Lynn Hill, Louise Boyd Cadwell and Charles Schwall, Teachers College Press, 2015](https://www.tcpress.com/products/in-the-spirit-of-the-studio_9780807756324)",
+   "to": "- [In the Spirit of the Studio, Learning from the Atelier of Reggio Emilia, second edition, Lella Gandini, Lynn Hill, Louise Boyd Cadwell and Charles Schwall, Teachers College Press, 2015](https://www.tcpress.com/products/in-the-spirit-of-the-studio_9780807756324)\n- [The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011](https://reggiochildren.it/en/rc/publishing/books-and-audiovisuals/the-hundred-languages-of-children-transformation)"
+  },
+  {
+   "path": "staff/familypieces/together-autonomy-agency-and-invitation.md",
+   "from": "\"to promote choices and problem solving.\"",
+   "to": "\"to promote choices and activity.\""
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "\"Education is not preparation for life; education is life itself.\" (attributed to John Dewey, philosopher and education reformer)",
+   "to": "\"I believe that education, therefore, is a process of living and not a preparation for future living.\" (John Dewey, My Pedagogic Creed, 1897)"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "- [Democracy and Education, John Dewey, Macmillan, 1916](https://www.gutenberg.org/ebooks/852)",
+   "to": "- [Democracy and Education, John Dewey, Macmillan, 1916](https://www.gutenberg.org/ebooks/852)\n- [My Pedagogic Creed, John Dewey, The School Journal, 1897](https://varenne.tc.columbia.edu/bib/texts/dewey-ped_creed.html)"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": " to collaborative authorship (Rinaldi, 2006).",
+   "to": " to collaborative authorship."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "\"Who are we to each other in this space?\" (Wurm, 2005).",
+   "to": "\"Who are we to each other in this space?\""
+  },
+  {
+   "path": "staff/pd/printables/table.md",
+   "from": "\"Who are we to each other in this space?\" (Wurm, 2005).",
+   "to": "\"Who are we to each other in this space?\""
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "Lev Vygotsky wrote, \"In play, a child is always above his average age, above his daily behavior.\"",
+   "to": "Lev Vygotsky wrote, \"In play a child always behaves beyond his average age, above his daily behavior; in play it is as though he were a head taller than himself.\" (Mind in Society, 1978)"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "\"In play, a child is always above his average age, above his daily behavior.\" (Lev Vygotsky, developmental psychologist)",
+   "to": "\"In play a child always behaves beyond his average age, above his daily behavior; in play it is as though he were a head taller than himself.\" (Lev Vygotsky, Mind in Society, 1978)"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "\"In play, it is as though the child were a head taller than himself.\" (Lev Vygotsky) Another of his lines carries the same idea. \"In play, a child is always above his average age, above his daily behavior.\" (Lev Vygotsky)",
+   "to": "\"In play a child always behaves beyond his average age, above his daily behavior; in play it is as though he were a head taller than himself.\" (Lev Vygotsky, Mind in Society, 1978)"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "By four, vocabulary can reach upwards of 10,000 words",
+   "to": "By four, many children use about 1,500 words and understand many more"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "and other prosocial behaviors.",
+   "to": "and other prosocial behaviors (Katz, Evangelou and Hartman, 1990)."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "- [California Infant/Toddler Learning and Development Foundations, California Department of Education](https://cdss.ca.gov/inforesources/child-care-and-development/publications/california-infant-toddler-learning-and-development-foundations)",
+   "to": "- [California Infant-Toddler Learning and Development Foundations, second edition, California Department of Social Services](https://cdss.ca.gov/inforesources/child-care-and-development/publications/california-infant-toddler-learning-and-development-foundations)"
+  },
+  {
+   "path": "staff/pd/modules/06-development.md",
+   "from": "- [California Infant/Toddler Learning and Development Foundations, California Department of Education](https://cdss.ca.gov/inforesources/child-care-and-development/publications/california-infant-toddler-learning-and-development-foundations)",
+   "to": "- [California Infant-Toddler Learning and Development Foundations, second edition, California Department of Social Services](https://cdss.ca.gov/inforesources/child-care-and-development/publications/california-infant-toddler-learning-and-development-foundations)"
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "- Developmental Stages of Writing, handout, 2010",
+   "to": "- Developmental Stages of Writing, chart, revised August 2010, original author unknown, as kept by Child Family Community, Inc."
+  },
+  {
+   "path": "staff/pd/depth/development.md",
+   "from": "- [Center on the Developing Child, Harvard University](https://developingchild.harvard.edu/)",
+   "to": "- [Center on the Developing Child, Harvard University](https://developingchild.harvard.edu/)\n- The Case for Mixed-Age Grouping in Early Education, Lilian G. Katz, Demetra Evangelou and Jeanette Allison Hartman, NAEYC, 1990"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "Trauma activates the cerebellum and brain stem, the \"lizard brain\", and sets off a survival alarm even when no physical threat is present. Because the prefrontal cortex, the logic center, is not yet fully developed, children express this inner alarm through outward behavior.",
+   "to": "Ongoing stress keeps the body's stress response system (the HPA axis) switched on. Over time it can set off at lower thresholds, and the brain areas for fear and quick reactions build more connections than the areas for reasoning, planning and self-control (National Scientific Council on the Developing Child, Working Paper 3)."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "work out turn taking on their own through conversation (Grüneisen and Tomasello).",
+   "to": "work out turn taking on their own (Grueneisen and Tomasello, 2017)."
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "- [Children Negotiate Taking Turns Surprisingly Early in Life, Science News](https://www.sciencenews.org/article/children-negotiate-taking-turns-surprisingly-early-life)",
+   "to": "- [Children Coordinate in a Recurrent Social Dilemma by Taking Turns and along Dominance Asymmetries, Sebastian Grueneisen and Michael Tomasello, Developmental Psychology, 2017](https://doi.org/10.1037/dev0000236)"
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "work out turn taking on their own through conversation (Grüneisen and Tomasello).",
+   "to": "work out turn taking on their own (Grueneisen and Tomasello, 2017)."
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "- [Children Negotiate Taking Turns Surprisingly Early in Life, Science News](https://www.sciencenews.org/article/children-negotiate-taking-turns-surprisingly-early-life)",
+   "to": "- [Children Coordinate in a Recurrent Social Dilemma by Taking Turns and along Dominance Asymmetries, Sebastian Grueneisen and Michael Tomasello, Developmental Psychology, 2017](https://doi.org/10.1037/dev0000236)"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "- [Creating Trauma-Sensitive Classrooms, NAEYC, Young Children, 2015]",
+   "to": "- [Creating Trauma-Sensitive Classrooms, Katie Statman-Weil, Young Children, May 2015]"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "\"Play is the answer to the question: How does anything new come about?\" (Jean Piaget)",
+   "to": "Jean Piaget saw play as a source of new understanding, the place where something new first comes about."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "\"In symbolic play, the child treats the world as if it were something else.\" (Jean Piaget)",
+   "to": "Jean Piaget described symbolic play as the moment a child lets one thing stand for another."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "\"Social interaction is a skill that must be rehearsed through stages of proximity.\" (Parten framework)",
+   "to": "Building on Parten, educators see social play as something children practice step by step, near others first."
+  },
+  {
+   "path": "staff/pd/modules/12-play.md",
+   "from": "- [Reggio Children](https://www.reggiochildren.it/en/)",
+   "to": "- [Reggio Children](https://www.reggiochildren.it/en/)\n- [Social Participation among Pre-School Children, Mildred B. Parten, Journal of Abnormal and Social Psychology, 1932](https://doi.org/10.1037/h0074524)"
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "Visual complexity and unpredictable noise elevate stress hormones in very young children, while calm, ordered spaces support the focused attention and emotional regulation that learning depends on (Lally and others, 2004).",
+   "to": "As the number of young children in a group goes up, so do noise, stimulation and general confusion (Lally, Torres and Phelps). Calm, ordered spaces support focused attention."
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/product/beyond-ecophobia-reclaiming-the-heart-in-nature-education/)",
+   "to": "- [Beyond Ecophobia, Reclaiming the Heart in Nature Education, David Sobel, Orion Society, 1996](https://orionmagazine.org/product/beyond-ecophobia-reclaiming-the-heart-in-nature-education/)\n- Space to Grow, Creating a Child Care Environment for Infants and Toddlers, J. Ronald Lally and colleagues, California Department of Education, 2004"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "Visual complexity and unpredictable noise raise stress hormones in very young children, while calm, ordered spaces support focused attention and emotional regulation (Lally and others, 2004).",
+   "to": "As the number of young children in a group goes up, so do noise, stimulation and general confusion (Lally, Torres and Phelps). Calm, ordered spaces support focused attention."
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "Visual complexity and unpredictable noise raise stress hormones in very young children, and children sense adults' stress, too.",
+   "to": "As the number of young children in a group goes up, so do noise, stimulation and general confusion (Lally, Torres and Phelps). Calm, ordered spaces support focused attention. Children sense adults' stress, too."
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "- [Childhood and Society, Erik H. Erikson, W. W. Norton, 1950](https://wwnorton.com/books/9780393310689)",
+   "to": "- [Childhood and Society, Erik H. Erikson, W. W. Norton, 1950](https://wwnorton.com/books/9780393310689)\n- Space to Grow, Creating a Child Care Environment for Infants and Toddlers, J. Ronald Lally and colleagues, California Department of Education, 2004"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "- [Childhood and Society, Erik H. Erikson, W. W. Norton, 1950](https://wwnorton.com/books/9780393310689)",
+   "to": "- [Childhood and Society, Erik H. Erikson, W. W. Norton, 1950](https://wwnorton.com/books/9780393310689)\n- Space to Grow, Creating a Child Care Environment for Infants and Toddlers, J. Ronald Lally and colleagues, California Department of Education, 2004"
+  },
+  {
+   "path": "staff/familypieces/together-serving-two-year-olds.md",
+   "from": "Busy rooms and unpredictable noise raise stress in very young children, and calm, ordered spaces support focused attention and the growing ability to manage feelings and actions (self-regulation) (Lally and colleagues, 2008; WestEd Program for Infant/Toddler Care).",
+   "to": "As the number of young children in a group goes up, so do noise, stimulation and general confusion (Lally, Torres and Phelps). Calm, ordered spaces support focused attention and the growing ability to manage feelings and actions (self-regulation) (WestEd Program for Infant/Toddler Care)."
+  },
+  {
+   "path": "staff/familypieces/together-serving-two-year-olds.md",
+   "from": "- [Principles of Effective Family Engagement, National Association for the Education of Young Children](https://www.naeyc.org/resources/topics/family-engagement/principles)",
+   "to": "- [Principles of Effective Family Engagement, National Association for the Education of Young Children](https://www.naeyc.org/resources/topics/family-engagement/principles)\n- Space to Grow, Creating a Child Care Environment for Infants and Toddlers, J. Ronald Lally and colleagues, California Department of Education, 2004"
+  },
+  {
+   "path": "staff/pd/modules/07-spaces.md",
+   "from": "[Last Child in the Woods, Richard Louv, Algonquin Books, 2008]",
+   "to": "[Last Child in the Woods, Richard Louv, Algonquin Books, 2005, updated and expanded edition 2008]"
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "[Last Child in the Woods, Richard Louv, Algonquin Books, 2008]",
+   "to": "[Last Child in the Woods, Richard Louv, Algonquin Books, 2005, updated and expanded edition 2008]"
+  },
+  {
+   "path": "staff/familypieces/together-spaces.md",
+   "from": "[Last Child in the Woods, Richard Louv]",
+   "to": "[Last Child in the Woods, Richard Louv, Algonquin Books, 2005, updated and expanded edition 2008]"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "Children in the sensorimotor stage learn by acting on the physical world with their bodies and senses.",
+   "to": "Two-year-olds are moving out of the sensorimotor stage (birth to about two) into early pretend and symbolic thought (the preoperational stage), and they still learn by acting on the physical world with their bodies and senses."
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "Children in the sensorimotor stage, roughly birth through age two, learn by acting on the physical world with their bodies and senses, and abstract instruction",
+   "to": "Two-year-olds are moving out of the sensorimotor stage (birth to about two) into early pretend and symbolic thought (the preoperational stage), and they still learn by acting on the physical world with their bodies and senses. Abstract instruction"
+  },
+  {
+   "path": "staff/pd/modules/38-serving-two-year-olds.md",
+   "from": "A tower of six blocks near two and eight or more by three",
+   "to": "A tower of four or more blocks near two and more than six by three"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "A tower of six blocks near two and eight or more by three",
+   "to": "A tower of four or more blocks near two and more than six by three"
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "- **Ratios and group size, Standard 10.B.05.** NAEYC recommends a maximum group of 12 and a 1 to 4 ratio for children 18 to 30 months. Title 22 sets the minimum at 1 to 6, so the proposed model meets the regulatory floor with a path toward the NAEYC benchmark.",
+   "to": "- **Ratios and group size.** NAEYC accreditation (2025) sets 1 to 6 with a class of 12 for children 12 to 36 months. Title 22 sets the minimum at 1 to 6, so the proposed model meets the regulatory floor and the NAEYC ratio."
+  },
+  {
+   "path": "staff/pd/depth/serving-two-year-olds.md",
+   "from": "- More than 1,100 California preschools closed between 2019 and 2025, about 10 percent of licensed programs, with small centers serving 30 to 50 children most at risk (Fuller, 2025; KQED, 2026).\n",
+   "to": ""
+  },
+  {
+   "path": "staff/familypieces/together-spaces.md",
+   "from": "The architect Simon Nicholson",
+   "to": "The artist and educator Simon Nicholson"
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "**Maturity, from about the third to fifth year on.**",
+   "to": "**Maturity, from about the fifth year on.**"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "**Maturity, from about the third to fifth year on.**",
+   "to": "**Maturity, from about the fifth year on.**"
+  },
+  {
+   "path": "staff/pd/printables/mentor.md",
+   "from": "### Maturity, the third to fifth year on",
+   "to": "### Maturity, the fifth year on"
+  },
+  {
+   "path": "staff/familypieces/together-seeing-ourselves.md",
+   "from": "the first goal of early education",
+   "to": "the first of their four goals for anti-bias education"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "Birch, Zimmerman and Hind found in 1980 that preschoolers seated for four days with friends who chose a different vegetable shifted their own choice, and the shift held weeks later.",
+   "to": "Leann Birch found in 1980 that preschoolers seated for four days with friends who chose a different vegetable shifted toward that vegetable themselves."
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "Susan Sullivan and Birch found in 1990 that it took eight to fifteen tastes before many children accepted a food.",
+   "to": "Studies by Birch and colleagues found that many children needed eight to fifteen tastes before they accepted a new food."
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "The studies were small, in American preschools, and eight to ten is an average, so a child who needs fifteen is within the range.",
+   "to": "The studies were small and in American preschools."
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "(https://www.ellynsatterinstitute.org/how-to-feed/the-division-of-responsibility-in-feeding/)",
+   "to": "(https://www.ellynsatterinstitute.org/how-to-feed/division-of-responsibility/)"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "- [Restricting Access to Palatable Foods Affects Children's Behavioral Response, Food Selection, and Intake, Jennifer O. Fisher and Leann L. Birch, American Journal of Clinical Nutrition, 1999](https://doi.org/10.1093/ajcn/69.6.1264)",
+   "to": "- [Restricting Access to Palatable Foods Affects Children's Behavioral Response, Food Selection, and Intake, Jennifer O. Fisher and Leann L. Birch, American Journal of Clinical Nutrition, 1999](https://doi.org/10.1093/ajcn/69.6.1264)\n- [Effects of Peer Models' Food Choices and Eating Behaviors on Preschoolers' Food Preferences, Leann L. Birch, Child Development, 1980](https://doi.org/10.2307/1129283)\n- [Eating as the \"Means\" Activity in a Contingency, Effects on Young Children's Food Preference, Leann L. Birch, Diane W. Marlin and Julie Rotter, Child Development, 1984](https://doi.org/10.2307/1129954)"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "Birch, Zimmerman and Hind found in 1980 that preschoolers seated for four days with friends who chose a different vegetable shifted their own choice, and the shift held weeks later.",
+   "to": "Leann Birch found in 1980 that preschoolers seated for four days with friends who chose a different vegetable shifted toward that vegetable themselves."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "Susan Sullivan and Birch found in 1990 that it took eight to fifteen tastes before many children accepted a food.",
+   "to": "Studies by Birch and colleagues found that many children needed eight to fifteen tastes before they accepted a new food."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "The studies were small, in American preschools, and eight to ten is an average, so a child who needs fifteen is within the range.",
+   "to": "The studies were small and in American preschools."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "(https://www.ellynsatterinstitute.org/how-to-feed/the-division-of-responsibility-in-feeding/)",
+   "to": "(https://www.ellynsatterinstitute.org/how-to-feed/division-of-responsibility/)"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "- [Restricting Access to Palatable Foods Affects Children's Behavioral Response, Food Selection, and Intake, Jennifer O. Fisher and Leann L. Birch, American Journal of Clinical Nutrition, 1999](https://doi.org/10.1093/ajcn/69.6.1264)",
+   "to": "- [Restricting Access to Palatable Foods Affects Children's Behavioral Response, Food Selection, and Intake, Jennifer O. Fisher and Leann L. Birch, American Journal of Clinical Nutrition, 1999](https://doi.org/10.1093/ajcn/69.6.1264)\n- [Effects of Peer Models' Food Choices and Eating Behaviors on Preschoolers' Food Preferences, Leann L. Birch, Child Development, 1980](https://doi.org/10.2307/1129283)\n- [Eating as the \"Means\" Activity in a Contingency, Effects on Young Children's Food Preference, Leann L. Birch, Diane W. Marlin and Julie Rotter, Child Development, 1984](https://doi.org/10.2307/1129954)"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "Children may need ten to fifteen exposures before acceptance begins to grow (Eliassen, 2011).",
+   "to": "Children may need eight to fifteen tastes before acceptance begins to grow (Birch and colleagues)."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "These skills grow most quickly between ages three and seven through practice",
+   "to": "These skills grow most quickly between ages three and five, and they keep growing through adolescence, through practice"
+  },
+  {
+   "path": "staff/pd/printables/cooking-from-the-garden.md",
+   "from": "Eight to fifteen is an average.",
+   "to": "Studies by Birch and colleagues found that many children needed eight to fifteen tastes before they accepted a new food."
+  },
+  {
+   "path": "staff/pd/printables/cooking-from-the-garden.md",
+   "from": "shifted their choice, and it held weeks later.",
+   "to": "shifted toward that vegetable themselves."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "Later studies with preschoolers and vegetables put the number at eight to fifteen tastes (repeated exposure), with a taste counting more than a look or a smell.",
+   "to": "Studies by Birch and colleagues found that many children needed eight to fifteen tastes before they accepted a new food (repeated exposure), and a taste counted more than a look or a smell."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "Leslie Cunningham-Sabo's Cooking with Kids program in New Mexico reported in 2013 that fourth graders who cooked or tasted in class came to prefer more vegetables than classmates who did neither, and that children with no cooking experience gained the most confidence.",
+   "to": "Leslie Cunningham-Sabo and Barbara Lohse reported in 2013 that fourth graders in the Cooking with Kids program, which paired cooking classes with tasting lessons, came to prefer vegetables more than classmates without it, and that children with no cooking experience, boys most of all, gained the most confidence."
+  },
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "- [The Impact of Cooking Classes on Food-Related Preferences, Attitudes, and Behaviors of School-Aged Children, A Systematic Review, Derek Hersch and colleagues, Preventing Chronic Disease, 2014](https://www.cdc.gov/pcd/issues/2014/14_0267.htm)",
+   "to": "- [The Impact of Cooking Classes on Food-Related Preferences, Attitudes, and Behaviors of School-Aged Children, A Systematic Review, Derek Hersch and colleagues, Preventing Chronic Disease, 2014](https://www.cdc.gov/pcd/issues/2014/14_0267.htm)\n- [Eating as the \"Means\" Activity in a Contingency, Effects on Young Children's Food Preference, Leann L. Birch, Diane W. Marlin and Julie Rotter, Child Development, 1984](https://doi.org/10.2307/1129954)\n- [Restricting Access to Palatable Foods Affects Children's Behavioral Response, Food Selection, and Intake, Jennifer O. Fisher and Leann L. Birch, American Journal of Clinical Nutrition, 1999](https://doi.org/10.1093/ajcn/69.6.1264)\n- [Cooking with Kids Positively Affects Fourth Graders' Vegetable Preferences and Attitudes and Self-Efficacy for Food and Cooking, Leslie Cunningham-Sabo and Barbara Lohse, Childhood Obesity, 2013](https://doi.org/10.1089/chi.2013.0076)"
+  },
+  {
+   "path": "staff/pd/modules/29-seeding-planting-and-watering.md",
+   "from": "- [The Edible Schoolyard Project](https://edibleschoolyard.org/)\n\n## For the director",
+   "to": "- [The Edible Schoolyard Project](https://edibleschoolyard.org/)\n- [Garden-Enhanced Nutrition Curriculum Improves Fourth-Grade School Children's Knowledge of Nutrition and Preferences for Some Vegetables, Jennifer L. Morris and Sheri Zidenberg-Cherr, Journal of the American Dietetic Association, 2002](https://doi.org/10.1016/S0002-8223(02)90027-1)\n\n## For the director"
+  },
+  {
+   "path": "staff/familypieces/together-cooking-from-the-garden.md",
+   "from": "- [Roots, Shoots, Buckets and Boots, Gardening Together with Children, Sharon Lovejoy](https://www.hachettebookgroup.com/titles/sharon-lovejoy/roots-shoots-buckets-boots/9780761110569/)",
+   "to": "- [Roots, Shoots, Buckets and Boots, Gardening Together with Children, Sharon Lovejoy](https://www.hachettebookgroup.com/titles/sharon-lovejoy/roots-shoots-buckets-boots/9780761110569/)\n- [Increasing Fruit and Vegetable Intake among Children and Youth through Gardening-Based Interventions, A Systematic Review, Mateja R. Savoie-Roskos, Heidi Wengreen and Carrie Durward](https://doi.org/10.1016/j.jand.2016.10.014)"
+  },
+  {
+   "path": "staff/familypieces/together-harvest-seed-saving-and-preserving.md",
+   "from": "- Farming While Black, Soul Fire Farm's Practical Guide to Liberation on the Land, Leah Penniman\n",
+   "to": "- Farming While Black, Soul Fire Farm's Practical Guide to Liberation on the Land, Leah Penniman\n- [Increasing Fruit and Vegetable Intake among Children and Youth through Gardening-Based Interventions, A Systematic Review, Mateja R. Savoie-Roskos, Heidi Wengreen and Carrie Durward](https://doi.org/10.1016/j.jand.2016.10.014)\n"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "- [Permaculture, Principles and Pathways Beyond Sustainability, David Holmgren, Holmgren Design Services, 2002](https://holmgren.com.au/)",
+   "to": "- [Permaculture, Principles and Pathways Beyond Sustainability, David Holmgren, Holmgren Design Services, 2002](https://holmgren.com.au/)\n- Permaculture One, Bill Mollison and David Holmgren, 1978\n- [Childhood Experiences Associated with Care for the Natural World, A Theoretical Framework for Empirical Results, Louise Chawla, Children, Youth and Environments, 2007](https://doi.org/10.1353/cye.2007.0010)"
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "His counts were made in the eastern United States, and the pattern holds here.",
+   "to": "His counts were made in the eastern United States. A 2020 study by Desirée Narango, Douglas Tallamy and Kimberley Shropshire, drawing on records from across the contiguous United States, found the same pattern in every region, with a few native plant groups such as oaks and willows feeding most caterpillars. In Los Angeles yards, Esmeralda Reyes and colleagues found in 2026 that yards planted with California natives drew about four times as many insect and bird visits to flowers."
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "University of California, Berkeley grew up",
+   "to": "University of California, Berkeley, grew up"
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "[iNaturalist, California Academy of Sciences and National Geographic Society]",
+   "to": "[iNaturalist, an independent nonprofit]"
+  },
+  {
+   "path": "staff/pd/modules/30-garden-habitat.md",
+   "from": "- [Life Paths Into Effective Environmental Action, Louise Chawla, The Journal of Environmental Education, 1999](https://www.tandfonline.com/doi/abs/10.1080/00958969909598628)\n\n## For the director",
+   "to": "- [Life Paths Into Effective Environmental Action, Louise Chawla, The Journal of Environmental Education, 1999](https://www.tandfonline.com/doi/abs/10.1080/00958969909598628)\n- [Childhood Experiences Associated with Care for the Natural World, A Theoretical Framework for Empirical Results, Louise Chawla, Children, Youth and Environments, 2007](https://doi.org/10.1353/cye.2007.0010)\n- [Few Keystone Plant Genera Support the Majority of Lepidoptera Species, Desirée L. Narango, Douglas W. Tallamy and Kimberley J. Shropshire, Nature Communications, 2020](https://doi.org/10.1038/s41467-020-19565-4)\n- [Native-Plant Landscaping Enhances Floral Visitation by Insects and Birds in Residential Yards, Esmeralda Reyes, Noriko Smallwood and Eric M. Wood, Urban Ecosystems, 2026](https://doi.org/10.1007/s11252-026-01984-8)\n\n## For the director"
+  },
+  {
+   "path": "staff/familypieces/together-garden-habitat.md",
+   "from": "[iNaturalist, California Academy of Sciences and National Geographic Society]",
+   "to": "[iNaturalist, an independent nonprofit]"
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "[iNaturalist, California Academy of Sciences and National Geographic Society]",
+   "to": "[iNaturalist, an independent nonprofit]"
+  },
+  {
+   "path": "staff/pd/modules/27-garden-as-teacher.md",
+   "from": "\"How are we going to fall in love with the world if we don't pick berries?\" Robin Wall Kimmerer",
+   "to": "Robin Wall Kimmerer asks how we can come to love the world if we never pick its berries."
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "\"How are we going to fall in love with the world if we don't pick berries?\" Robin Wall Kimmerer",
+   "to": "Robin Wall Kimmerer asks how we can come to love the world if we never pick its berries."
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "Seed Savers Exchange, second edition 2002](https://www.chelseagreen.com/?p=49599)",
+   "to": "Seed Savers Exchange, second edition, 2002](https://www.rizzoliusa.com/book/9781882424580)"
+  },
+  {
+   "path": "staff/pd/modules/31-harvest-seed-saving-and-preserving.md",
+   "from": "(https://digitalcommons.oberlin.edu/faculty_schol/695/)",
+   "to": "(https://doi.org/10.7551/mitpress/1050.001.0001)"
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "\"I wonder who is singing that chee-see-bur-ger song?\"",
+   "to": "\"I wonder who is making that squeaky chick-a-dee sound?\""
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "The app hears a Chestnut-backed Chickadee, whose song sounds like chee-see-bur-ger, a tiny brown bird that likes to hang upside down on branches.",
+   "to": "The app hears a Chestnut-backed Chickadee, a small chickadee with a dark cap and a chestnut back that often hangs upside down on branches to look for food."
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "A child finds a six-spotted beetle on a leaf.",
+   "to": "A child finds a yellow-green beetle with black spots on a leaf."
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "\"I notice it has six spots.\"",
+   "to": "\"I notice it has black spots.\""
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "The app names a Spotted Cucumber Beetle, and now",
+   "to": "The app names a Western Spotted Cucumber Beetle, greenish yellow with twelve black spots and long threadlike antennae, and now"
+  },
+  {
+   "path": "staff/familypieces/together-risk.md",
+   "from": "a phrase from the writer Tim Gill",
+   "to": "a phrase used by Britain's Royal Society for the Prevention of Accidents"
+  },
+  {
+   "path": "staff/familypieces/together-risk.md",
+   "from": "A review of studies on outdoor play found that children who had more chances for risky play were more physically active, and that it supported their social skills, creativity and resilience. Most injuries were minor (Brussoni and colleagues, 2015).",
+   "to": "A review of 18 studies found that risky outdoor play went with more physical activity and better social skills, and that rough and tumble play did not make children more aggressive (Brussoni and colleagues, 2015)."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "Their review of 21 studies found that risky outdoor play goes with more physical activity and better social health, that climbing at height did not raise the rate or severity of injuries in the studies reviewed, and that rough and tumble play did not make children more aggressive.",
+   "to": "Their review of 21 articles reporting 18 studies found that risky outdoor play goes with more physical activity and better social health, and that rough and tumble play did not make children more aggressive. One study found no link between the height of play equipment and injuries."
+  },
+  {
+   "path": "staff/pd/modules/20-risk.md",
+   "from": "- [No Fear, Growing Up in a Risk Averse Society, Tim Gill, Calouste Gulbenkian Foundation, 2007](https://rethinkingchildhood.com/wp-content/uploads/2010/10/no-fear-19-12-07.pdf)\n",
+   "to": "- [No Fear, Growing Up in a Risk Averse Society, Tim Gill, Calouste Gulbenkian Foundation, 2007](https://rethinkingchildhood.com/wp-content/uploads/2010/10/no-fear-19-12-07.pdf)\n- [Categorising Risky Play, How Can We Identify Risk-Taking in Children's Play?, Ellen Beate Hansen Sandseter, European Early Childhood Education Research Journal, 2007](https://doi.org/10.1080/13502930701321733)\n"
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "Their review of 21 studies found that risky outdoor play goes with more physical activity and better social health, that climbing at height did not raise the rate or severity of injuries in the studies reviewed, and that rough and tumble play did not make children more aggressive.",
+   "to": "Their review of 21 articles reporting 18 studies found that risky outdoor play goes with more physical activity and better social health, and that rough and tumble play did not make children more aggressive. One study found no link between the height of play equipment and injuries."
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "- [No Fear, Growing Up in a Risk Averse Society, Tim Gill, Calouste Gulbenkian Foundation, 2007](https://rethinkingchildhood.com/wp-content/uploads/2010/10/no-fear-19-12-07.pdf)\n",
+   "to": "- [No Fear, Growing Up in a Risk Averse Society, Tim Gill, Calouste Gulbenkian Foundation, 2007](https://rethinkingchildhood.com/wp-content/uploads/2010/10/no-fear-19-12-07.pdf)\n- [Categorising Risky Play, How Can We Identify Risk-Taking in Children's Play?, Ellen Beate Hansen Sandseter, European Early Childhood Education Research Journal, 2007](https://doi.org/10.1080/13502930701321733)\n"
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "- [Art and Creativity in Reggio Emilia, Exploring the Role and Potential of Ateliers in Early Childhood Education, Vea Vecchi, Routledge, 2010](https://www.routledge.com/Art-and-Creativity-in-Reggio-Emilia-Exploring-the-Role-and-Potential-of-Ateliers-in-Early-Childhood-Education/Vecchi/p/book/9780415468787)\n\n## For the director",
+   "to": "- [Art and Creativity in Reggio Emilia, Exploring the Role and Potential of Ateliers in Early Childhood Education, Vea Vecchi, Routledge, 2010](https://www.routledge.com/Art-and-Creativity-in-Reggio-Emilia-Exploring-the-Role-and-Potential-of-Ateliers-in-Early-Childhood-Education/Vecchi/p/book/9780415468787)\n- [Children, Clay and Sculpture, Cathy Weisman Topal, Davis Publications, 1983](https://search.worldcat.org/search?q=bn:9780871921451)\n\n## For the director"
+  },
+  {
+   "path": "staff/pd/depth/collaboration.md",
+   "from": "In place of the Golden Rule, they offer Tony Alessandra's Platinum Rule (2007). \"Treat others the way they want to be treated.\"",
+   "to": "They offer Tony Alessandra's Platinum Rule (1996), which asks us to treat others the way they want to be treated."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "\"I've learned that people will forget what you said, people will forget what you did, but people will never forget how you made them feel.\" Maya Angelou",
+   "to": "\"They may forget what you said, but they will never forget how you made them feel.\" Carl W. Buehner, 1971, often attributed to Maya Angelou"
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "- Maya Angelou, as quoted in our March 9, 2021 session.",
+   "to": "- Carl W. Buehner, in Richard Evans' Quote Book, 1971\n- Maya Angelou, as quoted in our March 9, 2021 session."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "The Indian Pueblo Council grounds its early learning in Pueblo values of tradition and community responsibility.",
+   "to": "Pueblo communities in New Mexico ground early learning in values of tradition and community responsibility."
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "Family-Centered Early Care and Education, Janet Gonzalez-Mena, Pearson]",
+   "to": "Family-Centered Early Care and Education, seventh edition, Janet Gonzalez-Mena, Pearson, 2017]"
+  },
+  {
+   "path": "staff/pd/modules/48-emergent-mathematician.md",
+   "from": "When educators are anxious about math, the children they teach can absorb that anxiety (Beilock and colleagues, 2010).",
+   "to": "When first and second grade educators were anxious about math, the girls in their classes were more likely by year's end to believe boys are better at math, and their math achievement was lower (Beilock and colleagues, 2010)."
+  },
+  {
+   "path": "staff/pd/depth/emergent-mathematician.md",
+   "from": "Research has found that when educators are anxious about math, the children they teach can absorb that anxiety (Beilock and colleagues, 2010).",
+   "to": "When first and second grade educators were anxious about math, the girls in their classes were more likely by year's end to believe boys are better at math, and their math achievement was lower (Beilock and colleagues, 2010)."
+  },
+  {
+   "path": "staff/pd/modules/48-emergent-mathematician.md",
+   "from": "- [Understanding Number Development in Young Children, Marcy Guddemi, Community Playthings, 2017](https://www.communityplaythings.com/resources/articles/understanding-number-development)",
+   "to": "- [Understanding Number Development in Young Children, Marcy Guddemi, Community Playthings, 2017](https://www.communityplaythings.com/resources/articles/understanding-number-development)\n- [School Readiness and Later Achievement, Greg J. Duncan and colleagues, Developmental Psychology, 2007](https://doi.org/10.1037/0012-1649.43.6.1428)"
+  },
+  {
+   "path": "staff/pd/modules/49-concepts-of-time.md",
+   "from": "around two or three, usually in that order, and grasp the past more easily than the future.",
+   "to": "around two or three (Tillman and colleagues, 2017)."
+  },
+  {
+   "path": "staff/pd/modules/49-concepts-of-time.md",
+   "from": "(Fivush and Reese)",
+   "to": "(Fivush, Haden and Reese, 2006)"
+  },
+  {
+   "path": "staff/pd/modules/49-concepts-of-time.md",
+   "from": "- [Preschool/Transitional Kindergarten Learning Foundations, California Department of Education](https://www.cde.ca.gov/sp/cd/re/psfoundations.asp)",
+   "to": "- [Preschool/Transitional Kindergarten Learning Foundations, California Department of Education](https://www.cde.ca.gov/sp/cd/re/psfoundations.asp)\n- [Today Is Tomorrow's Yesterday, Children's Acquisition of Deictic Time Words, Katharine A. Tillman, Tyler Marghetis, David Barner and Mahesh Srinivasan, Cognitive Psychology, 2017](https://doi.org/10.1016/j.cogpsych.2016.10.003)"
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "around two or three, usually learning them in that order.",
+   "to": "around two or three (Tillman and colleagues, 2017)."
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "- **Past before future.** Preschoolers grasp the past more easily than the future.\n",
+   "to": ""
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "(Fivush and Reese)",
+   "to": "(Fivush, Haden and Reese, 2006)"
+  },
+  {
+   "path": "staff/pd/depth/concepts-of-time.md",
+   "from": "- [Preschool/Transitional Kindergarten Learning Foundations, California Department of Education](https://www.cde.ca.gov/sp/cd/re/psfoundations.asp)",
+   "to": "- [Preschool/Transitional Kindergarten Learning Foundations, California Department of Education](https://www.cde.ca.gov/sp/cd/re/psfoundations.asp)\n- [Today Is Tomorrow's Yesterday, Children's Acquisition of Deictic Time Words, Katharine A. Tillman, Tyler Marghetis, David Barner and Mahesh Srinivasan, Cognitive Psychology, 2017](https://doi.org/10.1016/j.cogpsych.2016.10.003)"
+  },
+  {
+   "path": "staff/familypieces/together-concepts-of-time.md",
+   "from": "around two or three, in that order, and the past makes sense sooner than the future.",
+   "to": "around two or three."
+  },
+  {
+   "path": "staff/pd/modules/35-book-vetting-tool.md",
+   "from": "Council on Interracial Books for Children, 1980]",
+   "to": "Council on Interracial Books for Children, Interracial Books for Children Bulletin, 1974]"
+  },
+  {
+   "path": "staff/pd/modules/35-book-vetting-tool.md",
+   "from": "- Guide for Selecting Anti-Bias Children's Books, Louise Derman-Sparks, Teaching for Change\n",
+   "to": "- [Guide for Selecting Anti-Bias Children's Books, Louise Derman-Sparks, Teaching for Change, updated 2013](https://www.teachingforchange.org/guide-for-selecting-anti-bias-childrens-books)\n"
+  },
+  {
+   "path": "staff/pd/depth/emergent-reader.md",
+   "from": "- [Preschool/Transitional Kindergarten Learning Foundations, California Department of Education](https://www.cde.ca.gov/sp/cd/re/psfoundations.asp)",
+   "to": "- [Preschool/Transitional Kindergarten Learning Foundations, California Department of Education](https://www.cde.ca.gov/sp/cd/re/psfoundations.asp)\n- Teach Your Child to Read in 100 Easy Lessons, Siegfried Engelmann, Phyllis Haddox and Elaine Bruner, Simon & Schuster, 1983"
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "https://www.goodreads.com/work/quotes/88526",
+   "to": "https://www.abramsbooks.com/product/diary-of-frida-kahlo_9780810959545/"
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "[Museums of Sonoma County]",
+   "to": "[Museum of Sonoma County]"
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "Spire, Wood Line and Tree Fall, made from trees, earth and stone. Earth Wall is indoors at the Presidio Officers' Club and follows its hours.",
+   "to": "Spire and Wood Line are outdoors along the trails. Tree Fall is inside the old Powder Magazine and is not currently open for public visits. Earth Wall is in the Officers' Club's open-air Hardie Courtyard, on view Saturdays 11 am to 4 pm."
+  },
+  {
+   "path": "staff/familypieces/together-looking-together.md",
+   "from": "[Museums of Sonoma County]",
+   "to": "[Museum of Sonoma County]"
+  },
+  {
+   "path": "staff/pd/printables/looking-together.md",
+   "from": "Museums of Sonoma County.",
+   "to": "Museum of Sonoma County."
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+   "to": "https://developingchild.harvard.edu/key-concept/serve-and-return/"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "https://developingchild.harvard.edu/science/key-concepts/serve-and-return/",
+   "to": "https://developingchild.harvard.edu/key-concept/serve-and-return/"
+  },
+  {
+   "path": "staff/familypieces/together-questions-worth-asking.md",
+   "from": "https://developingchild.harvard.edu/key-concepts/serve-and-return/",
+   "to": "https://developingchild.harvard.edu/key-concept/serve-and-return/"
+  },
+  {
+   "path": "staff/familypieces/together-families.md",
+   "from": "https://developingchild.harvard.edu/key-concepts/serve-and-return/",
+   "to": "https://developingchild.harvard.edu/key-concept/serve-and-return/"
+  },
+  {
+   "path": "staff/familypieces/together-many-ways-to-read.md",
+   "from": "https://developingchild.harvard.edu/key-concepts/serve-and-return/",
+   "to": "https://developingchild.harvard.edu/key-concept/serve-and-return/"
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "Michael Glassman and Kimberly Whaley",
+   "to": "Michael Glassman and Kimberlee Whaley"
+  },
+  {
+   "path": "staff/pd/modules/44-threads-projects-and-inquiries.md",
+   "from": "[Elevating the Voices of Practitioners, Teacher Research, Inquiry and Growth, NAEYC]",
+   "to": "[Elevating the Voices of Practitioners, A Meeting Place for Teacher Research, Inquiry, and Growth, Barbara Henderson and Daniel R. Meier, Young Children, Spring 2026]"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "- [The Adult Learner, The Definitive Classic in Adult Education and Human Resource Development, ninth edition, Malcolm S. Knowles, Elwood F. Holton III, Richard A. Swanson and Petra A. Robinson, Routledge, 2020](https://lehmanns.de/shop/sozialwissenschaften/52380834-9780367417659-the-adult-learner)",
+   "to": "- [The Adult Learner, tenth edition, Malcolm Knowles and colleagues, Routledge, 2025](https://www.routledge.com/The-Adult-Learner-The-Definitive-Classic-in-Adult-Education-and-Human-Resource-Development/Knowles-HoltonIII-Robinson-Caraccioli/p/book/9781032481562)"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "- [The Adult Learner, The Definitive Classic in Adult Education and Human Resource Development, ninth edition, Malcolm S. Knowles, Elwood F. Holton III, Richard A. Swanson and Petra A. Robinson, Routledge, 2020](https://lehmanns.de/shop/sozialwissenschaften/52380834-9780367417659-the-adult-learner)",
+   "to": "- [The Adult Learner, tenth edition, Malcolm Knowles and colleagues, Routledge, 2025](https://www.routledge.com/The-Adult-Learner-The-Definitive-Classic-in-Adult-Education-and-Human-Resource-Development/Knowles-HoltonIII-Robinson-Caraccioli/p/book/9781032481562)"
+  },
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "- [Code of Ethical Conduct and Statement of Commitment, National Association for the Education of Young Children, 2011](https://www.naeyc.org/sites/default/files/globally-shared/downloads/PDFs/resources/position-statements/Ethics%20Position%20Statement2011_09202013update.pdf)",
+   "to": "- [Code of Ethical Conduct and Statement of Commitment, National Association for the Education of Young Children, 2011](https://www.naeyc.org/sites/default/files/globally-shared/downloads/PDFs/resources/position-statements/Ethics%20Position%20Statement2011_09202013update.pdf)\n- [Code of Ethics for Early Childhood Educators, National Association for the Education of Young Children, 2025](https://www.naeyc.org/resources/position-statements/ethical-conduct)"
+  },
+  {
+   "path": "staff/pd/depth/language.md",
+   "from": "- [Code of Ethical Conduct and Statement of Commitment, National Association for the Education of Young Children, 2011](https://www.naeyc.org/sites/default/files/globally-shared/downloads/PDFs/resources/position-statements/Ethics%20Position%20Statement2011_09202013update.pdf)",
+   "to": "- [Code of Ethical Conduct and Statement of Commitment, National Association for the Education of Young Children, 2011](https://www.naeyc.org/sites/default/files/globally-shared/downloads/PDFs/resources/position-statements/Ethics%20Position%20Statement2011_09202013update.pdf)\n- [Code of Ethics for Early Childhood Educators, National Association for the Education of Young Children, 2025](https://www.naeyc.org/resources/position-statements/ethical-conduct)"
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "dated August 20, 2026",
+   "to": "dated April 20, 2026"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "- [Desired Results Developmental Profile, Preschool, the developmental guidelines our 2023 portfolio guidelines link, California Department of Education](https://www.cde.ca.gov/sp/cd/ci/documents/drdp2015preschool.pdf)",
+   "to": "- [DRDP (2025) Preschool Transitional Kindergarten View, California Department of Social Services and California Department of Education, April 20, 2026](https://www.desiredresults.us/sites/default/files/docs/drdp%202025/DRDP%20%282025%29%20PTK%20View_04202026_ADA.pdf)"
+  },
+  {
+   "path": "staff/pd/licensing/11-emergency-drills-and-the-disaster-plan.md",
+   "from": "training on the plan for every new staff member before they begin",
+   "to": "training on the plan for every new staff member and volunteer before they begin"
+  },
+  {
+   "path": "staff/pd/licensing/19-air-quality-protocol.md",
+   "from": "[Family Handbook Air Quality Protocol](https://docs.google.com/document/d/18mfNfxzFpPtjp9-gDb7ZLE3FGNd-q_rr/edit?usp=sharing&ouid=100258484889157645853&rtpof=true&sd=true)",
+   "to": "[Air Quality Protocol, Policies and Procedures](tree:hb/air-quality-protocol)"
+  },
+  {
+   "path": "staff/pd/modules/37-active-supervision.md",
+   "from": "- [Active Supervision, Six Strategies to Keep Children Safe, Office of Head Start, Early Childhood Learning and Knowledge Center](https://headstart.gov/safety-practices/article/active-supervision)",
+   "to": "- [Active Supervision, Office of Head Start, HeadStart.gov](https://headstart.gov/sites/default/files/pdf/active-supervision.pdf)"
+  },
+  {
+   "path": "staff/pd/modules/37-active-supervision.md",
+   "from": "- [Active Supervision At-A-Glance, Six Strategies to Keep Children Safe, Active Supervision and Active Supervision Toolkit, National Center on Early Childhood Health and Wellness, Administration for Children and Families](https://headstart.gov/safety-practices/article/active-supervision)",
+   "to": "- [Active Supervision At-A-Glance, Office of Head Start, HeadStart.gov](https://headstart.gov/sites/default/files/pdf/active-supervision-handout.pdf)"
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "- [Active Supervision, Six Strategies to Keep Children Safe, Office of Head Start, Early Childhood Learning and Knowledge Center](https://headstart.gov/safety-practices/article/active-supervision)",
+   "to": "- [Active Supervision, Office of Head Start, HeadStart.gov](https://headstart.gov/sites/default/files/pdf/active-supervision.pdf)"
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "- [Active Supervision and Active Supervision Toolkit, National Center on Early Childhood Health and Wellness, Administration for Children and Families](https://headstart.gov/safety-practices/article/active-supervision)",
+   "to": "- [Active Supervision At-A-Glance, Office of Head Start, HeadStart.gov](https://headstart.gov/sites/default/files/pdf/active-supervision-handout.pdf)"
+  },
+  {
+   "path": "staff/familypieces/together-atelier.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-clay.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-meeting.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-narrative.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-principles.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-rhythms.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-smallgroup.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/familypieces/together-writer.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/clay.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/meeting.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/narrative.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/presence.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/spaces.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/depth/writer.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/01-researcher.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/08-meeting.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/13-presence.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/16-narrative.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/17-writer.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/19-clay.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/23-rhythms.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  },
+  {
+   "path": "staff/pd/modules/25-drdp-foundations.md",
+   "from": "[The Hundred Languages of Children, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]",
+   "to": "[The Hundred Languages of Children, The Reggio Emilia Experience in Transformation, third edition, Carolyn Edwards, Lella Gandini and George Forman, Praeger, 2011]"
+  }
+ ]
+}
