@@ -2517,8 +2517,9 @@ async function fetchPhoto(u){
 // a picture on a card that does not load is asked for again once, with a fresh key
 document.addEventListener("error",e=>{const im=e.target;if(!(im instanceof HTMLImageElement)||!/\/original\//.test(im.src)||im.dataset.retried)return;im.dataset.retried="1";
   const m=im.src.match(/\/original\/([^?]+)/);Promise.resolve(window.FP_RENEW_KEY&&window.FP_RENEW_KEY()).then(()=>{if(m&&window.FP_ORIGINAL_URL)im.src=window.FP_ORIGINAL_URL(decodeURIComponent(m[1]))+"&r="+Date.now()})},true);
-function drdpPrompt(v,cs,S,ms,nPhotos){
+function drdpPrompt(v,cs,S,ms,nPhotos,srcId){
   const eld=cs.some(kidEld);
+  const well=cs.map(c=>({c,w:drdpWellShown(c,v,srcId)})).filter(x=>x.w.length);
   return `You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, read their documentation against the DRDP (2025) ${DRDP_VIEW[v]} View. An educator reviews every suggestion and accepts, changes or sets it aside. Nothing you return is a DRDP rating.
 
 [[DRDP_DESCRIPTORS]]
@@ -2530,24 +2531,31 @@ Children in this documentation. ${cs.map(c=>`${c.first}${c.last?" "+c.last[0]+".
 
 How to read it.
 Read the documentation${nPhotos?" and the "+nPhotos+" photo"+(nPhotos>1?"s":""):""} against the definitions and the level descriptors above. Include a measure only when the documentation${nPhotos?" or a photo":""} clearly shows evidence for it for one named child.
-For each child, give the one measure this documentation shows most clearly. Add a second measure for that child only when it is shown just as clearly, and list the clearest first. When the documentation only touches a measure, or shows too little to place it at a level, leave that measure out.
-child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
+For each child, give every measure this documentation clearly shows, up to four, the clearest first, each with its own evidence. Our children do most things together, and our educators write narrations of what happened, so read past the obvious. Beside how children are together, look at what their hands and bodies are doing, the counting, sorting, comparing or measuring inside the play, the words and gestures they use with one another, the cause and effect they are testing, and the care routines in the moment. When the documentation only touches a measure, or shows too little to place it at a level, leave that measure out.
+${well.length?"Measures already well documented this rating period. "+well.map(x=>x.c.first+" has "+x.w.map(w=>w.code+", "+w.count+" pieces at "+w.levels.join(" or ")).join("; ")).join(". ")+". Give one of these for that child only when this documentation shows a different level than those, and look first for the other measures this documentation shows for that child.\n":""}child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
 level is the latest level whose descriptor this evidence is consistent with. Read only what this one piece of documentation shows. Give one level only, never a range. Leave the measure out when the evidence does not show a level clearly.
 emerging is true only when the evidence also shows the child beginning to show the descriptor of the next level.
 evidence quotes or closely paraphrases the documentation, or says what a photo shows, in one or two sentences.
 ${eld?"ELD measures apply only to the children described as learning English.\n":""}photo says in two sentences what the photos show, the actions, materials and interactions. Use an empty string when there are no photos.
 summary says in two sentences what the documentation shows about the children's learning.
 Write in plain, warm, professional language an educator would use. Call adults educators, never teachers. Never praise or rate a child, and never use em dashes.
-Return only JSON {"measures":[{"code":"ATL 1","child":"the child's id","level":"one listed level","emerging":false,"evidence":"one or two sentences"}],"photo":"","summary":""}
+Return only JSON {"measures":[{"code":"one listed measure code","child":"the child's id","level":"one listed level","emerging":false,"evidence":"one or two sentences"}],"photo":"","summary":""}
 
 The documentation.
 ${S.text}`;
 }
-async function drdpRead(v,cs,S){
+/* a child's measures already well documented this rating period, three or more accepted pieces since August 1 for fall or
+   January 1 for spring, not counting this documentation, so the reading can look further (November 6, 2026) */
+function drdpPeriodStart(){const d=new Date();return new Date(d.getMonth()>=7?d.getFullYear():d.getFullYear(),d.getMonth()>=7?7:0,1).getTime()}
+function drdpWellShown(c,v,srcId){const from=drdpPeriodStart(),n={},lv={};
+  for(const x of kidDrdpItems(c)){if(!(x.status==="accepted"||x.status==="changed")||!x.level||x.view!==v)continue;if(x.src&&x.src.id===srcId)continue;
+    if((x.src&&x.src.at||x.at||0)<from)continue;n[x.code]=(n[x.code]||0)+1;(lv[x.code]=lv[x.code]||new Set()).add(x.level)}
+  return Object.keys(n).filter(k=>n[k]>=3).map(k=>({code:k,count:n[k],levels:[...lv[k]]}))}
+async function drdpRead(v,cs,S,srcId){
   // the conditional health measures are required with an IEP or IFSP and optional otherwise, so they are always read
   const ms=Object.keys(DRDP_M[v]).filter(k=>{const m=DRDP_M[v][k];return m.c!=="eld"||cs.some(kidEld)});
   const imgs=await drdpPhotoBlobs(S.photos);
-  const out=await askRead(drdpPrompt(v,cs,S,ms,imgs.length),{purpose:"drdp",drdp:{view:v,codes:ms},images:imgs.length?imgs:undefined,modelTier:"complex",cache:false});
+  const out=await askRead(drdpPrompt(v,cs,S,ms,imgs.length,srcId),{purpose:"drdp",drdp:{view:v,codes:ms},images:imgs.length?imgs:undefined,modelTier:"complex",cache:false});
   const byId=new Map(cs.map(c=>[c.id,c]));const seen=new Set();const items=[];
   for(const m of (Array.isArray(out?.measures)?out.measures:[])){
     if(!m||typeof m!=="object")continue;const code=String(m.code||"").replace(/\s+/g," ").trim().toUpperCase();
@@ -2555,12 +2563,12 @@ async function drdpRead(v,cs,S){
     if(!c&&cs.length===1)c=cs[0];
     if(!c||!ms.includes(code)||(DRDP_M[v][code].c==="eld"&&!kidEld(c))||seen.has(code+"|"+c.id))continue;seen.add(code+"|"+c.id);
     const level=drdpLevelOk(v,code,m.level);if(!level)continue;
-    // at most two measures for each child, the clearest first
-    if(items.filter(x=>x.childId===c.id).length>=2)continue;
+    // up to four measures for each child, the clearest first, each with its own evidence
+    if(items.filter(x=>x.childId===c.id).length>=4)continue;
     items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpEmergeOk(v,code,level)),evidence:sentFit(String(m.evidence||"").replace(/\s*[—–]\s*/g,", "),600)});
   }
   const clean=t=>{t=String(t||"").replace(/\s*[—–]\s*/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":sentFit(t,900)};
-  return {items:items.slice(0,12),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
+  return {items:items.slice(0,24),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
 }
 // without TREE, or when an educator asks for it, keywords point to possible measures. They give no level.
 function drdpKeywords(v,cs,text){
@@ -2584,7 +2592,7 @@ async function drdpAnalyze(kind,id,mode,quiet){
     let items=[],photo="",summary="",official;
     for(const [v,cs] of Object.entries(groups)){
       if(useKw){items.push(...drdpKeywords(v,cs,S.text));continue}
-      const r=await drdpRead(v,cs,S);items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
+      const r=await drdpRead(v,cs,S,id);items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
     }
     const before=rec.drdp&&rec.drdp.items||[];
     rec.drdp={at:Date.now(),by:whoAmI(),mode:useKw?"keywords":"reading",official:useKw?undefined:official,photo,summary,items};
@@ -4919,7 +4927,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="97a827c292ba";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="d1054f9079f1";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
