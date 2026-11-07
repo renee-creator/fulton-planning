@@ -35,13 +35,27 @@ function school(put) {
   const words = ['poured water slowly over the stones and watched the color change.', 'stacked three blocks on the stump and counted them.', 'carried the plank to the ramp and set it beside the first one.', 'dug by the fence looking for the worm from yesterday.', 'sang the rain song while painting the sky blue.'];
   for (let i = 0; i < 10; i++) { const [first, , room] = kids[i % kids.length];
     put(`notices/wn${i}.json`, { id: 'wn' + i, at: now - i * DAY / 2, classroom: room, by: room === 'West' ? 'Ann' : 'Bea', noticed: first + ' ' + words[i % words.length], wonder: i % 3 ? '' : 'I wonder what will happen with more water.', children: ['w' + (i % kids.length)] }); }
-  const monday = new Date(now - ((new Date(now).getDay() + 6) % 7) * DAY).toISOString().slice(0, 10);
+  // the week TREE opens, as planWeekNow in src/app.html reckons it, with Saturday and Sunday opening the coming week
+  const d0 = new Date(now), base = d0.getDay() === 6 || d0.getDay() === 0 ? new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 2) : d0;
+  const m = new Date(base.getFullYear(), base.getMonth(), base.getDate() - (base.getDay() + 6) % 7);
+  const monday = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0') + '-' + String(m.getDate()).padStart(2, '0');
   put('plans/wp1.json', { id: 'wp1', type: 'classroom', classroom: 'West', weekOf: monday, educator: 'Ann', status: 'draft', fields: { intentions: 'Water and weight' }, createdAt: now - DAY, updatedAt: now - DAY });
 }
 
 // what a person feels on the page in front of them
 async function pageChecks(p, touch) {
-  return p.evaluate(touch => {
+  const top = await checksIn(p, touch);
+  // Calendar and Conferences are drawn inside a frame, so the page in the frame is checked too and counted with the rest
+  const fr = await p.$('iframe.embed');
+  if (fr) { const f = await fr.contentFrame(); if (f) { try { await f.waitForLoadState('load', { timeout: 10000 }); await p.waitForTimeout(800); const inner = await checksIn(f, touch, true);
+    for (const k of ['smallTargets', 'unnamedButtons', 'unlabeledFields', 'tinyText', 'clipped', 'overlap', 'buttons', 'words']) top[k] += inner[k];
+    top.wider = top.wider || inner.wider; top.smallSample = [...new Set([...top.smallSample, ...inner.smallSample])].slice(0, 5); top.clippedSample = [...top.clippedSample, ...inner.clippedSample].slice(0, 3); top.overlapSample = [...top.overlapSample, ...inner.overlapSample].slice(0, 3); top.framed = true;
+  } catch (e) { top.frameError = e.message.split('\n')[0]; } } }
+  return top;
+}
+// the checks run in a page or in a frame within it. In a frame the whole of its page is looked at, not only #main.
+async function checksIn(p, touch, inFrame) {
+  return p.evaluate(([touch, inFrame]) => {
     const vis = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !el.closest('[hidden]') && (!el.checkVisibility || el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })); };
     const label = el => (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || el.value || '').replace(/\s+/g, ' ').trim();
     const controls = [...document.querySelectorAll('button, a[href], [role=button], input:not([type=hidden]), select, textarea')].filter(vis);
@@ -49,10 +63,11 @@ async function pageChecks(p, touch) {
     const small = controls.filter(el => { const r = el.getBoundingClientRect(); return (r.width < min || r.height < min) && !/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) && !el.closest('p, li, .cnt'); });
     const unnamed = controls.filter(el => /^(BUTTON|A)$/.test(el.tagName) || el.getAttribute('role') === 'button').filter(el => !label(el) && !el.querySelector('img[alt]:not([alt=""])'));
     const fields = controls.filter(el => /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) && !['button', 'submit', 'checkbox', 'radio', 'file'].includes(el.type)).filter(el => !el.labels?.length && !el.getAttribute('aria-label') && !el.getAttribute('placeholder') && !el.getAttribute('title'));
-    let tiny = 0; const tw = document.createTreeWalker(document.querySelector('#main') || document.body, NodeFilter.SHOW_TEXT);
+    const root = (!inFrame && document.querySelector('#main')) || document.body;
+    let tiny = 0; const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (tw.nextNode()) { const n = tw.currentNode; if (!n.textContent.trim() || !n.parentElement || !vis(n.parentElement)) continue; if (parseFloat(getComputedStyle(n.parentElement).fontSize) < 12) tiny++; }
     // formatting. Text cut off in its box, and buttons drawn over one another.
-    const clipped = [...(document.querySelector('#main') || document.body).querySelectorAll('*')].filter(el => { if (!vis(el) || el.children.length || !el.textContent.trim()) return false; const s = getComputedStyle(el);
+    const clipped = [...root.querySelectorAll('*')].filter(el => { if (!vis(el) || el.children.length || !el.textContent.trim()) return false; const s = getComputedStyle(el);
       return s.textOverflow !== 'ellipsis' && /hidden|clip/.test(s.overflowX + s.overflow) && el.scrollWidth > el.clientWidth + 2; });
     // the tab bar and the round button stay put while the page scrolls under them, which is meant, so they are left out
     const fixed = el => { for (let x = el; x && x !== document.body; x = x.parentElement) if (/fixed|sticky/.test(getComputedStyle(x).position)) return true; return false; };
@@ -63,7 +78,7 @@ async function pageChecks(p, touch) {
       if (w > 4 && h > 4) { overlap++; if (overlapSample.length < 3) overlapSample.push(label(a).slice(0, 25) + ' / ' + label(b).slice(0, 25)); } }
     // a way back from a page opened from somewhere
     const back = controls.some(el => /^\s*(‹\s*)?Back\b/i.test(label(el)));
-    const main = document.querySelector('#main'); const text = (main ? main.innerText : document.body.innerText) || '';
+    const text = root.innerText || '';
     return {
       wider: document.documentElement.scrollWidth > window.innerWidth + 2,
       smallTargets: small.length, smallSample: [...new Set(small.map(label).filter(Boolean))].slice(0, 5),
@@ -72,7 +87,7 @@ async function pageChecks(p, touch) {
       clipped: clipped.length, clippedSample: clipped.slice(0, 3).map(el => el.textContent.trim().slice(0, 40)), overlap, overlapSample, back,
       height: Math.round(document.documentElement.scrollHeight / window.innerHeight * 10) / 10,
     };
-  }, !!touch);
+  }, [!!touch, !!inFrame]);
 }
 
 // tap the first thing on screen whose words match, the way a person looks for it
@@ -136,8 +151,9 @@ const TASKS = {
     { name: "Open this week's plan", run: async (p, log) => {
       await p.evaluate(() => goView('today')); await p.waitForTimeout(500);
       const r = await reach(p, 'plans'); log.taps += r.taps; if (!r.reached) { log.missing = r.stuckAt || 'This week'; return false; }
-      if (!(await tap(p, /Classroom plan|Water and weight/, log))) return false;
-      return p.evaluate(() => !!currentId); } },
+      if (!(await tap(p, /Water and weight|Classroom plan/, log))) return false;
+      // the plan already written for this week, not a new one started by mistake
+      const id = await p.evaluate(() => currentId); if (id !== 'wp1') { log.missing = "this week's plan, a new one was started instead"; return false; } return true; } },
     { name: 'See what is on the calendar today', run: async (p, log) => {
       await p.evaluate(() => goView('today')); await p.waitForTimeout(500);
       if (!(await tap(p, /^\s*Calendar\s*$/, log))) return false;
@@ -169,11 +185,11 @@ const TASKS = {
       const person = { role: who.role, device: who.device, openMs: Date.now() - t0, pages: [], tasks: [] };
       for (const v of PAGES[who.role]) {
         const e0 = errors.length, s = Date.now();
-        await p.evaluate(v => goView(v), v); await p.waitForTimeout(700);
+        await p.evaluate(v => goView(v), v); await p.waitForTimeout(700); const drawMs = Date.now() - s - 700;
         const where = await p.evaluate(() => view);
         const c = await pageChecks(p, who.touch);
         const shot = `${who.role}-${v}.png`; await p.screenshot({ path: path.join(OUT, shot), fullPage: false });
-        person.pages.push(Object.assign({ page: v, reached: where === v ? v : where, drawMs: Date.now() - s - 700, errors: errors.slice(e0), shot }, c));
+        person.pages.push(Object.assign({ page: v, reached: where === v ? v : where, drawMs, errors: errors.slice(e0), shot }, c));
       }
       // how many taps each page is from Today. Each tab first opens where it was last left, so this runs after the visits.
       person.reach = [];

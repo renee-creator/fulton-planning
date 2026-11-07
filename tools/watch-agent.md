@@ -23,7 +23,9 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
 1. `npm ci` if node_modules is missing, then `node tools/watch-check.js > /tmp/watch-check.json` and read it. It checks
    every script parses, the generated pages match src, the size of the first page, the server's health and, when
    WATCH_KEY is set, the program watch's own findings from the last day.
-2. `node tools/user-walk.js /tmp/user-walk` and read /tmp/user-walk/walk-report.md. It walks through TREE on a made-up
+2. The walk needs Playwright and a Chromium browser, which TREE itself does not install. If
+   `node -e "require('playwright')"` fails, run `npm install --no-save playwright` and `npx playwright install chromium`
+   first. Then run `node tools/user-walk.js /tmp/user-walk` and read /tmp/user-walk/walk-report.md. It walks through TREE on a made-up
    school as an educator on a phone, the director on a laptop and the kitchen on a tablet, and checks formatting and
    getting around: pages wider than the screen, buttons too small to tap or drawn over one another, text cut off or very
    small, buttons and boxes with no name, slow pages, how many taps each page is from Today, and everyday tasks done by
