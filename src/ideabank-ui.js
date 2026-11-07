@@ -310,7 +310,7 @@ const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const o
    more or for less, saved with the inquiry. Possibilities to try lists matching cards with why each connects, and
    We'll try this adds the card's title and link to What we will try. Nothing is added unless the team chooses. */
 function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div class="lbl">Possibilities to try</div><div class="cnt"><span class="spin"></span> Opening the Idea bank</div></section>`}
-  const dir=isDirector()&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
+  const dir=(typeof iqCan==="function"?iqCan():isDirector())&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
   const sysLabel=n=>sys[n]?n+(sys[n]==="avoid"?", finding it too much":", seeking more"):n;
   const rows=ibMatch(needs,sys,mode,14);const tried=new Set((x.tries||[]).map(t=>t.idea).filter(Boolean));
   const us=x.ibUs||[],before=(x.tried||[]).filter(t=>t&&has(t.step));
@@ -330,12 +330,12 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
     ${typeof planResOk==="function"&&!planResOk()?"":`<section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
     ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}`}
-document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!isDirector())return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
+document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!(typeof iqCan==="function"?iqCan():isDirector()))return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.ibiqtry){const c=ibCard(d.ibiqtry);if(!c||(x.tries||[]).some(o=>o.idea===c.id))return;const r=ibMatch(x.ibNeeds||[],x.ibSys||{},x.ibMode,40).find(y=>y.card.id===c.id);
     x.tries=[...(x.tries||[]),{id:uid(),text:c.title+", from the Idea bank."+(r&&r.why?" "+r.why:""),idea:c.id,by:whoAmI(),at:Date.now(),curriculum:false,result:""}];saveInquiry(x);renderMain();toast("Added to What we will try.");return}
-  if(!isDirector())return;
+  if(!(typeof iqCan==="function"?iqCan():isDirector()))return;
   if(d.ibiqneed){const a=(x.ibNeeds||[]).slice(),i=a.indexOf(d.ibiqneed);if(i>=0)a.splice(i,1);else a.push(d.ibiqneed);x.ibNeeds=a}
   if(d.ibiqmode)x.ibMode=d.ibiqmode;
   if(d.ibiqus){const a=(x.ibUs||[]).slice(),i=a.indexOf(d.ibiqus);if(i>=0)a.splice(i,1);else a.push(d.ibiqus);x.ibUs=a}
@@ -387,7 +387,7 @@ ${cards}`;
   catch(e){x.ibSug={key,at:Date.now(),items:[],failed:true};if(view==="inquiries"&&typeof renderMain==="function")renderMain()}
   finally{ibSugBusy[x.id]=false}}
 function ibSuggestHtml(x){if(!ib){ibLoad();return ""}if(typeof planResOk==="function"&&!planResOk())return "";
-  const fresh=x.ibSug&&x.ibSug.key===ibSugKey(x),dir=isDirector()&&!VIEW_AS;
+  const fresh=x.ibSug&&x.ibSug.key===ibSugKey(x),dir=(typeof iqCan==="function"?iqCan():isDirector())&&!VIEW_AS;
   if(!fresh&&dir&&!ibSugBusy[x.id]&&ibSugText(x).trim().length>=20)setTimeout(()=>ibSuggest(x),0);
   if(ibSugBusy[x.id]&&!fresh)return `<div class="ref"><div class="lbl">Ideas from what we wrote</div><div class="cnt"><span class="spin"></span> Reading the inquiry</div></div>`;
   const items=(x.ibSug&&x.ibSug.items)||[];if(!items.length)return "";
@@ -459,5 +459,5 @@ ${evid}`,{purpose:"inquiry",cache:false});
     if(n){saveInquiry(x);toast(n===1?"1 answer drafted. Edit it with the team.":n+" answers drafted. Edit them with the team.")}else toast("The evidence does not say enough for these questions yet.")}
   catch(e){toast(typeof assistError==="function"?assistError(e,"Nothing changed."):"Nothing changed.")}finally{ibBusyMap[x.id+"lens"]=false;renderMain()}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibdevdraft],[data-iblensdraft]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;
-  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!isDirector())return;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!(typeof iqCan==="function"?iqCan():isDirector()))return;
   if(t.dataset.ibdevdraft)ibDevDraft(x);else ibLensDraft(x)});

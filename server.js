@@ -3087,37 +3087,16 @@ async function handle(req, res) {
     // a project is changed by the director. An educator may add a thread to it, which can bring a class in with it.
     // a team inquiry is the director's. Educators add observations and threads to it and write what happened when they tried something.
     if (kind === 'inquiries' && op !== 'delete' && !isDirector(me.name)) {
-      // an educator may open a team inquiry from a thread. It carries the thread, its class and project and nothing written yet, and the director leads it from there
-      const fromThreadOk = d => { if (!d || typeof d !== 'object') return false; const th = d.fromThread && store.recs.threads.get(d.fromThread); if (!th || th.deleted) return false;
-        const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
-        const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'fromThread', 'threads', 'projects', 'obs', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
-        return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && Array.isArray(d.threads) && d.threads.includes(d.fromThread) && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
-      // an educator may also open one from What are you seeing? in the Idea bank, once the class has written the first steps it tried for
-      // that behavior and what happened. It carries the behavior's needs and senses, what was tried, and nothing written yet.
-      const fromBehaviorOk = d => { if (!d || typeof d !== 'object' || typeof d.ibFrom !== 'string') return false;
-        let ok = false; try { ok = staff.ideabank.canOpen(d.ibFrom, d.room || ''); } catch (e) { ok = false; } if (!ok) return false;
-        const empty = v => v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
-        const ALLOW = ['id', 'name', 'room', 'status', 'createdAt', 'createdBy', 'startedBy', 'ibFrom', 'ibNeeds', 'ibSys', 'ibMode', 'ibUs', 'tried', 'display', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
-        const N = staff.ideabank.NEEDS || [], Y = staff.ideabank.SUPPORTS || [], U = staff.ideabank.US || [];
-        const list = (v, L) => v == null || (Array.isArray(v) && v.every(x => L.includes(x)));
-        const sysOk = v => v == null || (typeof v === 'object' && !Array.isArray(v) && Object.entries(v).every(([k, m]) => Y.includes(k) && (m === 'seek' || m === 'avoid')));
-        const triedOk = v => v == null || (Array.isArray(v) && v.length <= 60 && v.every(t => t && typeof t === 'object' && String(t.step || '').length <= 400 && String(t.happened || '').length <= 1200));
-        return Object.keys(d).every(k => ALLOW.includes(k) || empty(d[k])) && list(d.ibNeeds, N) && list(d.ibUs, U) && sysOk(d.ibSys) && triedOk(d.tried)
-          && d.display === false && d.status === 'open' && String(d.startedBy || '').toLowerCase() === String(me.name).toLowerCase(); };
-      if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromThreadOk(body.data)) { log('Team inquiry opened from a thread by', me.name, id); }
-      else if ((op === 'create' || op === 'set') && (!cur || cur.deleted) && fromBehaviorOk(body.data)) { log('Team inquiry opened from the Idea bank by', me.name, id, body.data.ibFrom); }
-      else if (op === 'create' || !cur || cur.deleted) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'A team inquiry opens once the class has tried the first steps and written what happened. Write each try under What are you seeing? in the Idea bank.'); return; }
-      else {
-      const OPEN = ['obs', 'threads', 'projects', 'tries', 'updatedAt', 'updatedBy', 'updatedByName', 'savedAt'];
-      const next = op === 'set' ? (body.data || {}) : op === 'update' ? Object.assign({}, cur.doc, body.patch || {}) : null;
-      const changed = next ? [...new Set([...Object.keys(cur.doc), ...Object.keys(next)])].filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k])) : ['all'];
-      const keeps = k => (cur.doc[k] || []).every(v => (next[k] || []).includes(v));
-      // an educator may also add an Idea bank card the team chose to try, with We'll try this, and change nothing else
-      const triesOk = () => { const a = cur.doc.tries || [], b = next.tries || []; return b.length >= a.length && a.every((t, i) => b[i] && b[i].id === t.id && b[i].text === t.text && !!b[i].curriculum === !!t.curriculum)
-        && b.slice(a.length).every(t => t && typeof t.idea === 'string' && /^[a-z0-9-]{1,80}$/.test(t.idea) && !t.curriculum && typeof t.text === 'string' && t.text.length <= 800 && !String(t.result || '').trim()); };
-      const bad = changed.filter(k => !OPEN.includes(k) || ((k === 'obs' || k === 'threads' || k === 'projects') && !keeps(k)) || (k === 'tries' && !triesOk()));
-      if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director changes a team inquiry. You can add observations and threads to it, and write what happened when the team tried something.'); return; }
-      }
+      /* educators open team inquiries and write every part (November 6, 2026). An educator's new inquiry carries who started it
+         and stays with the team, so it waits on the director's Today. Only the director shares an inquiry beyond the team,
+         marks it seen or removes it. */
+      const next = op === 'set' || op === 'create' ? (body.data || {}) : op === 'update' ? Object.assign({}, (cur && cur.doc) || {}, body.patch || {}) : null;
+      const isNew = !cur || cur.deleted;
+      if (isNew && next && (next.display !== false || String(next.startedBy || '').toLowerCase() !== String(me.name).toLowerCase())) { log('Inquiry start refused for', me.name, id); err(req, res, 403, 'A team inquiry an educator opens stays with the team until the director has seen it.'); return; }
+      if (!isNew && next) { const DIR_ONLY = ['display', 'directorSeen', 'startedBy', 'createdBy', 'createdAt'];
+        const bad = DIR_ONLY.filter(k => JSON.stringify(cur.doc[k]) !== JSON.stringify(next[k]));
+        if (bad.length) { log('Inquiry change refused for', me.name, id, bad.join(',')); err(req, res, 403, 'Only the director shares a team inquiry beyond the team.'); return; } }
+      if (isNew) log('Team inquiry opened by', me.name, id);
     }
     // a story is shared beyond the team only once the director has reviewed it. An educator's save never marks it reviewed,
     // and an educator's change to the words of a reviewed story sends it back to draft for the team to look at again

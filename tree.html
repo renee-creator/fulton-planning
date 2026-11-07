@@ -4927,7 +4927,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="c9a56b38dc40";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="ceb9c388b84c";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6577,7 +6577,7 @@ const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const o
    more or for less, saved with the inquiry. Possibilities to try lists matching cards with why each connects, and
    We'll try this adds the card's title and link to What we will try. Nothing is added unless the team chooses. */
 function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div class="lbl">Possibilities to try</div><div class="cnt"><span class="spin"></span> Opening the Idea bank</div></section>`}
-  const dir=isDirector()&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
+  const dir=(typeof iqCan==="function"?iqCan():isDirector())&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
   const sysLabel=n=>sys[n]?n+(sys[n]==="avoid"?", finding it too much":", seeking more"):n;
   const rows=ibMatch(needs,sys,mode,14);const tried=new Set((x.tries||[]).map(t=>t.idea).filter(Boolean));
   const us=x.ibUs||[],before=(x.tried||[]).filter(t=>t&&has(t.step));
@@ -6597,12 +6597,12 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
     ${typeof planResOk==="function"&&!planResOk()?"":`<section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
     ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}`}
-document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!isDirector())return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
+document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!(typeof iqCan==="function"?iqCan():isDirector()))return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   if(d.ibiqtry){const c=ibCard(d.ibiqtry);if(!c||(x.tries||[]).some(o=>o.idea===c.id))return;const r=ibMatch(x.ibNeeds||[],x.ibSys||{},x.ibMode,40).find(y=>y.card.id===c.id);
     x.tries=[...(x.tries||[]),{id:uid(),text:c.title+", from the Idea bank."+(r&&r.why?" "+r.why:""),idea:c.id,by:whoAmI(),at:Date.now(),curriculum:false,result:""}];saveInquiry(x);renderMain();toast("Added to What we will try.");return}
-  if(!isDirector())return;
+  if(!(typeof iqCan==="function"?iqCan():isDirector()))return;
   if(d.ibiqneed){const a=(x.ibNeeds||[]).slice(),i=a.indexOf(d.ibiqneed);if(i>=0)a.splice(i,1);else a.push(d.ibiqneed);x.ibNeeds=a}
   if(d.ibiqmode)x.ibMode=d.ibiqmode;
   if(d.ibiqus){const a=(x.ibUs||[]).slice(),i=a.indexOf(d.ibiqus);if(i>=0)a.splice(i,1);else a.push(d.ibiqus);x.ibUs=a}
@@ -6654,7 +6654,7 @@ ${cards}`;
   catch(e){x.ibSug={key,at:Date.now(),items:[],failed:true};if(view==="inquiries"&&typeof renderMain==="function")renderMain()}
   finally{ibSugBusy[x.id]=false}}
 function ibSuggestHtml(x){if(!ib){ibLoad();return ""}if(typeof planResOk==="function"&&!planResOk())return "";
-  const fresh=x.ibSug&&x.ibSug.key===ibSugKey(x),dir=isDirector()&&!VIEW_AS;
+  const fresh=x.ibSug&&x.ibSug.key===ibSugKey(x),dir=(typeof iqCan==="function"?iqCan():isDirector())&&!VIEW_AS;
   if(!fresh&&dir&&!ibSugBusy[x.id]&&ibSugText(x).trim().length>=20)setTimeout(()=>ibSuggest(x),0);
   if(ibSugBusy[x.id]&&!fresh)return `<div class="ref"><div class="lbl">Ideas from what we wrote</div><div class="cnt"><span class="spin"></span> Reading the inquiry</div></div>`;
   const items=(x.ibSug&&x.ibSug.items)||[];if(!items.length)return "";
@@ -6726,7 +6726,7 @@ ${evid}`,{purpose:"inquiry",cache:false});
     if(n){saveInquiry(x);toast(n===1?"1 answer drafted. Edit it with the team.":n+" answers drafted. Edit them with the team.")}else toast("The evidence does not say enough for these questions yet.")}
   catch(e){toast(typeof assistError==="function"?assistError(e,"Nothing changed."):"Nothing changed.")}finally{ibBusyMap[x.id+"lens"]=false;renderMain()}}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibdevdraft],[data-iblensdraft]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;
-  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!isDirector())return;
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}if(!(typeof iqCan==="function"?iqCan():isDirector()))return;
   if(t.dataset.ibdevdraft)ibDevDraft(x);else ibLensDraft(x)});
 
 /* ---------- Walk safety ----------
@@ -10843,7 +10843,9 @@ function saveInquiry(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();inquiries.se
   else LS.set("fps.inquiries",[...inquiries.values()])}
 const iqTimers={};
 function saveInquirySoon(x){inquiries.set(x.id,x);clearTimeout(iqTimers[x.id]);iqTimers[x.id]=setTimeout(()=>saveInquiry(x),700)}
-function newInquiry(extra){return Object.assign({id:uid(),name:"",room:myRoom()||"",status:"open",createdAt:Date.now(),createdBy:whoAmI(),
+// every educator opens and writes team inquiries, and only the director shares one beyond the team (November 6, 2026)
+const iqCan=()=>!(typeof isKitchenUser==="function"&&isKitchenUser());
+function newInquiry(extra){if(!isDirector())extra=Object.assign({startedBy:whoAmI(),display:false},extra||{});return Object.assign({id:uid(),name:"",room:myRoom()||"",status:"open",createdAt:Date.now(),createdBy:whoAmI(),
   see:"",whenwhere:"",hyps:[],tries:[],watch:"",lookAgain:"",looks:[],obs:[],threads:[],projects:[],lensId:"",lensNotes:{},display:false},extra||{})}
 const inqOf=x=>x&&!x.deleted;
 const inqAll=()=>[...inquiries.values()].filter(inqOf);
@@ -10895,7 +10897,7 @@ function renderInquiries(){
     <details class="helpme"><summary>What a team inquiry is</summary><div class="hint prose" style="--pw:76ch">Where the team thinks through a question about children's development and our own practice. A thread follows what children are pursuing, and an inquiry sits beside it with the team's question. Each one reads the observations, threads, projects, plans and the Lens, and what the team decides to try reaches the plans written from it. Inquiries stay with the team. Their observations stay out of portfolios and walls.</div></details>${staffSubOk("sthb")?`<div class="cnt" style="margin-top:6px">When a behavior continues, read <button class="linkbtn" data-hbopen="positive-discipline-for-educators">Positive Discipline for Educators</button> in the Policies and Procedures${staffSubOk("stpd")?`, and the <button class="linkbtn" data-tview="stpd" data-stmod="m:beyond">Beyond Discipline</button> module in the PD library`:""}.</div>`:""}${staffSubOk("stfh")?`<div class="cnt" style="margin-top:4px">Each inquiry follows <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline</button> in the Family Handbook.</div>`:""}</div></div>
     <div class="filters" role="group" aria-label="Class">${["All",...CLASSROOMS,"School-wide"].map(r=>`<button class="pill" aria-pressed="${r===iqRoom}" data-iqroom="${esc(r)}">${esc(r)}</button>`).join("")}</div></div>`;
   if(iqForm)h+=inqStartForm();
-  else h+=isDirector()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
+  else h+=iqCan()?`<div class="actions"><button class="btn small" data-iqnew="1">Start a team inquiry</button><span class="muted" style="font-size:13.5px">You can also start one from an observation or a thread.</span></div>`
     :`<div class="ref" style="background:var(--sky-soft)">The director starts each team inquiry with the team. You can add observations and threads to one, write what happened when the team tried something, and start a plan from it.</div>`;
   if(live.length)h+=`<div class="threads">${live.map(inqCard).join("")}</div>`;
   else if(!iqForm)h+=`<div class="empty">No team inquiries${iqRoom!=="All"?" here":""} yet.</div>`;
@@ -11036,7 +11038,7 @@ function renderInquiry(x){
     ${aside.length?`<details><summary class="chiprow-label" style="cursor:pointer">Earlier guesses, set aside, ${aside.length}</summary><div class="evid" style="margin-top:8px">${aside.map(o=>`<div>${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${o.asideAt?", set aside "+shortDate(o.asideAt):""} <button class="linkbtn" data-iqhback="${esc(o.id)}">Bring back</button></span></div>`).join("")}</div></details>`:""}
     <label class="cnt" style="margin-top:8px">Read it through a lens <select data-iqlens="1" style="width:auto"><option value="">No lens</option>${LENSES.map(l=>`<option value="${esc(l.id)}" ${x.lensId===l.id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></label>
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
-      <div class="actions">${isDirector()&&!VIEW_AS?(typeof ibBusyMap!=="undefined"&&ibBusyMap[x.id+"lens"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-iblensdraft="1">Draft from the evidence</button>`):""}<button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
+      <div class="actions">${iqCan()&&!VIEW_AS?(typeof ibBusyMap!=="undefined"&&ibBusyMap[x.id+"lens"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-iblensdraft="1">Draft from the evidence</button>`):""}<button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
   h+=ibInquiryHtml(x);
   h+=`<section class="card"><div class="lbl">What we will try</div>
@@ -11076,9 +11078,9 @@ function renderInquiry(x){
       return `<div><button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):planTitle(p))}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>${(p.inquiries||[]).includes(x.id)?` <span class="cnt">written from this inquiry</span>`:""}
         ${after?`<div class="muted" style="white-space:pre-line">${esc(firstLine(after,240))}</div>`:""}</div>`}).join("")}</div>`:`<div class="cnt">No plans yet. Start one from this inquiry, or connect a thread that plans follow.</div>`}</section>`;
   if(isDirector())h+=`<div class="actions"><span id="iqdel"><button class="linkbtn" data-iqdel="1">Remove this inquiry</button></span></div>`;
-  else h=h.replace('<div id="iqplan-pick"></div></div>','<div id="iqplan-pick"></div></div><div class="ref" style="background:var(--sky-soft);margin-bottom:10px">The director writes this inquiry with the team. You can add observations and threads to it, write what happened when the team tried something, and start a plan from it.</div>');
+  // every educator writes the inquiry, so no note says otherwise
   $("#main").innerHTML=h;sizeBoxes($("#main"));
-  if(!isDirector())lockInquiryPage();
+  if(!iqCan())lockInquiryPage();
 }
 // an educator reads an inquiry, adds observations and threads, writes what happened when something was tried, and plans from it
 const IQ_OPEN=["iqback","iqplan","iqplango","iqplanno","iqopen","mopen","tsee","popen","print","word","kid","lensgo","open","ibopen","ibiqtry","ibiqneed","ibiqsys"];
@@ -11090,18 +11092,27 @@ function lockInquiryPage(){const m=$("#main");if(!m)return;
   m.querySelectorAll(".sugg").forEach(el=>el.hidden=true)}
 
 // a plan from an inquiry. Its curriculum side is for the whole group, so the plan starts empty and the inquiry sits beside it.
-function planFromInquiry(x,kind){
-  const room=x.room||myRoom()||(roomFilter!=="All"?roomFilter:"");
+// a new plan from a team inquiry, for the week the educator chose. The Observation rationale begins with what the team is
+// seeing and the inquiry's observations, and the tries marked Part of the curriculum go into the plan's activities, or the
+// Classroom Plan's intentions. When the class already has a Classroom Plan that week, TREE asks whether to add the inquiry to
+// it or start a new one (November 6, 2026)
+function iqPlanSeed(x){const ns=inqNotices(x).slice(0,6);const see=String(x.see||"").trim();
+  const obs=[see,...ns.map(n=>noticeText(n))].filter(t=>String(t||"").trim()).join("\n\n");
+  const cur=(x.tries||[]).filter(t=>t.curriculum&&has(t.text)).map(t=>t.text.trim()).join("\n");
+  return {obs,cur,ids:ns.map(n=>n.id),thread:(x.threads||[]).find(id=>threads.get(id))||""}}
+function planFromInquiry(x,kind,wk,how){
+  wk=wk||planWeekNow();const room=x.room||myRoom()||(roomFilter!=="All"?roomFilter:"");const seed=iqPlanSeed(x);
+  const open=(p,msg)=>{plans.set(p.id,p);persist(p);currentId=p.id;week=p.weekOf;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();toast(msg)};
   if(kind==="classroom"){if(!room){toast("This inquiry is school-wide. Choose a class on the Plans page first.");return}
-    // a plan started from an inquiry belongs to the current planning week, whatever week Plans was last showing
-    let cp=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===planWeekNow()&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
-    const made=!cp;if(made)cp=newPlan("classroom",{weekOf:planWeekNow(),classroom:room});
-    cp.inquiries=[...new Set([...(cp.inquiries||[]),x.id])];plans.set(cp.id,cp);persist(cp);
-    currentId=cp.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
-    toast(made?`Started the ${room} Classroom Plan for the week of ${fmtDate(week)}. The inquiry is beside it.`:`Connected to the ${room} Classroom Plan for the week of ${fmtDate(week)}.`);return}
-  const np=newPlan("individual",{weekOf:planWeekNow(),classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
-  plans.set(np.id,np);persist(np);currentId=np.id;view="plans";LS.set("fps.view",view);evOpen=evComputer()&&LS.get("fps.evopen","1")!=="0";renderAll();jumpTop();
-  toast("Write the plan for the whole group. The inquiry and its evidence are beside it.")}
+    const have=[...plans.values()].filter(p=>p.type==="classroom"&&p.id!=="example"&&p.weekOf===wk&&p.classroom===room).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    if(have&&!how){const el=$("#iqplan-ask");if(el)el.innerHTML=`<div class="actions" style="margin-top:6px"><span class="cnt">The ${esc(room)} class already has a Classroom Plan for the week of ${esc(fmtDate(wk))}.</span><button class="btn small ghost" data-iqplango="classroom" data-iqplanhow="add">Add this inquiry to it</button><button class="btn small ghost" data-iqplango="classroom" data-iqplanhow="new">Start a new one</button></div>`;return}
+    if(have&&how==="add"){have.inquiries=[...new Set([...(have.inquiries||[]),x.id])];open(have,`Connected to the ${room} Classroom Plan for the week of ${fmtDate(wk)}.`);return}
+    const cp=newPlan("classroom",{weekOf:wk,classroom:room});cp.inquiries=[x.id];cp.source={kind:"inquiry",id:x.id,at:Date.now()};
+    if(seed.obs)cp.fields.observation=seed.obs;if(seed.cur)cp.fields.intentions=seed.cur;if(seed.ids.length){cp.noticeAdded=[...seed.ids];cp.noticeUsed=[...seed.ids]}if(seed.thread)cp.threadId=seed.thread;
+    open(cp,`A new ${room} Classroom Plan for the week of ${fmtDate(wk)}, begun from the inquiry. Write the rest in your own words.`);return}
+  const np=newPlan("individual",{weekOf:wk,classroom:room,inquiries:[x.id],source:{kind:"inquiry",id:x.id,at:Date.now()}});np.educator=me()||np.educator||"";
+  if(seed.obs)np.fields.observation=seed.obs;if(seed.cur)np.fields.materials=seed.cur;if(seed.ids.length){np.noticeAdded=[...seed.ids];np.noticeUsed=[...seed.ids]}if(seed.thread)np.threadId=seed.thread;
+  open(np,"The plan begins with the inquiry. Write the area and your intent in your own words.")}
 
 function inquiryDoc(x,long){
   const ns=inqNotices(x),hy=inqOpenHyps(x),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(b.at||0)-(a.at||0));
@@ -11160,7 +11171,7 @@ function inqDigest(x){const out=[];const ns=inqNotices(x).slice(0,30);
   for(const f of [...(x.family||[])].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,5))out.push(`${f.conference?"A family conference":"A conversation with the family"}, ${shortDate(f.at)}. ${f.text}`);
   let txt="";for(const l of out){if(txt.length+l.length>14000)break;txt+=l+"\n"}return txt}
 function iqAssistHtml(x,key){
-  if(!sample||!isDirector())return"";const sg=iqSug[x.id+"|"+key];const k=iqKind(key),one=key.includes(":");const cur=iqVal(x,key).trim();
+  if(!sample||!iqCan())return"";const sg=iqSug[x.id+"|"+key];const k=iqKind(key),one=key.includes(":");const cur=iqVal(x,key).trim();
   if(!sg){const draft=k!=="home"&&!one&&(k==="hyp"||k==="try"||!cur);
     return `<div class="actions">${draft?`<button class="btn small ghost" data-iqdraft="${key}">${k==="hyp"?"Draft a guess from the evidence":k==="try"?"Draft something to try from the evidence":"Draft from the evidence"}</button>`:""}${cur?`<button class="btn small ghost" data-iqstr="${key}">Strengthen wording</button>`:""}</div>`}
   if(sg.status==="working")return `<div class="sugg"><b>TREE is ${sg.mode==="draft"?"reading the evidence":"rewriting this"}</b><div class="muted">Using only what educators wrote</div></div>`;
@@ -11168,7 +11179,7 @@ function iqAssistHtml(x,key){
   return `<div class="sugg"><b>${sg.mode==="draft"?"Drafted from the evidence":"Suggested wording"}</b><textarea id="iqsug-${key.replace(/[^a-z0-9]/gi,"_")}" data-talk="1" rows="3">${esc(sg.text)}</textarea><div class="cnt">Edit it here if you like. ${sg.mode==="draft"&&!one&&(k==="hyp"||k==="try")?"Use this adds it as a new one.":"What is written stays until you choose Use this."}</div>
     <div class="actions"><button class="btn small" data-iqsugyes="${key}">Use this</button><button class="btn small ghost" data-iqsugno="${key}">Keep mine</button><button class="linkbtn" data-${sg.mode==="draft"?"iqdraft":"iqstr"}="${key}">Try another version</button></div></div>`}
 async function iqAssist(x,key,mode){
-  if(!sample||!isDirector())return;const k=iqKind(key),std=IQ_STD[k];if(!std)return;const cur=iqVal(x,key).trim();
+  if(!sample||!iqCan())return;const k=iqKind(key),std=IQ_STD[k];if(!std)return;const cur=iqVal(x,key).trim();
   if(mode==="str"&&!cur){toast("Write a few words first, then strengthen them.");return}
   const evid=inqDigest(x);if(mode==="draft"&&!evid.trim()){toast("Add an observation or a thread first, so there is evidence to draft from.");return}
   const sk=x.id+"|"+key;iqSug[sk]={status:"working",mode};renderMain();
@@ -11196,7 +11207,7 @@ ${cur}`;
   if(/^THIN\.?$/i.test(out))iqSug[sk]={status:"error",mode,error:"The evidence does not say enough for this part yet. Add observations, or write it from the team's discussion."};
   else iqSug[sk]=out?{status:"ready",mode,text:out}:{status:"error",mode,error:assistError(code||"empty_completion","What is written is unchanged.")};
   if(view==="inquiries"&&inqId===x.id)renderMain()}
-function iqAssistUse(x,key){if(!isDirector())return;const sk=x.id+"|"+key,sg=iqSug[sk];if(!sg||sg.status!=="ready")return;
+function iqAssistUse(x,key){if(!iqCan())return;const sk=x.id+"|"+key,sg=iqSug[sk];if(!sg||sg.status!=="ready")return;
   const el=document.getElementById("iqsug-"+key.replace(/[^a-z0-9]/gi,"_"));const v=(el?el.value:sg.text).trim();if(!v)return;
   const [k,id]=key.split(":");const now=Date.now(),by=whoAmI();
   if(k==="hyp"){if(id){const o=(x.hyps||[]).find(h=>h.id===id);if(o)o.text=v}else x.hyps=[...(x.hyps||[]),{id:uid(),text:v,by,at:now}]}
@@ -11208,7 +11219,7 @@ async function inquiriesClick(t){
   if(d.iqopen){openInquiry(d.iqopen);return true}
   if(d.iqback){openInquiry("");return true}
   if(d.iqroom){iqRoom=d.iqroom;LS.set("fps.iqroom",iqRoom);renderMain();return true}
-  if(d.iqnew){if(isDirector())startInquiry({});return true}
+  if(d.iqnew){if(iqCan())startInquiry({});return true}
   if(d.iqcancel){iqForm=null;renderMain();return true}
   if(d.iqmake){const f=iqForm;if(!f)return true;f.name=($("#iqf-name")?.value||"").trim();f.room=$("#iqf-room")?.value||"";
     if(!f.name){$("#iqf-msg").innerHTML=`<span class="nudge">Name what the team is wondering about first.</span>`;return true}
@@ -11217,16 +11228,18 @@ async function inquiriesClick(t){
     delete f.shown;iqForm=null;saveInquiry(f);openInquiry(f.id);toast("Started. Add what the team sees, and the readings, as you talk it through.");return true}
   const x=inqId&&inquiries.get(inqId);
   if(d.iqplan){const xx=inquiries.get(d.iqplan);if(!xx)return true;const el=$("#iqplan-pick");
-    if(el)el.innerHTML=`<section class="ref" style="background:var(--marigold-soft)"><b>Which plan?</b><div class="muted">The plan is written for the whole group. The inquiry, its readings, what the team will try in the curriculum, and its observations sit beside it while you write.</div>
-      <div class="actions"><button class="btn small ghost" data-iqplango="individual">An Individual Plan</button>${xx.room||myRoom()?`<button class="btn small ghost" data-iqplango="classroom">The ${esc(xx.room||myRoom())} Classroom Plan this week</button>`:""}<button class="linkbtn" data-iqplanno="1">Cancel</button></div></section>`;
+    // the week is chosen, starting on the current planning week, and either plan opens new (November 6, 2026)
+    if(el)el.innerHTML=`<section class="ref" style="background:var(--marigold-soft)"><b>Which plan?</b><div class="muted">A new plan, begun with what the team is seeing, the inquiry's observations and what the team will try in the curriculum. The inquiry sits beside it while you write.</div>
+      <label class="cnt" style="margin-top:6px">Week of <input type="date" id="iqplan-week" value="${esc(planWeekNow())}" style="width:auto"></label>
+      <div class="actions"><button class="btn small ghost" data-iqplango="individual">An Individual Plan</button>${xx.room||myRoom()?`<button class="btn small ghost" data-iqplango="classroom">A ${esc(xx.room||myRoom())} Classroom Plan</button>`:""}<button class="linkbtn" data-iqplanno="1">Cancel</button></div><div id="iqplan-ask"></div></section>`;
     return true}
-  if(d.iqplango&&x){planFromInquiry(x,d.iqplango);return true}
+  if(d.iqplango&&x){const v=($("#iqplan-week")||{}).value;planFromInquiry(x,d.iqplango,/^\d{4}-\d{2}-\d{2}$/.test(v||"")?mondayOf(parseIso(v)):planWeekNow(),d.iqplanhow||"");return true}
   if(d.iqplanno){const el=$("#iqplan-pick");if(el)el.innerHTML="";return true}
   if(!x)return false;
   if(d.iqdraft||d.iqstr){iqAssist(x,d.iqdraft||d.iqstr,d.iqdraft?"draft":"str");return true}
   if(d.iqsugno){delete iqSug[x.id+"|"+d.iqsugno];renderMain();return true}
   if(d.iqsugyes){iqAssistUse(x,d.iqsugyes);return true}
-  if(!isDirector())return false;
+  if(!iqCan())return false;
   const now=Date.now(),by=whoAmI();
   if(d.iqhadd){x.hyps=[...(x.hyps||[]),{id:uid(),text:"",by,at:now}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll("[data-iqh]");if(ts.length)ts[ts.length-1].focus();return true}
   if(d.iqhaside){const o=(x.hyps||[]).find(h=>h.id===d.iqhaside);if(o){if(!has(o.text))x.hyps=x.hyps.filter(h=>h!==o);else{o.aside=true;o.asideAt=now;o.asideBy=by}saveInquiry(x);renderMain()}return true}
@@ -11244,13 +11257,13 @@ async function inquiriesClick(t){
   if(d.iqdelyes){inquiries.delete(x.id);if(db)db.doc("inquiries/"+x.id).delete().catch(()=>toast("Could not remove it. Check your connection."));else LS.set("fps.inquiries",[...inquiries.values()]);openInquiry("");return true}
   return false}
 document.addEventListener("input",e=>{const t=e.target;if(view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
-  if(!isDirector()&&!(d.iqt&&/\|result$/.test(d.iqt)))return;
+  if(!iqCan())return;
   if(d.iqf&&t.type!=="date"){x[d.iqf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);if(d.iqf==="see"||d.iqf==="whenwhere"){const el=$("#iqsafe");if(el)el.innerHTML=iqSafeHtml(x)}return}
   if(d.iqh){const o=(x.hyps||[]).find(h=>h.id===d.iqh);if(o){o.text=t.value;autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqt){const [id,k]=d.iqt.split("|");const o=(x.tries||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(k==="result"){o.resultAt=Date.now();o.resultBy=whoAmI()}autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqlq!=null){const L=inqLens(x);if(L){x.lensNotes=x.lensNotes||{};x.lensNotes[L.questions[+d.iqlq]]=t.value;autoGrow(t);saveInquirySoon(x)}return}});
 document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
-  if(!isDirector()&&!d.iqaddobs&&!d.iqaddth)return;
+  if(!iqCan())return;
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
@@ -11265,7 +11278,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
 function inqLinksHtml(list,label){return list.length?`<div class="cnt">${label||"Team inquiry"} ${list.map(x=>`<button class="linkbtn" data-iqopen="${esc(x.id)}">${esc(x.name||"Untitled")}</button>`).join(", ")}</div>`:""}
 function inqObsChooser(n){const open=inqAll().filter(x=>x.status!=="closed"&&!(x.obs||[]).includes(n.id)&&(!x.room||momentIn(n,x.room)||!momentRooms(n).length));
   return `<span class="confirm">${open.length?`<select data-nwinqadd="${esc(n.id)}" style="width:auto"><option value="">Keep it for an inquiry</option>${open.map(x=>`<option value="${esc(x.id)}">${esc(x.name||"Untitled")}</option>`).join("")}</select>`:""}
-    ${isDirector()?`<button class="btn small ghost" data-nwinqnew="${esc(n.id)}">Start a team inquiry from it</button>`:""}<button class="linkbtn" data-nwinqno="${esc(n.id)}">Cancel</button></span>`}
+    ${iqCan()?`<button class="btn small ghost" data-nwinqnew="${esc(n.id)}">Start a team inquiry from it</button>`:""}<button class="linkbtn" data-nwinqno="${esc(n.id)}">Cancel</button></span>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-nwinq],[data-nwinqnew],[data-nwinqno],[data-tinq],[data-tinqgo],[data-tinqno]");if(!t)return;const d=t.dataset;
   if(d.tinq){const th=threads.get(d.tinq);if(!th)return;e.stopImmediatePropagation();if(needName())return;const el=document.getElementById("tinq-"+th.id);
     if(el){el.innerHTML=`<span class="confirm">Keep this as a curriculum thread too? <button class="btn small" data-tinqgo="${esc(th.id)}" data-keep="1">Yes, keep it</button><button class="btn small ghost" data-tinqgo="${esc(th.id)}" data-keep="0">No, the inquiry holds it now</button><button class="linkbtn" data-tinqno="${esc(th.id)}">Cancel</button></span>`;return}}
