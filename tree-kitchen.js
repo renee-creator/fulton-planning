@@ -137,7 +137,10 @@ async function kMonthMenu(month,which,word){which=which||"all";const D=kMenuData
   const late=open.length&&open.filter(d=>d<today).length*2>=open.length;const [yy,mm]=month.split("-").map(Number);const prev=iso(new Date(yy,mm-2,1)).slice(0,7);
   const fm=late?month:prev;if(!isDirector())await kMonthFetch(fm);
   let farms=0;try{farms=farmMonthData(fm).farms.length}catch(e){}const title=which==="lunch"?"Lunch menu":which==="snack"?"Snack menu":"Monthly menu";
-  const foot=[which!=="lunch"&&has(D.notes.snack)?D.notes.snack:"",which!=="snack"&&has(D.notes.lunch)?D.notes.lunch:""].filter(Boolean);
+  // a line both notes carry, such as *Menu is subject to change, prints once, after the notes
+  const foot0=[which!=="lunch"&&has(D.notes.snack)?D.notes.snack:"",which!=="snack"&&has(D.notes.lunch)?D.notes.lunch:""].filter(Boolean).map(t=>String(t).split("\n").map(l=>l.trim()).filter(Boolean));
+  const shared=foot0.length>1?foot0[0].filter(l=>foot0.slice(1).every(f=>f.some(x=>x.toLowerCase()===l.toLowerCase()))):[];const isShared=l=>shared.some(x=>x.toLowerCase()===l.toLowerCase());
+  const foot=[...foot0.map(f=>f.filter(l=>!isShared(l)).join("\n")).filter(has),...shared];
   const extra=[D.recipe?"Recipe of the month, "+D.recipe+".":"",farms?(late?`Our food comes from ${farms} local farm${farms===1?"":"s"} this month.`:`Last month our food came from ${farms} local farm${farms===1?"":"s"}.`):""].filter(Boolean);
   if(word)return kMonthMenuDocx(month,D,title,foot,extra);return kMonthMenuPdf(month,D,title,foot,extra)}
 async function kMonthMenuPdf(month,D,title,foot,extra){if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){toast("The PDF tool did not load.");return}await loadPrintFonts();

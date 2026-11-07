@@ -215,6 +215,10 @@ async function nlLoadComing(k){
   if(view==="newsletter")renderNewsletter();
 }
 const nlDay=d=>parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+// a calendar title that joins two phrases with a hyphen, such as Thanksgiving Break-School Closed, reads as
+// Thanksgiving Break, school closed. A word that is hyphenated, such as Back-to-school, stays as it is.
+const nlComing=t=>String(t||"").replace(/([A-Za-z])\s*[-–—]\s*(School|Class(?:es)?)\s+(Closed|Open|Closes|Opens|Starts|Ends)\b/g,(m,a,b,c)=>a+", "+b.toLowerCase()+" "+c.toLowerCase())
+  .replace(/\b(Holiday)\s+(School)\s+(Closed)\b/g,"$1, school closed");
 
 // a story the team made this month can join a topic as a photo with a few of its words, only when the director picks it
 const nlMonthStories=x=>[...stories.values()].filter(st=>stReviewed(st)&&!st.offShare&&iso(new Date(st.at||0)).slice(0,7)===x.month&&notices.get(st.coverPhoto||storyPhotoIds(st)[0])&&(st.pages||[]).some(p=>has(p.lines))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,4);
@@ -346,7 +350,7 @@ function nlBlocks(x){
   if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
   {const ft=x.farms?farmNewsletterText(x.month):"";if(ft)B.push({h:"From our farms",text:ft})}
   {const tt=x.thanks!==false?famThanksText(x.month):"";if(tt)B.push({h:"Thank you, families",text:tt})}
-  if((x.coming||[]).length)B.push({h:"Coming up",text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlDay(c.date)+". ":""}${c.text}`).join("\n")});
+  if((x.coming||[]).length)B.push({h:"Coming up",text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlDay(c.date)+". ":""}${nlComing(c.text)}`).join("\n")});
   return B;
 }
 function nlKaymbuHtml(x){
@@ -464,7 +468,7 @@ async function nlWord(x){
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
   if(sch.length){ch.push(rule());ch.push(H("Around the school and farm",28,{before:120}));ch.push(...photoRow(x.schoolPhotos||[]));for(const s of sch)ch.push(bul([r(s)]))}
   {const ft=x.farms?farmNewsletterText(x.month):"";if(ft){ch.push(rule());ch.push(H("From our farms",28,{before:120}));for(const pp of ft.split(/\n\n/))ch.push(P(pp))}}
-  if((x.coming||[]).length){ch.push(rule());ch.push(H("Coming up",28,{before:120}));for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))ch.push(bul([r(c.date?nlDay(c.date)+". ":"",{bold:true}),r(c.text)]))}
+  if((x.coming||[]).length){ch.push(rule());ch.push(H("Coming up",28,{before:120}));for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))ch.push(bul([r(c.date?nlDay(c.date)+". ":"",{bold:true}),r(nlComing(c.text))]))}
   const wf=wordFonts();const doc=TREE_KIT.wordFile(D,{creator:"Fulton Community School",title:"Family newsletter, "+nlName(x.month),...(wf.length?{fonts:wf}:{}),styles:{default:{document:{run:{font:F,size:22}}}},
     numbering:{config:[{reference:"dots",levels:[{level:0,format:LevelFormat.BULLET,text:"•",alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:360,hanging:240}}}}]}]},
     sections:[{properties:{page:{size:{width:12240,height:15840},margin:{top:1080,bottom:1080,left:1200,right:1200}}},footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.CENTER,children:[r("Fulton Community School",{size:16,color:MUTED})]})]})},children:ch}]});
@@ -484,7 +488,8 @@ async function nlPdf(x){
   const para=(t,o={})=>{const sz=(o.size||10.5)*sc;pfont(doc,o.bold?"fs":"fr",sz);(o.color||ink)();const lines=doc.splitTextToSize(clean(nlTxt(t)),o.w||TW);const lh=sz*1.42;
     lines.forEach((ln,i)=>{need(i===0&&lines.length>1?lh*2:lh);doc.text(ln,o.x||L,y+lh*.75);y+=lh});y+=(o.after??7)*sc};
   // a heading always has at least two lines of its words under it on the same page
-  const head=(t,sz)=>{sz*=sc;pfont(doc,"bs",sz);const ls=doc.splitTextToSize(clean(t),TW);need(6+ls.length*sz*1.25+5+blh*2.2);y+=6;moss();for(const ln of ls){doc.text(ln,L,y+sz*.8);y+=sz*1.25}y+=5};
+  // with photos after it, a heading keeps the photo row and a line under it on its page too
+  const head=(t,sz,after)=>{sz*=sc;pfont(doc,"bs",sz);const ls=doc.splitTextToSize(clean(t),TW);need(6+ls.length*sz*1.25+5+(after||0)+blh*2.2);y+=6;moss();for(const ln of ls){doc.text(ln,L,y+sz*.8);y+=sz*1.25}y+=5};
   const sub=t=>{need(18*sc+blh*2.2);pfont(doc,"fs",11.5*sc);ink();doc.text(clean(t),L,y+10*sc);y+=18*sc};
   const bullet=(lead,t)=>{const lh=blh;lead=clean(nlTxt(lead));const words=clean(nlTxt(t)).split(/\s+/).filter(Boolean);
     pfont(doc,"fs",bs);const leadW=lead?doc.getTextWidth(lead+" "):0;pfont(doc,"fr",bs);
@@ -494,26 +499,32 @@ async function nlPdf(x){
     if(lead){pfont(doc,"fs",bs);moss();doc.text(lead,L+14,y+lh*.75)}pfont(doc,"fr",bs);ink();doc.text(first,L+14+leadW,y+lh*.75);y+=lh;
     for(const ln of rest){need(lh);doc.text(ln,L+14,y+lh*.75);y+=lh}y+=4*sc};
   const rule=()=>{need(24);y+=8;doc.setDrawColor(...C.line);doc.setLineWidth(.6);doc.line(L,y,R,y);y+=10};
-  const photos=ps=>{ps=ps.filter(p=>nlIm(p));if(!ps.length)return;const gap=14,cw=ps.length>1?(TW-gap)/2:TW*.62,mh=(ps.length>1?250:300)*sc;
-    const dims=ps.map(p=>{const im=nlIm(p);let w=cw,h=w*im.h/im.w;if(h>mh){h=mh;w=h*im.w/im.h}return {im,w,h,p}});const rowH=Math.max(...dims.map(d=>d.h));
+  const pdims=ps=>{ps=(ps||[]).filter(p=>nlIm(p));if(!ps.length)return null;const gap=14,cw=ps.length>1?(TW-gap)/2:TW*.62,mh=(ps.length>1?250:300)*sc;
+    const dims=ps.map(p=>{const im=nlIm(p);let w=cw,h=w*im.h/im.w;if(h>mh){h=mh;w=h*im.w/im.h}return {im,w,h,p}});return {ps,gap,cw,dims,rowH:Math.max(...dims.map(d=>d.h))}};
+  const photoH=ps=>{const P=pdims(ps);return P?P.rowH+34:0};
+  // a link too long for the line breaks after a slash, a dot or a hyphen, never part way through a word
+  const link=u=>{u=clean(u);const parts=u.match(/[^\/?&=._-]+[\/?&=._-]*|[\/?&=._-]+/g)||[u];const ls=[];let cur="";pfont(doc,"fr",8.6);
+    for(const p of parts){if(cur&&doc.getTextWidth(cur+p)>TW-14){ls.push(cur);cur=p}else cur+=p}if(cur)ls.push(cur);
+    ls.forEach(l=>{need(11);pfont(doc,"fr",8.6);mut();doc.textWithLink(l,L+14,y+2,{url:u});y+=11});y+=1};
+  const photos=ps=>{const P=pdims(ps);if(!P)return;const {gap,cw,dims,rowH}=P;
     need(rowH+34);let xx=L;let capH=0;
     for(const dm of dims){doc.addImage(dm.im.url,"JPEG",xx,y,dm.w,dm.h);pfont(doc,"fr",8.6);mut();const cl=doc.splitTextToSize(clean(dm.p.cap),cw);cl.slice(0,3).forEach((ln,i)=>doc.text(ln,xx,y+rowH+11+i*11));capH=Math.max(capH,Math.min(cl.length,3)*11);xx+=cw+gap}
     y+=rowH+capH+16};
   pfont(doc,"fs",8.5);mut();doc.setCharSpace(1);doc.text("FULTON COMMUNITY SCHOOL & FARM",L,y);doc.setCharSpace(0);y+=10;
   head("Family newsletter, "+nlName(x.month),22);
   if((x.note||"").trim()){head("A note from the director",14);for(const pp of x.note.trim().split(/\n\s*\n/))para(pp.replace(/\n/g," "))}
-  for(const t of x.topics||[]){rule();head(t.title,17);photos(t.photos||[]);if(t.happening)para(t.happening);
+  for(const t of x.topics||[]){rule();head(t.title,17,photoH(t.photos));photos(t.photos||[]);if(t.happening)para(t.happening);
     if(t.why){sub("Why it matters");para(t.why)}
     if((t.grows||[]).length){sub("How it grows");for(const g of t.grows)bullet(g.age+".",g.text)}
     if(t.bonus){pfont(doc,"fr",bs);const lines=doc.splitTextToSize(clean("Bonus for school. "+nlTxt(t.bonus)),TW-30);const hh=lines.length*blh+18;need(hh+6);y+=4;
       doc.setFillColor(251,243,228);doc.rect(L,y,TW,hh,"F");doc.setFillColor(...C.marigold);doc.rect(L,y,3,hh,"F");
       lines.forEach((ln,i)=>{if(i===0){pfont(doc,"fs",bs);doc.setTextColor(154,91,7);doc.text("Bonus for school.",L+16,y+9+bs);const bw=doc.getTextWidth("Bonus for school. ");pfont(doc,"fr",bs);ink();doc.text(ln.replace(/^Bonus for school\.\s*/,""),L+16+bw,y+9+bs)}else{pfont(doc,"fr",bs);ink();doc.text(ln,L+16,y+9+bs+i*blh)}});y+=hh+10}
     if((t.tips||[]).length){sub("Ideas to try at home");for(const p of t.tips)bullet(p.lead,p.text)}}
-  if((x.reading||[]).length){rule();head("For families who want to read more",14);for(const it of x.reading){bullet("",it.title+(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:""));pfont(doc,"fr",8.6);mut();doc.textWithLink(clean(it.url).slice(0,95),L+14,y+2,{url:it.url});y+=12}}
+  if((x.reading||[]).length){rule();head("For families who want to read more",14);for(const it of x.reading){bullet("",it.title+(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:""));mut();link(it.url)}}
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
-  if(sch.length){rule();head("Around the school and farm",14);photos(x.schoolPhotos||[]);for(const s of sch)bullet("",s)}
+  if(sch.length){rule();head("Around the school and farm",14,photoH(x.schoolPhotos));photos(x.schoolPhotos||[]);for(const s of sch)bullet("",s)}
   {const ft=x.farms?farmNewsletterText(x.month):"";if(ft){rule();head("From our farms",14);for(const pp of ft.split(/\n\n/))para(pp)}}
-  if((x.coming||[]).length){rule();head("Coming up",14);for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))bullet(c.date?nlDay(c.date)+".":"",c.text)}
+  if((x.coming||[]).length){rule();head("Coming up",14);for(const c of [...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))))bullet(c.date?nlDay(c.date)+".":"",nlComing(c.text))}
   return {doc,last:y}};
   let B=build(1);
   // a last page under a third full, or more than four pages, is worth setting a little smaller
