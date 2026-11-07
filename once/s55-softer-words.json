@@ -1,0 +1,111 @@
+{
+ "name": "s55SofterWords",
+ "note": "Softer words in place of promise, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/11-principles.md",
+   "from": "promises to each other",
+   "to": "commitments to each other"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "promises to each other",
+   "to": "commitments to each other"
+  },
+  {
+   "path": "staff/pd/printables/principles.md",
+   "from": "promises to each other",
+   "to": "commitments to each other"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "the promises we make to each other",
+   "to": "the commitments we make to each other"
+  },
+  {
+   "path": "staff/pd/depth/principles.md",
+   "from": "renewing our promises",
+   "to": "renewing our commitments"
+  },
+  {
+   "path": "staff/pd/printables/principles.md",
+   "from": "Which promise is easiest for you",
+   "to": "Which commitment is easiest for you"
+  },
+  {
+   "path": "staff/policies/teacher/positive-discipline-for-educators.json",
+   "from": "Then they offer a promise in their own words, such as “I will not hurt you again.”",
+   "to": "Then, in their own words, they name what happened, such as “I made a mistake.”"
+  },
+  {
+   "path": "staff/handbook/positive-discipline-for-educators.json",
+   "from": "Then they offer a promise in their own words, such as “I will not hurt you again.”",
+   "to": "Then, in their own words, they name what happened, such as “I made a mistake.”"
+  },
+  {
+   "path": "staff/pd/modules/04-beyond.md",
+   "from": "Then they offer a promise in their own words, such as “I will not hurt you again.”",
+   "to": "Then, in their own words, they name what happened, such as “I made a mistake.”"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "Then they offer a promise in their own words, such as \"I will not hurt you again.\"",
+   "to": "Then, in their own words, they name what happened, such as \"I made a mistake.\""
+  },
+  {
+   "path": "staff/familypieces/together-beyond.md",
+   "from": "Then they offer a promise in their own words, such as \"I will not hurt you again.\"",
+   "to": "Then, in their own words, they name what happened, such as \"I made a mistake.\""
+  },
+  {
+   "path": "staff/school.json",
+   "from": "Then they offer a promise in their own words, such as \"I will not hurt you again.\"",
+   "to": "Then, in their own words, they name what happened, such as \"I made a mistake.\""
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "**We promise, in our own words.** \"I will not hurt you again.\"",
+   "to": "**In our own words.** \"I made a mistake.\""
+  },
+  {
+   "path": "staff/pd/modules/05-families.md",
+   "from": "a short, warm farewell and a clear promise to return.",
+   "to": "a short, warm farewell and a clear word that you will be back."
+  },
+  {
+   "path": "staff/familypieces/together-families.md",
+   "from": "a short, warm farewell and a clear promise to return, such as",
+   "to": "a short, warm farewell and a clear word that you will be back, such as"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "an educator's promise to come back when the turn is ready",
+   "to": "an educator letting them know they will come back when the turn is ready"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "What our policies promise",
+   "to": "What our policies say"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "Then the collaborative promise. How can",
+   "to": "Then the link between classes. How can"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "and the collaborative promise between classes",
+   "to": "and how one class's research can help another class"
+  },
+  {
+   "path": "staff/pd/printables/documentation.md",
+   "from": "**The collaborative promise.**",
+   "to": "**Between classes.**"
+  },
+  {
+   "path": "staff/newed/welcome.md",
+   "from": "what we promise the educators who use it",
+   "to": "what we offer the educators who use it"
+  }
+ ]
+}

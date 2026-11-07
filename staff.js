@@ -1249,6 +1249,7 @@ module.exports = function staffModule(o) {
     s53Paths: ['code:once/s53-paths.json', 'Fourteen PD paths for educators to choose or be assigned, November 7, 2026'],
     // each plant's stage photos, only while the plant has none, so a plant the director has already changed is left alone
     s54PlantStages: ['code:once/s54-plant-stages.json', 'Stage photos for the plants, November 7, 2026'],
+    s55SofterWords: ['code:once/s55-softer-words.json', 'Softer words in place of promise, November 7, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
