@@ -1,0 +1,106 @@
+{
+ "name": "s60IdeaFacts",
+ "note": "Idea bank and salsa recipe facts corrected after the fact check of November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "children in Zimbabwe and South Africa build rolling galimoto",
+   "to": "children in Malawi build rolling galimoto"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Pomo people shaped yew bows, digging sticks",
+   "to": "Pomo people shaped bows, digging sticks"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and in 1971 the architect Simon Nicholson named the idea after watching the adventure playgrounds of Denmark and England, where children built with scrap wood and tools.",
+   "to": "and in 1971 the sculptor and educator Simon Nicholson gave the idea its name."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and reached Spain and then the rest of Europe by the twelfth century, while",
+   "to": "reached Spain by the 1100s and spread across the rest of Europe over the next three hundred years, while"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Japanese scroll mounters cooked rice into paste, and California peoples including the Pomo used pine pitch and asphaltum, a natural tar from coastal seeps, to fasten points and seal baskets. The white school glue we use is a plastic resin in water, made since the 1940s.",
+   "to": "Japanese scroll mounters cooked wheat starch into paste, and Chumash people on the southern California coast used asphaltum, a natural tar from coastal seeps, to seal baskets. The first white school glue, sold in 1947, was made from milk, and the white glue we use now is a plastic resin in water."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "and the colors on it are light bending in a layer thinner than a hair.",
+   "to": "and the colors on it come from light bouncing off the inside and outside of a skin thinner than a hair."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "the balance beam has been a gymnastics event since the first modern games.",
+   "to": "the balance beam has been an Olympic event since 1952."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "in her open-air nursery in London in 1911,",
+   "to": "in her open-air nursery in London in 1914,"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "from Pomo and other California peoples' use of local clays to the potters of Oaxaca, China and West Africa.",
+   "to": "from the potters of Oaxaca, China and West Africa."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Bone needles are more than forty thousand years old, Pomo weavers used bone awls to stitch coiled baskets, Chinese",
+   "to": "Bone needles are more than forty thousand years old, Chinese"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "tiny pots and figures found in ancient Egypt and Greece and the small practice baskets Pomo children wove show how old this is.",
+   "to": "tiny pots and figures found in ancient Egypt and Greece show how old this is."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "The wheelbarrow was in use in China by the second century, Pomo and Coast Miwok people carried acorns and firewood in large burden baskets held by a strap across the forehead, and tug of war is shown on Egyptian tomb walls and still opens village festivals around the world.",
+   "to": "The wheelbarrow was in use in China by the second century, and tug of war still opens village festivals around the world."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "fetching water and firewood, and Pomo and Coast Miwok children carried in burden baskets alongside their families.",
+   "to": "fetching water and firewood alongside their families."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Mud pies are among the oldest games children play, Pomo and Coast Miwok people baked in earth ovens and lined pits with earth, and the mud kitchen as a built place took its name and shape in England's nature play movement in the early 2000s.",
+   "to": "Mud pies are among the oldest games children play, and a mud kitchen gives that play a place of its own."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": " Pomo and Coast Miwok elders told the stories of Coyote in winter, when the days were short and the work was inside.",
+   "to": ""
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Artists such as Andy Goldsworthy still work only with what they find in one place on one day.",
+   "to": "Artists such as Andy Goldsworthy make sculptures outdoors from leaves, stones and wood."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Galileo rolled balls down inclined planes around 1600 to study how things speed up, and marble runs have been toys in Europe for centuries.",
+   "to": "and Galileo rolled balls down inclined planes around 1600 to study how things speed up."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Felt is the oldest cloth people made, and nomads",
+   "to": "People have made felt for thousands of years, and nomads"
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "by burying it in mud and ash before weaving",
+   "to": "by burying it in mud before weaving"
+  },
+  {
+   "path": "staff/library/recipes/salsa-fresca.md",
+   "from": "where tomatoes and chiles were first farmed",
+   "to": "where chiles were first farmed and where the word tomato comes from"
+  }
+ ]
+}

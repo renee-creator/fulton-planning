@@ -10,7 +10,7 @@ test('s59BeanHouse renames the teepee on every page', async () => {
   const by = new Map();
   for (const c of LIST.changes) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
   const page = (p, cs) => p.endsWith('.json') ? JSON.stringify({ items: cs.map(c => ({ text: c.from })) }) : '# A page\n\n' + cs.map(c => c.from).join('\n\nSome words between.\n\n') + '\n';
-  const skip = 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces';
+  const skip = 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces,s60IdeaFacts';
   const f = await fx.start({ env: { ONCE_SKIP: skip }, more: put => { for (const [p, cs] of by) put(p, page(p, cs)); } });
   try {
     let ok = false;

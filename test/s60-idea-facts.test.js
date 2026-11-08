@@ -1,0 +1,24 @@
+'use strict';
+/* The Idea bank and salsa recipe facts corrected after the fact check of November 7, 2026. Each page holds the old
+   wording, the step swaps in the new, and the wrong facts are gone. */
+const test = require('node:test'), assert = require('node:assert');
+const fs = require('fs'), path = require('path');
+const fx = require('./fixture.js');
+const LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 's60-idea-facts.json'), 'utf8'));
+
+test('s60IdeaFacts corrects the Idea bank facts', async () => {
+  const by = new Map();
+  for (const c of LIST.changes) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
+  const page = (p, cs) => p.endsWith('.json') ? JSON.stringify({ items: cs.map(c => ({ text: c.from })) }) : '# A page\n\n' + cs.map(c => c.from).join('\n\nSome words between.\n\n') + '\n';
+  const skip = 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces,s59BeanHouse';
+  const f = await fx.start({ env: { ONCE_SKIP: skip }, more: put => { for (const [p, cs] of by) put(p, page(p, cs)); } });
+  try {
+    let ok = false;
+    for (let i = 0; i < 60 && !ok; i++) {
+      await new Promise(r => setTimeout(r, 250));
+      ok = [...by].every(([p, cs]) => { const t = fs.readFileSync(path.join(f.dir, p), 'utf8'); return cs.every(c => t.includes(c.to)); });
+    }
+    assert.ok(ok, 'every new wording is in place');
+    for (const p of by.keys()) assert.doesNotMatch(fs.readFileSync(path.join(f.dir, p), 'utf8'), /Zimbabwe|yew bows|in 1911|light bending|first modern games/, p);
+  } finally { await f.stop(); }
+});
