@@ -1150,11 +1150,11 @@ async function familySummarySentences(fs, child) {
   const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child. Keep any DRDP measure or level the notes name, in their words, and never add one. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
 ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 1200)])))}`;
   let out = null;
-  let why = '';
-  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 4000 }); if (res.status !== 200) return fs;
+  // room for every part to be written out in full, so the answer is never cut off before it ends
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 6000 }); if (res.status !== 200) return Object.assign({}, fs, { turnedAway: true });
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
-    why = 'stop ' + m.stop_reason + ', reply ' + txt.length + ' characters';
-    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message, why); noRetry.add(fs); return fs; }
+    if (m.stop_reason === 'max_tokens') { log('The Family Summary answer ran out of room'); return fs; }
+    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
   const tidy = t => famPlain(fam.withoutOthers(forPrint(educatorWord(t).replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
@@ -1163,23 +1163,28 @@ ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 
   return Object.assign({}, fs, { sentences: true, parts: Object.assign({}, P, { returns: got('returns'), friends: [groupLine, fr].filter(Boolean).join(' '), strengths: got('strengths'), goals: got('goals'), nextSteps: got('nextSteps'), areas }) });
 }
 // setting a draft in sentences is tried a few times, since a busy moment can turn one request away
-const noRetry = new WeakSet(); // a reply that cannot be read will read no better a few seconds later
-async function sentencesOf(d, child) { for (let i = 0; i < 3; i++) { try { const out = await familySummarySentences(d, child); if (out && out.sentences) return out; if (noRetry.has(d)) break; } catch (e) {} if (!anthropicKey()) break; await new Promise(ok => setTimeout(ok, 4000 * (i + 1))); } return d; }
+// it is asked again only when the request was turned away unanswered (a busy moment). An answer that came back but could
+// not be read is never asked again on its own, since each try is billed; the draft keeps the educators' notes and
+// Draft again in TREE asks once more
+async function sentencesOf(d, child) { for (let i = 0; i < 3; i++) { let out = null; try { out = await familySummarySentences(d, child); } catch (e) { return d; } if (out && out.sentences) return out; if (!out || !out.turnedAway || !anthropicKey()) break; await new Promise(ok => setTimeout(ok, 4000 * (i + 1))); } return d; }
 async function draftFamilySummary(cf, child) { return sentencesOf(familySummaryDraft(cf, child), child); }
 /* every Family Summary is set in full sentences. Drafts wait in a line and are rewritten one at a time, so a morning of
    conferences never asks all at once, and a draft no educator has read or changed yet that is still in note form is
    set in sentences on the next round */
 const sentenceLine = []; let sentenceBusy = false;
-// a summary that will not set into sentences is tried three times, a few hours apart, and never again after that
+// a summary is set into sentences on its own once. If that does not work it waits in note form for the educator or
+// director, who can choose Draft again
 const sentenceTries = new Map();
-function queueSentences(id) { const t = sentenceTries.get(id) || { n: 0, at: 0 }; if (t.n >= 3 || Date.now() - t.at < 3 * 3600e3) return; if (!sentenceLine.includes(id)) { sentenceTries.set(id, { n: t.n + 1, at: Date.now() }); sentenceLine.push(id); } runSentences(); }
+function queueSentences(id) { const t = sentenceTries.get(id) || { n: 0, at: 0 }; if (t.n >= 1) return; if (!sentenceLine.includes(id)) { sentenceTries.set(id, { n: t.n + 1, at: Date.now() }); sentenceLine.push(id); } runSentences(); }
 async function runSentences() {
   if (sentenceBusy) return; sentenceBusy = true;
   try { while (sentenceLine.length) { const id = sentenceLine.shift(); const r = store.recs.conferences.get(id); const cf = r && !r.deleted && r.doc; const fs = cf && cf.familySummary;
-      if (!fs || fs.sentences || fs.readAt || fs.editedAt) continue;
+      if (!fs || fs.sentences || fs.autoTried || fs.readAt || fs.editedAt) continue;
       const k = store.recs.children.get(cf.childId); const child = k && !k.deleted && k.doc; if (!child) continue;
       const d = await sentencesOf(fs, Object.assign({ id: cf.childId }, child)); const r2 = store.recs.conferences.get(id);
-      if (!d.sentences || !r2 || !r2.doc || r2.doc.familySummary !== fs) continue;
+      if (!r2 || !r2.doc || r2.doc.familySummary !== fs) continue;
+      // a try that did not work is noted on the summary itself, so a restart of TREE never tries it again on its own
+      if (!d.sentences) { r2.doc.familySummary = Object.assign({}, fs, { autoTried: Date.now() }); r2.local = true; noteChange('conferences', id); scheduleSave('conferences', id); continue; }
       r2.doc.familySummary = d; r2.doc.updatedAt = new Date().toISOString(); r2.local = true; noteChange('conferences', id); scheduleSave('conferences', id);
       await new Promise(ok => setTimeout(ok, 1500)); } }
   finally { sentenceBusy = false; }
@@ -1204,7 +1209,7 @@ function draftFamilySummaries() {
     queueSentences(id); }
   // a draft still in note form, not yet read or changed, waits its turn to be set in sentences
   // only for a conference still to come, so an old one is never retried
-  for (const [id, r] of store.recs.conferences) { const fs = r && !r.deleted && r.doc && r.doc.familySummary; if (fs && fs.parts && !fs.sentences && !fs.readAt && !fs.editedAt && r.doc.status !== 'complete' && (!r.doc.confDate || r.doc.confDate >= t)) queueSentences(id); }
+  for (const [id, r] of store.recs.conferences) { const fs = r && !r.deleted && r.doc && r.doc.familySummary; if (fs && fs.parts && !fs.sentences && !fs.autoTried && !fs.readAt && !fs.editedAt && r.doc.status !== 'complete' && (!r.doc.confDate || r.doc.confDate >= t)) queueSentences(id); }
   if (n) log('Family Summaries drafted for tomorrow\'s conferences,', n);
 }
 setInterval(() => { try { draftFamilySummaries(); } catch (e) { log('Family Summaries could not be drafted', e.message); } }, 60 * 60e3).unref();
@@ -1719,21 +1724,37 @@ function suggestWordsOf(docs) {
 }
 const SUGGEST_FIT = 'Name a fit when the children in the observation are pursuing the thread\'s question, and otherwise none. A shared topic or place alone is not enough. Where a thread lists added, those are observations the team placed in it after a suggestion like this one, with the reason given. Where it lists turnedDown, the team said those observations do not belong, so do not suggest that thread for an observation like them.';
 const suggestClean = v => String(v || '').replace(/\s*[—–]\s*/g, ', ').replace(/:\s*/g, '. ').replace(/\s+/g, ' ').trim().slice(0, 160);
-function writeThreadSuggest(docs, keyNow, picks) {
+/* An observation is read against a thread once. TREE keeps which threads it has read the observation against, with a
+   mark of the words it read. A night with the same words reads it only against threads opened since, and an
+   observation with no new thread costs nothing. Changed words are read again against every open thread. */
+function threadsToAsk(docs, words, live) {
+  const wk = sha(words).toString('hex').slice(0, 16);
+  const oldKey = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
+  // an observation read before this change against these same threads counts as read against them
+  if (docs.some(d => d.threadSuggestKey === oldKey && !Array.isArray(d.threadSuggestAsked))) return { wk, ask: [], asked: live.map(t => t.id), keep: (docs.find(d => d.threadSuggest) || {}).threadSuggest || [], carry: true };
+  const prior = docs.find(d => d.threadSuggestWords === wk && Array.isArray(d.threadSuggestAsked));
+  const asked = prior ? prior.threadSuggestAsked : []; const done = new Set(asked);
+  return { wk, ask: live.filter(t => !done.has(t.id)), asked, keep: prior ? (prior.threadSuggest || []) : [] };
+}
+function writeThreadSuggest(docs, wk, askedIds, picks) {
   for (const d of docs) { const rr = store.recs.notices.get(d.id); if (!rr || rr.deleted) continue;
-    rr.doc.threadSuggestKey = keyNow; if (picks.length) rr.doc.threadSuggest = picks; else delete rr.doc.threadSuggest;
+    rr.doc.threadSuggestWords = wk; rr.doc.threadSuggestAsked = [...new Set(askedIds)];
+    if (picks.length) rr.doc.threadSuggest = picks; else delete rr.doc.threadSuggest;
     noteChange('notices', d.id); scheduleSave('notices', d.id); }
 }
+// earlier suggestions still standing, with the new ones after them, two at most
+function mergePicks(keep, picks, live) { const open = new Set([...store.recs.threads].filter(([, tr]) => tr && !tr.deleted && tr.doc && tr.doc.status !== 'closed' && !tr.doc.unfollowed).map(([id]) => id)); const seen = new Set(); return [...(keep || []), ...picks].filter(p => p && open.has(p.id) && !seen.has(p.id) && seen.add(p.id)).slice(0, 2); }
 async function suggestThreadFor(id) {
   const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
   const docs = noticeGroupDocs(r.doc); const lead = docs[0] || r.doc;
   const { words, shows, enough } = suggestWordsOf(docs);
   if (!enough) return;   // never from a photo alone, nor from a word or two, and an observation a team inquiry holds stays with the inquiry
   // what the educator's photo shows, from the DRDP reading or TREE's note on it, helps read the words and is never a reason alone
-  const live = suggestThreadsFor(docs);
-  if (!live.length) return;
-  const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
-  if (docs.some(d => d.threadSuggestKey === keyNow)) return;
+  const all = suggestThreadsFor(docs);
+  if (!all.length) return;
+  const plan = threadsToAsk(docs, words, all);
+  if (plan.carry) { writeThreadSuggest(docs, plan.wk, plan.asked, plan.keep); return; }
+  const live = plan.ask; if (!live.length) return;
   if (!anthropicKey()) return;
   const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return; suggestTimes.push(now);
@@ -1744,8 +1765,9 @@ async function suggestThreadFor(id) {
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
     const j = txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1); out = JSON.parse(j); } catch (e) { return; }
   const okIds = new Set(live.map(t => t.id));
-  const picks = (Array.isArray(out && out.threads) ? out.threads : []).filter(x => x && okIds.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: suggestClean(x.why), at: now }));
-  writeThreadSuggest(docs, keyNow, picks);
+  const fresh = (Array.isArray(out && out.threads) ? out.threads : []).filter(x => x && okIds.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: suggestClean(x.why), at: now }));
+  const picks = mergePicks(plan.keep, fresh);
+  writeThreadSuggest(docs, plan.wk, [...plan.asked, ...live.map(t => t.id)], picks);
   log(picks.length ? `Thread suggested for ${lead.id}${docs.length > 1 ? ' and ' + (docs.length - 1) + ' more photos' : ''}, ${picks.map(p => (store.recs.threads.get(p.id) || {}).doc.name).join(' and ')}` : `No thread fits ${lead.id}`);
 }
 /* The nightly pass. Every observation that is in no thread, has not declined every open thread and has not been asked
@@ -1768,10 +1790,11 @@ async function nightlyThreadPass(force) {
       if (docs.some(x => x.threadId)) continue;
       counts.looked++;
       const { words, shows, enough } = suggestWordsOf(docs); if (!enough) continue;
-      const live = suggestThreadsFor(docs); if (!live.length) continue;
-      const keyNow = sha(words + '|' + live.map(t => t.id).sort().join(',')).toString('hex').slice(0, 16);
-      if (docs.some(x => x.threadSuggestKey === keyNow)) continue;
-      groups.push({ docs, lead, words, shows, live, keyNow });
+      const all = suggestThreadsFor(docs); if (!all.length) continue;
+      const plan = threadsToAsk(docs, words, all);
+      if (plan.carry) { writeThreadSuggest(docs, plan.wk, plan.asked, plan.keep); counts.carried = (counts.carried || 0) + 1; continue; }
+      const live = plan.ask; if (!live.length) { counts.unchanged = (counts.unchanged || 0) + 1; continue; }
+      groups.push({ docs, lead, words, shows, live, plan });
     }
     counts.asked = groups.length;
     if (groups.length && anthropicKey()) {
@@ -1793,12 +1816,13 @@ async function nightlyThreadPass(force) {
         for (const g of batch) {
           const a = answers.get(g.lead.id); if (!a) continue;   // an observation the answer left out is asked again another night
           const ok = new Set(g.live.map(t => t.id));
-          const picks = (Array.isArray(a.threads) ? a.threads : []).filter(x => x && ok.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: suggestClean(x.why), at: now }));
-          writeThreadSuggest(g.docs, g.keyNow, picks); if (picks.length) counts.suggested++; else counts.none++;
+          const fresh = (Array.isArray(a.threads) ? a.threads : []).filter(x => x && ok.has(x.id)).slice(0, 2).map(x => ({ id: x.id, why: suggestClean(x.why), at: now }));
+          const picks = mergePicks(g.plan.keep, fresh);
+          writeThreadSuggest(g.docs, g.plan.wk, [...g.plan.asked, ...g.live.map(t => t.id)], picks); if (fresh.length) counts.suggested++; else counts.none++;
         }
       }
     }
-    log(`Nightly thread pass, ${counts.looked} observations in no thread, ${counts.asked} read in ${counts.batches} batches, ${counts.suggested} with a thread suggested, ${counts.none} fit none, ${counts.placed} given a place`);
+    log(`Nightly thread pass, ${counts.looked} observations in no thread, ${counts.unchanged || 0} already read against every open thread, ${counts.asked} read in ${counts.batches} batches, ${counts.suggested} with a thread suggested, ${counts.none} fit none, ${counts.placed} given a place`);
     const cur = store.recs.settings.get('nightly'); const doc = cur && !cur.deleted && cur.doc ? cur.doc : {};
     setSetting('nightly', Object.assign({}, doc, { lastDay: laDayOf(Date.now()), lastAt: Date.now(), counts }));
   } finally { nightlyBusy = false; }

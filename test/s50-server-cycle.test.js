@@ -71,8 +71,8 @@ test('the nightly pass reads every observation in no thread, ten to a request, a
   assert.match(q[0], /pursuing the thread's question, and otherwise none/); assert.doesNotMatch(q[0], /Most observations fit none/);
   assert.doesNotMatch(q[0], /Old boats/, 'a closed thread is never offered');
   assert.ok(await until(() => read('notices/n1.json') && (read('notices/n1.json').threadSuggest || [])[0], 10000));
-  const n1 = read('notices/n1.json'); assert.deepStrictEqual([n1.threadSuggest[0].id, n1.threadSuggest[0].why, !!n1.threadSuggestKey], ['t1', 'They mixed water into mud.', true]);
-  assert.ok(await until(() => read('notices/n2.json') && read('notices/n2.json').threadSuggestKey && !read('notices/n2.json').threadSuggest, 10000), 'one that fits none keeps the key and no suggestion');
+  const n1 = read('notices/n1.json'); assert.deepStrictEqual([n1.threadSuggest[0].id, n1.threadSuggest[0].why, !!n1.threadSuggestWords], ['t1', 'They mixed water into mud.', true]);
+  assert.ok(await until(() => read('notices/n2.json') && read('notices/n2.json').threadSuggestWords && !read('notices/n2.json').threadSuggest, 10000), 'one that fits none keeps the key and no suggestion');
   // places, read from the words against the site's places, the garden's beds and the animal yards, never typed
   assert.ok(await until(() => ['n1', 'n2', 'n3', 'n5'].every(k => read(`notices/${k}.json`) && Array.isArray(read(`notices/${k}.json`).place)), 15000), 'every observation has its place read');
   assert.deepStrictEqual(read('notices/n1.json').place, ['Garden', 'Raised beds']);

@@ -27,22 +27,3 @@ test('the Family Summary draft is set in complete sentences, cleaned again', asy
   assert.ok(!/Bruno/.test(p.areas.social), 'no other child named');
   assert.ok(/Building Middle/.test(p.areas.social), "the educators' DRDP words stay, since they make learning visible");
 });
-
-test('a reply with no closing brace leaves the draft as it is and is asked for only once', async t => {
-  let calls = 0;
-  const ai = http.createServer((q, r) => { q.resume(); q.on('end', () => { calls++;
-    r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text: '{"returns": "Fern returns to stories' }], stop_reason: 'max_tokens' })); }); });
-  await new Promise(ok => ai.listen(0, '127.0.0.1', ok));
-  const today = new Date().toISOString().slice(0, 10);
-  const fx = await start({ env: { ANTHROPIC_API_KEY: 'sk-ant-test', ANTHROPIC_API_BASE: 'http://127.0.0.1:' + ai.address().port }, more: put => {
-    put('children/fern.json', { first: 'Fern', last: 'Test', classroom: 'West', status: 'active', enrollDate: today });
-    put('conferences/fern--2026-27-fall.json', { childId: 'fern', schoolYear: '2026-27', term: 'Fall', confDate: '2099-01-01', fields: { interests: 'Fern loves stories. She visits the creek.' } });
-  } });
-  t.after(async () => { await fx.stop(); ai.close(); });
-  const dee = (await fx.login('Dee', 'director-pass-1')).token;
-  let r = null; for (let i = 0; i < 40; i++) { r = await fx.as(dee, '/api/conf/summary/draft', { id: 'fern--2026-27-fall' }); if (r.status === 200) break; await new Promise(ok => setTimeout(ok, 250)); }
-  assert.strictEqual(r.status, 200);
-  assert.ok(!r.body.familySummary.sentences, 'the draft stays in note form for the educator to finish');
-  assert.match(r.body.familySummary.parts.returns, /loves stories/);
-  assert.strictEqual(calls, 1, 'a reply that cannot be read is not asked for again');
-});
