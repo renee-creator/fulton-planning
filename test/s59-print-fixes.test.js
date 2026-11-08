@@ -15,10 +15,12 @@ function fnFrom(text, name) {
 }
 
 test('a PD sheet with **Label.** lines turns into blocks and does not hang', () => {
-  const printBlocks = new Function(fnFrom(src('src/growth-app.js'), 'printBlocks') + '; return printBlocks;')();
+  const G = src('src/growth-app.js'), consts = ['FILL', 'BOLDLEAD'].map(n => G.match(new RegExp('const ' + n + '=.*\\n'))[0]).join('');
+  const printBlocks = new Function(consts + fnFrom(G, 'printBlocks') + '; return printBlocks;')();
   const body = '**Before.** We set out the materials.\n**During.** We watch and wonder.\n\n- one\n- two\n\n*Quiet note.*\n### Then\n1. first\n2. second\n\n1.5 hours in all\n\n| a | b |\n|---|---|\n| c | d |';
   const out = printBlocks(body);
-  assert.deepStrictEqual(out[0], { t: 'text', label: '', text: 'Before. We set out the materials. During. We watch and wonder.' });
+  // each bold label is a small heading of its own, without its full stop, with its words under it (batch B, November 7, 2026)
+  assert.deepStrictEqual(out.slice(0, 4), [{ t: 'minor', text: 'Before' }, { t: 'text', label: '', text: 'We set out the materials.' }, { t: 'minor', text: 'During' }, { t: 'text', label: '', text: 'We watch and wonder.' }]);
   assert.ok(out.some(b => b.t === 'list' && b.items.join() === 'one,two'));
   assert.ok(out.some(b => b.t === 'text' && b.text === 'Quiet note.'));
   assert.ok(out.some(b => b.t === 'sub' && b.text === 'Then'));
