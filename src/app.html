@@ -7690,7 +7690,7 @@ function headerFull(doc,p,A){
   doc.setTextColor(28,42,34);const tl=doc.splitTextToSize(title,CW-215).slice(0,2);const tlh=ts*1.08;const ty0=(tl.length>1?66:72)-(PRINT.schoolRecords?0:8);tl.forEach((l,i)=>doc.text(l,M,ty0+i*tlh));
 
   const rows=metaRows(p);const mw=196,mx=PW-M-mw,my=30,mh=14+rows.length*17;
-  doc.setFillColor(...A.t);doc.roundedRect(mx,my,mw,mh,6,6,"F");
+  doc.setDrawColor(205,215,208);doc.setLineWidth(.7);doc.roundedRect(mx,my,mw,mh,6,6,"S");
   rows.forEach(([l,v],i)=>{const yy=my+19+i*17;doc.setFont("helvetica","bold");doc.setFontSize(6.6);doc.setTextColor(...A.c);doc.setCharSpace(.9);doc.text(l.toUpperCase(),mx+12,yy);doc.setCharSpace(0);
     if(v){doc.setFont("helvetica","bold");let vs=9.4;doc.setFontSize(vs);while(vs>7&&doc.getTextWidth(clean(v))>mw-80){vs-=.2;doc.setFontSize(vs)}doc.setTextColor(28,42,34);const vv=doc.splitTextToSize(clean(v),mw-80)[0];doc.text(vv,mx+mw-12,yy,{align:"right"})}
     else{doc.setDrawColor(...A.c);doc.setLineWidth(.5);doc.line(mx+76,yy+1.5,mx+mw-12,yy+1.5)}});
@@ -9771,7 +9771,7 @@ async function thanksPdf(q,keys){const cards=thanksCards(q).filter(c=>!keys||key
     pfont(doc,"fr",9.5);doc.setTextColor(...D_MUTED);doc.text("From the children and educators of Fulton Community School",x0+m,y);y+=10;
     doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(x0+m,y,x0+m+W,y);y+=16;
     let ws=15,wl;for(;;){pfont(doc,"bm",ws);wl=doc.splitTextToSize(clean(c.words),W-24);if(wl.length<=4||ws<=12)break;ws-=.5}
-    const bh=wl.length*ws*1.3+20;doc.setFillColor(...A.t);doc.roundedRect(x0+m,y,W,bh,8,8,"F");doc.setTextColor(...D_INK);wl.forEach((l,i)=>doc.text(l,x0+m+12,y+10+ws+i*ws*1.3));y+=bh+12;
+    const bh=wl.length*ws*1.3+20;doc.setTextColor(...D_INK);wl.forEach((l,i)=>doc.text(l,x0+m+12,y+10+ws+i*ws*1.3));y+=bh+12;
     const foot=CH-m,space=150;const im=c.pic&&photoCache.get(c.pic.id);
     if(im&&foot-y-space>90){const mh=Math.min(170,foot-y-space-12);let pw=W,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}doc.addImage(im.url,"JPEG",x0+m+(W-pw)/2,y,pw,ph,undefined,"FAST");y+=ph+12}
     pfont(doc,"fs",10);doc.setTextColor(...deep(A.c));doc.text("From the children",x0+m,y+10);y+=18;
@@ -12665,7 +12665,7 @@ function wallProposal(x){
   const sid=()=>"w"+Math.random().toString(36).slice(2,8);
   const ms=wallPhotoMoments(x);const words=projChildWords(x);
   const sheets=[{id:sid(),kind:"begin",title:"Where it began",photos:ms[0]?[ms[0].id]:[],text:"",quotes:words.filter(w=>!ms[0]||w.at<=(ms[0].at||0)+864e5).slice(0,3),include:true}];
-  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:momentTitle(n)||shortDate(n.at),photos:[n.id],text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true});
+  for(const n of ms)sheets.push({id:sid(),kind:"moment",title:(t=>t&&!wallDateTitle(t)?t:"")(momentTitle(n))||wallTitle(x,{title:""},n)||shortDate(n.at),photos:[n.id],text:"",quotes:childLines(n.noticed,true).slice(0,4),include:true});
   sheets.push({id:sid(),kind:"now",title:"Where it is now",photo:"",text:"",quotes:words.slice(-3),include:true});
   if(sheets[0].photos[0]&&sheets[1]&&sheets[1].photos[0]===sheets[0].photos[0])sheets[0].photos=[];
   return {sheets,at:Date.now(),by:whoAmI()};
@@ -12697,7 +12697,7 @@ function projWallHtml(x){
     return `<div class="wsheet${sh.include?"":" off"}"><div class="actions"><b>Sheet ${i+1}</b>
         <label class="cnt"><input type="checkbox" data-wsinc="${esc(sh.id)}" ${sh.include?"checked":""}> Hang this sheet</label>
         <button class="linkbtn" data-wsup="${esc(sh.id)}" ${i===0?"disabled":""}>Earlier</button><button class="linkbtn" data-wsdown="${esc(sh.id)}" ${i===sheets.length-1?"disabled":""}>Later</button><button class="linkbtn" data-wsdel="${esc(sh.id)}">Remove</button>${sh.added&&!has(sh.text)?`<span class="cnt">Joined ${esc(shortDate(sh.added))}</span>`:""}</div>
-      <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(sh.title)}"></label>
+      <label class="fld-label">Title<input type="text" data-ws="${sh.id}|title" value="${esc(wallDateTitle(sh.title)?(sh.kind==="moment"&&n?wallTitle(x,{title:""},n):""):sh.title)}"></label>
       <div class="wsgrid">${n?`<img src="${esc(photoThumb(n))}" alt="The first photo on this sheet" class="wsimg" loading="lazy">`:`<div class="wsimg wsnone">No photo</div>`}
       <div style="display:grid;gap:8px;min-width:0">
         ${ms.length?`<div class="chiprow-label">Photos, up to three. The first chosen is the largest.</div><div class="wsphs">${ms.map(m=>{const k=sel.indexOf(m.id);return `<button type="button" class="wsph" data-wsph="${sh.id}|${m.id}" aria-pressed="${k>=0}" title="${esc((momentHeading(m)||"Observation")+", "+shortDate(m.at))}"><img src="${esc(photoThumb(m))}" alt="" loading="lazy">${k>=0?`<span>${k+1}</span>`:""}</button>`}).join("")}</div>`:""}
@@ -13043,7 +13043,7 @@ function displayWeb(doc,x,y,w,h,web,A){
   br.forEach((b,i)=>{const [bx,by]=pts[i];
     const N=fitLines(doc,b.name,"fs",10.5*k,7.6*k,bw-18,3),M=fitLines(doc,b.materials,"fr",9*k,7*k,bw-18,4);
     const bh=18*k+N.ls.length*N.fs*1.29+M.ls.length*M.fs*1.28;
-    doc.setFillColor(...A.t);doc.roundedRect(bx-bw/2,by-bh/2,bw,bh,9*k,9*k,"F");
+    doc.setFillColor(255,255,255);doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.roundedRect(bx-bw/2,by-bh/2,bw,bh,9*k,9*k,"FD");
     let ty=by-bh/2+9*k;pfont(doc,"fs",N.fs);doc.setTextColor(...D_INK);N.ls.forEach(l=>{doc.text(l,bx,ty+N.fs*.95,{align:"center"});ty+=N.fs*1.29});
     pfont(doc,"fr",M.fs);doc.setTextColor(...D_MUTED);M.ls.forEach(l=>{doc.text(l,bx,ty+M.fs,{align:"center"});ty+=M.fs*1.28})});
 }
@@ -13070,7 +13070,7 @@ function displayAtoms(doc,p,A,s){
     return {h:ls.length*fs*1.3+8*s2,keep:true,draw(y){pfont(doc,"bs",fs);doc.setTextColor(...D_INK);ls.forEach((l,i)=>doc.text(l,DG.m,y+fs*.95+i*fs*1.3))}}};
   for(let bi=0;bi<B.length;bi++){const b=B[bi];const a0=atoms.length;
     if(b.t==="lead"){const [lt,lrest]=leadSplit(b.text);const fs=leadSize(lt)*Math.min(s,1.12),lh=fs*1.24,pad=18;const ls=wrap(lt,"bm",fs,w-pad*2);const lab=has(b.label)?16:0;const h=pad*2+lab+ls.length*lh-4;
-      push({h,draw(y){doc.setFillColor(...A.t);doc.roundedRect(m,y,w,h,12,12,"F");
+      push({h,draw(y){doc.setDrawColor(...A.c);doc.setLineWidth(1.4);doc.line(m,y,m+w,y);
         if(lab){pfont(doc,"fs",10);doc.setTextColor(...AT);doc.text(clean(b.label),m+pad,y+pad+7)}
         pfont(doc,"bm",fs);doc.setTextColor(...D_INK);ls.forEach((l,i)=>doc.text(l,m+pad,y+pad+lab+i*lh+fs*.86))}});gap(8);
       if(lrest){lines(wrap(lrest,"fr",Z.body,w),"fr",Z.body,Z.blh,m,D_INK);gap(6)}}
@@ -13093,20 +13093,20 @@ function displayAtoms(doc,p,A,s){
       const R=rows.map(r=>{const L=r.map(lay);return {L,h:Math.max(...L.map(x=>x.h))}});
       const H=R.reduce((t,r)=>t+r.h,0)+(R.length-1)*g;
       push({h:H,keep:true,draw(y0){let y=y0;R.forEach(r=>{const x0=m+(w-(r.L.length*cwid+(r.L.length-1)*g))/2;
-        r.L.forEach((c,i)=>{const x=x0+i*(cwid+g);doc.setFillColor(...A.t);doc.roundedRect(x,y,cwid,r.h,12,12,"F");let ty=y+pad;
+        r.L.forEach((c,i)=>{const x=x0+i*(cwid+g);doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(x,y,x+cwid,y);let ty=y+pad;
           pfont(doc,"bs",HF);doc.setTextColor(...D_INK);c.hl.forEach(l=>{doc.text(l,x+pad,ty+HF*.85);ty+=HL});ty+=6*s;
           c.parts.forEach(x2=>{if(x2.ll.length){pfont(doc,"fs",LF);doc.setTextColor(...AT);x2.ll.forEach(l=>{doc.text(l,x+pad,ty+LF*.85);ty+=LL})}
             pfont(doc,"fr",TF);doc.setTextColor(...D_INK);x2.tl.forEach(l=>{doc.text(l,x+pad,ty+TF*.85);ty+=TL});ty+=PG})});
         y+=r.h+g})}});gap(10)}}
     else if(b.t==="tags"){heading(b.label);const fs=11*s,ph=22*s;pfont(doc,"fs",fs);const rows=[[]];let x=0;
       (b.items||[]).filter(has).forEach(it=>{const t=clean(it),tw=doc.getTextWidth(t)+22*s;if(x>0&&x+tw>cw){rows.push([]);x=0}rows[rows.length-1].push({t,x,tw});x+=tw+7*s});
-      rows.forEach((r,ri)=>push({h:ph+5*s,base:base(ph,fs),keep:ri<rows.length-1,draw(y){r.forEach(c=>{doc.setFillColor(...A.t);doc.roundedRect(cx+c.x,y,c.tw,ph,ph/2,ph/2,"F");pfont(doc,"fs",fs);doc.setTextColor(...D_INK);doc.text(c.t,cx+c.x+11*s,y+base(ph,fs))})}}))}
+      rows.forEach((r,ri)=>push({h:ph+5*s,base:base(ph,fs),keep:ri<rows.length-1,draw(y){r.forEach(c=>{doc.setDrawColor(...A.c);doc.setLineWidth(.8);doc.roundedRect(cx+c.x,y,c.tw,ph,ph/2,ph/2,"S");pfont(doc,"fs",fs);doc.setTextColor(...D_INK);doc.text(c.t,cx+c.x+11*s,y+base(ph,fs))})}}))}
     else if(b.t==="figures"){if(has(b.label))heading(b.label);else if(atoms.length)gap(4);
       const its=(b.items||[]).filter(x=>x&&has(String(x[0])));if(its.length){const n=its.length,g=8,cwid=(w-(n-1)*g)/n,pad=9;
         const cells=its.map(([v,l])=>{let vf=21*Math.min(s,1.1);pfont(doc,"bs",vf);while(doc.getTextWidth(clean(String(v)))>cwid-pad*2&&vf>11){vf-=.5;pfont(doc,"bs",vf)}
           const ll=wrap(l,"fr",8.6*Math.min(s,1.1),cwid-pad*2).slice(0,4);return {v:clean(String(v)),vf,ll}});
         const lf=8.6*Math.min(s,1.1),llh=lf*1.28,h=pad*2+Math.max(...cells.map(c=>c.vf))*1.05+5+Math.max(...cells.map(c=>c.ll.length))*llh;
-        push({h,draw(y){cells.forEach((c,i)=>{const x=m+i*(cwid+g);doc.setFillColor(...A.t);doc.roundedRect(x,y,cwid,h,9,9,"F");
+        push({h,draw(y){cells.forEach((c,i)=>{const x=m+i*(cwid+g);doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(x,y,x+cwid,y);
           pfont(doc,"bs",c.vf);doc.setTextColor(...D_INK);doc.text(c.v,x+pad,y+pad+c.vf*.85);
           pfont(doc,"fr",lf);doc.setTextColor(...D_MUTED);c.ll.forEach((l,k)=>doc.text(l,x+pad,y+pad+Math.max(...cells.map(z=>z.vf))*1.05+5+k*llh+lf*.85))})}});gap(4)}}
     else if(b.t==="table"){if(!b.noRule)heading(b.label);else gap(4);
