@@ -24,7 +24,7 @@ test('s53Paths lists fourteen paths, each step a module in the library', () => {
 });
 
 test('s53Paths seeds the paths once, and educators choose a path for themselves', async t => {
-  const fx = await start({ env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText' }, more: put => {
+  const fx = await start({ env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces' }, more: put => {
     put('staff/pd/paths.json', { list: [series, { id: 'pateam', title: 'Kept by the director', desc: 'Her own words.', onboarding: false, steps: [{ kind: 'module', slug: 'documentation' }], at: 2, by: 'Dee' }] });
     put('staff/pd/modules/12-play.md', mod('The Study of Play', 'env, img'));
     put('staff/pd/modules/20-risk.md', '<!--\nstatus: draft\nserves: img, fam\n-->\n# Risky Play\n\nLead.\n\n## Reflect\n\nA question.\n');
@@ -47,7 +47,7 @@ test('s53Paths seeds the paths once, and educators choose a path for themselves'
   await t.test('a second start changes nothing', async () => {
     const before = fs.readFileSync(path.join(fx.dir, 'staff/pd/paths.json'), 'utf8');
     await wait(1500); await fx.stop(); up = false;
-    const again = await start({ dir: fx.dir, env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText' } });
+    const again = await start({ dir: fx.dir, env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces' } });
     try { await wait(4000); assert.ok(!again.gh.writes.some(w => /staff\/pd\/paths\.json/.test(w.path || ''))); assert.strictEqual(fs.readFileSync(path.join(fx.dir, 'staff/pd/paths.json'), 'utf8'), before); }
     finally { await again.stop(); }
   });

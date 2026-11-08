@@ -782,6 +782,8 @@ ONCE.push(['s55SofterWords', () => staff.once.edits('s55SofterWords', recsEdit)]
 ONCE.push(['s56RecordText', () => staff.once.edits('s56RecordText', recsEdit)]);
 // the Licensing pieces as a step of the Safety and Licensing path, only while it has none, November 7, 2026
 ONCE.push(['s57PathLicensing', () => staff.once.edits('s57PathLicensing', recsEdit)]);
+// printables for five modules, five Learning together pieces for families, and a Presenting section for every module that lacked one, November 7, 2026
+ONCE.push(['s58PdPieces', () => staff.once.edits('s58PdPieces', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */

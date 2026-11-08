@@ -11,7 +11,7 @@ test('s56RecordText cleans the garden pages', async () => {
   for (const c of LIST.changes.filter(x => /\.md$/.test(x.path))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
   // a passage a later change rewrites is held inside an earlier change's new wording, so only the first in a chain is written
   const page = cs => '<!--\nserves: obs\n-->\n# A page\n\nLead.\n\n## Reading\n\n' + cs.filter((c, i) => !cs.slice(0, i).some(a => a.to.includes(c.from))).map(c => c.from.replace(/\n$/, '')).join('\n\nSome words between.\n\n') + '\n';
-  const f = await fx.start({ env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s53Paths,s54PlantStages,s55SofterWords' }, more: put => { for (const [p, cs] of by) put(p, page(cs)); } });
+  const f = await fx.start({ env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s53Paths,s54PlantStages,s55SofterWords,s58PdPieces' }, more: put => { for (const [p, cs] of by) put(p, page(cs)); } });
   try {
     const want = LIST.changes.filter(c => c.to && /\.md$/.test(c.path));
     let ok = false;
