@@ -1150,9 +1150,11 @@ async function familySummarySentences(fs, child) {
   const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child. Keep any DRDP measure or level the notes name, in their words, and never add one. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
 ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 1200)])))}`;
   let out = null;
-  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 }); if (res.status !== 200) return fs;
+  let why = '';
+  try { const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 4000 }); if (res.status !== 200) return fs;
     const m = JSON.parse(res.text); const txt = (m.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
-    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
+    why = 'stop ' + m.stop_reason + ', reply ' + txt.length + ' characters';
+    out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message, why); noRetry.add(fs); return fs; }
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
   const tidy = t => famPlain(fam.withoutOthers(forPrint(educatorWord(t).replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
@@ -1161,7 +1163,8 @@ ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 
   return Object.assign({}, fs, { sentences: true, parts: Object.assign({}, P, { returns: got('returns'), friends: [groupLine, fr].filter(Boolean).join(' '), strengths: got('strengths'), goals: got('goals'), nextSteps: got('nextSteps'), areas }) });
 }
 // setting a draft in sentences is tried a few times, since a busy moment can turn one request away
-async function sentencesOf(d, child) { for (let i = 0; i < 3; i++) { try { const out = await familySummarySentences(d, child); if (out && out.sentences) return out; } catch (e) {} if (!anthropicKey()) break; await new Promise(ok => setTimeout(ok, 4000 * (i + 1))); } return d; }
+const noRetry = new WeakSet(); // a reply that cannot be read will read no better a few seconds later
+async function sentencesOf(d, child) { for (let i = 0; i < 3; i++) { try { const out = await familySummarySentences(d, child); if (out && out.sentences) return out; if (noRetry.has(d)) break; } catch (e) {} if (!anthropicKey()) break; await new Promise(ok => setTimeout(ok, 4000 * (i + 1))); } return d; }
 async function draftFamilySummary(cf, child) { return sentencesOf(familySummaryDraft(cf, child), child); }
 /* every Family Summary is set in full sentences. Drafts wait in a line and are rewritten one at a time, so a morning of
    conferences never asks all at once, and a draft no educator has read or changed yet that is still in note form is
