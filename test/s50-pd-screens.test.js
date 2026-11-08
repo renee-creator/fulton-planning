@@ -14,7 +14,7 @@ test('s50PdScreens follows s49PdRefresh and brings each page up to date', async 
   // a passage the step before already changes is not written twice
   for (const c of B.changes) { if (!c.from || !/\.md$/.test(c.path)) continue; if (A.changes.some(a => a.path === c.path && a.to.includes(c.from))) continue; add(c); }
   const page = cs => '<!--\nserves: obs\n-->\n# A page\n\nLead.\n\n## Reading\n\n' + cs.map(c => c.from).join('\n\nSome words between.\n\n') + '\n';
-  const f = await fx.start({ env: { ONCE_SKIP: 's51Citations,s52Wording,s55SofterWords' }, more: put => { for (const [p, cs] of pages) put(p, page(cs)); } });
+  const f = await fx.start({ env: { ONCE_SKIP: 's51Citations,s52Wording,s55SofterWords,s56RecordText' }, more: put => { for (const [p, cs] of pages) put(p, page(cs)); } });
   try {
     const want = B.changes.filter(c => c.from && /\.md$/.test(c.path));
     let ok = false;

@@ -1,0 +1,126 @@
+{
+ "name": "s56RecordText",
+ "note": "Leftover Google Doc marks and generated wording cleaned in the handbook, policies and garden pages, November 7, 2026",
+ "changes": [
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "<u>",
+   "to": ""
+  },
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "</u>",
+   "to": ""
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "<u>",
+   "to": ""
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "</u>",
+   "to": ""
+  },
+  {
+   "path": "staff/policies/teacher/orientation.json",
+   "from": "<u>",
+   "to": ""
+  },
+  {
+   "path": "staff/policies/teacher/orientation.json",
+   "from": "</u>",
+   "to": ""
+  },
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "(see handbook p. 18 for dress code)",
+   "to": "(see Dress Code in this handbook)"
+  },
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "(see handbook p.12 for more info)",
+   "to": "(see Arrival and Departure)"
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "(see handbook p. 18 for dress code)",
+   "to": "(see Dress Code in this handbook)"
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "(see handbook p.12 for more info)",
+   "to": "(see Arrival and Departure)"
+  },
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "Page two “Who lives is my home/who is important to me.....”",
+   "to": "Page two, “Who lives in my home and who is important to me”"
+  },
+  {
+   "path": "staff/policies/teacher/all-about-me-books.json",
+   "from": "Page two “Who lives is my home.....”",
+   "to": "Page two, “Who lives in my home”"
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "Page two “Who lives is my home.....”",
+   "to": "Page two, “Who lives in my home”"
+  },
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "Page three, “Things I like...”",
+   "to": "Page three, “Things I like”"
+  },
+  {
+   "path": "family/handbook/2026/first-day-checklist.json",
+   "from": "Page four “The foods I like are...”",
+   "to": "Page four, “The foods I like”"
+  },
+  {
+   "path": "staff/policies/teacher/all-about-me-books.json",
+   "from": "Page three, “Things I like...”",
+   "to": "Page three, “Things I like”"
+  },
+  {
+   "path": "staff/policies/teacher/all-about-me-books.json",
+   "from": "Page four “The foods I like are...”",
+   "to": "Page four, “The foods I like”"
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "Page three, “Things I like...”",
+   "to": "Page three, “Things I like”"
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "Page four “The foods I like are...”",
+   "to": "Page four, “The foods I like”"
+  },
+  {
+   "path": "staff/policies/teacher/onboarding-a-new-child-and-family.json",
+   "from": "( labeled “Home Visit for…..”)",
+   "to": "(labeled “Home Visit for the child”)"
+  },
+  {
+   "path": "staff/policies/teacher/teacher-duties-procedures.json",
+   "from": "Birthday plan? Volunteer plan?\n\nEtc…\n\n",
+   "to": "Birthday plan? Volunteer plan?\n\n"
+  },
+  {
+   "path": "staff/policies/teacher/teacher-duties-procedures.json",
+   "from": "every chair…. One bowl",
+   "to": "every chair. One bowl"
+  },
+  {
+   "path": "staff/library/garden/season-fall.md",
+   "from": "California sage is Look, don't eat,",
+   "to": "California sage is for looking only,"
+  },
+  {
+   "path": "staff/library/garden/preserving.md",
+   "from": "California sage is Look, don't eat,",
+   "to": "California sage is for looking only,"
+  }
+ ]
+}

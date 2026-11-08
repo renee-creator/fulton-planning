@@ -72,11 +72,11 @@ function gdnGroupCare(rows){const out=[],seen=new Map(),sow=[];
 // what a plant that is not grown for food is gathered or kept for, in words
 const GDN_FOR={Pollinator:"in flower for the pollinators",Habitat:"left standing for wildlife",Dye:"to gather for dye","Art materials":"to gather for the atelier"};
 function gdnGroupRipe(ps){const food=[],by=new Map();
-  for(const p of ps){if(p.eat==="food"){food.push(gdnPlainName(p));continue}
-    const k=p.eat==="partly"?"partly edible, the part an adult names":(GDN_FOR[(p.uses||[]).find(u=>GDN_FOR[u])]||"to look at, never to eat");
+  for(const p of ps){if(p.eat==="food"){food.push(gdnPlainName(p).replace(/ or (.+)$/," ($1)"));continue}
+    const k=p.eat==="partly"?"partly edible, the part an adult names":(GDN_FOR[(p.uses||[]).find(u=>GDN_FOR[u])]||"for looking only");
     if(!by.has(k))by.set(k,[]);by.get(k).push(gdnPlainName(p))}
-  // the food plants ready together share a line or a few, six to a line, so the list reads as sentences
-  const lines=[];for(let i=0;i<food.length;i+=6)lines.push(gdnCap(gdnAnd(food.slice(i,i+6))));
+  // the food plants ready together share a line or a few, six to a line, each a sentence that starts with what is ready
+  const lines=[];for(let i=0;i<food.length;i+=6)lines.push("Ripe and ready to pick, "+gdnAnd(food.slice(i,i+6)));
   return [...lines,...[...by].map(([k,n])=>gdnCap(gdnAnd(n))+", "+k)]}
 function gdnSeason(S){const g=gdn,mo=S.months,uniq=a=>[...new Set(a.filter(Boolean))];
   const tasks=st=>uniq(mo.flatMap(m=>(((g.plan||{}).months||{})[m]||{tasks:[]}).tasks.filter(t=>t.stage===st).map(t=>t.text)));

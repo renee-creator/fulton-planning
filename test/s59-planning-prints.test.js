@@ -64,7 +64,7 @@ test('the planning resources prints keep to their pages and read as sentences', 
   assert.ok(r.shoesBig); assert.ok(r.shoesScale >= 2, 'a sign with no photo is set large, ' + r.shoesScale);
   assert.ok(r.season['What we plant'].includes('Sow seed of carrots and beets'));
   assert.ok(r.season['What we tend'].includes('Water deeply in dry weeks for the plum and apricot'));
-  assert.ok(r.season['What we harvest'].includes('Apricot'));
+  assert.ok(r.season['What we harvest'].includes('Ripe and ready to pick, apricot'));
   assert.ok(r.season['What we harvest'].includes('Mullein, in flower for the pollinators'));
   assert.ok(r.season['What we harvest'].includes('Roses, partly edible, the part an adult names'));
   assert.ok(!JSON.stringify(r.season).includes('to gather for'), 'no "to gather for pollinator"');
