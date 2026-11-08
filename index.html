@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
 <!-- the PDF tool loads beside TREE instead of before it, so TREE opens without waiting for it -->
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="print-kit.js?v=bc482e6246"></script>
+<script src="print-kit.js?v=f5e4e841ed"></script>
 <script src="wording.js?v=2f5e2c3af2"></script>
 <script src="lens-text.js?v=8135e88451"></script>
 <script src="sitemap.js?v=da4b12e1c1"></script>
@@ -4947,7 +4947,7 @@ let staffLoad=null;
 // The director's Edit on any piece of school writing in the records, a page or the words inside a record such as a
 // Help answer, opening the one editor with its history. TREE reads the writing again once it is saved.
 // the office edits the volunteer jobs too
-window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ce2800c4dc","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
+window.TREE_EDIT_PAGE=async(at,done)=>{if(!(isDirector()||isOffice()&&/^staff\/volunteer\//.test(at&&at.path||""))||VIEW_AS)return;try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0a4de7d7af","TreeStaff").catch(e=>{staffLoad=null;throw e});await staffLoad}catch(e){toast("The editor could not open. Check the connection.");return}
   window.TREE_PAGEEDIT(at,async()=>{try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}guideList=null;if(typeof loadHelp==="function")loadHelp(true);
     if(done)await done();else if(STAFF_VIEWS.includes(view)&&window.TreeStaff)TreeStaff.render(view);else renderMain()})};
 window.TREE_EDIT_WORDING=(id,done)=>window.TREE_EDIT_PAGE({path:"staff/wording/"+id+".md"},done);
@@ -4960,7 +4960,7 @@ const wordsEdit=(id,label)=>isDirector()&&!VIEW_AS?`<button class="linkbtn" data
 document.addEventListener("click",e=>{const t=e.target.closest("[data-wordsedit]");if(!t)return;e.preventDefault();window.TREE_EDIT_WORDING(t.dataset.wordsedit)});
 function renderStaff(){const m=$("#main");if(!m)return;
   if(!window.TreeStaff)m.innerHTML=`<div class="head"><span class="eyebrow">Educators</span><h2 style="margin-top:4px">${isNewHire()?"New Educator":"Educators"}</h2></div><section class="card"><div class="empty"><span class="spin"></span> Opening</div></section>`;
-  staffLoad=staffLoad||loadScript("tree-staff.js?v=ce2800c4dc","TreeStaff").catch(e=>{staffLoad=null;throw e});
+  staffLoad=staffLoad||loadScript("tree-staff.js?v=0a4de7d7af","TreeStaff").catch(e=>{staffLoad=null;throw e});
   staffLoad.then(T=>{if(STAFF_VIEWS.includes(view))T.render(view)}).catch(()=>{m.innerHTML=`<section class="card"><div class="hint warnline">This part of TREE did not load. Check the connection, then reload.</div></section>`})}
 const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New Educator"],["stgrow","Growth"],["stplan","Growth Plan"],["stjour","Journal"],["stci","Check-ins"],["stmom","Proud Moments"],["stformer","Former educators"],["stpd","PD library"],["stpdd","PD days"],["stpres","Presenting"],["sthb","Policies and Procedures"],["stnotices","Required notices"],["stfh","Family Handbook"],["st27","Coming October 1, 2027"],["stdrill","Drills"],["stfiles","Paper files"]],plans:[["plans","This week"],["bin","Weekly bin"],["all","All plans"],["threads","Threads"],["projects","Projects"],["inquiries","Inquiries"],["lens","Lens"],["connect","Connections"]],
   docs:[["slides","Slides"],["walls","Walls"],["stories","Stories"],["newsletter","Newsletter"],["share","Share"],["grant","Farm to School"],["gatherings","Gatherings"],["kitchen","Kitchen"]],
@@ -4978,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="99cb86a8dc8f";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="2078f0d557d0";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6298,10 +6298,10 @@ function gdnEntryDoc(x){return asCard(gdnEntryDoc0(x))}
 function gdnEntryDoc0(x){const p=gdnPhotoSrc(x);const k=x.kind||(gdn.plants||[]).includes(x)&&"plant"||(gdn.animals||[]).includes(x)&&"animal"||"";
   const photo=p?[{t:"photo",key:p.printKey||p.key,src:p.printSrc||p.src,maxH:k==="sign"?380:330}]:[];const credit=p&&p.printCredit?[{t:"small",label:"",lines:[p.printCredit]}]:[];
   // a sign with no photo yet prints in large type, its title and its question filling the sheet
-  if(x.question!==undefined||(gdn.signs||[]).includes(x))return {display:true,type:"report",acc:"story",bigType:!photo.length,title:x.kind==="shoes"?"Shoes on":x.title||"",meta:[x.place||""].filter(Boolean),blocks:[...photo,dText("",x.question||""),...(x.wonder?[dText("",x.wonder)]:[]),...credit]};
+  if(x.question!==undefined||(gdn.signs||[]).includes(x))return {display:true,type:"report",acc:"story",sign:true,bigType:!photo.length,title:x.kind==="shoes"?"Shoes on":x.title||"",meta:[x.place||""].filter(Boolean),blocks:[...photo,dText("",x.question||""),...(x.wonder?[dText("",x.wonder)]:[]),...credit]};
   // a warning sign's words are kept in their parts, its description, its rule and its line, and each prints as its own line
   if(x.kind==="hazard"){const sg=x.sign&&typeof x.sign==="object"?x.sign:{description:x.sign||x.know||""};
-    return {display:true,type:"report",acc:"story",title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
+    return {display:true,type:"report",acc:"story",sign:true,title:x.name,meta:[],blocks:[...photo,dText("",sg.description||x.know||""),Object.assign(dText("",sg.rule||"Look. Do not touch. Tell an adult."),{strong:true}),dText("",sg.line||"We only taste what an adult has named as edible."),...credit]}}
   // an animal's card is kept in parts, what to know, a wondering, its family words and our rule, each its own line
   if((gdn.animals||[]).includes(x)){const c=x.card&&typeof x.card==="object"?x.card:{know:x.card||""};
     // the health rule prints once, in the children's words when the card has them, and the words sit in columns
@@ -9025,22 +9025,28 @@ const PG=Object.assign({},PG0);
 function planScale(z){PG.lh=PG0.lh*z;PG.fs=PG0.fs*z;PG.padT=PG0.padT*z;PG.padB=PG0.padB*z;PG.gap=PG0.gap*z;PG.strip=PG0.strip*Math.max(z,.92)}
 // with ret the file comes back rather than opening, and "quiet" also keeps every message off the screen
 async function makePdf(list,filename,ret){
+  // a print with nothing in it is never made, and the educator hears Nothing to print yet
+  list=TREE_KIT.guard(list,ret==="quiet");if(!list)return;
+  // each page is a card, a sign or a page, so the preview can set cards two or four to a page and signs at their size
+  const kinds=[];
   if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf").catch(()=>{});if(!window.jspdf){if(ret!=="quiet")toast("The PDF tool did not load. Check your connection and reload.");return}
   const disp=list.some(p=>p.display);await loadPrintFonts();
   const isLand=p=>!!(p.centered&&!p.sq&&(p.photos||[]).length&&(p.pos?p.pos==="left"||p.pos==="right":p.land));
   const fmt=p=>p&&p.centered&&p.sq?[PW,PW]:"letter";
   const doc=planDoc({unit:"pt",format:fmt(list[0]),orientation:list[0]&&isLand(list[0])?"landscape":"portrait"});
   const pageAcc={};pageInfo={};centerOver=[];
-  list.forEach((p,i)=>{if(i>0)doc.addPage(fmt(p),isLand(p)?"landscape":"portrait");drawAny(doc,p,pageAcc)});
+  list.forEach((p,i)=>{if(i>0)doc.addPage(fmt(p),isLand(p)?"landscape":"portrait");drawAny(doc,p,pageAcc);const k=TREE_KIT.pageKind(p);while(kinds.length<doc.getNumberOfPages())kinds.push(k)});
   const n=doc.getNumberOfPages();
   for(let i=1;i<=n;i++){doc.setPage(i);const A=pageAcc[i]||ACC.classroom;const pi=pageInfo[i];
     if(pi&&pi.display){displayFoot(doc,A,pi);continue}
     doc.setDrawColor(214,222,216);doc.setLineWidth(.6);doc.line(M,PH-38,PW-M,PH-38);
-    doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.setTextColor(...A.c);doc.setCharSpace(.6);
+    doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...deep(A.c));doc.setCharSpace(.6);
     doc.text(CYCLE_TEXT,PW/2,PH-26,{align:"center"});doc.setCharSpace(0);
-    if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(110,124,115);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-15,{align:"center"})}}
+    if(pi&&pi.n>1){doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...D_MUTED);doc.text(`Page ${pi.i} of ${pi.n}`,PW/2,PH-14,{align:"center"})}}
   if(ret){if(ret==="quiet")centerOver=[];else overWarn();return doc.output("blob")}
-  saveFile(doc.output("blob"),filename);overWarn();
+  // two or four cards to a letter page with dotted cut lines, or a sign at half letter or poster size, as last chosen
+  const base=doc.output("blob");pvSet=kinds.some(k=>k!=="page")?{base,kinds}:null;
+  saveFile(pvSet?await pvLayout(pvSet):base,filename);overWarn();
 }
 // a sheet with more words than fit still prints, and the educator hears which one to shorten
 function overWarn(){const u=[...new Set(centerOver)];if(u.length)setTimeout(()=>toast(`${u.length===1?"“"+u[0]+"” has":u.length+" sheets have"} more words than fit. Choose fewer quotes or shorten the words.`),1200);centerOver=[]}
@@ -9051,15 +9057,18 @@ async function saveFile(blob,filename,direct){
   if(downloads){try{await downloads.save({filename,data:blob});return}catch(e){if(e?.code==="declined")return;if(e?.code==="rate_limited"){toast("A save is already open. Finish that one first.");return}}}
   try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}catch(e){toast("Downloads are not available in this view.")}
 }
-let pvLast=null,pvState=null;
+let pvLast=null,pvState=null,pvSet=null;
+// a print holding cards or signs, laid out with this device's choice of cards per page and sign size
+async function pvLayout(S){const plan=S.kinds.map(k=>TREE_KIT.pagePlan(k));if(!plan.some(x=>x.n>1||x.size!=="letter"))return S.base;try{return await TREE_KIT.repage(S.base,plan)}catch(e){return S.base}}
 // the preview draws pages with the same PDF reader TREE uses to read uploaded paper plans, pdfLib below
 async function pdfPreview(blob,filename){
-  const word=pvLast&&pvLast.dataset&&pvLast.dataset.print?pvLast:null;pvLast=null;
+  const word=pvLast&&pvLast.dataset&&pvLast.dataset.print?pvLast:pvState&&pvState.keepWord||null;pvLast=null;const set=pvSet;pvSet=null;
   pvClose();const el=document.createElement("div");el.id="pview";el.className="pview";el.setAttribute("role","dialog");el.setAttribute("aria-label","Preview");
   el.innerHTML=`<div class="pvbar"><div class="pvname"><b>${esc(filename.replace(/\.pdf$/i,""))}</b><span class="cnt" id="pvcount">Opening the preview</span></div>
+    ${set?`<div class="actions pvchoice" style="margin:0">${set.kinds.includes("card")?TREE_KIT.cardsPerHtml():""}${set.kinds.includes("sign")?TREE_KIT.signSizeHtml():""}</div>`:""}
     <div class="actions" style="margin:0"><button class="btn small" data-pvsave="1">Download PDF</button>${word?`<button class="btn small ghost" data-pvword="1">Word</button>`:""}<button class="btn small ghost" data-pvclose="1">Close</button></div></div>
     <div class="pvpages" id="pvpages"></div>`;
-  document.body.append(el);document.body.style.overflow="hidden";pvState={blob,filename,word,io:null,doc:null};
+  document.body.append(el);document.body.style.overflow="hidden";pvState={blob,filename,word,set,io:null,doc:null};
   try{const lib=await pdfLib();const doc=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;if(!pvState||pvState.blob!==blob){doc.destroy();return}pvState.doc=doc;
     const n=doc.numPages;$("#pvcount").textContent=n===1?"1 page":n+" pages";const box=$("#pvpages");
     const first=await doc.getPage(1),v0=first.getViewport({scale:1});
@@ -9072,6 +9081,9 @@ async function pdfPreview(blob,filename){
 function pvClose(){const el=$("#pview");if(pvState){if(pvState.io)pvState.io.disconnect();if(pvState.doc)try{pvState.doc.destroy()}catch(e){}}pvState=null;if(el){el.remove();document.body.style.overflow=""}}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("#pview button");if(!t)return;e.stopImmediatePropagation();const st=pvState;
   if(t.dataset.pvclose){pvClose();return}
+  // cards per page or a sign's size, chosen in the preview, lays the same print out again and is kept for next time
+  if((t.dataset.tkper||t.dataset.tksign)&&st&&st.set){TREE_KIT.setChoice(!!t.dataset.tkper,t.dataset.tkper||t.dataset.tksign);const S=st.set,w=st.word,f=st.filename;
+    pvLayout(S).then(b=>{pvSet=S;pvState=Object.assign(pvState||{},{keepWord:w});pvLast=null;pdfPreview(b,f)});return}
   if(t.dataset.pvsave&&st){saveFile(st.blob,st.filename,true);pvClose();return}
   if(t.dataset.pvword&&st&&st.word){const b=st.word.cloneNode(true);b.dataset.word="1";pvClose();printsClick(b);return}},true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#pview"))pvClose()});
@@ -9283,6 +9295,7 @@ function webSvgString(web,blank,A){
 function svgToPng(svg){if(PF.b64)svg=svg.replace(/<svg\b[^>]*>/,m=>m+`<defs><style>@font-face{font-family:TA;src:url(data:font/ttf;base64,${PF.b64.fr})}@font-face{font-family:TA;font-weight:700;src:url(data:font/ttf;base64,${PF.b64.bs})}</style></defs>`);return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=img.width*2;c.height=img.height*2;const g=c.getContext("2d");g.scale(2,2);g.drawImage(img,0,0);c.toBlob(b=>b?b.arrayBuffer().then(res):rej(new Error("png")),"image/png")};img.onerror=rej;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
 function planPageCount(p){try{const t=planDoc({unit:"pt",format:"letter"});drawAny(t,p,{});return t.getNumberOfPages()}catch(e){return 1}}
 async function makeDocx(list,filename,ret){
+  list=TREE_KIT.guard(list,ret==="quiet");if(!list)return;
   let D;try{D=await TREE_KIT.word()}catch(e){if(ret!=="quiet")toast("The Word tool did not load. Check your connection and reload.");return}
   if(ret!=="quiet")toast("Preparing the Word file");centerOver=[];
   const disp=list.some(p=>p.display);await loadPrintFonts();
@@ -13491,7 +13504,7 @@ function asCard(d,o){o=o||{};if(!d)return d;const B=o.blocks||d.blocks||[];
     if(b.t==="list"){blocks.push({t:"sect",label:has(b.label)?b.label:pend,lines:(b.items||[]).filter(has),strong:!!b.strong,cols:b.cols||0,bullets:!!b.bullets});pend="";continue}
     blocks.push(b)}
   return {centered:true,card:true,display:true,type:"report",acc:d.acc||"story",title:o.title||d.title||"",sub:o.sub!==undefined?o.sub:m.join(", "),
-    details:[],photos,blocks,brand:d.brand,noTitle:d.noTitle,onePage:!!d.onePage,wordsTop:!!(o.wordsTop||d.wordsTop),bigType:!!d.bigType&&!photos.length}}
+    details:[],photos,blocks,brand:d.brand,noTitle:d.noTitle,onePage:!!d.onePage,wordsTop:!!(o.wordsTop||d.wordsTop),bigType:!!d.bigType&&!photos.length,sign:!!d.sign}}
 const dItem=(title,text,by,side)=>({t:"item",title,text,by,side});
 const dSub=text=>({t:"sub",text});
 // a photo kept with a moment. It is drawn from the copy fetched just before printing.
@@ -13951,7 +13964,7 @@ function pfont(doc,k,size){k=CFONT[k]||k;if(k[0]==="T"||k[0]==="H"){(doc.__raw||
 // a report in Word has the same margins as its PDF, about two thirds of an inch
 const DISPLAY_DOCX_MARGIN=940;
 const DG={m:47,top:46,bottom:PH-58};DG.w=PW-2*DG.m;DG.lc=0;DG.gut=0;DG.cx=DG.m;DG.cw=DG.w;
-const D_INK=[28,42,34],D_MUTED=[96,110,101],D_HAIR=[208,217,211];
+const D_INK=[28,42,34],D_MUTED=[72,84,76],D_HAIR=[208,217,211];
 // the tinted lead box holds a few lines. A longer statement keeps its first sentences in the box, cut at a sentence end,
 // and the rest follows below it as body text, so the box never fills the page.
 function leadSplit(text){const t=String(text||"").trim();if(t.length<=320)return [t,""];
@@ -14095,13 +14108,13 @@ function displayAtoms(doc,p,A,s){
       const drawRow=(r,x,y,rh,k)=>{let cx0=x;r.forEach((t,j)=>{const ls=cellLines(t,j,k);pfont(doc,k||(j===0&&b.bold0?"fs":"fr"),fs);doc.setTextColor(...(k?D_MUTED:j>0&&b.muted&&b.muted.includes(j)?D_MUTED:D_INK));
         ls.forEach((l,q)=>{const yy=y+cp*.6+base(lh,fs)+q*lh;if(al[j]==="r")doc.text(l,cx0+wd[j]-cp,yy,{align:"right"});else doc.text(l,cx0+(j===0?0:cp),yy)});cx0+=wd[j]})};
       const rowH=(r,k)=>Math.max(1,...r.map((t,j)=>cellLines(t,j,k).length))*lh+cp*1.2;
-      if((b.head||[]).length){const hh=rowH(b.head,"fs");push({h:hh+2,keep:true,draw(y){for(let c=0;c<cols;c++){const x=m+c*(gw+gut);drawRow(b.head,x,y,hh,"fs");doc.setDrawColor(...A.c);doc.setLineWidth(.8);doc.line(x,y+hh,x+gw,y+hh)}}})}
+      let headA=null;if((b.head||[]).length){const hh=rowH(b.head,"fs");headA=push({h:hh+2,keep:true,draw(y){for(let c=0;c<cols;c++){const x=m+c*(gw+gut);drawRow(b.head,x,y,hh,"fs");doc.setDrawColor(...A.c);doc.setLineWidth(.8);doc.line(x,y+hh,x+gw,y+hh)}}})}
       const R=Math.ceil(rows.length/cols),nb=cols>1?Math.max(1,Math.ceil(R/(b.band||16))):1,Bn=cols>1?Math.ceil(R/nb):R;
       let start=0;const i0=atoms.length;
       while(start<rows.length){const chunk=rows.slice(start,start+(cols>1?Bn*cols:rows.length));start+=chunk.length;
         const per=cols>1?Math.ceil(chunk.length/cols):chunk.length;
         for(let ri=0;ri<per;ri++){const set=Array.from({length:cols},(_,c)=>chunk[c*per+ri]).map(r=>r||null);const rh=Math.max(...set.filter(Boolean).map(r=>rowH(r)));
-          push({h:rh,keep:cols>1&&ri<per-1,draw(y){set.forEach((r,c)=>{if(!r)return;const x=m+c*(gw+gut);drawRow(r,x,y,rh);doc.setDrawColor(...D_HAIR);doc.setLineWidth(.4);doc.line(x,y+rh,x+gw,y+rh)})}})}
+          push({h:rh,keep:cols>1&&ri<per-1,rehead:headA,draw(y){set.forEach((r,c)=>{if(!r)return;const x=m+c*(gw+gut);drawRow(r,x,y,rh);doc.setDrawColor(...D_HAIR);doc.setLineWidth(.4);doc.line(x,y+rh,x+gw,y+rh)})}})}
         if(start<rows.length)push({h:6*s,draw(){}})}
       holdFirst(i0);if(atoms[i0+1])atoms[i0+1].keep=atoms[i0+1].keep||cols===1;gap(4)}
     else if(b.t==="quote"){
@@ -14126,6 +14139,17 @@ function displayAtoms(doc,p,A,s){
       if(has(by)){gap(2);lines(wrap(by,"fr",Z.small,cw).slice(0,2),"fr",Z.small,Z.slh,cx,D_MUTED)}
       if(atoms.length-i0<=7)for(let k=i0;k<atoms.length-1;k++)atoms[k].keep=true;
       if(B[bi+1]&&B[bi+1].t==="quote"){gap(4)}}
+    // a small bold label of a sheet's part, with no rule, kept with what follows
+    else if(b.t==="minor"){gap(atoms.length?9:2);wrap(b.text,"bs",Z.head,w).forEach(l=>line(l,"bs",Z.head,Z.head*1.36,m,AT,true));push({h:2*s,keep:true,draw(){}})}
+    // tick boxes, each a drawn square with its words beside it
+    else if(b.t==="checks"){if(has(b.label))heading(b.label);const bx=10*s,i0=atoms.length;(b.items||[]).filter(has).forEach(it=>{const ls=wrap(it,"fr",Z.body,cw-bx-10);ls.forEach((l,k)=>push({h:Z.blh,base:base(Z.blh,Z.body),keep:k<ls.length-1,draw(y){const by=y+base(Z.blh,Z.body);
+        if(k===0){doc.setDrawColor(...D_INK);doc.setLineWidth(.8);doc.rect(cx,by-bx+1.2,bx,bx)}pfont(doc,"fr",Z.body);doc.setTextColor(...D_INK);doc.text(l,cx+bx+10,by)}}));gap(4)});holdFirst(i0)}
+    // lines to write on, the full width of the page, or labels each with its own line across one row
+    else if(b.t==="fill"){const F=(b.fields||[""]),lh=28*s,lz=Z.head;
+      if(F.length===1&&!has(F[0])){for(let k=0;k<Math.max(1,b.lines||1);k++)push({h:lh,keep:k<(b.lines||1)-1,draw(y){doc.setDrawColor(...D_MUTED);doc.setLineWidth(.6);doc.line(m,y+lh-5,m+w,y+lh-5)}})}
+      else{pfont(doc,"bs",lz);const lw=F.map(f=>doc.getTextWidth(clean(f))+8),g=18,rest=(w-lw.reduce((a,x)=>a+x,0)-g*(F.length-1))/F.length;
+        push({h:lh+4,draw(y){let x=m;F.forEach((f,j)=>{pfont(doc,"bs",lz);doc.setTextColor(...AT);doc.text(clean(f),x,y+lh-8);x+=lw[j];doc.setDrawColor(...D_MUTED);doc.setLineWidth(.6);doc.line(x,y+lh-5,x+Math.max(40,rest),y+lh-5);x+=Math.max(40,rest)+g})}})}
+      gap(4)}
     else if(b.t==="qa"){gap(6);const ql=wrap(b.q,"fs",9.8*s,cw);ql.forEach(l=>line(l,"fs",9.8*s,13.2*s,cx,D_MUTED,true));lines(wrap(b.a,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,D_INK)}
     else if(b.t==="sub"){gap(14);sub=b.text;const i0=atoms.length;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:6*s,keep:true,gap:false,draw(){}});if(atoms[i0])atoms[i0].isSub=true}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item","table","figures","small"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(12);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(8)}
@@ -14139,7 +14163,7 @@ function displayAtoms(doc,p,A,s){
     else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const fw=b.full?w:Math.min(w*.72,b.maxW?b.maxW*Math.min(Math.max(s,.85),1.1):1e9),fx=m,mh=(b.maxH||260)*Math.min(s,1.15);let pw=fw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
       gap(6);push({h:ph,keep:true,draw(y){doc.addImage(im.url,"JPEG",fx+(b.full?(fw-pw)/2:0),y,pw,ph,undefined,"FAST")}});gap(8)}}
     // a plant's stage photos on its full page, two across, each cut to the same frame, with its word and credit beneath
-    else if(b.t==="stagegrid"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key));const g=16,tw=Math.min((w-g)/2,236)*Math.min(Math.max(s,.85),1),th=tw*.75,lz=11.5*Math.min(s,1.1),cz=7.4;
+    else if(b.t==="stagegrid"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key));const g=16,tw=Math.min((w-g)/2,236)*Math.min(Math.max(s,.85),1),th=tw*.75,lz=11.5*Math.min(s,1.1),cz=8.5;
       for(let i=0;i<T.length;i+=2){const R=T.slice(i,i+2);const cls=R.map(t=>cwrap(doc,"fr",cz,t.credit||"",tw).slice(0,2));const ch=Math.max(...cls.map(c=>c.length))*9.4;
         gap(i?6:4);push({h:th+6+lz*1.3+ch,draw(y){R.forEach((t,j)=>{const im=photoCache.get(t.key),x=m+j*(tw+g),r=Math.max(tw/im.w,th/im.h),iw=im.w*r,ih=im.h*r;
           try{doc.saveGraphicsState();doc.rect(x,y,tw,th,null);doc.clip();doc.discardPath();doc.addImage(im.url,"JPEG",x+(tw-iw)/2,y+(th-ih)/2,iw,ih,undefined,"FAST");doc.restoreGraphicsState()}catch(e){doc.addImage(im.url,"JPEG",x,y,tw,th,undefined,"FAST")}
@@ -14175,6 +14199,8 @@ function displayFlow(doc,p,A,s){
       if(a.gap&&!pages[pages.length-1].length)continue;
       // the continuation heading waits until something actually lands under it, so no sheet opens with an empty one
       if(pend){if(!a.isSub){const hd=displayAtoms.head(pend+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}pend=""}
+      // a table that runs onto a new sheet repeats its title row there
+      if(a.rehead&&pages.length>1&&!pages[pages.length-1].some(x=>x.a===a.rehead||x.a.rehead===a.rehead)){pages[pages.length-1].push({a:a.rehead,y});y+=a.rehead.h}
       if(a.min)a.h=Math.max(a.min,Math.min(a.h,DG.bottom-y));
       pages[pages.length-1].push({a,y});y+=a.h;
     }
@@ -14211,15 +14237,17 @@ function drawDisplay(doc,p,pageAcc){
   const A=accOf(p.acc||p.type)||ACC.classroom;const {F}=displayFit(doc,p,A);
   F.pages.forEach((pg,pi)=>{
     if(pi>0)doc.addPage();
-    pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:F.pages.length,display:true};
+    pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:F.pages.length,display:true,foot:p.footer};
     if(pi===0)displayHead(doc,p,A);else displayHeadCont(doc,p,A);
     pg.forEach(({a,y})=>a.draw(y));
   });
 }
 function displayFoot(doc,A,pi){
   const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();const m=DG.m,w=pw-2*m;doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,ph-42,m+w,ph-42);
-  pfont(doc,"fr",8);doc.setTextColor(...D_MUTED);doc.text("Observe    Provoke    Document    Reflect    Evolve",m+w/2,ph-28,{align:"center"});
-  if(pi&&pi.n>1)doc.text(`Page ${pi.i} of ${pi.n}`,m+w/2,ph-17,{align:"center"});
+  pfont(doc,"fr",8.6);doc.setTextColor(...D_MUTED);doc.text("Observe    Provoke    Document    Reflect    Evolve",m+w/2,ph-28,{align:"center"});
+  // a print for outside audiences names the school on its face, at the foot of each page
+  if(pi&&has(pi.foot)){pfont(doc,"fs",8.6);doc.text(clean(pi.foot),m+w/2,ph-16,{align:"center"})}
+  if(pi&&pi.n>1){pfont(doc,"fr",8.6);doc.text(`Page ${pi.i} of ${pi.n}`,m+w,ph-28,{align:"right"})}
 }
 /* --- centred display sheets: a moment, or one sheet of a wall ---
    The photo comes first and takes at least the top two thirds of the sheet, more when the words are few. The words sit centred
@@ -14234,7 +14262,8 @@ function cHead(doc,md,A,PWd,ops,y0){
   const x=PWd/2,W=PWd-2*CM;let y=y0||44;
   if(md.brand!==undefined?md.brand:PRINT.schoolDocs){ops.push({t:"text",x,y:y+8,k:"fs",s:9.5,c:deep(A.c),txt:"Fulton Community School"});y+=24}else y+=4;
   if(md.over){ops.push({t:"text",x,y:y+9,k:"fs",s:11,c:deep(A.c),txt:ct(doc,md.over)});y+=22}
-  let ts=md.bigType?80:md.card?30:36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=22)break;ts-=2}tl=tl.slice(0,2);
+  // a sign's title is sign size, 72 points down to no less than 48
+  let ts=md.sign?72:md.bigType?80:md.card?30:36,tl;for(;;){tl=cwrap(doc,"bs",ts,md.title||"",W);if(tl.length<=2||ts<=(md.sign?48:22))break;ts-=2}tl=tl.slice(0,md.sign?3:2);
   tl.forEach((l,i)=>ops.push({t:"text",x,y:y+ts*.82+i*ts*1.08,k:"bs",s:ts,c:D_INK,txt:l}));y+=tl.length*ts*1.08+8;
   // a card's second line names the work or where it comes from, set smaller under the title
   if(md.card&&has(md.sub)){cwrap(doc,"fr",14,md.sub,W).slice(0,2).forEach(l=>{ops.push({t:"text",x,y:y+13,k:"fr",s:14,c:D_MUTED,txt:l});y+=19});y+=4}
@@ -14347,7 +14376,7 @@ function cLayout(doc,md,A){
 function cGrid(doc,md,A,gb,top,W,H,PWd,PHd){
   const ops=[],tiles=(gb.tiles||[]).slice(0,6),n=tiles.length,cols=n>1?2:1,rows=Math.max(1,Math.ceil(n/cols)),g=14,rg=12;
   const rest=Object.assign({},md,{blocks:(md.blocks||[]).filter(b=>b.t!=="grid")}),ww=W*.8,wh=cWords(doc,rest,A,1,0,ww,0,null);
-  const credits=tiles.map(t=>t.credit).filter(has),under=n<=6,cz=7,cl=8.6;
+  const credits=tiles.map(t=>t.credit).filter(has),under=n<=6,cz=8.5,cl=10.2;
   const footL=!under&&credits.length?cwrap(doc,"fr",cz,"Photos. "+[...new Set(credits)].join(". ")+".",W).slice(0,4):[];
   const tw=(W-g*(cols-1))/cols,nz=12.5,nlh=nz*1.3;
   const nameL=t=>cwrap(doc,"fs",nz,t.name,tw-6).slice(0,2),credL=t=>under&&has(t.credit)?cwrap(doc,"fr",cz,t.credit,tw-6).slice(0,2):[];
@@ -14376,7 +14405,7 @@ function cPlant(doc,md,A,top,W,PWd,PHd){
   // the words to read aloud, then the line that says whether we eat it or look, which is always last
   const sects=B.filter(b=>b.t==="sect"),eatAt=sects.length&&/^(Food|Partly edible|Look, don't eat)/.test(sects[sects.length-1].text||"")?sects.length-1:-1;
   const texts=[eatAt===0?null:sects[0],eatAt>=0?sects[eatAt]:sects[1]],cred=(B.find(b=>b.t==="credits")||{lines:[]}).lines.filter(has);
-  const ww=W*.9,cz=7.4,clh=9.6,cl=cred.flatMap(l=>cwrap(doc,"fr",cz,l,W));
+  const ww=W*.9,cz=8.5,clh=10.8,cl=cred.flatMap(l=>cwrap(doc,"fr",cz,l,W));
   const credTop=PHd-54-cl.length*clh;
   // the words, the first at 20 points and the eat or look line under it a little smaller
   const wz=20,wlh=wz*1.38,ez=14,elh=ez*1.4;
@@ -14453,7 +14482,7 @@ function cDraw(doc,ops){for(const o of ops){
 function drawCentered(doc,p,pageAcc){
   const A=accOf(p.acc)||ACC.story;const F=cFlow(doc,cReady(p),A);
   if(F.over&&!p.flow)centerOver.push(p.title||"A sheet");
-  F.pages.forEach((L,i)=>{if(i>0)doc.addPage(L.sq?[PW,PW]:"letter",L.land?"landscape":"portrait");const n=doc.getNumberOfPages();pageAcc[n]=A;pageInfo[n]={i:i+1,n:F.pages.length,display:true};cDraw(doc,L.ops)});
+  F.pages.forEach((L,i)=>{if(i>0)doc.addPage(L.sq?[PW,PW]:"letter",L.land?"landscape":"portrait");const n=doc.getNumberOfPages();pageAcc[n]=A;pageInfo[n]={i:i+1,n:F.pages.length,display:true,foot:p.footer};cDraw(doc,L.ops)});
 }
 // how a sheet prints, drawn on the page before anything is printed
 function cPreview(md){
@@ -14537,7 +14566,7 @@ async function centeredDocx(ch,p,D,A){
     else if(b.t==="stages"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key)).slice(0,4);if(T.length){const sz=((L0&&L0.plant&&L0.plant.tile)||110)*96/72,cw=Math.round(10080/T.length);
       out.push(new Table({width:{size:cw*T.length,type:WidthType.DXA},columnWidths:Array(T.length).fill(cw),layout:TableLayoutType.FIXED,borders:noT,alignment:CEN,rows:[new TableRow({cantSplit:true,children:T.map(t=>{const im=photoCache.get(t.key),r=Math.min(sz/im.w,sz/im.h);
         return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[P(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r),height:Math.round(im.h*r)}}),{alignment:CEN,spacing:{after:40}}),P(run(t.label||"","fs",12.5),{alignment:CEN,spacing:{after:120}})]})})})]}),P([],{spacing:{after:80}}))}}
-    else if(b.t==="credits")(b.lines||[]).filter(has).forEach((l,j)=>out.push(P(run(l,"fr",7.4,D_MUTED),{alignment:CEN,spacing:{before:j?0:240}})));
+    else if(b.t==="credits")(b.lines||[]).filter(has).forEach((l,j)=>out.push(P(run(l,"fr",8.5,D_MUTED),{alignment:CEN,spacing:{before:j?0:240}})));
     else if(b.t==="sect"&&md.plantCard){const first=B.findIndex(x=>x.t==="sect")===i;ls0(b).forEach(l=>out.push(P(run(l,first?"fr":"fs",first?20:14,first?D_INK:deep(A.c)),{alignment:CEN,spacing:{before:first?160:120,after:0,line:Math.round((first?20:14)*1.38*20),lineRule:"atLeast"}})))}
     else if(b.t==="para")String(b.text).split("\n").filter(has).forEach(l=>out.push(P(run(l,"fr",12.5*s),{alignment:CEN,spacing:{after:90,line:Math.round(12.5*s*1.45*20),lineRule:"atLeast"}})));
     else if(b.t==="quote"){if(B[i-1]&&B[i-1].t==="quote")out.push(P(run("•","fr",9,A.c),{alignment:CEN,spacing:{after:40}}));
@@ -14646,6 +14675,12 @@ async function displayDocx(ch,p,D,A){
     else if(b.t==="text"){if(has(b.label))heading(b.label);ch.push(...body(b.text,b.quiet?MUT:INKH,b.big?14.5:undefined))}
     else if(b.t==="small"){if(has(b.label))heading(b.label);else ch.push(spacer(80));(b.lines||[b.text]).filter(has).forEach(t=>ch.push(...body(t,MUT,9.4)))}
     else if(b.t==="list"){heading(b.label);(b.items||[]).filter(has).forEach((it,i)=>ch.push(para([raw((b.numbered?String(i+1):"•")+"\t","fs",12*s,dp),run(String(it).trim(),"fr",12*s)],{spacing:{after:70,line:LS,lineRule:"atLeast"},indent:{left:360,hanging:360},tabStops:[{type:"left",position:360}]})))}
+    else if(b.t==="minor")ch.push(para(run(b.text,"bs",12.5*s,dp),{keepNext:true,keepLines:true,spacing:{before:200,after:50}}));
+    else if(b.t==="checks"){heading(b.label);(b.items||[]).filter(has).forEach(it=>ch.push(para([raw("\u2610\t","fr",13*s,INKH),run(String(it).trim(),"fr",12*s)],{spacing:{after:70,line:LS,lineRule:"atLeast"},indent:{left:400,hanging:400},tabStops:[{type:"left",position:400}]})))}
+    else if(b.t==="fill"){const F=b.fields||[""];
+      if(F.length===1&&!has(F[0])){for(let k=0;k<Math.max(1,b.lines||1);k++)ch.push(para([],{spacing:{before:0,after:0,line:560,lineRule:"exact"},border:{bottom:{style:BorderStyle.SINGLE,size:6,color:MUT,space:1}}}))}
+      else{const step=Math.floor(W/F.length);const kids=[];F.forEach((f,j)=>{kids.push(run(f+" ","bs",12.5*s,dp));kids.push(raw("\t","fr",12*s))});
+        ch.push(para(kids,{spacing:{before:200,after:120},tabStops:F.map((f,j)=>({type:"left",position:step*(j+1)-160,leader:"underscore"}))}))}}
     else if(b.t==="tags"){heading(b.label);const kids=[];(b.items||[]).filter(has).forEach((it,i)=>{if(i)kids.push(raw("   ","fr",11*s));kids.push(new TextRun({text:"  "+clean(it)+"  ",font:F("fs"),bold:heavy("fs"),color:INKH,size:Math.round(22*s),shading:{type:ShadingType.CLEAR,fill:tn,color:"auto"}}))});
       ch.push(para(kids,{spacing:{before:20,line:Math.round(450*s),lineRule:"atLeast"}}))}
     else if(b.t==="figures"){if(has(b.label))heading(b.label);const its=(b.items||[]).filter(x=>x&&has(String(x[0])));if(its.length){const g=120,cw=Math.floor((W-(its.length-1)*g)/its.length);const cols=[];its.forEach((x,i)=>{if(i)cols.push(g);cols.push(cw)});
@@ -14687,7 +14722,7 @@ async function displayDocx(ch,p,D,A){
       ch.push(para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(pw),height:Math.round(ph)}}),{alignment:b.full?AlignmentType.CENTER:AlignmentType.LEFT,spacing:{after:160}}))}}
     else if(b.t==="stagegrid"){const T=(b.tiles||[]).filter(t=>photoCache.get(t.key));const cw=Math.floor(W/2);
       for(let i=0;i<T.length;i+=2){const R=[T[i],T[i+1]];ch.push(new Table({width:{size:cw*2,type:WidthType.DXA},columnWidths:[cw,cw],layout:TableLayoutType.FIXED,borders:noT,rows:[new TableRow({cantSplit:true,children:R.map(t=>{if(!t)return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[para([])]});
-        const im=photoCache.get(t.key),r=Math.min(300/im.w,225/im.h);return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r),height:Math.round(im.h*r)}}),{spacing:{after:40}}),para(run(t.label||"","fs",11.5),{spacing:{after:20}}),para(run(t.credit||"","fr",7.4,MUT),{spacing:{after:140}})]})})})]}))}}
+        const im=photoCache.get(t.key),r=Math.min(300/im.w,225/im.h);return new TableCell({width:{size:cw,type:WidthType.DXA},borders:noB,children:[para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(im.w*r),height:Math.round(im.h*r)}}),{spacing:{after:40}}),para(run(t.label||"","fs",11.5),{spacing:{after:20}}),para(run(t.credit||"","fr",8.5,MUT),{spacing:{after:140}})]})})})]}))}}
     else if(b.t==="web"){
       try{const png=await webPng(b.web,A);ch.push(para(new ImageRun({type:"png",data:png.data,transformation:{width:png.w,height:png.h}}),{alignment:AlignmentType.CENTER,spacing:{after:160}}))}
       catch(e){if(has(b.web.focus))ch.push(...body(b.web.focus));(b.web.branches||[]).filter(x=>x.name||x.materials).forEach(x=>{heading(x.name);ch.push(...body(x.materials||" "))})}}
@@ -17259,7 +17294,7 @@ async function rcMake(manual){
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
       clear()}
     // each educator's records page, a former educator's in Former educators
-    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=ce2800c4dc","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
+    try{staffLoad=staffLoad||loadScript("tree-staff.js?v=0a4de7d7af","TreeStaff").catch(e=>{staffLoad=null;throw e});const ed=await (await staffLoad).readable();rcNow.total+=ed.length*2;
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
