@@ -1,0 +1,96 @@
+{
+ "name": "s59BeanHouse",
+ "note": "Bean house where teepee was, across garden pages, plant cards, PD and family pieces, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/garden/setup.json",
+   "from": "A bean teepee becomes a room",
+   "to": "A bean house becomes a room"
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "from": "climb our bean teepee.",
+   "to": "climb our bean house."
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "from": "sown in spring on a teepee.",
+   "to": "sown in spring around a bean house."
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "from": "Sow beans around the teepee",
+   "to": "Sow beans around the bean house"
+  },
+  {
+   "path": "staff/garden/setup.json",
+   "from": "climb up tall poles and teepees.",
+   "to": "climb up tall poles and bean houses."
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "from": "Grow a bean or gourd teepee or a sunflower house",
+   "to": "Grow a bean or gourd house or a sunflower house"
+  },
+  {
+   "path": "staff/library/prompts/provocations.md",
+   "from": "a sunflower house or a bean teepee of scarlet runner",
+   "to": "a sunflower house or a bean house of scarlet runner"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "**Bean and gourd teepee.**",
+   "to": "**Bean and gourd house.**"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "a pizza patch or bean teepee families",
+   "to": "a pizza patch or bean house families"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "such as a sunflower house or a teepee, fit",
+   "to": "such as a sunflower house or a bean house, fit"
+  },
+  {
+   "path": "staff/pd/modules/28-planning-the-garden-year.md",
+   "from": "building a bean teepee or sunflower house plan",
+   "to": "building a bean house or sunflower house plan"
+  },
+  {
+   "path": "staff/pd/modules/27-garden-as-teacher.md",
+   "from": "a bean and gourd teepee, and our own willow dome",
+   "to": "a bean and gourd house, and our own willow dome"
+  },
+  {
+   "path": "staff/pd/printables/planning-the-garden-year.md",
+   "from": "**Bean and gourd teepee.**",
+   "to": "**Bean and gourd house.**"
+  },
+  {
+   "path": "staff/readings.json",
+   "from": "Her sunflower houses and bean teepees inspired",
+   "to": "Her sunflower houses and bean houses inspired"
+  },
+  {
+   "path": "staff/familypieces/together-planning-the-garden-year.md",
+   "from": "Lovejoy's book and a bean teepee.",
+   "to": "Lovejoy's book and a bean house."
+  },
+  {
+   "path": "staff/familypieces/together-planning-the-garden-year.md",
+   "from": "**A bean teepee.**",
+   "to": "**A bean house.**"
+  },
+  {
+   "path": "staff/familypieces/together-planning-the-garden-year.md",
+   "from": "How tall will the teepee get?",
+   "to": "How tall will the bean house get?"
+  },
+  {
+   "path": "staff/familypieces/together-garden-as-teacher.md",
+   "from": "a bean teepee or our own willow dome",
+   "to": "a bean house or our own willow dome"
+  }
+ ]
+}

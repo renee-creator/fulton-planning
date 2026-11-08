@@ -1257,6 +1257,7 @@ module.exports = function staffModule(o) {
     // the Licensing pieces as a step of Safety and Licensing, only while that path has no Licensing step
     s57PathLicensing: ['code:once/s57-path-licensing.json', 'The Licensing pieces as a step of Safety and Licensing, November 7, 2026'],
     s58PdPieces: ['code:once/s58-pd-pieces.json', 'Printables for five modules, five family pieces and twenty-eight Presenting sections, November 7, 2026'],
+    s59BeanHouse: ['code:once/s59-bean-house.json', 'Bean house where teepee was, November 7, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
