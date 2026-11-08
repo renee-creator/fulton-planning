@@ -2792,22 +2792,28 @@ async function handle(req, res) {
     let b = {}; try { b = await readBody(req, 64 * 1024); } catch (e) { b = {}; }
     const key = backupKey(), given = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || (b && b.key) || '');
     if (!key || !given || !sameText(given, key)) { log('Backup refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
+    const t0 = Date.now(); const lap = {}; const mark = k => { lap[k] = Date.now() - t0; };
     if (!store.ready) await loadAll();
     if (!store.ready) { err(req, res, 503, 'The records could not be loaded, so there is nothing to back up yet.'); return; }
+    mark('load');
     if (!calendar.ready) { try { await calendar.loadAll(); } catch (e) { log('The calendar could not be loaded for the backup', e.message); } }
     // the educator records load after the rest, so a backup that wakes the server waits for them too
     try { await staff.load(); } catch (e) { log('Educator records could not be loaded for the backup', e.message); }
     const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean);
+    mark('save');
     const bundle = backupBundle(saved);
     // the pictures in the Policies and Procedures, the Family Handbook and the recipe library travel with the backup
     try { const imgs = await staff.dumpImages(); let n = 0; for (const [p, b64] of Object.entries(imgs)) { bundle.files[p] = { base64: b64 }; n++; } bundle.manifest.counts.pictures = n; bundle.manifest.files = Object.keys(bundle.files).length; } catch (e) { log('The pictures could not be added to the backup', e.message); }
-    const gz = zlib.gzipSync(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 9 });
+    mark('bundle');
+    // compressed off the main thread, so the rest of TREE keeps answering while the backup is made
+    const gz = await new Promise((ok, no) => zlib.gzip(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 6 }, (e, out) => e ? no(e) : ok(out)));
+    mark('compress');
     lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };
     // the time is kept in the records too, so the director's Settings shows it after the server has slept
     const cur = store.recs.settings.get('backup');
     store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: { id: 'backup', lastAt: lastBackup.at, bytes: gz.length, files: bundle.manifest.files, counts: bundle.manifest.counts, updatedByName: 'Nightly backup' } }));
     noteChange('settings', 'backup'); scheduleSave('settings', 'backup');
-    log('Backup sent,', bundle.manifest.files, 'files,', Math.round(gz.length / 1024), 'KB');
+    log('Backup sent,', bundle.manifest.files, 'files,', Math.round(gz.length / 1024), 'KB, ms at load', lap.load, 'save', lap.save, 'bundle', lap.bundle, 'compress', lap.compress);
     send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE backup ${bundle.manifest.date}.json.gz"`, 'Cache-Control': 'no-store' }, gz);
     return;
   }
