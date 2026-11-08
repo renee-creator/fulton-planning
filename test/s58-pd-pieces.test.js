@@ -8,7 +8,7 @@ const LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 's58-
 
 test('s58PdPieces adds the printables, family pieces and Presenting sections', async () => {
   const mods = LIST.changes.filter(c => c.from);
-  const f = await fx.start({ env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s53Paths,s54PlantStages,s55SofterWords,s56RecordText,s57PathLicensing' },
+  const f = await fx.start({ env: { ONCE_SKIP: 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s53Paths,s54PlantStages,s55SofterWords,s56RecordText,s57PathLicensing,s59BeanHouse' },
     more: put => { for (const c of mods) put(c.path, '<!--\nserves: obs\n-->\n# A module\n\nLead.\n\n## Readings\n\n' + c.from + '\n'); } });
   try {
     let ok = false;
