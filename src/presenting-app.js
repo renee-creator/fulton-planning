@@ -257,13 +257,15 @@ const metaOf=e=>[["Audience",e.audience||"Not yet set"],["Audience type",PR_AUD[
 function guideDoc(e){const C=e.chosen||[],R=e.readings||[];const rd=x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":"")+(x.note?". "+x.note:"");
   return report(e.title+", facilitator guide",metaOf(e),[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,e.format?{t:"text",label:"How it is offered",text:e.format}:null,
     ...(e.plan||[]).map((s,i)=>({t:"text",label:(s.title||"Section "+(i+1))+(s.minutes?", "+dur(+s.minutes):""),text:[s.do,s.script?"Facilitator script. "+s.script:"",...(s.moments||[]).map(id=>C.find(x=>x.id===id)).filter(Boolean).map(x=>"Moment "+(C.indexOf(x)+1)+". "+clip(words(x,e),400)+(where(x)?" ("+where(x)+")":"")),...(s.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(rd)].filter(Boolean).join("\n\n")})),
-    !(e.plan||[]).length?{t:"text",text:"The plan has no sections yet."}:null,
+    !(e.plan||[]).length&&(e.question||e.subtitle||(e.chosen||[]).length||(e.readings||[]).length)?{t:"text",text:"The plan has no sections yet."}:null,
     C.length?{t:"list",label:"Chosen moments",numbered:true,items:C.map(x=>clip(words(x,e),500)+(where(x)?" ("+where(x)+")":""))}:null,
     R.length?{t:"list",label:"Readings and files",items:R.map(rd)}:null,followBlocks(e)].flat().filter(Boolean))}
 function followBlocks(e){const f=Object.assign({on:false,reads:[],prompts:[],checks:[]},e.followup);if(!f.on)return [];const R=e.readings||[];
   return [{t:"sub",text:"Self-paced follow-up"},f.reads.length?{t:"list",label:"Short readings",items:f.reads.map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":""))}:null,
     f.prompts.length?{t:"list",label:"Reflection prompts",items:f.prompts.map(x=>x.text)}:null,f.checks.length?{t:"list",label:"A brief check",numbered:true,items:f.checks.map(x=>x.text)}:null]}
-function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Offered",PR_MODE[e.mode]||""],["Date",prWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
+// a printed date note never names the person it waits on, so "To be confirmed with" a host prints as To be confirmed
+const printWhen=e=>prWhen(Object.assign({},e,{dateNote:String(e.dateNote||"").replace(/^\s*(to be confirmed|tbc|to confirm)\b.*$/i,"To be confirmed")}));
+function handoutDoc(e){const R=e.readings||[];return report(e.title,[["Audience",e.audience],["Offered",PR_MODE[e.mode]||""],["Date",printWhen(e)],["Place",e.place||""]],[e.subtitle?{t:"text",text:e.subtitle}:null,e.question?{t:"text",label:"Guiding question",text:e.question}:null,
   (e.plan||[]).some(s=>s.handout)?{t:"list",label:"For today",items:(e.plan||[]).filter(s=>s.handout).map(s=>(s.title?s.title+". ":"")+s.handout)}:null,
   R.filter(x=>x.kind!=="drive").length?{t:"list",label:"Readings",items:R.filter(x=>x.kind!=="drive").map(x=>x.title+(x.url?" ("+treeReadPlace(x.url)+")":"")+(x.note?". "+x.note:""))}:null,
   ...(e._map?[{t:"photo",key:"sitemap",full:true,maxH:420},{t:"list",label:"The site map",items:e._map}]:[]),...followBlocks(e)].filter(Boolean))}
@@ -291,9 +293,13 @@ const outsideOn=e=>st.outsideP&&e.id in st.outsideP?st.outsideP[e.id]:(e.audienc
 const forOutside=e=>{const ok=new Set((e.chosen||[]).filter(x=>x.outside).map(x=>x.id));const nn=t=>t?displayText(String(t),"none"):t;
   return Object.assign({},e,{_outside:true,names:"none",subtitle:nn(e.subtitle),question:nn(e.question),format:nn(e.format),readings:(e.readings||[]).filter(x=>x.kind!=="drive"),chosen:(e.chosen||[]).filter(x=>ok.has(x.id)),
     plan:(e.plan||[]).map(s=>Object.assign({},s,{title:nn(s.title),do:nn(s.do),script:nn(s.script),handout:nn(s.handout),moments:(s.moments||[]).filter(id=>ok.has(id)),readings:(s.readings||[]).filter(id=>(e.readings||[]).some(r=>r.id===id&&r.kind!=="drive"))}))})};
-const creditDocs=docs=>{const c="Fulton Community School & Farm";for(const d of docs){if(d.meta)d.meta=[...d.meta,["From",c]];else d.details=[...(d.details||[]),c]}return docs};
+// an outside print names the school on its face, under its title and at the foot of each page, with single spaces throughout
+const oneSpace=v=>typeof v==="string"?v.replace(/[ \t]{2,}/g," "):Array.isArray(v)?v.map(oneSpace):v&&typeof v==="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,k==="key"||k==="src"?x:oneSpace(x)])):v;
+const creditDocs=docs=>{const c="Fulton Community School & Farm";docs.forEach((d,i)=>{const o=oneSpace(d);Object.assign(d,o);if(d.meta)d.meta=[...d.meta,["From",c]];else d.details=[...(d.details||[]),c];d.footer=c});return docs};
 async function print(k,word,toShow){const out0=outsideOn(E());const e=out0?forOutside(E()):E();const kind=word?"word":"pdf";progress("Making the file");
   const docs=k==="guide"?[guideDoc(e)]:k==="handout"?[handoutDoc(Object.assign({},e,{_map:await handoutMap()}))]:k==="panels"?panelDocs(e):slideDocs(e);
+  // panels or slides with no moment and no question would be a title page alone, so nothing prints
+  if((k==="panels"||k==="slides")&&!(e.chosen||[]).length&&!e.question)docs.length=0;
   if(out0)creditDocs(docs);
   if(docs.some(d=>(d.photos||[]).length)){await loadPhotos(docs);if(!(toShow&&k==="slides"&&!word))await softenDocPhotos(docs)}
   return out(kind,docs,e.title+" "+{guide:"facilitator guide",handout:"handout",panels:"panels",slides:toShow&&!word?"slides to show":"slides"}[k])}

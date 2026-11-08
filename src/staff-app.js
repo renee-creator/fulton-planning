@@ -827,7 +827,8 @@ async function polChange(t,d){
 /* ---------- the policies in print, the whole book or one section, as a PDF and a Word file ----------
    The whole book has a cover with the edition year, a table of contents with page numbers, a page number on every
    page, and each part starting on a new page. The Family Handbook ends with a page for a family to sign on paper. */
-const PAGE={w:612,h:792,l:60,r:60,t:64,b:78};
+// a 12 point body on a line of about 75 characters, so long policy pages read easily
+const PAGE={w:612,h:792,l:80,r:80,t:64,b:78};
 const INK=[34,51,42],MOSS=[47,90,67],MUTED=[93,110,99],RULE=[200,210,202];
 // a character Andika cannot draw becomes the nearest one it can, so no word is lost on paper
 // a link to a place in TREE prints as its words, since it opens only inside TREE
@@ -866,9 +867,10 @@ function pdfWriter(doc,pics){let y=PAGE.t;const W=PAGE.w-PAGE.l-PAGE.r;const mar
     const maxH=PAGE.h-PAGE.t-PAGE.b-20;let w=Math.min(W,p.w*.6),h=w*p.h/p.w;if(h>maxH){h=maxH;w=h*p.w/p.h}if(h>300&&y>PAGE.t+40)room(h+8);else room(h+8);
     doc.addImage(p.url,p.type,PAGE.l+(W-w)/2,y-8,w,h);y+=h+6}
   function body(text){for(const b of PM().blocks(text)){const ind=b.quote?18:0;
-    if(b.t==="h"){const size=b.level<=2?13.5:b.level===3?12:11;room(size*3);y+=6;words(b.runs.map(r=>Object.assign({},r,{b:true})),size,PAGE.l+ind,W-ind,size*1.35,MOSS);y+=2}
-    else if(b.t==="p"){words(b.runs,10.5,PAGE.l+ind,W-ind,14.5);y+=5}
-    else if(b.t==="list"){for(const it of b.items){const x=PAGE.l+ind+it.level*16;room(14.5);font({},10.5);doc.setTextColor(...INK);doc.text(it.ordered?it.n+".":"•",x,y);words(it.runs,10.5,x+16,W-ind-it.level*16-16,14.5);y+=2}y+=4}
+    // a heading keeps at least its first three lines of words with it, so none sits alone at the foot of a page
+    if(b.t==="h"){const size=b.level<=2?15:b.level===3?13.5:12.5;room(size*1.4+17*3+10);y+=10;words(b.runs.map(r=>Object.assign({},r,{b:true})),size,PAGE.l+ind,W-ind,size*1.35,MOSS);y+=3}
+    else if(b.t==="p"){words(b.runs,12,PAGE.l+ind,W-ind,17);y+=6}
+    else if(b.t==="list"){for(const it of b.items){const x=PAGE.l+ind+it.level*18;room(17);font({},12);doc.setTextColor(...INK);doc.text(it.ordered?it.n+".":"•",x,y);words(it.runs,12,x+18,W-ind-it.level*18-18,17);y+=2}y+=5}
     else if(b.t==="table")table(b.rows);
     else if(b.t==="cols")table(colRows(b));
     else if(b.t==="img")image(b.src,b.alt)}}
@@ -876,8 +878,8 @@ function pdfWriter(doc,pics){let y=PAGE.t;const W=PAGE.w-PAGE.l-PAGE.r;const mar
 // the parts and sections, each part on a new page. It returns the page each part and section starts on.
 function polBody(doc,pics,d,parts,opt){const P=pdfWriter(doc,pics);const starts=[];let first=true;
   for(const p of parts){if(!first||opt.newFirst)P.newPage();first=false;starts.push({title:p.title,page:P.page(),level:1});
-    P.words([{text:p.title,b:true}],20,PAGE.l,P.W,25,MOSS);P.y+=6;
-    for(const s of p.sections){const own=p.sections.length>1||s.title!==p.title;if(own){P.room(60);P.y+=6;starts.push({title:s.title,page:P.page(),level:2});P.words([{text:s.title,b:true}],15,PAGE.l,P.W,19,INK);P.y+=4}
+    P.words([{text:p.title,b:true}],24,PAGE.l,P.W,29,MOSS);P.y+=8;
+    for(const s of p.sections){const own=p.sections.length>1||s.title!==p.title;if(own){P.room(18*1.3+17*3+12);P.y+=10;starts.push({title:s.title,page:P.page(),level:2});P.words([{text:s.title,b:true}],18,PAGE.l,P.W,23,INK);P.y+=5}
       P.body(s.body);P.y+=8}}
   return {starts,P}}
 function polCover(doc,pics,d,name){const W=PAGE.w;doc.setTextColor(...MOSS);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text("FULTON COMMUNITY SCHOOL & FARM",W/2,110,{align:"center"});
@@ -895,7 +897,7 @@ function polAckPage(doc,d,P){P.newPage();P.words([{text:"Family Handbook Acknowl
   line("Child's name");line("Parent or guardian's name");line("Signature");line("Date");P.y+=10;line("Second parent or guardian's name");line("Signature");line("Date");
   P.words(PM().runs("Please return this page to the office. It is kept in your child's file."),10,PAGE.l,P.W,14,MUTED)}
 function polFooters(doc,d,cover){const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setDrawColor(...RULE);doc.setLineWidth(.6);doc.line(PAGE.l,PAGE.h-50,PAGE.w-PAGE.r,PAGE.h-50);
-  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...MUTED);doc.text(pdfText(d.footer||"Fulton Community School & Farm"),PAGE.l,PAGE.h-36);doc.text(`Page ${i} of ${n}`,PAGE.w-PAGE.r,PAGE.h-36,{align:"right"})}}
+  doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(60,74,66);doc.text(pdfText(d.footer||"Fulton Community School & Farm"),PAGE.l,PAGE.h-36);doc.text(`Page ${i} of ${n}`,PAGE.w-PAGE.r,PAGE.h-36,{align:"right"})}}
 async function polPdf(k,d,which){await loadPrintFonts();const name=polName(k);const sec=which==="sec"?polSecs(d).find(s=>s.id===st.polSec):null;
   const parts=sec?[{title:sec.title,sections:[sec]}]:polBook(d);const pics=await polPictures(d,parts.flatMap(p=>p.sections));
   const file=sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`;
@@ -903,7 +905,8 @@ async function polPdf(k,d,which){await loadPrintFonts();const name=polName(k);co
     polBody(doc,pics,d,parts,{});polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf");return}
   // a first pass finds the page each part starts on, then the book is made with its contents ahead of it
   const scratch=planDoc({unit:"pt",format:"letter"});const {starts}=polBody(scratch,pics,d,parts,{});
-  const per=38,tocPages=Math.ceil(starts.length/per);const doc=planDoc({unit:"pt",format:"letter"});polCover(doc,pics,d,name);doc.addPage("letter","portrait");polToc(doc,starts,1+tocPages,per);
+  // the contents keep above the footer, 33 lines to a page
+  const per=33,tocPages=Math.ceil(starts.length/per);const doc=planDoc({unit:"pt",format:"letter"});polCover(doc,pics,d,name);doc.addPage("letter","portrait");polToc(doc,starts,1+tocPages,per);
   const {P}=polBody(doc,pics,d,parts,{newFirst:true});if(k==="family")polAckPage(doc,d,P);polFooters(doc,d);await saveFile(doc.output("blob"),safeFile(file)+".pdf")}
 async function polWord(k,d,which){let X;try{X=await TREE_KIT.word()}catch(e){toast("The Word tool did not load. Check your connection and reload.");return}
   await loadPrintFonts();const {Document,Packer,Paragraph,TextRun,ExternalHyperlink,Table,TableRow,TableCell,WidthType,ImageRun,Footer,PageNumber,HeadingLevel,AlignmentType,TableOfContents,PageBreak,BorderStyle}=X;
@@ -915,8 +918,8 @@ async function polWord(k,d,which){let X;try{X=await TREE_KIT.word()}catch(e){toa
     return new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:80,after:120},children:[new ImageRun({type:p.type==="PNG"?"png":"jpg",data:p.buf,transformation:{width:Math.round(w),height:Math.round(h)}})]})};
   const bodyOf=text=>{const out=[];for(const b of PM().blocks(text)){const ind=b.quote?{left:440}:undefined;
     if(b.t==="h")out.push(new Paragraph({heading:b.level<=3?HeadingLevel.HEADING_3:HeadingLevel.HEADING_4,keepNext:true,spacing:{before:160,after:60},children:inl(b.runs,{bold:true,color:"2F5A43"})}));
-    else if(b.t==="p")out.push(new Paragraph({indent:ind,spacing:{after:120},children:inl(b.runs,{size:21})}));
-    else if(b.t==="list"){listNo++;for(const it of b.items)out.push(it.ordered?new Paragraph({numbering:{reference:"pnum",level:Math.min(3,it.level),instance:listNo},spacing:{after:60},children:inl(it.runs,{size:21})}):new Paragraph({bullet:{level:Math.min(3,it.level)},spacing:{after:60},children:inl(it.runs,{size:21})}))}
+    else if(b.t==="p")out.push(new Paragraph({indent:ind,spacing:{after:120},children:inl(b.runs,{size:24})}));
+    else if(b.t==="list"){listNo++;for(const it of b.items)out.push(it.ordered?new Paragraph({numbering:{reference:"pnum",level:Math.min(3,it.level),instance:listNo},spacing:{after:60},children:inl(it.runs,{size:24})}):new Paragraph({bullet:{level:Math.min(3,it.level)},spacing:{after:60},children:inl(it.runs,{size:24})}))}
     else if(b.t==="table"){const n=Math.max(...b.rows.map(r=>r.length));const bd={style:BorderStyle.SINGLE,size:4,color:"C8D2CA"};
       out.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:b.rows.map((r,ri)=>new TableRow({tableHeader:ri===0,children:Array.from({length:n},(_,ci)=>new TableCell({width:{size:Math.floor(100/n),type:WidthType.PERCENTAGE},borders:{top:bd,bottom:bd,left:bd,right:bd},margins:{top:60,bottom:60,left:100,right:100},children:[new Paragraph({children:inl(r[ci]||[],{size:19,bold:ri===0?true:undefined})})]}))}))}));out.push(new Paragraph({children:[]}))}
     else if(b.t==="cols"){const rows=colRows(b);if(rows.length){const n=Math.max(...rows.map(r=>r.length));const bd={style:BorderStyle.SINGLE,size:4,color:"C8D2CA"};
@@ -939,7 +942,7 @@ async function polWord(k,d,which){let X;try{X=await TREE_KIT.word()}catch(e){toa
   const wf=wordFonts();
   const docx=TREE_KIT.wordFile(X,Object.assign({creator:"TREE, Fulton Community School",title:sec?`${name}, ${sec.title}`:name,features:{updateFields:true},
     numbering:{config:[{reference:"pnum",levels:[0,1,2,3].map(l=>({level:l,format:"decimal",text:`%${l+1}.`,alignment:AlignmentType.START,style:{paragraph:{indent:{left:440*(l+1),hanging:300}}}}))}]},
-    styles:{default:{document:{run:{font:F}}}},sections:[{properties:{page:{margin:{top:1000,bottom:1000,left:1100,right:1100}}},footers:{default:foot},children:ch}]},wf.length?{fonts:wf}:{}));
+    styles:{default:{document:{run:{font:F}}}},sections:[{properties:{page:{margin:{top:1000,bottom:1000,left:1600,right:1600}}},footers:{default:foot},children:ch}]},wf.length?{fonts:wf}:{}));
   const blob=await TREE_KIT.wordBlob(X,docx);await saveFile(blob,safeFile(sec?`${name} ${d.edition}, ${sec.title}`:`${name} ${d.edition}`)+".docx")}
 
 /* ---------- Settings, the director's ---------- */
@@ -1035,7 +1038,7 @@ async function printKind(k,word){const kind=word?"word":"pdf";
   if(k==="checklist"||k==="paperwork"){const p=P();const pcs=await loadPd();
     if(k==="checklist"){const ck=checklist(p,pcs,(p.profile||{}).startDate||"");return out(kind,[report("First weeks checklist, "+p.name,[["Start date",fd((p.profile||{}).startDate)]],[{t:"table",label:"",noRule:true,head:["","Step",""],rows:ck.map((c,i)=>[String(i+1),c.label,c.done?"Done":(c.note||"Not yet")]),widths:[.06,.66,.28]}])],"First weeks checklist "+p.name)}
     return out(kind,[report("New Educator paperwork",[["Educator",p.name]],[{t:"table",label:"",noRule:true,head:["Form","Number","Why it matters","Uploaded"],rows:PAPERS().map(x=>{const r=(p.paperwork||{})[x.k]||{};return [x.form,x.num,x.why,(r.files||[]).length||r.done||r.ack?"Yes":"Not yet"]}),widths:[.3,.14,.42,.14]},{t:"text",text:"Payroll and tax forms are completed in QuickBooks Workforce. Social Security cards and driver's licenses are shown in person and copied for the paper personnel file only."}])],"New Educator paperwork "+p.name)}
-  if(k.startsWith("pieces:")){const d=k.slice(7);const pcs=await loadPd();const dn=((P().pd||{}).done)||{};return out(kind,[report(d==="licensing"?"Licensing at Fulton Community School":"TREE How To",[["Educator",meName()]],[{t:"table",label:"",noRule:true,head:["Piece","Regulation","Read"],rows:(pcs[d]||[]).map(x=>[x.title,x.source,dn[x.id]?fms(dn[x.id].at):""]),widths:[.44,.4,.16]}])],d==="licensing"?"Licensing at Fulton Community School":"TREE How To")}
+  if(k.startsWith("pieces:")){const d=k.slice(7);const pcs=await loadPd();const dn=((P().pd||{}).done)||{};return out(kind,[report(d==="licensing"?"Licensing at Fulton Community School":"TREE How To",[D()&&!VIEW_AS?["Printed",fd(today())]:["Educator",meName()]],[{t:"table",label:"",noRule:true,head:["Piece","Regulation","Read"],rows:(pcs[d]||[]).map(x=>[x.title,x.source,dn[x.id]?fms(dn[x.id].at):""]),widths:[.44,.4,.16]}])],d==="licensing"?"Licensing at Fulton Community School":"TREE How To")}
   // the policies print as a book, or one section on its own
   if(k.startsWith("pol:")||k.startsWith("polsec:")){const pk=k.split(":")[1];const d=await loadPol(pk);const which=k.startsWith("polsec:")?"sec":"all";try{return word?await polWord(pk,d,which):await polPdf(pk,d,which)}catch(e){fail(e)}}}
 // each educator's records page as it prints, for the director's weekly readable copies. Records only, never growth.

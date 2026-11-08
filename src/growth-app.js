@@ -297,7 +297,7 @@ async function planPage(my){const dir=isDir();if(dir&&!st.sel)st.sel=(B().people
     card("5. What I need",`<label class="fld-label">From the director<textarea rows="2" id="gp-nd">${H(p.need.director||"")}</textarea></label><label class="fld-label">From my team<textarea rows="2" id="gp-nt">${H(p.need.team||"")}</textarea></label><label class="fld-label">From training<textarea rows="2" id="gp-nr">${H(p.need.training||"")}</textarea></label>`)+
     card("6. How I take in feedback best",`<div class="hint">${dir?"Left for the educator to choose.":"Your evaluation opens in this view first, with every view one tap away."}</div>${[["scores","As scores"],["continuum","As descriptions of what comes next"],["narrative","As a narrative"],["conversation","In conversation"],["notes","Written to read later"]].map(([v,l])=>`<label class="radio"><input type="radio" name="gpfb" value="${v}" ${p.feedback===v?"checked":""} ${dir?"disabled":""}><span>${l}</span></label>`).join("")}${!p.feedback?`<div class="cnt">Not chosen yet, so the evaluation opens in the scores view.</div>`:""}`)+
     (dir?card("For you",`<label class="radio"><input type="checkbox" id="gp-aug" ${pl.source==="august"?"checked":""}><span>Entered from the August plan, exactly as written</span></label><label class="fld-label">An answer to the check-in plan or meeting frequency question, kept as a note only since check-ins are set monthly<textarea rows="2" id="gp-note">${H(pl.note||"")}</textarea></label>`):"")+
-    `<div class="actions"><button class="btn" data-gpsave="1">Save the plan</button>${pl.at?`<span class="cnt">Saved ${H(fms(pl.at))}</span>`:""}</div>`)}
+    `<div class="actions"><button class="btn" data-gpsave="1">Save the plan</button><button class="btn small ghost" data-gprint="plan">Print</button><button class="linkbtn" data-gword="plan">Word</button>${pl.at?`<span class="cnt">Saved ${H(fms(pl.at))}</span>`:""}</div>`)}
 
 /* ---------- the reflective journal ---------- */
 const PROMPTS=[["joy","A moment of joy","A moment that brought me joy this week."],["challenge","A challenge I navigated","A challenge I worked through this week, and what I learned from it."],["connection","A connection I made","One meaningful connection I made with a child, a family or a colleague."],["language","My language this week","Something I noticed about my own words or tone this week, and one language strategy I will practice next week."]];
@@ -317,6 +317,7 @@ async function journalPage(my){const boss=isDir();if(boss&&!st.sel)st.sel=(B().p
   const earlier=J.entries.filter(e=>dir||!cur||e.id!==cur.id);
   h+=card(dir?"Entries":"Earlier entries",earlier.length?earlier.map(e=>`<div class="garea"><b>${H(fd(e.date))}</b>${PROMPTS.filter(([k])=>e[k]).map(([k,l])=>`<div class="gq"><div class="cnt">${H(l)}</div><div style="white-space:pre-line">${H(e[k])}</div></div>`).join("")}${e.module?`<div class="gq"><div class="cnt">${H(e.modulePrompt||"From a module")}</div><div style="white-space:pre-line">${H(e.module)}</div></div>`:""}
     ${boss&&!dir?"":dir?(e.bring&&(e.bring.checkin||e.bring.self)?`<div class="cnt">${H(name)} chose to bring this into ${[e.bring.checkin?"a check-in":"",e.bring.self?"the self-assessment":""].filter(Boolean).join(" and ")}.</div>`:""):`<div class="actions" style="margin:4px 0 0"><button class="pill" aria-pressed="${!!(e.bring&&e.bring.checkin)}" data-gjbring="${H(e.id)}|checkin">Bring to my next check-in</button><button class="pill" aria-pressed="${!!(e.bring&&e.bring.self)}" data-gjbring="${H(e.id)}|self">Bring to my self-assessment</button></div>`}</div>`).join(""):`<div class="cnt">${dir?"No entries yet.":"Entries you save appear here."}</div>`);
+  h+=`<div class="actions"><button class="btn small ghost" data-gprint="journal">Print</button><button class="linkbtn" data-gword="journal">Word</button><span class="cnt">${dir?"Prints the entries you read here. Keep the paper as private as the journal.":"Prints your entries. Keep the paper as private as the journal."}</span></div>`;
   draw(my,h)}
 
 /* ---------- the monthly check-in ---------- */
@@ -343,7 +344,7 @@ const dur=n=>n===90?"an hour and a half":n===60?"an hour":n%60===0?(n/60)+" hour
 async function checkinPage(my){const dir=isDir();const b=B();
   if(!dir){const d=await doc(meName(),true);const s=[b.schedule.now,b.schedule.next].filter(Boolean).flatMap(x=>x.list).filter(x=>x.date>=today()&&x.name===meName());const nxt=s[0];const mode=d.profile.checkin;
     const ym=today().slice(0,7);const pre=(d.pre||{})[ym]||{};const cis=d.checkins||[];const last=cis.find(c=>c.focus&&c.focus.settled);
-    draw(my,head("Check-ins","My check-ins","A regular, supportive space to talk about your practice, your class and the children, and to agree together on what comes next. Nothing needs to be prepared beforehand."+ciLink())+
+    draw(my,head("Check-ins","My check-ins","A regular, supportive space to talk about your practice, your class and the children, and to agree together on what comes next. Nothing needs to be prepared beforehand."+ciLink())+`<div class="actions" style="margin:0 0 10px"><button class="btn small ghost" data-gprint="mycheckins">Print my focus and follow-up notes</button><button class="linkbtn" data-gword="mycheckins">Word</button></div>`+
       card("My next check-in",nxt?`<div><b>${H(new Date(nxt.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</b>${nxt.time?", "+H(tm(nxt.time)):""}, about twenty minutes${nxt.kind==="second"?", on the short second Monday":nxt.kind==="slot"?", during your Monday planning hour":""}.</div><div class="cnt">It is on the TREE calendar too.</div>`:`<div class="cnt">${mode==="asneeded"?"Your check-ins happen as needed. The director sets a time with you.":"The next check-in appears here once it is on the calendar."}</div>`)+
       card("Deeper Dive",`<div class="hint">Before we meet, you name what you want to focus on first, if you like. You are always welcome to bring a journal entry, a proud moment, a question or a piece of documentation.</div><label class="fld-label">What I want to focus on<textarea rows="3" id="gc-pre">${H(pre.focus||"")}</textarea></label><div class="actions"><button class="btn small" data-gcpre="1">Save</button>${pre.at?`<span class="cnt">Saved ${H(fms(pre.at))}</span>`:""}</div>`)+
       card("Focus Until Next Time",last?`<div class="gq">${md(last.focus.settled)}</div><div class="cnt">${last.focus.area?"Linked to "+H(areaName(last.focus.area))+". ":""}From the check-in on ${H(fd(last.date))}.</div>${last.focus.module&&modReady(last.focus.module)?`<div class="actions"><button class="btn small ghost" data-tview="stpd" data-stmod="m:${H(last.focus.module)}">${H(modTitle(last.focus.module))}</button></div>`:""}
@@ -381,7 +382,7 @@ async function checkinForm(my,name){const d=await doc(name,true);const y=yr();co
       <div class="garea"><b>${AFTER[0][1]}</b><div class="cnt gq">${H(AFTER[0][2])}</div>${fld("followup",4)}</div>
       <div class="garea"><b>${AFTER[1][1]}</b><div class="cnt gq">${H(AFTER[1][2])}</div>${rate("gcalign",c.align.rating)}</div>
       <div class="garea"><b>${AFTER[2][1]}</b><div class="cnt gq">${H(AFTER[2][2])}</div>${rate("gceffect",c.effect)}</div>`)+
-    `<div class="actions"><button class="btn" data-gcsave="1">Save the check-in</button><span class="cnt">${H(name)} sees only the Focus Until Next Time and follow-up notes.</span></div>`+
+    `<div class="actions"><button class="btn" data-gcsave="1">Save the check-in</button><button class="btn small ghost" data-gprint="checkin">Print</button><button class="linkbtn" data-gword="checkin">Word</button><span class="cnt">${H(name)} sees only the Focus Until Next Time and follow-up notes.</span></div>`+
     ((d.trend||[]).length?card("Support trend",`<div class="gtrend">${trendSvg(d.trend)}</div><div class="cnt">Their temperature in green, yours in gold and team alignment in grey. A dip shows early, and these never touch evaluation scores.</div>`):"")+
     (past.length?card("Earlier check-ins",past.map(x=>`<div class="prow"><span><b>${H(fd(x.date))}</b> <span class="cnt">${H(clip(x.focus&&x.focus.settled,90))}</span></span><button class="btn small ghost" data-gciopen="${H(x.id)}">Open</button></div>`).join("")):""))}
 
@@ -399,9 +400,9 @@ async function momentsPage(my){st.moments=(await ga("moments")).list;const f=st.
         <div class="actions"><button class="btn small ghost" data-gmphoto="1">${f.photo?"Photo added, change it":"Add a photo"}</button></div>`}
       <div class="chiprow-label" style="margin-top:8px">Who sees it${f.kind==="kudos"?". The colleague always sees it.":""}</div>${seg("data-gmaud",Object.entries(aud),f.audience||"everyone")}
       <div class="actions"><button class="btn" data-gmshare="1">Share</button></div>`)+
-    card("Moments and Kudos",st.moments.length?st.moments.map(m=>`<div class="gmom"><div class="cnt"><b>${H(m.by)}</b>${m.kind==="kudos"?`, Kudos for <b>${H(m.to)}</b>`:", a proud moment"} <span class="muted">${H(fms(m.at))}, ${H(aud[m.audience]||"")}</span></div><div style="white-space:pre-line">${H(m.text)}</div>
+    card("Moments and Kudos",(st.moments.length?`<div class="actions" style="margin:0 0 6px"><button class="btn small ghost" data-gprint="moments">Print</button><button class="linkbtn" data-gword="moments">Word</button></div>`:"")+(st.moments.length?st.moments.map(m=>`<div class="gmom"><div class="cnt"><b>${H(m.by)}</b>${m.kind==="kudos"?`, Kudos for <b>${H(m.to)}</b>`:", a proud moment"} <span class="muted">${H(fms(m.at))}, ${H(aud[m.audience]||"")}</span></div><div style="white-space:pre-line">${H(m.text)}</div>
       ${m.link?`<div class="cnt">${m.link.kind==="obs"?`<button class="linkbtn" data-obsgo="${H(m.link.id)}">${H(m.link.label)}</button>`:H(m.link.label)}</div>`:""}${m.photo?`<div><button class="linkbtn" data-gmview="${H(m.photo)}">See the photo</button></div>`:""}
-      ${m.mine||isDir()?`<div><button class="linkbtn" data-gmrm="${H(m.id)}">Remove</button></div>`:""}</div>`).join(""):`<div class="cnt">Moments and Kudos you can see appear here.</div>`))}
+      ${m.mine||isDir()?`<div><button class="linkbtn" data-gmrm="${H(m.id)}">Remove</button></div>`:""}</div>`).join(""):`<div class="cnt">Moments and Kudos you can see appear here.</div>`)))}
 
 /* ---------- the PD library's modules ---------- */
 /* a module's family version, the Learning together piece families read on the Family page, kept beside its module for
@@ -746,7 +747,8 @@ Gr.deckKit={loadMods,deckModule,outsideWords,areaName,loadPptx};
 async function moduleDeck(m,o){o=o||{};if(o.format!=="pdf"&&window.TreeDeck)return window.TreeDeck.pptx(m,o);const mm=deckModule(m,o.depth,o.outside);let sl=moduleSlides(mm);const pics={};
   for(const s of sl){if(!s._pic)continue;try{pics[s._pic]=await X.picData(s._pic)}catch(er){s._drop=true}}sl=sl.filter(s=>!s._drop);
   if(o.format==="pdf"){for(const s of sl)if(s._pic){const pd=pics[s._pic];photoCache.set("pdimg:"+s._pic,{url:pd.url,bytes:pd.buf,w:pd.w,h:pd.h});delete s._pic}
-    if(o.outside)for(const s of sl)s.footer="Fulton Community School & Farm";await out("pdf",sl,m.title+(o.depth?", in depth":"")+(o.outside?", handout":" slides"));return}
+    if(o.outside)for(const s of sl){s.footer="Fulton Community School & Farm";s.blocks=(s.blocks||[]).filter(b=>!/^Serves /.test(b.text||"")).map(b=>b.text?Object.assign({},b,{text:b.text.replace(/[ \t]{2,}/g," ")}):b);s.title=String(s.title||"").replace(/[ \t]{2,}/g," ")}
+    if(o.outside&&sl[0])sl[0].details=[...(sl[0].details||[]),"Fulton Community School & Farm"];await out("pdf",sl,m.title+(o.depth?", in depth":"")+(o.outside?", handout":" slides"));return}
   const P=await loadPptx();const pres=new P();pres.layout="LAYOUT_WIDE";pres.title=String(m.title).replace(/&/g,"&amp;").replace(/</g,"&lt;");pres.company="Fulton Community School &amp; Farm";
   const INK="1E2620",GREEN="2E5E45",SOFT="55605A",credit=o.outside?"Fulton Community School & Farm":"Fulton Community School";
   sl.forEach((s,i)=>{const sd=pres.addSlide();sd.background={color:"FFFFFF"};
@@ -834,9 +836,14 @@ function teamBuilder(my,it){
     card("Next steps",`<div class="hint">Each with a person. A next step stays on the next team meeting's agenda until it is marked done.</div><div style="display:grid;gap:8px">${E.steps.map(stp).join("")}</div><div class="actions"><button class="btn small ghost" data-gstpadd="1">Add a next step</button></div>`)+
     `<div class="actions"><button class="btn" data-gteamsave="1">Save the team meeting</button></div>`)}
 const collectTeam=()=>collectAgenda();
+// a recent observation clipped on the agenda with "…" is printed whole, from the observation it came from
+const fullObs=t=>{const s=String(t||"").replace(/\u2026$/,"").trim();if(s===t||typeof notices==="undefined")return t;for(const n of notices.values()){const w=String(n.noticed||"").replace(/\s+/g," ").trim();if(w.startsWith(s))return w}return t};
 function teamDoc(it){const a=it.agenda||{};const blocks=(a.blocks||[]).length?a.blocks:(it.startBlocks||[]);
-  return report(it.room+" class team meeting",[["Day",new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})]],[
-    ...blocks.map(b=>({t:"text",label:b.title,text:b.why||""})),a.notes?{t:"text",label:"Notes",text:a.notes}:null,
+  return report(agTitle(it.room+" class team meeting"),[["Day",new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})]],[
+    ...blocks.map(b=>{const L=String(b.why||"").split("\n").map(x=>x.trim()).filter(Boolean);
+      // observations print in full, one to a line, from the observation itself when it is at hand
+      if(L.length&&L.every(x=>/^\u2022/.test(x)))return {t:"list",label:agWords(b.title),items:L.map(x=>agWords(fullObs(x.replace(/^\u2022\s*/,""))))};
+      return {t:"text",label:agWords(b.title),text:agWords(b.why||"")}}),a.notes?{t:"text",label:"Notes",text:agWords(a.notes)}:null,
     [...(it.carried||[]),...(a.steps||[])].length?{t:"list",label:"Next steps",items:[...(it.carried||[]),...(a.steps||[])].map(x=>x.text+(x.who?", "+x.who:"")+(x.done?", done":""))}:null].filter(Boolean))}
 function agendaView(my,it){const a=it.agenda||{};const dir=isDir();const closed=it.date<=today();const mine=it.mine||{};
   draw(my,head(it.kind==="meeting"?"PD staff meeting":"PD day",a.title||it.title||(it.kind==="meeting"?"PD staff meeting":"PD day"),H(new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))+(a.start?", "+H(tm(a.start))+(a.end?" to "+H(tm(a.end)):""):""))+
@@ -880,6 +887,9 @@ Gr.settingsHtml=function(SB){const b=B();if(!b)return "";const c=b.settings.chec
 /* ---------- printouts and Word files ---------- */
 function evalDoc(d){const y=yr();const ev=(d.evals||{})[y]||{};const sc=scoresOf(d,y);const past=Object.keys(d.evals||{}).filter(k=>k<y).sort();const dv=ev.dir||{},self=ev.self||{};const pr=d.profile||{};
   const strengths=dv.strengths||strengthsDraft(d);
+  // an evaluation with nothing placed and nothing written has nothing to print
+  const any=AK().some(k=>sc.by[k]||(self.placements||{})[k]||(self.writes||{})[k])||dv.narrative||dv.strengths||self.closing||(ev.goals||[]).length||past.length;
+  if(!any)return report("End of year evaluation, "+d.name,[],[]);
   return report("End of year evaluation, "+d.name,[["School year",yrLabel(y)],["Class",pr.room?pr.room+" class":""],["Printed",fd(today())]],[
     {t:"text",label:"Strengths",text:strengths||"Written with the director at the end of the year."},
     {t:"table",label:"Growth across the year",head:["Area",...past.map(yrLabel),yrLabel(y),"Own placement"],rows:[...AK().map(k=>[areaName(k),...past.map(p=>{const v=scoresOf(d,p).by[k];return v==="nys"?"Not yet seen":v?v+" "+PN[v]:""}),sc.by[k]==="nys"?"Not yet seen":sc.by[k]?sc.by[k]+" "+PN[sc.by[k]]:"",(self.placements||{})[k]?self.placements[k]+" "+PN[self.placements[k]]:""]),["Overall, the average of scored areas",...past.map(p=>String(scoresOf(d,p).overall||"")),String(sc.overall||""),""]]},
@@ -888,9 +898,37 @@ function evalDoc(d){const y=yr();const ev=(d.evals||{})[y]||{};const sc=scoresOf
     ...AK().filter(k=>(self.writes||{})[k]).map(k=>({t:"text",label:"In "+(d.name)+"'s words, "+areaName(k),text:self.writes[k]})),
     self.closing?{t:"text",label:"Where I want to grow next year",text:self.closing}:null,
     {t:"list",label:"Goals for next year",items:(ev.goals||[]).map(x=>x.text+(x.area?", "+areaName(x.area):""))}])}
+/* Agenda words as they print. A calendar title joined by hyphens, such as "PD Day - School Closed", reads as
+   "Professional Development Day, school closed", a raw link prints as its site's name, and "Class" after a class name
+   is lowercase. */
+const shortUrl=u=>{try{const x=new URL(u);return x.hostname.replace(/^www\./,"")}catch(e){return u}};
+const agWords=t=>String(t||"").replace(/\bhttps?:\/\/[^\s)]+/g,u=>{const m=u.match(/[.,;]+$/);const v=m?u.slice(0,-m[0].length):u;return shortUrl(v)+(m?m[0]:"")})
+  .replace(new RegExp("\\b("+(typeof CLASSROOMS!=="undefined"?CLASSROOMS:["West","North","South","East"]).join("|")+") Class\\b","g"),"$1 class");
+const agTitle=t=>{const parts=String(t||"").split(/\s+[-\u2013\u2014]\s+/).map(x=>x.trim()).filter(Boolean);
+  return agWords(parts.map((x,i)=>{x=x.replace(/^PD [Dd]ay\b/,"Professional Development Day").replace(/^PD\b/,"Professional Development");return i&&/^(School|Classes|No|All|Half|Early|Minimum)\b/.test(x)?x.toLowerCase():x}).join(", "))};
+/* The Growth Plan, the check-ins, the journal and Proud Moments print in the evaluation's style, each from only what the
+   person printing already sees on the page. A part left empty is left out, and a print with nothing in it is not made. */
+const tx=(label,text)=>String(text||"").trim()?{t:"text",label,text:String(text).trim()}:null;
+function planDoc2(d){const y=yr();const pl=((d.plans||{})[y])||{};const pr=d.profile||{};const ww=pl.wentWell||{};
+  return report("Educator Reflection and Growth Plan, "+d.name,[["School year",yrLabel(y)],["Class",pr.room?pr.room+" class":""],["Printed",fd(today())]],[
+    tx((WENT.find(w=>w[0]===(ww.choice||"last"))||WENT[0])[1],ww.text),...REFL.map(([k,l])=>tx(l,(pl.reflection||{})[k])),
+    (pl.goals||[]).some(g=>String(g.text||"").trim())?{t:"list",label:"My goals for this year",numbered:true,items:(pl.goals||[]).filter(g=>String(g.text||"").trim()).map(g=>g.text.trim()+(g.area?", "+areaName(g.area):""))}:null,
+    tx("Challenges I'm anticipating",pl.challenges),tx("What I need from the director",(pl.need||{}).director),tx("What I need from my team",(pl.need||{}).team),tx("What I need from training",(pl.need||{}).training)])}
+function checkinDoc(name,c){const goalsL=Object.values(c.goals||{}).filter(v=>String(v||"").trim());
+  return report("Check-in with "+name,[["Day",fd(c.date||today())],["Printed",fd(today())]],[
+    c.temp&&(c.temp.self||c.temp.dir||c.temp.words)?tx("Professional temperature",[c.temp.self?"Their number, "+c.temp.self+".":"",c.temp.dir?"The director's, "+c.temp.dir+".":"",c.temp.words||""].filter(Boolean).join(" ")):null,
+    tx("Plus, what went well",c.plus),tx("Delta, what to change",c.delta),tx("Growth Plan check",[c.goalsLine,...goalsL].filter(Boolean).join(" ")),tx("One support",c.support),
+    tx("What they want to focus on",(c.focus||{}).mine),tx("What the director has seen",(c.focus||{}).seen),tx("Focus Until Next Time",(c.focus||{}).settled),tx("Follow-up notes",c.followup)])}
+function myCheckinsDoc(d){const cis=(d.checkins||[]).filter(c=>c.followup||(c.focus&&c.focus.settled));
+  return report("My check-ins, "+d.name,[["Printed",fd(today())]],cis.flatMap(c=>[{t:"sub",text:"Check-in, "+fd(c.date)},tx("Focus Until Next Time",(c.focus||{}).settled),tx("Follow-up notes",c.followup)]))}
+function journalDoc(name){const J=st.jr;if(!J||st.jrWho!==name)return report("Reflective journal",[],[]);
+  return report("Reflective journal, "+name,[["Printed",fd(today())]],(J.entries||[]).flatMap(e=>{const parts=[...PROMPTS.filter(([k])=>String(e[k]||"").trim()).map(([k,l])=>tx(l,e[k])),tx(e.modulePrompt||"From a module",e.module)].filter(Boolean);
+    return parts.length?[{t:"sub",text:fd(e.date)},...parts]:[]}))}
+function momentsDoc(){const L=st.moments||[];
+  return report("Proud Moments and Kudos",[["Printed",fd(today())]],L.map(m=>({t:"item",title:m.kind==="kudos"?"Kudos for "+m.to:"A proud moment",text:m.text,by:[m.by,fms(m.at)].filter(Boolean).join(", "),side:m.area?[areaName(m.area)]:[]})))}
 function agendaDoc(it){const a=it.agenda||{};const R=st.readings||[];
-  return report(a.title||it.title||(it.kind==="meeting"?"PD staff meeting":"PD day"),[["Day",new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})],["Time",a.start?tm(a.start)+(a.end?" to "+tm(a.end):""):""]],
-    (a.blocks||[]).map(b=>({t:"text",label:(b.time?tm(b.time)+", ":"")+b.title,text:[b.guest?"Guest session. "+guestLine(b)+"."+(b.guestLink?" "+b.guestLink:"")+(b.guestHandout?" Handout, "+b.guestHandout:""):"",b.why,b.how?HOW[b.how]+".":"",b.prepare?"To prepare. "+b.prepare:"",(b.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>[x.title,x.source||x.cite].filter(Boolean).join(", ")+(x.onSite&&isBookR(x)?", in our library":"")+(x.url?" ("+treeReadPlace(x.url)+")":"")).join(". ")].filter(Boolean).join(" ")})))}
+  return report(agTitle(a.title||it.title||(it.kind==="meeting"?"PD staff meeting":"PD day")),[["Day",new Date(it.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})],["Time",a.start?tm(a.start)+(a.end?" to "+tm(a.end):""):""]],
+    (a.blocks||[]).map(b=>({t:"text",label:(b.time?tm(b.time)+", ":"")+agWords(b.title),text:agWords([b.guest?"Guest session. "+guestLine(b)+"."+(b.guestLink?" "+b.guestLink:"")+(b.guestHandout?" Handout, "+b.guestHandout:""):"",b.why,b.how?HOW[b.how]+".":"",b.prepare?"To prepare. "+b.prepare:"",(b.readings||[]).map(id=>R.find(x=>x.id===id)).filter(Boolean).map(x=>[x.title,x.source||x.cite].filter(Boolean).join(", ")+(x.onSite&&isBookR(x)?", in our library":"")+(x.url?" ("+(/^tree:/.test(x.url)?treeReadPlace(x.url):shortUrl(x.url))+")":"")).join(". ")].filter(Boolean).join(" "))})))}
 
 /* ---------- a former educator's growth, read only, for the director in Former educators ---------- */
 const fold=(k,title,side,inner)=>`<details class="card fold" data-fold="sf:${H(k)}" ${typeof foldOpen!=="undefined"&&foldOpen.has("sf:"+k)?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">${H(title)}</span>${side?`<span class="cnt">${H(side)}</span>`:""}</summary><div class="foldbody" style="display:grid;gap:8px">${inner}</div></details>`;
@@ -1019,7 +1057,13 @@ async function gTap(e,t){const d=t.dataset;
   if(d.gprint||d.gword){const k=d.gprint||d.gword;const kind=d.gword?"word":"pdf";progress("Making the file");
     if(k==="eval"){const dd=st.docs[who()];return out(kind,[evalDoc(dd)],"End of year evaluation "+dd.name+" "+yr())}
     if(k==="team"){const it=st.pd.find(x=>x.id===st.pdSel);return out(kind,[teamDoc(it)],it.room+" class team meeting "+it.date)}
-    if(k==="agenda"){const it=st.pd.find(x=>x.id===st.pdSel);return out(kind,[agendaDoc(it)],(it.kind==="meeting"?"PD staff meeting ":"PD day ")+it.date)}}
+    if(k==="agenda"){const it=st.pd.find(x=>x.id===st.pdSel);return out(kind,[agendaDoc(it)],(it.kind==="meeting"?"PD staff meeting ":"PD day ")+it.date)}
+    if(k==="plan"){try{collectPlan()}catch(er){}const dd=st.docs[who()];const y=yr();const draft=st.planDraft&&st.planDraft.__who===who()?st.planDraft:null;
+      const dd2=draft?Object.assign({},dd,{plans:Object.assign({},dd.plans,{[y]:draft})}):dd;return out(kind,[planDoc2(dd2)],"Growth Plan "+dd.name+" "+yr())}
+    if(k==="checkin"){try{collectCi()}catch(er){}const c=st.ci;return out(kind,[checkinDoc(st.ci.__who,c)],"Check-in "+st.ci.__who+" "+(c.date||today()))}
+    if(k==="mycheckins"){const dd=await doc(meName());return out(kind,[myCheckinsDoc(dd)],"My check-ins "+dd.name)}
+    if(k==="journal"){const n=jWho();return out(kind,[journalDoc(n)],"Journal "+n)}
+    if(k==="moments")return out(kind,[momentsDoc()],"Proud Moments and Kudos")}
   if(d.gsset){await api("school",{school:{checkin:{week:+val("#gs-week"),secondTime:val("#gs-second")},meeting:{start:val("#gs-mstart"),end:val("#gs-mend")}}});bootP=null;await Gr.ready();toast("Saved. The calendar follows.");return}
   }catch(er){fail(er)}
 }

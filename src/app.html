@@ -13133,13 +13133,13 @@ function displayAtoms(doc,p,A,s){
       const drawRow=(r,x,y,rh,k)=>{let cx0=x;r.forEach((t,j)=>{const ls=cellLines(t,j,k);pfont(doc,k||(j===0&&b.bold0?"fs":"fr"),fs);doc.setTextColor(...(k?D_MUTED:j>0&&b.muted&&b.muted.includes(j)?D_MUTED:D_INK));
         ls.forEach((l,q)=>{const yy=y+cp*.6+base(lh,fs)+q*lh;if(al[j]==="r")doc.text(l,cx0+wd[j]-cp,yy,{align:"right"});else doc.text(l,cx0+(j===0?0:cp),yy)});cx0+=wd[j]})};
       const rowH=(r,k)=>Math.max(1,...r.map((t,j)=>cellLines(t,j,k).length))*lh+cp*1.2;
-      if((b.head||[]).length){const hh=rowH(b.head,"fs");push({h:hh+2,keep:true,draw(y){for(let c=0;c<cols;c++){const x=m+c*(gw+gut);drawRow(b.head,x,y,hh,"fs");doc.setDrawColor(...A.c);doc.setLineWidth(.8);doc.line(x,y+hh,x+gw,y+hh)}}})}
+      let headA=null;if((b.head||[]).length){const hh=rowH(b.head,"fs");headA=push({h:hh+2,keep:true,draw(y){for(let c=0;c<cols;c++){const x=m+c*(gw+gut);drawRow(b.head,x,y,hh,"fs");doc.setDrawColor(...A.c);doc.setLineWidth(.8);doc.line(x,y+hh,x+gw,y+hh)}}})}
       const R=Math.ceil(rows.length/cols),nb=cols>1?Math.max(1,Math.ceil(R/(b.band||16))):1,Bn=cols>1?Math.ceil(R/nb):R;
       let start=0;const i0=atoms.length;
       while(start<rows.length){const chunk=rows.slice(start,start+(cols>1?Bn*cols:rows.length));start+=chunk.length;
         const per=cols>1?Math.ceil(chunk.length/cols):chunk.length;
         for(let ri=0;ri<per;ri++){const set=Array.from({length:cols},(_,c)=>chunk[c*per+ri]).map(r=>r||null);const rh=Math.max(...set.filter(Boolean).map(r=>rowH(r)));
-          push({h:rh,keep:cols>1&&ri<per-1,draw(y){set.forEach((r,c)=>{if(!r)return;const x=m+c*(gw+gut);drawRow(r,x,y,rh);doc.setDrawColor(...D_HAIR);doc.setLineWidth(.4);doc.line(x,y+rh,x+gw,y+rh)})}})}
+          push({h:rh,keep:cols>1&&ri<per-1,rehead:headA,draw(y){set.forEach((r,c)=>{if(!r)return;const x=m+c*(gw+gut);drawRow(r,x,y,rh);doc.setDrawColor(...D_HAIR);doc.setLineWidth(.4);doc.line(x,y+rh,x+gw,y+rh)})}})}
         if(start<rows.length)push({h:6*s,draw(){}})}
       holdFirst(i0);if(atoms[i0+1])atoms[i0+1].keep=atoms[i0+1].keep||cols===1;gap(4)}
     else if(b.t==="quote"){
@@ -13224,6 +13224,8 @@ function displayFlow(doc,p,A,s){
       if(a.gap&&!pages[pages.length-1].length)continue;
       // the continuation heading waits until something actually lands under it, so no sheet opens with an empty one
       if(pend){if(!a.isSub){const hd=displayAtoms.head(pend+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}pend=""}
+      // a table that runs onto a new sheet repeats its title row there
+      if(a.rehead&&pages.length>1&&!pages[pages.length-1].some(x=>x.a===a.rehead||x.a.rehead===a.rehead)){pages[pages.length-1].push({a:a.rehead,y});y+=a.rehead.h}
       if(a.min)a.h=Math.max(a.min,Math.min(a.h,DG.bottom-y));
       pages[pages.length-1].push({a,y});y+=a.h;
     }
