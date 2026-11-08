@@ -16,11 +16,18 @@
    An educator can also choose a path for themselves. Every path but an onboarding path is open to choose unless the
    director turns that off on the path (choose false, absent means open). A chosen path is kept in staff/pd/chosen.json,
    one record for one person, and reads as an assignment everywhere else, its progress, its reminders and Assigned to
-   you, marked as their own choice. Only that educator or the director starts or stops it. */
+   you, marked as their own choice. Only that educator or the director starts or stops it.
+
+   A step can also be the Licensing pieces. A step of kind licensing alone means the whole Licensing set, done once the
+   educator has finished every Licensing piece they can open. With an id it means that one piece, done once it is finished.
+   Both read the pd.done record the Licensing pieces already keep, and a piece still marked draft stays hidden the same way. */
 const crypto = require('crypto');
 
 module.exports = function pathsModule(c) {
   const { get, put, log, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder, goToName, reminders, S } = c;
+  // the Licensing pieces, all of them, the ones a person can open, whether one waits as a draft, and what a person finished
+  const LIC = c.licensing || { all: () => [], visible: () => [], waiting: () => false, done: () => ({}), open: () => false };
+  const LIC_TITLE = 'Licensing at Fulton Community School';
   const PATHS = 'staff/pd/paths.json', ASSIGN = 'staff/pd/assignments.json', CHOSEN = 'staff/pd/chosen.json', FIRST = 'firstweeks';
   const AREA_KEYS = (G.AREAS || []).map(a => a[0]);
   const WAYS = ['own', 'meeting', 'pdday'];
@@ -45,12 +52,17 @@ module.exports = function pathsModule(c) {
   const expOf = n => !!profileOf(n).experienced;
   // a module opens once it is published, for someone the growth pages are open to. A part of the first weeks opens once it
   // is ready, and a part for experienced educators only for someone marked experienced.
-  const canOpen = (n, s) => s.kind === 'module' ? !!G.modules()[s.slug] && (isDirector(n) || (G.published(s.slug) && G.allowed(n))) : newedFor(n, expOf(n)).some(p => p.slug === s.slug);
-  const stepTitle = s => s.kind === 'module' ? ((G.modules()[s.slug] || {}).title || s.slug) : ((partOf(s.slug) || {}).title || s.slug);
+  // the Licensing set opens for someone the PD library is open to, and one piece once it is ready for them
+  const licFor = (n, s) => { const v = LIC.visible(n) || []; return s.id ? v.filter(x => x.id === s.id) : v; };
+  const licOpen = (n, s) => LIC.open(n) && licFor(n, s).length > 0;
+  const licPiece = id => (LIC.all() || []).find(x => x.id === id) || null;
+  const canOpen = (n, s) => s.kind === 'licensing' ? licOpen(n, s) : s.kind === 'module' ? !!G.modules()[s.slug] && (isDirector(n) || (G.published(s.slug) && G.allowed(n))) : newedFor(n, expOf(n)).some(p => p.slug === s.slug);
+  const stepTitle = s => s.kind === 'licensing' ? (s.id ? ((licPiece(s.id) || {}).title || s.id) : LIC_TITLE) : s.kind === 'module' ? ((G.modules()[s.slug] || {}).title || s.slug) : ((partOf(s.slug) || {}).title || s.slug);
   // a step the director sees with a chip, a draft module or part not visible to educators yet
-  const waiting = s => s.kind === 'module' ? !!G.modules()[s.slug] && !G.published(s.slug) : !!(partOf(s.slug) || {}).draft && !newedReady(s.slug);
-  const missing = s => s.kind === 'module' ? !G.modules()[s.slug] : !partOf(s.slug);
-  const stepOut = s => ({ kind: s.kind, slug: s.slug, title: stepTitle(s), waiting: waiting(s), missing: missing(s) });
+  const waiting = s => s.kind === 'licensing' ? !!s.id && !!licPiece(s.id) && LIC.waiting(s.id) : s.kind === 'module' ? !!G.modules()[s.slug] && !G.published(s.slug) : !!(partOf(s.slug) || {}).draft && !newedReady(s.slug);
+  const missing = s => s.kind === 'licensing' ? (s.id ? !licPiece(s.id) : !(LIC.all() || []).length) : s.kind === 'module' ? !G.modules()[s.slug] : !partOf(s.slug);
+  const stepOut = s => Object.assign({ kind: s.kind, slug: s.slug || '', title: stepTitle(s), waiting: waiting(s), missing: missing(s) }, s.kind === 'licensing' && s.id ? { id: s.id } : {});
+  const bare = s => Object.assign({ kind: s.kind, slug: s.slug || '' }, s.kind === 'licensing' && s.id ? { id: s.id } : {});
 
   // a path an educator may choose for themselves, open unless the director turned it off, and never an onboarding path
   const choosable = p => !!p && !p.builtin && !p.onboarding && p.choose !== false;
@@ -84,6 +96,8 @@ module.exports = function pathsModule(c) {
   // one step for one person. A module step is done when their growth record holds the layer for the way in. A part of the
   // first weeks is done once they opened it.
   function stepState(n, a, s) {
+    // a Licensing step counts the pieces finished out of the pieces this person can open
+    if (s.kind === 'licensing') { const v = licFor(n, s), dn = LIC.done(n) || {}; const k = v.filter(x => dn[x.id]).length; return { done: v.length > 0 && k === v.length, started: k > 0, of: v.length, count: k }; }
     const g = G.growth(n);
     if (s.kind === 'module') { const m = (g.modules || {})[s.slug] || {}; const L = m.layers || {}; return { done: !!L[wayOf(a, s)], started: !!m.opened || Object.keys(L).length > 0 }; }
     const at = (g.newed || {})[s.slug]; return { done: !!at, started: !!at };
@@ -105,7 +119,7 @@ module.exports = function pathsModule(c) {
       const pr = progressOf(n, a);
       out.push({ id: a.id, auto: !!a.auto, chosen: !!a.chosen, title: t.title, desc: t.desc || '', note: a.note || '', due: a.due || '', overdue: pr.overdue, state: pr.state,
         steps: steps.map(s => { const x = stepState(n, a, s); const p = s.kind === 'newed' ? partOf(s.slug) : null;
-          return Object.assign({ kind: s.kind, slug: s.slug, title: stepTitle(s), done: x.done, started: x.started }, s.kind === 'module' ? { way: wayOf(a, s) } : { body: p ? p.body : '' }); }) });
+          return Object.assign({ kind: s.kind, slug: s.slug || '', title: stepTitle(s), done: x.done, started: x.started }, s.kind === 'module' ? { way: wayOf(a, s) } : s.kind === 'licensing' ? Object.assign({ of: x.of, count: x.count }, s.id ? { id: s.id } : {}) : { body: p ? p.body : '' }); }) });
     }
     return out;
   }
@@ -114,7 +128,7 @@ module.exports = function pathsModule(c) {
   function chooseFor(n) {
     const mineNow = chosenRaw().filter(c => nameKey(c.person) === nameKey(n));
     return stored().filter(choosable).map(p => { const st = p.steps.filter(s => canOpen(n, s)); const c = mineNow.find(x => x.path === p.id);
-      return { id: p.id, title: p.title, desc: p.desc || '', areas: areasOf(p), started: c ? c.id : '', steps: st.map(s => ({ kind: s.kind, slug: s.slug, title: stepTitle(s) })) }; }).filter(p => p.steps.length); }
+      return { id: p.id, title: p.title, desc: p.desc || '', areas: areasOf(p), started: c ? c.id : '', steps: st.map(s => Object.assign(bare(s), { title: stepTitle(s) })) }; }).filter(p => p.steps.length); }
 
   /* ---------- the calendar and the reminder before a due date ---------- */
   // the calendar asks again once anything here changes
@@ -146,11 +160,15 @@ module.exports = function pathsModule(c) {
   setInterval(tick, 5 * 60e3).unref(); setTimeout(tick, 30e3).unref();
 
   /* ---------- requests ---------- */
-  const steps = list => { const out = []; for (const s of (Array.isArray(list) ? list : []).slice(0, 40)) { const kind = s && s.kind === 'newed' ? 'newed' : 'module', slug = String((s && s.slug) || '');
+  // each step kept as a module, a part of the first weeks, or the Licensing pieces, all of them or one piece by its id
+  const steps = list => { const out = []; for (const s of (Array.isArray(list) ? list : []).slice(0, 40)) {
+    if (s && s.kind === 'licensing') { const id = String(s.id || ''); if (id && !licPiece(id)) continue; if (!out.some(x => x.kind === 'licensing' && (x.id || '') === id)) out.push(Object.assign({ kind: 'licensing', slug: '' }, id ? { id } : {})); continue; }
+    const kind = s && s.kind === 'newed' ? 'newed' : 'module', slug = String((s && s.slug) || '');
     if (kind === 'module' ? !G.modules()[slug] : !partOf(slug)) continue; if (!out.some(x => x.kind === kind && x.slug === slug)) out.push({ kind, slug }); } return out; };
   const directorView = () => ({ paths: allPaths().map(p => Object.assign({}, p, { steps: p.steps.map(stepOut), choosable: choosable(p), assigned: assignAll().filter(a => a.kind === 'path' && a.path === p.id).length })), areas: G.AREAS || [],
     assignments: [...autoAssignments(), ...assignAll()].map(forDirector),
     modules: Object.values(G.modules()).map(m => ({ slug: m.slug, title: m.title, waiting: !G.published(m.slug) })).sort((a, b) => a.title.localeCompare(b.title)),
+    licensing: (LIC.all() || []).map(x => ({ id: x.id, title: x.title, waiting: !!LIC.waiting(x.id) })),
     newed: newedParts().filter(p => p.place === 'newed').map(p => ({ slug: p.slug, title: p.title, waiting: waiting({ kind: 'newed', slug: p.slug }), audience: p.audience })),
     people: eligible().sort().map(n => ({ name: n, room: roomOf(n), educator: G.takesPart(n) })), classes: classrooms(), today: today() });
 
@@ -205,7 +223,7 @@ module.exports = function pathsModule(c) {
     }
     if (P === 'paths/copy') {
       const src = pathOf(String(body.id || '')); if (!src) return err(req, res, 404, 'That path is not here.');
-      const p = Object.assign({ id: rid('pa'), title: ('Copy of ' + src.title).slice(0, 120), desc: src.builtin ? '' : src.desc || '', onboarding: !!src.onboarding, steps: src.steps.map(s => ({ kind: s.kind, slug: s.slug })), at: Date.now(), by: me, from: src.id },
+      const p = Object.assign({ id: rid('pa'), title: ('Copy of ' + src.title).slice(0, 120), desc: src.builtin ? '' : src.desc || '', onboarding: !!src.onboarding, steps: src.steps.map(bare), at: Date.now(), by: me, from: src.id },
         src.choose === false ? { choose: false } : {}, areasOf(src).length ? { serves: areasOf(src) } : {});
       put(PATHS, { list: [...stored(), p] }); json(req, res, 200, Object.assign(directorView(), { id: p.id })); return;
     }

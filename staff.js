@@ -1096,7 +1096,10 @@ module.exports = function staffModule(o) {
   const G = require('./growth.js')({ edWords: () => edTexts(), get, put, S, log, person, profileOf, pPath, pidOf, staffNames, isDirector, isKitchen, nameKey, classrooms, school, opened, today, addMonths, daysBetween,
     mondayOf, roomOf, pieces, checkPasscode, nameBlocked, calendarEvents, reminders, store, lensNow, isNewHire, inNewEd, isFormerEducator, ledBy: n => PR.ledBy(n), presTitle: (me, id) => PR.visibleTitle(me, id), putText, piecesChanged: () => { pieceCache = null; } });
   // PD paths and assignments, beside the PD library's modules
-  const PA = require('./paths.js')({ get, put, log, S, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder: (l, me) => newedOrder(l, me), goToName, reminders });
+  const PA = require('./paths.js')({ get, put, log, S, isDirector, isKitchen, nameKey, staffNames, roomOf, classrooms, today, daysBetween, pidOf, profileOf, inNewEd, G, newedParts, newedFor, newedReady, newedOrder: (l, me) => newedOrder(l, me), goToName, reminders,
+    // a path step can be the Licensing pieces, read from the same pieces and the same pd.done record the PD library keeps
+    licensing: { all: () => pieces().licensing || [], visible: n => piecesFor(n).licensing || [], waiting: id => { const x = (pieces().licensing || []).find(y => y.id === id); return !!x && !!x.draft && !pieceReady(id); },
+      done: n => ((person(n).pd || {}).done) || {}, open: n => allowed(n, 'pd') || allowed(n, 'newed') } });
   // any file under staff/ for this person, their record, growth, journal or a Proud Moment by them or for them
   // a records page holding nothing but the 2026 Know Your Rights mark TREE made at start is not records of their own, so a
   // sign-in added by mistake can still be removed
@@ -1251,6 +1254,8 @@ module.exports = function staffModule(o) {
     s54PlantStages: ['code:once/s54-plant-stages.json', 'Stage photos for the plants, November 7, 2026'],
     s55SofterWords: ['code:once/s55-softer-words.json', 'Softer words in place of promise, November 7, 2026'],
     s56RecordText: ['code:once/s56-record-text.json', 'Leftover Google Doc marks and generated wording cleaned, November 7, 2026'],
+    // the Licensing pieces as a step of Safety and Licensing, only while that path has no Licensing step
+    s57PathLicensing: ['code:once/s57-path-licensing.json', 'The Licensing pieces as a step of Safety and Licensing, November 7, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
@@ -1277,12 +1282,13 @@ module.exports = function staffModule(o) {
     s14Chart: ['staff/once/s14-chart.json', 'Chart paper as living documentation, in the modules and the Idea bank'],
     s14Library: ['staff/once/s14-library.json', 'A card for each artist the Idea bank names, and Song book lines that name their songs'],
     s14Images: ['staff/once/s14-images.json', 'Images for more artist cards, and three facts corrected'] };
-  const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[id=([^\]]+)\]$/); return m ? [m[1], m[2]] : [k]; });
+  // a place such as cards[id=clay].home, or list[title=Safety and Licensing].steps, finding the item by its id or another field
+  const placeOf = at => String(at).split('.').map(k => { const m = k.match(/^([^[]+)\[([a-z]+)=([^\]]+)\]$/i); return m ? [m[1], m[3], m[2]] : [k]; });
   function setAt(doc, at, value, expect) {
     const ks = placeOf(at); let t = doc;
     for (let i = 0; i < ks.length; i++) {
-      const [k, id] = ks[i], last = i === ks.length - 1;
-      if (id !== undefined) { const arr = t[k]; if (!Array.isArray(arr)) return false; const j = arr.findIndex(x => x && String(x.id) === id); if (j < 0) return false; if (last) return false; t = arr[j]; continue; }
+      const [k, id, f] = ks[i], last = i === ks.length - 1;
+      if (id !== undefined) { const arr = t[k]; if (!Array.isArray(arr)) return false; const j = arr.findIndex(x => x && String(x[f]) === id); if (j < 0) return false; if (last) return false; t = arr[j]; continue; }
       if (last) {
         if (expect !== undefined && JSON.stringify(t[k] === undefined ? null : t[k]) !== JSON.stringify(expect)) return false;
         if (JSON.stringify(t[k]) === JSON.stringify(value)) return false;
@@ -1314,21 +1320,26 @@ module.exports = function staffModule(o) {
           S.files.delete(c.path); hit.add(c); continue; }
       } catch (er) { failed++; log('One-time step', name, 'could not change', c.path, er.message); }
     }
-    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id) || (typeof c.insert === 'string' && c.value && typeof c.value.h === 'string'))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
+    for (const c of m.changes) if (c && typeof c.path === 'string' && ((typeof c.from === 'string' && c.from && typeof c.to === 'string') || typeof c.set === 'string' || (typeof c.add === 'string' && c.value && c.value.id) || (typeof c.insert === 'string' && c.value && typeof c.value.h === 'string') || (typeof c.append === 'string' && c.value && typeof c.value === 'object' && c.unless && typeof c.unless === 'object'))) { if (!by.has(c.path)) by.set(c.path, []); by.get(c.path).push(c); }
     // a passage is swapped only where it is not already the new wording, so a step that runs again changes nothing
     const swapAll = (t, from, to) => { const k = to.indexOf(from); if (k < 0) return t.split(from).join(to);
       const pre = to.slice(0, k), post = to.slice(k + from.length); let out = '', i = 0, j;
       while ((j = t.indexOf(from, i)) >= 0) { const done = t.slice(Math.max(0, j - pre.length), j) === pre && t.slice(j + from.length, j + from.length + post.length) === post; out += t.slice(i, j) + (done ? from : to); i = j + from.length; }
       return out + t.slice(i); };
-    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add || c.insert) continue; if (c.all) { if (t === c.from) { t = c.to; hit.add(c); } } else if (t.includes(c.from)) { const n = swapAll(t, c.from, c.to); if (n !== t) { t = n; hit.add(c); } } } return t; };
+    const swap = (t, cs) => { for (const c of cs) { if (c.set || c.add || c.insert || c.append) continue; if (c.all) { if (t === c.from) { t = c.to; hit.add(c); } } else if (t.includes(c.from)) { const n = swapAll(t, c.from, c.to); if (n !== t) { t = n; hit.add(c); } } } return t; };
     const deep = (v, cs) => typeof v === 'string' ? swap(v, cs) : Array.isArray(v) ? v.map(x => deep(x, cs)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === 'history' ? x : deep(x, cs)])) : v;
     const sets = (doc, cs) => { const d = JSON.parse(JSON.stringify(doc)); for (const c of cs) { if (c.set && setAt(d, c.set, c.value === undefined ? null : c.value, c.expect)) hit.add(c);
       if (c.add) { const arr = c.add.split('.').reduce((t, k) => t && t[k], d); if (Array.isArray(arr) && !arr.some(x => x && String(x.id) === String(c.value.id))) { arr.push(JSON.parse(JSON.stringify(c.value))); hit.add(c); } }
       // a section put into a card's list of sections at a place (insert, with at), only while no section of that heading is
       // there, so a step that runs again, or a card the director has already given the section, is left as it is
-      if (c.insert) { const arr = arrAt(d, c.insert); if (Array.isArray(arr) && !arr.some(x => x && x.h === c.value.h)) { arr.splice(Math.min(Math.max(0, c.at | 0), arr.length), 0, JSON.parse(JSON.stringify(c.value))); hit.add(c); } } } return d; };
+      if (c.insert) { const arr = arrAt(d, c.insert); if (Array.isArray(arr) && !arr.some(x => x && x.h === c.value.h)) { arr.splice(Math.min(Math.max(0, c.at | 0), arr.length), 0, JSON.parse(JSON.stringify(c.value))); hit.add(c); } }
+      // an item put at the end of a list (append), only while no item there matches unless, so a step that runs again, or a
+      // path the director already gave that step, is left as it is, and a list that is not there is left alone
+      if (c.append) { const arr = arrAt(d, c.append); if (Array.isArray(arr)) { if (!has(arr, c.unless)) arr.push(JSON.parse(JSON.stringify(c.value))); hit.add(c); } } } return d; };
     // the list at a place written as cards[id=clay].home.sections
-    const arrAt = (doc, at) => { let t = doc; for (const [k, id] of placeOf(at)) { if (!t || typeof t !== 'object') return null; t = t[k]; if (id !== undefined) { if (!Array.isArray(t)) return null; t = t.find(x => x && String(x.id) === id); } } return t; };
+    const arrAt = (doc, at) => { let t = doc; for (const [k, id, f] of placeOf(at)) { if (!t || typeof t !== 'object') return null; t = t[k]; if (id !== undefined) { if (!Array.isArray(t)) return null; t = t.find(x => x && String(x[f]) === id); } } return t; };
+    // an item that matches every field of unless, such as kind licensing, already in the list
+    const has = (arr, u) => arr.some(x => x && typeof x === 'object' && Object.entries(u).every(([k, v]) => JSON.stringify(x[k]) === JSON.stringify(v)));
     const both = (doc, cs) => sets(deep(doc, cs), cs);
     const tpFor = p => POL.entries().find(e => { const s = POL.tpSection(e); return s.ref === p || `staff/policies/teacher/${e.id}.json` === p; });
     let n = 0;
@@ -1346,8 +1357,8 @@ module.exports = function staffModule(o) {
             putText(p, next); n++; continue;
           }
           const fh = p.match(/^family\/handbook\/(\d{4})\/([a-z0-9-]+)\.json$/);
-          if (e && p !== 'staff/policies/teacher.json' && !cs.some(c => c.set || c.add)) { const s = POL.tpSection(e); const title = swap(s.title || '', cs), body = swap(s.body || '', cs); if (title !== s.title || body !== s.body) { POL.saveTeacher('TREE', { id: e.id, title, body, note }); n++; } continue; }
-          if (fh && fh[2] !== 'edition' && fh[2] !== 'public' && !cs.some(c => c.set || c.add)) { const s = POL.fhSection(fh[1], fh[2]); if (!s || s.same) continue; const title = swap(s.title || '', cs), body = swap(s.body || '', cs); if (title !== s.title || body !== s.body) { POL.saveFamily('TREE', { edition: fh[1], id: fh[2], title, body, note }); n++; } continue; }
+          if (e && p !== 'staff/policies/teacher.json' && !cs.some(c => c.set || c.add || c.append)) { const s = POL.tpSection(e); const title = swap(s.title || '', cs), body = swap(s.body || '', cs); if (title !== s.title || body !== s.body) { POL.saveTeacher('TREE', { id: e.id, title, body, note }); n++; } continue; }
+          if (fh && fh[2] !== 'edition' && fh[2] !== 'public' && !cs.some(c => c.set || c.add || c.append)) { const s = POL.fhSection(fh[1], fh[2]); if (!s || s.same) continue; const title = swap(s.title || '', cs), body = swap(s.body || '', cs); if (title !== s.title || body !== s.body) { POL.saveFamily('TREE', { edition: fh[1], id: fh[2], title, body, note }); n++; } continue; }
           const next = both(r.doc, cs); if (JSON.stringify(next) !== JSON.stringify(r.doc)) { put(p, next); n++; }
           continue;
         }

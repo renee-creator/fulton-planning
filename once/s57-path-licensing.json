@@ -1,0 +1,16 @@
+{
+ "name": "s57PathLicensing",
+ "note": "The Licensing pieces as a step of Safety and Licensing, November 7, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/paths.json",
+   "append": "list[title=Safety and Licensing].steps",
+   "value": {
+    "kind": "licensing"
+   },
+   "unless": {
+    "kind": "licensing"
+   }
+  }
+ ]
+}
