@@ -114,7 +114,7 @@ test('the card shows the offer, and Yes moves the sentence', async t => {
   const s = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => s.close());
   await s.p.waitForFunction(() => notices.get('nt1') && notices.get('nt1').sortOffer, null, { timeout: 15000 });
   const card = await s.p.evaluate(() => noticeCard(notices.get('nt1')));
-  assert.match(card, /One of these sentences reads as wondering\. Move it to What I wonder\?/); assert.match(card, /data-sortyes="nt1"/); assert.match(card, /data-sortno="nt1"/);
+  assert.match(card, /This sentence reads as wondering\. Move it to What I wonder\?/); assert.match(card, /“Maybe she was watching how the color changed\.”/); assert.match(card, /data-sortyes="nt1"/); assert.match(card, /data-sortno="nt1"/);
   assert.match(await s.p.evaluate(() => { view = 'today'; return momentMini(notices.get('nt1')); }), /Move it to What I wonder/, 'the Today list shows it to the educator who kept it');
   await s.p.evaluate(() => { nRoom = 'All'; goView('moments'); }); await s.p.waitForSelector('[data-sortyes="nt1"]', { timeout: 10000 });
   await s.p.click('[data-sortyes="nt1"]');

@@ -8967,10 +8967,15 @@ function threadSuggestsOf(n){if(!n)return [];const grp=noteGroup(n),have=new Set
 /* Noticed and wondered, sorted. A Kaymbu caption TREE sorted shows one quiet line with Put it back. An observation whose
    typed sentences read as wondering shows the offer, and only Yes moves them. Only the educator who kept it and the
    director see the lines (November 5, 2026) */
+// an older why may name a sentence by its number, which means nothing to the reader
+const sortWhyPlain=(w,k)=>String(w||"").replace(/\b[Tt]he (?:last|first|final) sentence\b/g,k===1?"This sentence":"These sentences").replace(/\b[Ss]entences? \d+(?:(?:,\s*|\s+and\s+|,\s*and\s+)\d+)*/g,m=>/\d\D+\d/.test(m)||k>1?"These sentences":"This sentence");
 function sortLinesHtml(n){if(VIEW_AS||!n||!canRemoveObs(n))return "";
   if(n.sorted&&n.sorted.from)return `<div class="whyline"><i>TREE sorted this into noticed and wondered.</i> ${esc(whyText(n.sorted.why))} <button class="linkbtn" data-sortundo="${esc(n.id)}">Put it back</button></div>`;
   const o=n.sortOffer;if(!o||!Array.isArray(o.wonderIdx)||!o.wonderIdx.length)return "";const k=o.wonderIdx.length;
-  return `<div class="nfsuggest"><span>${k===1?"One of these sentences reads":k+" of these sentences read"} as wondering. Move ${k===1?"it":"them"} to What I wonder?${has(o.why)?" "+esc(whyText(o.why)):""}</span><span class="actions"><button class="btn small" data-sortyes="${esc(n.id)}">Yes</button><button class="linkbtn" data-sortno="${esc(n.id)}">No</button></span></div>`}
+  // the sentences themselves, quoted, so the educator sees exactly what would move, and a why that never names a sentence by number
+  const spans=(window.TREE_LENS&&TREE_LENS.sentenceSpans)?TREE_LENS.sentenceSpans(n.noticed||""):[];const quotes=o.wonderIdx.map(i=>spans[i]&&spans[i].text).filter(Boolean);
+  const why=has(o.why)?whyText(sortWhyPlain(o.why,k)):"";
+  return `<div class="nfsuggest"><span>${k===1?"This sentence reads":"These sentences read"} as wondering. Move ${k===1?"it":"them"} to What I wonder?${quotes.map(q=>`<span class="sortquote" style="display:block;margin:6px 0 0 12px;font-style:italic">“${esc(q)}”</span>`).join("")}${why?`<span class="cnt" style="display:block;margin-top:6px">${esc(why)}</span>`:""}</span><span class="actions"><button class="btn small" data-sortyes="${esc(n.id)}">Yes</button><button class="linkbtn" data-sortno="${esc(n.id)}">No</button></span></div>`}
 // the director's Today, one line a class with open offers, and Accept all for that class
 function sortTodayHtml(){if(!isDirector()||VIEW_AS)return "";const by=new Map();
   for(const n of notices.values()){const o=n.sortOffer;if(!o||!Array.isArray(o.wonderIdx)||!o.wonderIdx.length)continue;const r=n.classroom||"No class";by.set(r,(by.get(r)||0)+1)}

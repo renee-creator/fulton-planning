@@ -1139,7 +1139,9 @@ function familySummaryDraft(cf, child) {
 }
 /* the draft reads in complete sentences for the family. The quick model rewrites each part from the educators' own words
    only, in short warm sentences, with nothing added, no rating and no other child's name. What it gives back is cleaned
-   again the same way, and a part it cannot rewrite keeps the draft's words for the educator to finish. */
+   again the same way, and a part it cannot rewrite keeps the draft's words for the educator to finish. Each part reads as a
+   short narrative of what the child did and said, with no mention of a photo or the documentation and no DRDP measure or
+   level names, since those are written for the educators (November 9, 2026). */
 async function familySummarySentences(fs, child) {
   if (!fs || !fs.parts || !anthropicKey()) return fs;
   const P = fs.parts; const first = String(child.first || 'your child');
@@ -1147,7 +1149,7 @@ async function familySummarySentences(fs, child) {
   const groupLine = (String(P.friends || '').match(/^[^.]* is in the [^.]* group[^.]*\./) || [''])[0];
   const parts = { returns: P.returns, friends: String(P.friends || '').slice(groupLine.length).trim(), strengths: P.strengths, goals: P.goals, nextSteps: P.nextSteps, ...Object.fromEntries(Object.entries(P.areas || {}).map(([k, v]) => ['area_' + k, v])) };
   const keys = Object.keys(parts).filter(k => String(parts[k] || '').trim()); if (!keys.length) return fs;
-  const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as one to three complete, warm, plain sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child. Keep any DRDP measure or level the notes name, in their words, and never add one. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
+  const prompt = `These are an educator's short notes about a preschool child named ${first}, for a one page summary the family takes home after a conference. Rewrite each note as a short narrative of two to four complete, warm sentences a family can read, written about ${first} by name or as she or he as the notes do, or as they if the notes give no hint. Tell what ${first} did, said and returned to, as a moment the family can picture, and let the learning in it show through what happened, such as staying with something, trying again, working with a friend or making marks that begin to stand for something. Keep any words the child said, exactly as quoted. Write about ${first} directly. The notes may describe a photo or the documentation (the photo shows, the documentation says or notes). Tell what ${first} was doing and leave out any mention of a photo, a picture, the documentation or observations. Leave out DRDP measure names and level names such as Building Middle, and never begin with Under. Use only what each note says. Add nothing, invent nothing and leave out nothing important. Never rate, score or compare the child. Never name another child. Keep "a friend" and "friends" as they are. Write in the present tense where you can. Use no colons, no dashes, no semicolons, no lists, no analogies and no apologies. Say educator, never teacher. Answer only with JSON with the same keys and the rewritten text as each value.
 ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 1200)])))}`;
   let out = null;
   // room for every part to be written out in full, so the answer is never cut off before it ends
@@ -1156,7 +1158,10 @@ ${JSON.stringify(Object.fromEntries(keys.map(k => [k, String(parts[k]).slice(0, 
     if (m.stop_reason === 'max_tokens') { log('The Family Summary answer ran out of room'); return fs; }
     out = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); } catch (e) { log('The Family Summary could not be set in sentences', e.message); return fs; }
   const fam = require('./family.js'); const all = [...store.recs.children.values()].filter(r => r && !r.deleted && r.doc).map(r => Object.assign({ id: r.doc.id }, r.doc));
-  const tidy = t => famPlain(fam.withoutOthers(forPrint(educatorWord(t).replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
+  // a DRDP level name the answer still carries, with an Under the measure opener, is left for the educators
+  const LVL = '(?:Responding|Exploring|Building|Integrating) (?:Earlier|Middle|Later)';
+  const noLevels = t => String(t || '').replace(new RegExp('(^|[.!?]\\s+)Under [^.]*?,\\s*at ' + LVL + ',\\s*', 'g'), '$1').replace(new RegExp(',\\s*at (?:the )?' + LVL + '(?: level)?(?=,|[.!?])', 'g'), '').replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  const tidy = t => famPlain(fam.withoutOthers(forPrint(educatorWord(noLevels(t)).replace(/\s*[—–]\s*/g, ', ').replace(/;\s*/g, '. ').replace(/:\s+/g, '. ').replace(/\s+/g, ' ').trim().replace(/([.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase())), child, all));
   const got = k => (out && typeof out[k] === 'string' && out[k].trim()) ? tidy(out[k]).slice(0, 1500) : parts[k];
   const areas = Object.fromEntries(Object.keys(P.areas || {}).map(k => [k, String(P.areas[k] || '').trim() ? got('area_' + k) : P.areas[k]]));
   const fr = String(parts.friends || '').trim() ? got('friends') : '';
@@ -1960,7 +1965,7 @@ async function sortNoticed(text) {
 A sentence moves when it is the educator wondering, interpreting or planning. Signs are I wonder, maybe, perhaps, it seems, I think, could it be, might, next time we could, a question mark, and a sentence that interprets what a child meant or felt rather than describing what happened.
 A sentence that describes what happened stays. A sentence that does both stays. When you are not sure, leave it where it is. Never reword a sentence. At least one sentence must stay in What I noticed.
 ${spans.map((p, i) => `${i + 1}. ${p.text}`).join('\n')}
-Reply with only JSON like {"wonder":[3],"why":""} where wonder holds the numbers of the sentences that move, an empty list when none does, and why is one plain short sentence in educator language saying which sentences read as wondering and why, with no colons and no dashes.`;
+Reply with only JSON like {"wonder":[3],"why":""} where wonder holds the numbers of the sentences that move, an empty list when none does, and why is one plain short sentence in educator language saying why the sentence reads as wondering, starting with This sentence or These sentences. Never refer to a sentence by its number, its position or its words, since the educator sees the sentence quoted beside your why. Use no colons, no dashes, and no rather than or not this but that phrasing.`;
   let out = null;
   // the quick model may think before it answers, so the answer has room for that and the short JSON after it
   const res = await askClaude([{ type: 'text', text: prompt }], false, { max_tokens: 1500 });
