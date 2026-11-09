@@ -207,13 +207,20 @@ module.exports = function growthModule(c) {
     let shut = 0; for (let i = 1; i <= 5; i++) { const x = addDays(d, -i - 2); if (closed.has(x)) shut++; }
     return shut < 3;
   }
+  const MOVES = 'staff/checkin-moves.json';
+  const moves = () => Object.assign({ months: {}, one: {} }, get(MOVES) || {});
   function nextOpenMonday(d, closed) { for (let i = 0; i < 6; i++) { const x = addDays(d, i * 7); if (openMonday(x, closed)) return x; } return d; }
   function scheduleFor(ym) {
     const mon = cal.months.get(ym); if (!mon) return null;
     const sc = Object.assign({ week: 1, secondTime: '13:00', minutes: 20 }, school().checkin || {});
     let first = ym + '-01'; while (dow(first) !== 1) first = addDays(first, 1);
     const target = addDays(first, 7 * Math.max(0, Math.min(3, (+sc.week || 1) - 1)));
-    const day1 = nextOpenMonday(target, mon.closed); const day2 = nextOpenMonday(addDays(day1, 7), mon.closed);
+    // the director can move one month's check-ins to another day, and an earlier start, without touching any other month
+    const mv = moves(); const mm = (mv.months || {})[ym] || null;
+    const usual = nextOpenMonday(target, mon.closed);
+    const day1 = mm && ISO.test(mm.date || '') ? mm.date : usual;
+    let after = addDays(day1, 1); while (dow(after) !== 1) after = addDays(after, 1);
+    const day2 = nextOpenMonday(after, mon.closed);
     const k = +ym.slice(0, 4) * 12 + +ym.slice(5, 7);
     const list = []; const ps = people();
     const slots = new Map();
@@ -225,6 +232,9 @@ module.exports = function growthModule(c) {
       const r = k % sorted.length; const order = sorted.slice(r).concat(sorted.slice(0, r));
       order.forEach((n, i) => list.push({ name: n, date: day1, time: hhmm(toMin(hr) + i * (+sc.minutes || 20)), minutes: +sc.minutes || 20, kind: 'slot' }));
     }
+    // a new start time for the month shifts every planning slot check-in that day together, keeping their order and spacing
+    if (mm && /^\d{2}:\d{2}$/.test(mm.start || '') && list.length) { const first = Math.min(...list.map(x => toMin(x.time))); const shift = toMin(mm.start) - first;
+      for (const x of list) x.time = hhmm(x.time ? toMin(x.time) + shift : 0); }
     const second = ps.filter(n => modeOf(profileOf(n)) === 'second').sort();
     // the short second-Monday check-ins are set around every class team meeting that day, since the director is at them
     if (second.length) { const r = k % second.length; const mins = +sc.minutes || 20;
@@ -234,8 +244,14 @@ module.exports = function growthModule(c) {
         if (t != null) { for (let moved = true; moved;) { moved = false; for (const [a, b] of busy) if (t < b && t + mins > a) { t = b; moved = true; } } time = hhmm(t); t += mins; }
         list.push({ name: n, date: day2, time, minutes: mins, kind: 'second' }); }); }
     // a check-in set by hand, for someone met as needed or a moved conversation, is kept on the educator's record
+    // one check-in moved on its own keeps everyone else's day and time as they are, and remembers where it was
+    const one = (mv.one || {})[ym] || {};
+    for (const x of list) { const o = one[pidOf(x.name)]; if (!o || !ISO.test(o.date || '')) continue;
+      x.from = { date: x.date, time: x.time }; x.date = o.date; x.time = /^\d{2}:\d{2}$/.test(o.time || '') ? o.time : x.time; x.single = true; }
+    if (mm) for (const x of list) if (!x.single && x.kind === 'slot') x.monthMove = true;
     for (const n of ps) for (const x of (growth(n).booked || [])) if (x.date && x.date.slice(0, 7) === ym) list.push({ name: n, date: x.date, time: x.time || '', minutes: +sc.minutes || 20, kind: 'booked', id: x.id });
-    return { ym, day1, day2, list: list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)), moved: target !== day1 ? target : '' };
+    return { ym, day1, day2, list: list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)), moved: !mm && target !== day1 ? target : '',
+      monthMove: mm ? { date: day1, start: mm.start || '', from: usual } : null };
   }
   async function schedule(ym) { await loadMonth(ym); return scheduleFor(ym); }
 
@@ -635,6 +651,21 @@ module.exports = function growthModule(c) {
         if (profileOf(who).noMondays && new Date(body.date + 'T12:00:00Z').getUTCDay() === 1) return err(req, res, 400, `${who} does not work Mondays. Choose another day.`);
         g.booked = [...(g.booked || []), { id: rid('b'), date: body.date, time: /^\d{2}:\d{2}$/.test(body.time || '') ? body.time : '' }]; }
       put(gPath(who), g); bump(); json(req, res, 200, forViewer(who, me)); return;
+    }
+    // move a whole month's check-ins, or one educator's, or put either back. Only that month, or only that person, changes.
+    if (P === 'checkin/move') {
+      if (!dir) return deny(); const ym = /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : ''; if (!ym) return err(req, res, 400, 'Choose the month.');
+      const m = moves(); const tm = /^\d{2}:\d{2}$/.test(body.time || '') ? body.time : '';
+      if (body.name) { const n = String(body.name); if (!people().some(x => nameKey(x) === nameKey(n))) return err(req, res, 404, 'That educator is not here.');
+        const one = Object.assign({}, m.one[ym]); const k = pidOf(n);
+        if (body.undo) delete one[k];
+        else { if (!ISO.test(body.date || '')) return err(req, res, 400, 'Choose the day.');
+          if (profileOf(n).noMondays && dow(body.date) === 1) return err(req, res, 400, `${n} does not work Mondays. Choose another day.`);
+          one[k] = { date: body.date, time: tm }; }
+        if (Object.keys(one).length) m.one[ym] = one; else delete m.one[ym];
+      } else if (body.undo) delete m.months[ym];
+      else { if (!ISO.test(body.date || '')) return err(req, res, 400, 'Choose the day.'); m.months[ym] = { date: body.date, start: tm }; }
+      put(MOVES, m); bump(); json(req, res, 200, (await schedule(ym)) || {}); return;
     }
     if (P === 'schedule') { const ym = /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : today().slice(0, 7); const s = await schedule(ym); if (s && !dir) s.list = s.list.filter(x => nameKey(x.name) === nameKey(me)); json(req, res, 200, s || {}); return; }
 
