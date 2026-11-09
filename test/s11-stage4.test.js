@@ -263,7 +263,7 @@ test('the garden year in four seasons, with a preserve stage, animal care by sea
   const fall = await s.p.evaluate(() => gdnSeason(gdn.seasons[0]));
   const sec = Object.fromEntries(fall.sections);
   assert.deepStrictEqual(sec['What we plant'], ['Plant cool season starts']);
-  assert.deepStrictEqual(sec['What we harvest'], ['Fig']);
+  assert.deepStrictEqual(sec['What we harvest'], ['Ripe and ready to pick, fig']);
   assert.deepStrictEqual(sec['What we preserve'], ['Figs, frozen.', 'Dry apple rings']);
   assert.deepStrictEqual(sec["The animals' care"], ['Feed the goats, each day', 'Dry bedding before the rains.']);
   assert.deepStrictEqual(sec['Our gathering'], ['The September garden day.']);

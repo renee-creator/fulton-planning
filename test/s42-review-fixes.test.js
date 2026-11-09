@@ -71,7 +71,10 @@ test('the backup has its own key once it is set, and a large request is refused 
   const api = fx.api;
   const post = (p, key) => fetch(api + p, { method: 'POST', headers: { 'x-tree-key': key, 'Content-Type': 'application/json' }, body: '{}' });
   assert.strictEqual((await post('/inbound/backup', 'inbox-key')).status, 403);
-  let r; for (let i = 0; i < 60; i++) { r = await post('/inbound/backup', 'backup-key'); if (r.status === 200) break; await wait(500); }
+  // once BACKUP_KEY is set, only the X-Backup-Key header is taken, never the key in the address or the old header
+  assert.strictEqual((await post('/inbound/backup', 'backup-key')).status, 403);
+  assert.strictEqual((await fetch(api + '/inbound/backup?key=backup-key', { method: 'POST', body: '{}' })).status, 403);
+  let r; for (let i = 0; i < 60; i++) { r = await fetch(api + '/inbound/backup', { method: 'POST', headers: { 'x-backup-key': 'backup-key', 'Content-Type': 'application/json' }, body: '{}' }); if (r.status === 200) break; await wait(500); }
   assert.strictEqual(r.status, 200);
   const big = 'x'.repeat(400 * 1024);
   const f = await fetch(api + '/family/recipe', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + fx.web }, body: JSON.stringify({ title: big }) });

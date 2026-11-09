@@ -7,6 +7,9 @@
 // plans/abc.json or calendar/bookings/2026-10.json, and the folder can then be committed and pushed.
 // Sign-ins, access/accounts.json, are not in a backup, so an existing file there is left as it is. The director and office
 // names, access/roles.json, are restored.
+// The pictures in the Policies and Procedures, the Family Handbook and the libraries are kept in their own files, TREE
+// pictures YYYY-MM-DD.json.gz, each holding the pictures new or changed since the one before. Restore the records file
+// first, then each pictures file into the same folder, oldest first, with the same command.
 // Photos are listed in the manifest with their Google Drive ids. The photo files themselves stay in Google Drive, and the
 // markers that point TREE to them, photos/<id>~<drive id>~<size>.ref, are written back from the manifest.
 'use strict';
@@ -22,7 +25,7 @@ if (!src || !out) {
 let raw = fs.readFileSync(src);
 if (raw[0] === 0x1f && raw[1] === 0x8b) raw = zlib.gunzipSync(raw);
 const bundle = JSON.parse(raw.toString('utf8'));
-if (!bundle || !bundle.manifest || bundle.manifest.kind !== 'TREE backup' || !bundle.files) {
+if (!bundle || !bundle.manifest || !['TREE backup', 'TREE pictures'].includes(bundle.manifest.kind) || !bundle.files) {
   console.error('This file is not a TREE backup.');
   process.exit(1);
 }
@@ -42,7 +45,7 @@ for (const [rel, doc] of Object.entries(bundle.files)) {
   if (!at) { console.error('Skipped', rel); continue; }
   const { rp, file } = at;
   // a picture, from the Policies and Procedures, the Family Handbook or a library, comes back as the image it was
-  if (doc && typeof doc === 'object' && typeof doc.base64 === 'string' && /\.(png|jpe?g|gif|webp)$/i.test(rp)) { write(file, Buffer.from(doc.base64, 'base64')); continue; }
+  if (doc && typeof doc === 'object' && typeof doc.base64 === 'string' && /\.(png|jpe?g|gif|webp|pdf)$/i.test(rp)) { write(file, Buffer.from(doc.base64, 'base64')); continue; }
   // a record kept as text, the PD library's pieces, the school's wording, the new educator pages, the family pieces and
   // any other Markdown page, is written as it was. Every other record is JSON.
   if (typeof doc === 'string') { write(file, doc); continue; }
@@ -53,6 +56,7 @@ for (const [rel, doc] of Object.entries(bundle.files)) {
   write(file, JSON.stringify(doc, null, indent) + '\n');
 }
 const m = bundle.manifest;
+if (m.kind === 'TREE pictures') { console.log(`Restored ${n} pictures from the picture backup of ${m.date} into ${root}`); process.exit(0); }
 // the markers for photos kept in Google Drive, written as the server writes them, with the Drive id as the text
 let marks = 0;
 for (const p of (m.photos && m.photos.list) || []) {

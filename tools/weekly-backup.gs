@@ -18,7 +18,14 @@
   backups reach back about six months. The rest go to the Drive trash. The Monday backups made before are named the
   same way as the nightly ones, so the first run keeps one from each of their weeks too. Sign-ins are not in a backup,
   since they hold passcodes.
+  The pictures in the Policies and Procedures, the Family Handbook and the libraries come next, in their own file, TREE
+  pictures YYYY-MM-DD.json.gz, holding only the pictures new or changed since the last one. These are all kept, since
+  each holds only what changed. To ask for every picture once, run fullPictureBackup.
   The server may be restarting when the time comes, so the script asks again.
+
+  The backup key
+  The backup has its own key, BACKUP_KEY on Render. Put the same key in this project's Script properties as
+  BACKUP_KEY (Project Settings, Script properties, Add script property). Until it is there, the script uses TREE_KEY.
 
   Setup, once, also when changing from the Monday backup
   1. Paste this whole file over the old one and save.
@@ -30,6 +37,8 @@
 */
 const BACKUP_FOLDER = 'TREE backups';
 const BACKUP_KEEP = 30, BACKUP_WEEKS = 26;
+// UrlFetchApp takes answers up to 50 MB. The server stops at 40 MB, and a file over 45 MB is never saved half made.
+const BACKUP_MAX = 45 * 1024 * 1024;
 
 function setupNightlyBackup() {
   // the Monday time ran weeklyBackup, so both names are cleared before the nightly time is set
@@ -53,33 +62,74 @@ function backupFolder_() {
 // a Monday time left from before still runs weeklyBackup, which makes the same backup until setup is run
 function weeklyBackup() { nightlyBackup(); }
 
-function nightlyBackup() {
-  const url = TREE_SERVER.replace(/\/inbound\/kaymbu$/, '/inbound/backup');
-  const ask = () => UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    headers: { 'X-Tree-Key': TREE_KEY }, payload: JSON.stringify({ key: TREE_KEY }) });
-  // a restarting server can take a minute to answer, so the script asks up to three times within about five minutes
+// the backup's own key from Script properties, sent in the X-Backup-Key header. Until it is set, the inbox key is sent the old way.
+function backupAsk_(path, body) {
+  const url = TREE_SERVER.replace(/\/inbound\/kaymbu$/, path);
+  let own = ''; try { own = String(PropertiesService.getScriptProperties().getProperty('BACKUP_KEY') || '').trim(); } catch (e) {}
+  const headers = own ? { 'X-Backup-Key': own } : { 'X-Tree-Key': TREE_KEY };
+  const payload = Object.assign({}, body || {}); if (!own) payload.key = TREE_KEY;
+  return UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: headers, payload: JSON.stringify(payload) });
+}
+// a restarting server can take a minute to answer, so the script asks up to three times within about five minutes
+function backupFetch_(path, body) {
   let res = null, why = '';
   for (let k = 0; k < 3; k++) {
     if (k) Utilities.sleep(45000);
-    try { res = ask(); } catch (e) { res = null; why = String(e); continue; }
-    if (res.getResponseCode() === 200) break;
+    try { res = backupAsk_(path, body); } catch (e) { res = null; why = String(e); continue; }
+    if (res.getResponseCode() === 200) return { res: res };
     why = 'the server answered ' + res.getResponseCode() + ' ' + res.getContentText().slice(0, 200);
-    if (res.getResponseCode() === 403) break;
+    if (res.getResponseCode() === 403 || res.getResponseCode() === 507) break;
   }
-  if (!res || res.getResponseCode() !== 200) throw new Error('The nightly backup did not arrive, ' + why);
+  return { res: null, why: why };
+}
+function header_(res, name) { const h = res.getHeaders ? res.getHeaders() || {} : {}; const k = Object.keys(h).find(x => x.toLowerCase() === name.toLowerCase()); return k ? String(h[k]) : ''; }
+
+function nightlyBackup() {
+  const got = backupFetch_('/inbound/backup');
+  if (!got.res) throw new Error('The nightly backup did not arrive, ' + got.why);
+  const res = got.res;
   const gz = res.getBlob().setContentType('application/gzip');
-  // the backup's own date and counts, read from inside it for the log
-  let manifest = {};
-  try { manifest = JSON.parse(Utilities.ungzip(gz.copyBlob()).getDataAsString('UTF-8')).manifest || {}; } catch (e) { Logger.log('The backup could not be opened to read its counts. ' + e); }
-  const day = manifest.date || Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
+  const size = gz.getBytes().length;
+  if (size > BACKUP_MAX) throw new Error('The nightly backup was ' + Math.round(size / 1048576) + ' MB, too large to keep safely, so it was not saved.');
+  // the date and counts come in the answer's headers, so the file is never opened just to read them
+  const day = header_(res, 'X-Backup-Date') || Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
   const name = 'TREE backup ' + day + '.json.gz';
   const folder = backupFolder_();
   // a second run on the same day replaces that day's file
   const same = folder.getFilesByName(name); while (same.hasNext()) same.next().setTrashed(true);
   folder.createFile(gz.setName(name));
-  const kept = keepBackups_(folder);
-  Logger.log('Saved ' + name + ', ' + Math.round(gz.getBytes().length / 1024) + ' KB, ' + (manifest.files || '?') + ' records. ' +
-    Object.keys(manifest.counts || {}).map(k => k + ' ' + manifest.counts[k]).join(', ') + '. ' + kept.nightly + ' nightly and ' + kept.weekly + ' weekly backups kept.');
+  // the server is told the file is saved, so Settings shows the night as kept
+  try { backupAsk_('/inbound/backup/saved', { kind: 'records', name: name, bytes: size }); } catch (e) { Logger.log('The server could not be told the backup is saved. ' + e); }
+  let kept = { nightly: '?', weekly: '?' };
+  try { kept = keepBackups_(folder); } catch (e) { Logger.log('Older backups could not be sorted this time. ' + e); }
+  Logger.log('Saved ' + name + ', ' + Math.round(size / 1024) + ' KB, ' + (header_(res, 'X-Backup-Files') || '?') + ' records. ' +
+    header_(res, 'X-Backup-Counts') + '. ' + kept.nightly + ' nightly and ' + kept.weekly + ' weekly backups kept.');
+  // the pictures come after, in their own file, so a trouble there never stops the records being kept
+  try { pictureBackup_(false); } catch (e) { Logger.log('The picture backup did not finish. It will try again tomorrow. ' + e); }
+}
+
+// every picture once, such as after a restore or to start a fresh set. Run it from the toolbar.
+function fullPictureBackup() { pictureBackup_(true); }
+
+// pictures new or changed since the last picture backup, as many files as it takes, each saved before the next is asked
+function pictureBackup_(full) {
+  const folder = backupFolder_();
+  for (let part = 1; part <= 10; part++) {
+    const got = backupFetch_('/inbound/backup/pictures', part === 1 && full ? { full: true } : {});
+    if (!got.res) throw new Error('The pictures did not arrive, ' + got.why);
+    const res = got.res, count = Number(header_(res, 'X-Backup-Count')) || 0;
+    if (!count) { Logger.log(part === 1 ? 'No new or changed pictures since the last picture backup.' : 'Every picture is kept.'); return; }
+    const gz = res.getBlob().setContentType('application/gzip'), size = gz.getBytes().length;
+    if (size > BACKUP_MAX) throw new Error('A picture file was ' + Math.round(size / 1048576) + ' MB, too large to keep safely, so it was not saved.');
+    const day = header_(res, 'X-Backup-Date') || Utilities.formatDate(new Date(), 'America/Los_Angeles', 'yyyy-MM-dd');
+    const name = 'TREE pictures ' + day + (part > 1 ? ' ' + part : '') + '.json.gz';
+    const same = folder.getFilesByName(name); while (same.hasNext()) same.next().setTrashed(true);
+    folder.createFile(gz.setName(name));
+    backupAsk_('/inbound/backup/saved', { kind: 'pictures', token: header_(res, 'X-Backup-Token'), name: name, bytes: size });
+    Logger.log('Saved ' + name + ', ' + Math.round(size / 1024) + ' KB, ' + count + ' pictures.');
+    if (header_(res, 'X-Backup-More') !== '1') return;
+  }
+  Logger.log('More pictures are waiting. They come with the next backup.');
 }
 
 // the newest 30 nightly backups stay. Before an older one leaves, the newest of each past week is kept as that week's

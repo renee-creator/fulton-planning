@@ -60,7 +60,7 @@ const forViewer = (kind, doc, director, office) => {
   return doc;
 };
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
-const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch'];
+const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch', 'backuppics'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy', 'byDirector'];
 // every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
@@ -1462,7 +1462,7 @@ function flushPath(path) {
   clearTimeout(timers.get(path)); timers.delete(path); firstDirty.delete(path);
   const item = dirtyPaths.get(path); if (!item) return chains.get(path) || Promise.resolve();
   dirtyPaths.delete(path);
-  const run = (chains.get(path) || Promise.resolve()).then(() => writeFile(item.kind, item.id)).then(() => { failingSince.delete(path); }, e => {
+  const run = (chains.get(path) || Promise.resolve()).then(() => writeFile(item.kind, item.id)).then(() => { const since = failingSince.get(path); if (since) log('Save written after earlier failures', path, 'after', Math.max(1, Math.round((Date.now() - since) / 60000)), 'minutes'); failingSince.delete(path); }, e => {
     log('Save failed', path, e.message); if (!failingSince.has(path)) failingSince.set(path, Date.now());
     if (!dirtyPaths.has(path)) dirtyPaths.set(path, item);
     if (!stopping) { clearTimeout(timers.get(path)); timers.set(path, setTimeout(() => flushPath(path), 30000)); } });
@@ -2455,6 +2455,27 @@ function backupKey() {
   if (!backupKeyNoted) { backupKeyNoted = true; log('The backup uses the inbox key. Set BACKUP_KEY on Render and in the backup script to give it its own.'); }
   return cleanKey(process.env.KAYMBU_INBOX_KEY);
 }
+// two keys compared in the same time whatever they hold, so a wrong key tells nothing about the right one
+function keyMatch(given, key) {
+  given = String(given || ''); key = String(key || ''); if (!given || !key) return false;
+  const h = x => crypto.createHash('sha256').update(x).digest();
+  return crypto.timingSafeEqual(h(given), h(key));
+}
+/* Who may ask for a backup. Once BACKUP_KEY is set on Render, only the X-Backup-Key header with that key is taken, and a
+   key in the address or the body is refused. Until then the inbox key still works the way it did, in a header, the
+   address or the body, so the nightly backup keeps running while the new key is set up. */
+function backupAllowed(req, url, body) {
+  const own = cleanKey(process.env.BACKUP_KEY), header = cleanKey(req.headers['x-backup-key'] || '');
+  if (own) return keyMatch(header, own);
+  const key = backupKey(); if (!key) return false;
+  return keyMatch(header || cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || (body && body.key) || ''), key);
+}
+// the largest backup answer the server builds. The mailbox script can take 50 MB, so this leaves room.
+const BACKUP_MAX_BYTES = 40 * 1024 * 1024;
+// pictures sent in one answer of the picture backup, counted before compressing. Pictures barely compress and grow a third as text, so this stays under the limit.
+const PICTURES_MAX_BYTES = 24 * 1024 * 1024;
+// a picture backup waiting for the mailbox script to say it is saved in Drive, by its token
+const picturesPending = new Map();
 function readBody(req, limit) {
   const max = limit || MAX_BODY_BYTES;
   return new Promise((resolve, reject) => {
@@ -2476,10 +2497,12 @@ const PHOTO_WIDTHS = [1920, 1200];
 const SIZES_DIR = process.env.PHOTO_SIZES_DIR || require('path').join(require('os').tmpdir(), 'tree-photo-sizes');
 let sharpLib; try { sharpLib = require('sharp'); } catch (e) { sharpLib = null; }
 const sizing = new Map();
+const sizedFile = (id, w) => require('path').join(SIZES_DIR, w + '-' + id.replace(/[^A-Za-z0-9._-]/g, '_') + '.jpg');
+async function sizedOnDisk(id, w) { try { return await require('fs').promises.readFile(sizedFile(id, w)); } catch (e) { return null; } }
 async function sizedPhoto(id, buf, w) {
-  const fs = require('fs'), pathLib = require('path');
-  const file = pathLib.join(SIZES_DIR, w + '-' + id.replace(/[^A-Za-z0-9._-]/g, '_') + '.jpg');
-  try { return await fs.promises.readFile(file); } catch (e) {}
+  const fs = require('fs');
+  const file = sizedFile(id, w);
+  const kept = await sizedOnDisk(id, w); if (kept) return kept;
   if (!sharpLib) throw new Error('sharp is not installed');
   const key = w + '|' + id; if (sizing.has(key)) return sizing.get(key);
   const work = (async () => {
@@ -2749,6 +2772,8 @@ async function handle(req, res) {
   const url = new URL(req.url || '/', 'http://x'); const path = url.pathname;
   if (req.method === 'OPTIONS') { send(req, res, 204, {}, undefined); return; }
   if (req.method === 'GET' && (path === '/' || path === '/status')) { statusPage(req, res); return; }
+  // for Render's health check. 200 once every record, the calendar and the educator records have loaded, 503 before.
+  if ((req.method === 'GET' || req.method === 'HEAD') && path === '/ready') { const ok = store.ready && calendar.ready && staff.isReady(); send(req, res, ok ? 200 : 503, { 'Content-Type': 'text/plain; charset=utf-8' }, req.method === 'HEAD' ? undefined : ok ? 'ready' : 'loading'); return; }
   if (req.method === 'GET' && path === '/health') { json(req, res, 200, { ok: true, ready: store.ready, error: store.error || undefined, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, bootId: BOOT_ID }); return; }
 
   // original form files are opened in an img or a new tab, which cannot send a header, so the session rides in the address
@@ -2769,6 +2794,10 @@ async function handle(req, res) {
       if (r.status === 200 && r.json && r.json.sha) { o = { path: `originals/${id}`, sha: r.json.sha, size: r.json.size }; store.originals.set(id, o); log('Photo found in the records directly', id.slice(0, 60)); }
     }
     if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60)); send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
+    const ext = id.split('.').pop().toLowerCase();
+    const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
+    // a small copy already made is sent from disk at once, without fetching the original from Drive or GitHub
+    if (sized && /^image\/(jpeg|png|webp)$/.test(type)) { const small = await sizedOnDisk(id, sized); if (small) { send(req, res, 200, Object.assign({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' }, open), small); return; } }
     // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
     let buf = fileCache.get(id);
     if (!buf && o.drive) {
@@ -2780,8 +2809,6 @@ async function handle(req, res) {
       if (b.status !== 200) { log('Photo could not be read from GitHub', id.slice(0, 60), b.status); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the file from GitHub.'); return; }
       buf = b.buf; cacheFile(id, buf);
     } else { fileCache.delete(id); fileCache.set(id, buf); }
-    const ext = id.split('.').pop().toLowerCase();
-    const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
     if (sized && /^image\/(jpeg|png|webp)$/.test(type)) {
       try { const small = await sizedPhoto(id, buf, sized); send(req, res, 200, Object.assign({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' }, open), small); return; }
       catch (e) { log('Photo could not be resized, the original is sent', id.slice(0, 60), e.message); }
@@ -2799,8 +2826,8 @@ async function handle(req, res) {
   }
   if (req.method !== 'POST') { err(req, res, 405, 'Not allowed'); return; }
   // the mailbox script's key, when it rides in a header or the address, is checked before a large email is read
-  if (path.startsWith('/inbound/')) {
-    const key = path === '/inbound/backup' ? backupKey() : cleanKey(process.env.KAYMBU_INBOX_KEY); const early = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || '');
+  if (path.startsWith('/inbound/') && !path.startsWith('/inbound/backup')) {
+    const key = cleanKey(process.env.KAYMBU_INBOX_KEY); const early = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || '');
     // with no key set on Render the inbox is off, so nothing is read at all
     if (!key || (early && !sameText(early, key))) { req.resume(); log('Inbox email refused before reading,', key ? 'the key is not right' : 'the inbox key is not set'); err(req, res, 403, 'Not allowed'); return; }
   }
@@ -2812,13 +2839,66 @@ async function handle(req, res) {
   }
   // the nightly backup, asked for by the mailbox script every night. Waiting saves are written first, then every
   // record kind comes back as one gzipped JSON bundle the script keeps in Google Drive. Sign-ins stay out, since they hold passcodes.
-  if (path === '/inbound/backup') {
+  if (path === '/inbound/backup' || path === '/inbound/backup/pictures' || path === '/inbound/backup/saved') {
     let b = {}; try { b = await readBody(req, 64 * 1024); } catch (e) { b = {}; }
-    const key = backupKey(), given = cleanKey(req.headers['x-tree-key'] || url.searchParams.get('key') || (b && b.key) || '');
-    if (!key || !given || !sameText(given, key)) { log('Backup refused, the key is missing or wrong'); err(req, res, 403, 'Not allowed'); return; }
-    const t0 = Date.now(); const lap = {}; const mark = k => { lap[k] = Date.now() - t0; };
+    if (!backupAllowed(req, url, b)) { log('Backup refused, the key is missing or wrong' + (cleanKey(process.env.BACKUP_KEY) ? ', and only the X-Backup-Key header is taken' : '')); err(req, res, 403, 'Not allowed'); return; }
     if (!store.ready) await loadAll();
     if (!store.ready) { err(req, res, 503, 'The records could not be loaded, so there is nothing to back up yet.'); return; }
+    // the mailbox script says a file is saved in Drive. The card in Settings counts a night only once this arrives.
+    if (path === '/inbound/backup/saved') {
+      const what = b.kind === 'pictures' ? 'pictures' : 'records', now = Date.now();
+      if (what === 'pictures') {
+        const p = picturesPending.get(String(b.token || '')); if (!p) { err(req, res, 404, 'That picture backup is not known. Ask for the pictures again.'); return; }
+        picturesPending.delete(String(b.token));
+        const cur = store.recs.settings.get('backuppics'); const doc = cur && !cur.deleted ? cur.doc : { id: 'backuppics', sent: {} };
+        const sent = Object.assign({}, doc.sent || {}); for (const [k, sha] of Object.entries(p.list)) sent[k] = { sha, at: now };
+        // a picture no longer in the records is let go from the list
+        const still = new Set(staff.imageList().map(x => x[0])); for (const k of Object.keys(sent)) if (!still.has(k)) delete sent[k];
+        store.recs.settings.set('backuppics', { doc: Object.assign({}, doc, { id: 'backuppics', sent, lastAt: now, lastFile: String(b.name || '').slice(0, 120), lastCount: Object.keys(p.list).length, updatedByName: 'Nightly backup' }), sha: cur && cur.sha, path: 'settings/backuppics.json', local: true });
+        noteChange('settings', 'backuppics'); scheduleSave('settings', 'backuppics');
+        { const bc = store.recs.settings.get('backup'); store.recs.settings.set('backup', Object.assign({}, bc || {}, { doc: Object.assign({}, (bc && bc.doc) || { id: 'backup' }, { picsAt: now, picsCount: Object.keys(p.list).length, picsKept: Object.keys(sent).length, updatedByName: 'Nightly backup' }) })); noteChange('settings', 'backup'); scheduleSave('settings', 'backup'); }
+        log('Picture backup saved in Drive,', Object.keys(p.list).length, 'pictures');
+        json(req, res, 200, { ok: true, kept: Object.keys(sent).length }); return;
+      }
+      const cur = store.recs.settings.get('backup');
+      store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: Object.assign({}, (cur && cur.doc) || { id: 'backup' }, { savedAt: now, savedBytes: Number(b.bytes) || 0, updatedByName: 'Nightly backup' }) }));
+      noteChange('settings', 'backup'); scheduleSave('settings', 'backup');
+      log('Backup saved in Drive,', Math.round((Number(b.bytes) || 0) / 1024), 'KB');
+      json(req, res, 200, { ok: true }); return;
+    }
+    // the pictures in the Policies and Procedures, the Family Handbook and the libraries, only those new or changed since
+    // the last picture backup the script saved. ?full=1, or the X-Backup-Full header, starts a full set once.
+    if (path === '/inbound/backup/pictures') {
+      try { await staff.load(); } catch (e) { log('Educator records could not be loaded for the picture backup', e.message); }
+      const cur = store.recs.settings.get('backuppics'); let doc = cur && !cur.deleted ? cur.doc : { id: 'backuppics', sent: {} };
+      const full = url.searchParams.get('full') === '1' || cleanKey(req.headers['x-backup-full'] || '') === '1' || b.full === true;
+      if (full) {
+        doc = Object.assign({}, doc, { id: 'backuppics', fullSince: Date.now(), updatedByName: 'Nightly backup' });
+        store.recs.settings.set('backuppics', { doc, sha: cur && cur.sha, path: 'settings/backuppics.json', local: true }); noteChange('settings', 'backuppics'); scheduleSave('settings', 'backuppics');
+        log('A full picture backup was asked for');
+      }
+      const sent = doc.sent || {}, since = Number(doc.fullSince) || 0;
+      const all = staff.imageList(), want = all.filter(([k, sha]) => !sent[k] || sent[k].sha !== sha || (Number(sent[k].at) || 0) < since);
+      const files = {}, list = {}; let raw = 0, skipped = 0;
+      for (const [k, sha] of want) {
+        let buf; try { buf = await staff.readImageAt(k); } catch (e) { log('A picture could not be added to the picture backup,', k, e.message); continue; }
+        if (buf.length > PICTURES_MAX_BYTES) { skipped++; log('Warning. A picture is too large for the picture backup and was left out,', k, Math.round(buf.length / 1048576), 'MB'); continue; }
+        if (raw + buf.length > PICTURES_MAX_BYTES) break;
+        raw += buf.length; files[k] = { base64: buf.toString('base64') }; list[k] = sha;
+      }
+      const left = want.length - Object.keys(list).length - skipped;
+      const token = crypto.randomBytes(12).toString('hex');
+      const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+      const bundle = { manifest: { kind: 'TREE pictures', date: day, at: new Date().toISOString(), fullSince: since || undefined, token, count: Object.keys(list).length, more: left > 0, left, total: all.length,
+        note: 'Pictures new or changed since the last picture backup. To put them back, restore the nightly records file, then every picture file from oldest to newest.' }, files };
+      const gz = await new Promise((ok, no) => zlib.gzip(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 6 }, (e, out) => e ? no(e) : ok(out)));
+      if (gz.length > BACKUP_MAX_BYTES) { log('Warning. The picture backup came to', Math.round(gz.length / 1048576), 'MB, over the 40 MB limit, so it was not sent'); err(req, res, 507, 'The picture backup is too large to send.'); return; }
+      if (Object.keys(list).length) { picturesPending.set(token, { at: Date.now(), list }); for (const [t, v] of picturesPending) if (Date.now() - v.at > 6 * 3600e3) picturesPending.delete(t); }
+      log('Picture backup sent,', Object.keys(list).length, 'pictures,', Math.round(gz.length / 1024), 'KB,', left, 'left for the next request');
+      send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE pictures ${day}.json.gz"`, 'Cache-Control': 'no-store', 'X-Backup-Date': day, 'X-Backup-Count': String(Object.keys(list).length), 'X-Backup-Token': token, 'X-Backup-More': left > 0 ? '1' : '0' }, gz);
+      return;
+    }
+    const t0 = Date.now(); const lap = {}; const mark = k => { lap[k] = Date.now() - t0; };
     mark('load');
     if (!calendar.ready) { try { await calendar.loadAll(); } catch (e) { log('The calendar could not be loaded for the backup', e.message); } }
     // the educator records load after the rest, so a backup that wakes the server waits for them too
@@ -2826,19 +2906,21 @@ async function handle(req, res) {
     const saved = (await Promise.all([flushEverything().catch(() => false), calendar.flushEverything().catch(() => false), staff.flushAll().catch(() => false)])).every(Boolean);
     mark('save');
     const bundle = backupBundle(saved);
-    // the pictures in the Policies and Procedures, the Family Handbook and the recipe library travel with the backup
-    try { const imgs = await staff.dumpImages(); let n = 0; for (const [p, b64] of Object.entries(imgs)) { bundle.files[p] = { base64: b64 }; n++; } bundle.manifest.counts.pictures = n; bundle.manifest.files = Object.keys(bundle.files).length; } catch (e) { log('The pictures could not be added to the backup', e.message); }
+    // the pictures travel in their own picture backup, so this file holds the records only. The list says what each picture is.
+    try { const imgs = staff.imageList(); bundle.manifest.pictures = { total: imgs.length, list: imgs.map(([p, sha]) => ({ path: p, sha })), where: 'In the TREE pictures files beside this one' }; } catch (e) {}
     mark('bundle');
     // compressed off the main thread, so the rest of TREE keeps answering while the backup is made
     const gz = await new Promise((ok, no) => zlib.gzip(Buffer.from(JSON.stringify(bundle), 'utf8'), { level: 6 }, (e, out) => e ? no(e) : ok(out)));
     mark('compress');
+    if (gz.length > BACKUP_MAX_BYTES) { log('Warning. The nightly backup came to', Math.round(gz.length / 1048576), 'MB, over the 40 MB limit, so it was not sent. The records need a smaller backup.'); err(req, res, 507, 'The backup is too large to send.'); return; }
     lastBackup = { at: Date.now(), bytes: gz.length, counts: bundle.manifest.counts };
     // the time is kept in the records too, so the director's Settings shows it after the server has slept
     const cur = store.recs.settings.get('backup');
-    store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: { id: 'backup', lastAt: lastBackup.at, bytes: gz.length, files: bundle.manifest.files, counts: bundle.manifest.counts, updatedByName: 'Nightly backup' } }));
+    store.recs.settings.set('backup', Object.assign({}, cur || {}, { doc: Object.assign({}, (cur && cur.doc) || {}, { id: 'backup', lastAt: lastBackup.at, bytes: gz.length, files: bundle.manifest.files, counts: bundle.manifest.counts, updatedByName: 'Nightly backup' }) }));
     noteChange('settings', 'backup'); scheduleSave('settings', 'backup');
     log('Backup sent,', bundle.manifest.files, 'files,', Math.round(gz.length / 1024), 'KB, ms at load', lap.load, 'save', lap.save, 'bundle', lap.bundle, 'compress', lap.compress);
-    send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE backup ${bundle.manifest.date}.json.gz"`, 'Cache-Control': 'no-store' }, gz);
+    // the date and counts ride in headers too, so the mailbox script can name and log the file without opening it
+    send(req, res, 200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="TREE backup ${bundle.manifest.date}.json.gz"`, 'Cache-Control': 'no-store', 'X-Backup-Date': bundle.manifest.date, 'X-Backup-Files': String(bundle.manifest.files), 'X-Backup-Counts': Object.entries(bundle.manifest.counts || {}).map(([k, v]) => k + ' ' + v).join(', ').slice(0, 1500) }, gz);
     return;
   }
   // a video clip the mailbox script found in the Video folder or the inbox. The script sends its Drive id, never the clip itself.

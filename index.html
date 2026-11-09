@@ -4978,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="550f072560ea";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="877bdcb19e12";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -17301,12 +17301,19 @@ function saveProgram(){
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
 // the nightly backup to Google Drive, made by the mailbox script every night, and when the last one arrived
 let backupInfo=null;
-function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastAt;
+// a night is missed when no backup has been kept for about 26 hours. The time the mailbox script said it saved the file
+// counts once there is one, and before that the time the server sent it.
+const bkLast=()=>{const b=backupInfo||{};return Number(b.savedAt)||Number(b.lastAt)||0};
+const bkMissed=()=>{const t=bkLast();return !t||Date.now()-t>26*3600e3};
+function backupHtml(){if(!isDirector())return"";const b=backupInfo||{},at=b.lastAt;
   const when=at?whenAt(at,{weekday:"long",month:"long",day:"numeric"}):"";
-  const old=at&&Date.now()-at>50*3600000;
-  return `<section class="card"><div class="lbl">Backups</div>
-    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}${old?" The last one is more than two days old, so check the mailbox script.":""}</div></div></div>
-    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive. The newest 30 nightly backups are kept, and one from each past week is kept as that week's backup, the newest 26 weeks, so the backups reach back about six months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div>
+  const missed=bkMissed();
+  const pics=b.picsAt?`Pictures last kept ${esc(whenAt(b.picsAt,{weekday:"long",month:"long",day:"numeric"}))}, ${(b.picsKept||0).toLocaleString()} in all.`:"";
+  return `<section class="card"${missed?' style="border-color:var(--clay);background:var(--clay-soft)"':""}><div class="lbl">Backups</div>
+    ${missed?`<div class="cnt" style="color:var(--clay);font-weight:700;margin-bottom:6px">${at?"Last night's backup was missed.":"No backup has arrived yet."}</div><div class="cnt" style="color:var(--clay);margin-bottom:8px">Open the mailbox script and run nightlyBackup. Then read its log.</div>`:""}
+    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}</div>${pics?`<div class="cnt">${pics}</div>`:""}</div></div>
+    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive. The newest 30 nightly backups are kept, and one from each past week is kept as that week's backup, the newest 26 weeks, so the backups reach back about six months.</div>
+    <div class="hint">The pictures in the Policies and Procedures, the Family Handbook and the libraries are kept in their own files beside them, only the new or changed ones each night. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out because they hold passcodes.</div>
     ${readableHtml()}</section>`}
 /* Readable copies. Once a week, the first time the director has TREE open on a computer or iPad after Sunday night, her
    TREE quietly makes the Word and PDF files it already prints and keeps them in Google Drive, in TREE readable copies
@@ -17486,7 +17493,7 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
 // the Settings card left open, which another page or a link may set before Settings has loaded
 let setOpen="";
 const plural=(n,w)=>n+" "+w+(n===1?"":"s");
-function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","d5aa413b73").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","84630501fa").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

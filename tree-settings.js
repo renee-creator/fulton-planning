@@ -25,7 +25,7 @@ function setStatus(t,x){try{
   if(t==="Releases"){const c=gthConf();return (c.release||{}).page?"Gatherings released":"Gatherings hidden from educators"}
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
   if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
-  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
+  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return bkMissed()?(at?"Last night's backup was missed":"No backup yet"):"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
   if(t==="Program watch")return watchInfo&&watchInfo.findings?watchInfo.findings.length?plural(watchInfo.findings.length,"thing")+" to correct":"Nothing to correct":"";
   if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
   if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
@@ -42,7 +42,7 @@ function settingsFold(){const m=$("#main");if(!m||!isDirector())return;const sec
     const name=t||((x.querySelector("h3")||{}).textContent||"").trim();if(!name)continue;
     const d=document.createElement("details");d.className="setcard";d.dataset.set=name;if(setOpen===name)d.open=true;
     const body=document.createElement("div");body.className="setbody";while(x.firstChild)body.append(x.firstChild);if(lbl)lbl.remove();
-    d.innerHTML=`<summary><b>${esc(name)}</b><span class="cnt">${esc(setStatus(name,body))}</span></summary>`;d.append(body);x.append(d);
+    d.innerHTML=`<summary><b>${esc(name)}</b><span class="cnt"${name==="Backups"&&bkMissed()?' style="color:var(--clay);font-weight:700"':""}>${esc(setStatus(name,body))}</span></summary>`;d.append(body);x.append(d);
     cards.push([name,x]);if(name==="Lenses")lens={x,body}}
   const hd=m.querySelector(".head");let at=hd;
   for(const [g,ts] of SET_GROUPS){const mine=cards.filter(([n])=>ts.includes(n)||(g==="People"&&!SET_GROUPS.some(([,l])=>l.includes(n)))).sort((a,b)=>(ts.indexOf(a[0])+1||99)-(ts.indexOf(b[0])+1||99));if(!mine.length)continue;

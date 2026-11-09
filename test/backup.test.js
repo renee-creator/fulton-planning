@@ -7,10 +7,10 @@ const { spawn, execFileSync } = require('child_process');
 const mock = require('./mock-github.js');
 
 const put = (dir, rel, doc, indent) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, typeof doc === 'string' ? doc : JSON.stringify(doc, null, indent == null ? 2 : indent) + '\n'); };
-async function server(dir) {
+async function server(dir, env) {
   const gh = await mock.start(dir, 0, { treeDelay: 1500 });
   const port = 4600 + Math.floor(Math.random() * 300);
-  const p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_TOKEN: 't', PORT: String(port), KAYMBU_INBOX_KEY: 'test-key', TEACHER_PASSCODES: 'Dee=director-pass-1' }), stdio: 'ignore' });
+  const p = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_TOKEN: 't', PORT: String(port), KAYMBU_INBOX_KEY: 'test-key', TEACHER_PASSCODES: 'Dee=director-pass-1' }, env || {}), stdio: 'ignore' });
   const url = 'http://127.0.0.1:' + port;
   for (let i = 0; i < 60; i++) { try { await fetch(url + '/nothing'); break; } catch (e) { await new Promise(r => setTimeout(r, 200)); } }
   return { url, stop: async () => { p.kill(); await gh.close(); } };
@@ -83,7 +83,7 @@ test('the mailbox script backs up every night, replaces the Monday time, keeps t
   // the old name sets the same nightly time, and an old Monday time still makes a backup
   g.ctx.setupWeeklyBackup(); assert.strictEqual(g.triggers.filter(t => t.h === 'nightlyBackup').length, 1);
   for (let i = 0; i < 40; i++) { g.ctx.Utilities.formatDate = () => ''; const d = new Date(Date.UTC(2026, 9, 1) + i * 864e5).toISOString().slice(0, 10);
-    g.ctx.UrlFetchApp.fetch = () => ({ getResponseCode: () => 200, getBlob: () => { const gz = zlib.gzipSync(JSON.stringify({ manifest: { date: d } })); return { setContentType() { return this; }, setName(n) { this.name = n; return this; }, copyBlob() { return { getBytes: () => gz }; }, getBytes: () => gz }; }, getContentText: () => '' });
+    g.ctx.UrlFetchApp.fetch = () => ({ getResponseCode: () => 200, getHeaders: () => ({ 'x-backup-date': d }), getBlob: () => { const gz = zlib.gzipSync(JSON.stringify({ manifest: { date: d } })); return { setContentType() { return this; }, setName(n) { this.name = n; return this; }, copyBlob() { return { getBytes: () => gz }; }, getBytes: () => gz }; }, getContentText: () => '' });
     (i % 2 ? g.ctx.weeklyBackup : g.ctx.nightlyBackup)(); }
   const nightly = files.filter(f => /^TREE backup/.test(f)).sort(), weekly = files.filter(f => /^TREE weekly backup/.test(f)).sort();
   assert.strictEqual(nightly.length, 30);
@@ -100,4 +100,48 @@ test('the mailbox script backs up every night, replaces the Monday time, keeps t
   // the same part, pasted with the whole mailbox script, is the same code
   const part = s => s.slice(s.indexOf('/*\n  Nightly backup of TREE')).split('\n/*\n  Readable copies')[0].trim();
   assert.strictEqual(part(fs.readFileSync(path.join(__dirname, '..', 'tools', 'kaymbu-apps-script.gs'), 'utf8')), part(fs.readFileSync(gs, 'utf8')));
+});
+
+test('the nightly file holds the records without pictures, the pictures come on their own, only new or changed ones, with a full set on request, and Render can wait for /ready', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tree-rec-'));
+  put(dir, 'plans/p1.json', { id: 'p1', type: 'classroom', fields: {} });
+  put(dir, 'staff/people/ann.json', { name: 'Ann', profile: { role: 'educator' } }, 1);
+  const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
+  fs.mkdirSync(path.join(dir, 'staff/policies/img'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'staff/policies/img/a.png'), png); fs.writeFileSync(path.join(dir, 'staff/policies/img/b.png'), Buffer.concat([png, Buffer.from([1])]));
+  // a short pause between saves, since the one-time steps leave many saves for the backup to write first
+  const s = await server(dir, { WRITE_GAP_MS: '20' });
+  const ask = (p, extra) => fetch(s.url + p, { method: 'POST', headers: Object.assign({ 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, extra || {}), body: '{}' });
+  const open = async r => JSON.parse(zlib.gunzipSync(Buffer.from(await r.arrayBuffer())).toString('utf8'));
+  try {
+    let ready; for (let i = 0; i < 120; i++) { ready = await fetch(s.url + '/ready'); if (ready.status === 200) break; assert.strictEqual(ready.status, 503); await new Promise(ok => setTimeout(ok, 250)); }
+    assert.strictEqual(ready.status, 200);
+    let r; for (let i = 0; i < 60; i++) { r = await ask('/inbound/backup'); if (r.status === 200) break; await new Promise(ok => setTimeout(ok, 250)); }
+    assert.strictEqual(r.status, 200); assert.ok(r.headers.get('x-backup-date'));
+    const b = await open(r);
+    assert.ok(b.files['plans/p1.json']); assert.ok(!Object.keys(b.files).some(k => k.startsWith('staff/policies/')), 'no pictures in the nightly file');
+    assert.strictEqual(b.manifest.pictures.total, 2);
+    // the first picture backup sends both, and once the script says it is saved, the next sends none
+    r = await ask('/inbound/backup/pictures'); assert.strictEqual(r.status, 200); assert.strictEqual(r.headers.get('x-backup-count'), '2');
+    const p = await open(r); assert.strictEqual(Buffer.from(p.files['staff/policies/img/a.png'].base64, 'base64').toString('hex'), png.toString('hex'));
+    // the restore writes the pictures back as the images they were
+    const file = path.join(dir, 'p.json.gz'); fs.writeFileSync(file, zlib.gzipSync(JSON.stringify(p)));
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'tree-out-'));
+    execFileSync(process.execPath, [path.join(__dirname, '..', 'tools', 'restore-backup.js'), file, out], { stdio: 'ignore' });
+    assert.deepStrictEqual(fs.readFileSync(path.join(out, 'staff/policies/img/a.png')), png);
+    r = await fetch(s.url + '/inbound/backup/saved', { method: 'POST', headers: { 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'pictures', token: p.manifest.token }) });
+    assert.strictEqual(r.status, 200);
+    r = await ask('/inbound/backup/pictures'); assert.strictEqual(r.headers.get('x-backup-count'), '0');
+    // a full set is asked for once, and after it is saved the pictures are only the new ones again
+    r = await ask('/inbound/backup/pictures?full=1'); assert.strictEqual(r.headers.get('x-backup-count'), '2');
+    const f = await open(r);
+    await fetch(s.url + '/inbound/backup/saved', { method: 'POST', headers: { 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'pictures', token: f.manifest.token }) });
+    r = await ask('/inbound/backup/pictures'); assert.strictEqual(r.headers.get('x-backup-count'), '0');
+    // the records file being saved is noted for the card in Settings
+    r = await fetch(s.url + '/inbound/backup/saved', { method: 'POST', headers: { 'x-tree-key': 'test-key', 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'records', bytes: 1234 }) });
+    assert.strictEqual(r.status, 200);
+    // without BACKUP_KEY the key in the address still works for tonight
+    r = await fetch(s.url + '/inbound/backup/pictures?key=test-key', { method: 'POST', body: '{}' }); assert.strictEqual(r.status, 200);
+    r = await fetch(s.url + '/inbound/backup/pictures?key=wrong', { method: 'POST', body: '{}' }); assert.strictEqual(r.status, 403);
+  } finally { await s.stop(); }
 });

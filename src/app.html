@@ -16225,12 +16225,19 @@ function saveProgram(){
 function chipList(items,delAttr){return items.map((x,i)=>`<span class="rname">${esc(x)}<button ${delAttr}="${i}" aria-label="Remove ${esc(x)}">&times;</button></span>`).join("")}
 // the nightly backup to Google Drive, made by the mailbox script every night, and when the last one arrived
 let backupInfo=null;
-function backupHtml(){if(!isDirector())return"";const b=backupInfo,at=b&&b.lastAt;
+// a night is missed when no backup has been kept for about 26 hours. The time the mailbox script said it saved the file
+// counts once there is one, and before that the time the server sent it.
+const bkLast=()=>{const b=backupInfo||{};return Number(b.savedAt)||Number(b.lastAt)||0};
+const bkMissed=()=>{const t=bkLast();return !t||Date.now()-t>26*3600e3};
+function backupHtml(){if(!isDirector())return"";const b=backupInfo||{},at=b.lastAt;
   const when=at?whenAt(at,{weekday:"long",month:"long",day:"numeric"}):"";
-  const old=at&&Date.now()-at>50*3600000;
-  return `<section class="card"><div class="lbl">Backups</div>
-    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}${old?" The last one is more than two days old, so check the mailbox script.":""}</div></div></div>
-    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive. The newest 30 nightly backups are kept, and one from each past week is kept as that week's backup, the newest 26 weeks, so the backups reach back about six months. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out of the backup because they hold passcodes.</div>
+  const missed=bkMissed();
+  const pics=b.picsAt?`Pictures last kept ${esc(whenAt(b.picsAt,{weekday:"long",month:"long",day:"numeric"}))}, ${(b.picsKept||0).toLocaleString()} in all.`:"";
+  return `<section class="card"${missed?' style="border-color:var(--clay);background:var(--clay-soft)"':""}><div class="lbl">Backups</div>
+    ${missed?`<div class="cnt" style="color:var(--clay);font-weight:700;margin-bottom:6px">${at?"Last night's backup was missed.":"No backup has arrived yet."}</div><div class="cnt" style="color:var(--clay);margin-bottom:8px">Open the mailbox script and run nightlyBackup. Then read its log.</div>`:""}
+    <div class="prow"><div><b>${at?"Last backup "+esc(when):"No backup has arrived yet"}</b><div class="cnt">${at?`${(b.files||0).toLocaleString()} records, ${Math.max(1,Math.round((b.bytes||0)/1024)).toLocaleString()} KB, kept in TREE backups in the mailbox's Google Drive.`:"The mailbox script makes one every night once the director has set it up."}</div>${pics?`<div class="cnt">${pics}</div>`:""}</div></div>
+    <div class="hint">Every night the whole set of TREE's records is kept in Google Drive. The newest 30 nightly backups are kept, and one from each past week is kept as that week's backup, the newest 26 weeks, so the backups reach back about six months.</div>
+    <div class="hint">The pictures in the Policies and Procedures, the Family Handbook and the libraries are kept in their own files beside them, only the new or changed ones each night. Photos already live in Google Drive, and every record also keeps its full history in GitHub. Sign-ins are left out because they hold passcodes.</div>
     ${readableHtml()}</section>`}
 /* Readable copies. Once a week, the first time the director has TREE open on a computer or iPad after Sunday night, her
    TREE quietly makes the Word and PDF files it already prints and keeps them in Google Drive, in TREE readable copies
@@ -16437,7 +16444,7 @@ function setStatus(t,x){try{
   if(t==="Releases"){const c=gthConf();return (c.release||{}).page?"Gatherings released":"Gatherings hidden from educators"}
   if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
   if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
-  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return at?"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}):"No backup yet"}
+  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return bkMissed()?(at?"Last night's backup was missed":"No backup yet"):"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
   if(t==="Program watch")return watchInfo&&watchInfo.findings?watchInfo.findings.length?plural(watchInfo.findings.length,"thing")+" to correct":"Nothing to correct":"";
   if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
   if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
@@ -16454,7 +16461,7 @@ function settingsFold(){const m=$("#main");if(!m||!isDirector())return;const sec
     const name=t||((x.querySelector("h3")||{}).textContent||"").trim();if(!name)continue;
     const d=document.createElement("details");d.className="setcard";d.dataset.set=name;if(setOpen===name)d.open=true;
     const body=document.createElement("div");body.className="setbody";while(x.firstChild)body.append(x.firstChild);if(lbl)lbl.remove();
-    d.innerHTML=`<summary><b>${esc(name)}</b><span class="cnt">${esc(setStatus(name,body))}</span></summary>`;d.append(body);x.append(d);
+    d.innerHTML=`<summary><b>${esc(name)}</b><span class="cnt"${name==="Backups"&&bkMissed()?' style="color:var(--clay);font-weight:700"':""}>${esc(setStatus(name,body))}</span></summary>`;d.append(body);x.append(d);
     cards.push([name,x]);if(name==="Lenses")lens={x,body}}
   const hd=m.querySelector(".head");let at=hd;
   for(const [g,ts] of SET_GROUPS){const mine=cards.filter(([n])=>ts.includes(n)||(g==="People"&&!SET_GROUPS.some(([,l])=>l.includes(n)))).sort((a,b)=>(ts.indexOf(a[0])+1||99)-(ts.indexOf(b[0])+1||99));if(!mine.length)continue;
