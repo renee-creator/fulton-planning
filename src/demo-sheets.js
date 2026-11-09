@@ -9,6 +9,85 @@
    cooking times show a clock, and a step only an adult does carries the adult hand. A photo from our own observations
    can stand on a step once the face check finds no faces. One overview sheet lists the ingredients and tools. */
 const DEMO_INK="#2f3b2f",DEMO_SOFT="#e9efe2",DEMO_WARM="#f4e2c2",DEMO_LINE=6;
+// an item's head word, such as apple for 6 apples, cream for cream of tartar or color for color from our dye bed, found
+// in a step in its singular or plural (November 5, 2026)
+const DEMO_GENERIC=/^(small|large|handful|pinch|piece|bunch|cup|spoon|bowl|some|our|the|and)$/;
+const demoHeadOf=k=>{const w=String(k||"").split("_").filter(Boolean);const i=w.findIndex(x=>/^(of|from|with|for)$/.test(x));const h=(i>0?w.slice(0,i):w).filter(x=>!DEMO_GENERIC.test(x));return h.length?h[h.length-1]:""};
+const demoSays=(s,word)=>{if(!word||word.length<3)return false;const st=word.replace(/(ies)$/,"y").replace(/(oes|ses|xes|ches|shes)$/,m=>m.slice(0,-2)).replace(/s$/,"");const root=st.replace(/y$/,"");const fv=/(fe|f)$/.test(st)?"|"+st.replace(/(fe|f)$/,"")+"ves":"";return new RegExp("\\b("+(st.endsWith("y")?root+"(y|ies)":st+"(e|es|s)?")+fv+")\\b","i").test(s)};
+/* fresh foods change as the recipe cuts, cooks or mashes them, so a step shows apple quarters, then chunks, then cooked
+   apples, kept in the picture library as apple_quarters, apple_chunks and apple_cooked. A step that says "the chunks"
+   or "them" shows the food it means as it is right then. Pantry staples stay as they are. Until a picture is kept the
+   step shows the whole food, and the picture waits on the Pictures still needed list (November 8, 2026) */
+const DEMO_PANTRY=/^(.*water|.*salt|.*pepper|.*oil|.*butter|.*flour|.*sugar|ice|.*broth|.*cream|.*milk|.*juice|.*seed|bay_leaf|.*vinegar|soy.*|honey|.*yeast|baking.*|.*tartar|cinnamon.*|cumin|.*seasoning|.*powder|vanilla.*|.*thyme|sage.*|.*syrup|cornstarch|.*soap|.*glue|color.*|.*dye.*|.*extract|.*pot|pan)$/;
+const DEMO_CUTS="quarters|chunks|slices|halves|pieces|sticks|cubes|rounds|wedges|strips";
+const DEMO_CHANGE=/\b(cooks?|simmers?|boils?|bakes?|roasts?|sautes?|steams?|blanch(es)?|fr(y|ies))\b/i;
+// the words under a picture of a changed food, such as apple quarters or cooked apple
+const demoStateLabel=k=>{const m=String(k).match(/^(.*)_(cooked|mashed|grated)$/);return (m?m[2]+" "+m[1]:k).replace(/_/g," ")};
+function demoFoodWalk(ings,steps,title){const keys=[...new Set(ings.map(l=>{const q=demoQty(l);return demoKey(q?q.item:l)}).filter(Boolean))],foods=keys.filter(k=>!DEMO_PANTRY.test(k));
+  // a step that names any ingredient at all, pantry staples too, means that ingredient and never "them" from before
+  const anyWords=[...new Set([...keys.flatMap(k=>k.split("_")),...ings.flatMap(l=>String(l).toLowerCase().split(",")[0].replace(/[^a-z ]/g," ").split(/\s+/))].filter(w=>w.length>3&&!DEMO_GENERIC.test(w)&&!/^(each|child|children|every|from|with|about|cups?|tablespoons?|teaspoons?|pounds?|ounces?|large|small|medium|fresh|dried|ripe|whole|plain|warm|cold|hot|softened|melted|chopped|sliced|grated|cooked|like|more|such|spoonful|pinch|handful|bunch|head|heads|cloves?)$/.test(w)))];
+  const state={},out=[];let last=[],lastAt=-9,i=-1;
+  for(const s of steps){i++;const low=s.toLowerCase();
+    const named=foods.filter(f=>demoSays(s,demoHeadOf(f)));
+    const refs=foods.filter(f=>!named.includes(f)&&state[f]&&new RegExp("\\bthe "+state[f]+"\\b").test(low));
+    /* what is on the counter right now, for a step that names no food at all, from the step just before, and never once
+       the foods have become something new, such as a dough, a sauce or the dish the recipe makes */
+    const whole=new RegExp("\\b(dough|batter|mixture|paste|sauce|soup|porridge|brine|bread|toast|tortillas?|flavors?|table|plates?|together|weeks?|"+String(title||"").toLowerCase().replace(/[^a-z ]/g," ").split(/\s+/).filter(w=>w.length>3).join("|")+")\\b","i");
+    const quiet=!named.length&&!refs.length&&!anyWords.some(w=>demoSays(s,w));
+    const pron=quiet&&lastAt===i-1&&!whole.test(low)&&(/\b(them|each one)\b/.test(low)||/\b(mash|stir|cut|slice|chop|blend|cook|scoop|spread|roll|press|shape|pour|spoon|turn|flip|grate|squeeze|knead)(s|es)? it\b/.test(low))?last.slice():[];
+    const show={};for(const f of [...named,...refs,...pron])show[f]=state[f]||"";
+    const now=lastAt>=i-1&&!whole.test(low)?last.slice(0,2).map(f=>[f,state[f]||""]):[];
+    out.push({named,refs,pron,show,now:quiet?now:[]});
+    const touched=[...named,...refs,...pron];
+    const cut=low.match(new RegExp("\\b(into|in) (?:thin |thick |small |big |large |bite size |little )?("+DEMO_CUTS+")\\b"))||low.match(/\b(in) (half)\b/)||low.match(/\b(an adult )?(halves) /);
+    for(const f of touched){if(cut)state[f]=cut[2]==="half"?"halves":cut[2];else if(DEMO_CHANGE.test(s)&&!/\bheats? the oven\b/i.test(s))state[f]="cooked";else if(/\bmash/i.test(s))state[f]="mashed";else if(/\bgrat(e|es|ed|ing)\b/i.test(s))state[f]="grated"}
+    if(touched.length){last=touched;lastAt=i}}
+  return out}
+/* how many children a set is made for. A recipe's Makes enough for line, such as 6 children, says how many its amounts
+   feed, and a line for each child, or one for every two children, is counted out for the whole group. The number of
+   children is chosen on the recipe, for this print only, and every amount, cup and spoon follows it (November 8, 2026) */
+const demoMakes=x=>{const m=String(recPart(x,"Makes enough for")||"").match(/\b(\d+)\b/);return m?+m[1]:0};
+const demoKidsFor={},demoSkipFor={};
+const demoKids=x=>+demoKidsFor[x&&x.id]||0;
+const DEMO_PER=/\s*,?\s*\b((for |per )?(each|every) child|per child|(one )?for every two children|for each cup of [a-z ]+)\b/i;
+const DEMO_WHOLE=/^(eggs?|ears?|slices?|cloves?|leaf|leaves|limes?|lemons?|heads?|cans?|bunch(es)?|loaf|loaves|tortillas?)\b|\b(eggs?|ears?|slices?|leaf|leaves)\b/i;
+const DEMO_UNITWORDS=/^(cups?|tablespoons?|teaspoons?|pounds?|ounces?|handfuls?|pinch(es)?|spoonfuls?|slices?|ears?|heads?|cloves?|bunch(es)?|cans?|stalks?|sticks?|sprigs?|jars?|bags?)$/i;
+function demoSnap(n,steps){let best=n,d=1e9;for(const st of steps){const v=Math.round(n/st)*st;if(v>0&&Math.abs(v-n)<d){d=Math.abs(v-n);best=v}}return best}
+function demoCount(n,whole){if(whole||n>=2)return Math.max(1,Math.round(n));return Math.max(.25,demoSnap(n,[1/4,1/3]))}
+const demoPlural=w=>/(s|x|ch|sh)$/.test(w)?w+"es":/[^aeiou]y$/.test(w)?w.slice(0,-1)+"ies":/(f|fe)$/.test(w)&&!/ff$/.test(w)?w.replace(/(f|fe)$/,"ves"):w+"s";
+const demoSing=w=>/ies$/.test(w)?w.slice(0,-3)+"y":/(ches|shes|xes|sses)$/.test(w)?w.slice(0,-2):/ves$/.test(w)?w.slice(0,-3)+"f":/[^s]s$/.test(w)?w.slice(0,-1):w;
+// one ingredient line for the chosen number of children, such as 1 teaspoon butter for each child read as 6 tablespoons butter
+function demoScaleLine(line,mult){const t=String(line||"");if(!(mult>0)||Math.abs(mult-1)<1e-9)return t;const q=demoQty(t);
+  if(q&&q.unit&&q.n){const tsp=q.n*(q.unit==="cup"?48:q.unit==="tablespoon"?3:1)*mult;let n,u;
+    const c=demoSnap(tsp/48,[1/4,1/3]);if(tsp>=24||(tsp>=12&&Math.abs(c*48-tsp)/tsp<.05)){n=c;u="cup"}else if(tsp>=3){n=demoSnap(tsp/3,[1/2]);u="tablespoon"}else{n=tsp<.25?demoSnap(tsp,[1/8]):demoSnap(tsp,[1/4]);u="teaspoon"}
+    const amt=n<1/8?"a pinch of":demoFracText(n)+" "+u+(n>1?"s":"");return (amt+" "+q.item).replace(/\s+/g," ").trim()}
+  // a count, such as 6 apples, 3 or 4 eggs or 1 head green cabbage, about 2 pounds, with each number counted out
+  if(!/\d|[½¼¾⅓⅔]/.test(t))return t;
+  const frac={"½":.5,"¼":.25,"¾":.75,"⅓":1/3,"⅔":2/3};
+  let first=true;
+  return t.replace(/(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.\d+|\d+|[½¼¾⅓⅔])(\s+)([^,\d]*)/g,(m,num,sp,rest)=>{let n=0;for(const p of num.split(/\s+/))n+=frac[p]!=null?frac[p]:/\//.test(p)?(+p.split("/")[0])/(+p.split("/")[1]):+p;
+    // the words the number counts, up to a comma, "for" or "to", such as large bunch cilantro or Meyer lemon
+    const phrase=rest.split(/\s+(for|to)\s+/i)[0];const ws=phrase.split(/\s+/).filter(Boolean);
+    const whole=ws.some(w=>DEMO_WHOLE.test(w)),weigh=/^(pounds?|ounces?|quarts?|pints?|liters?)$/i.test(ws[0]||"");const n2=weigh&&n*mult<10?Math.max(.25,demoSnap(n*mult,[1/4,1/3])):demoCount(n*mult,whole);
+    // the counted word follows the new number, such as 5 bunches or 2 Meyer lemons, for the line's first amount
+    if(ws.length){const u=ws.slice(0,3).findIndex(w=>DEMO_UNITWORDS.test(w));const at=u>=0?u:first?ws.length-1:-1;
+      if(at>=0){if(n2>1&&(n<=1||u>=0))ws[at]=demoPlural(demoSing(ws[at]));else if(u>=0&&n2<=1)ws[at]=demoSing(ws[at]);rest=ws.join(" ")+rest.slice(phrase.replace(/\s+$/,"").length)}}
+    first=false;return demoFracText(n2)+sp+rest})}
+// the sheets of a set by name, for choosing which to print, read from the recipe's words alone
+function demoSheetList(x){let steps=libLines(recPart(x,"Steps"));if(steps.length&&/^wash our hands\b/i.test(steps[0]))steps=steps.slice(1);
+  return [{id:"need",label:"What we need"},{id:1,label:"1. Wash our hands."},...steps.map((t,i)=>({id:i+2,label:(i+2)+". "+t})),{id:"done",label:"We made it"}]}
+// a recipe the number of children can change, one with a Makes enough for line or a line for each child
+const demoCanCount=x=>!!demoMakes(x)||/\b(each child|per child|every two children)\b/i.test(recPart(x,"Ingredients")||"");
+// the lines of a recipe for the chosen number of children, or the recipe as it is when no number is chosen
+function demoScaleLines(lines,x){const kids=demoKids(x);if(!kids)return lines;const makes=demoMakes(x);const out=[];
+  for(const l of lines){const per=String(l).match(DEMO_PER);let mult=makes?kids/makes:1,line=l;
+    if(per){const p=per[1].toLowerCase();
+      if(/two children/.test(p)){mult=kids/2;if(!/^[\d½¼¾⅓⅔]/.test(l.trim())){out.push(Math.ceil(kids/2)+" "+l.replace(DEMO_PER,"").trim());continue}}
+      else if(/each cup of/.test(p)){const w=p.replace(/^.*each cup of\s+/,"").trim().split(/\s+/).pop();const ref=out.find(o=>new RegExp("\\b"+w+"\\b","i").test(o)&&(demoQty(o)||{}).unit==="cup");mult=ref?demoQty(ref).n:1}
+      else mult=kids;
+      line=l.replace(DEMO_PER,"")}
+    out.push(demoScaleLine(line,mult))}
+  return out}
 // a measure read from an ingredient line, such as 2 1/2 cups milk or 1/4 teaspoon salt
 const DEMO_UNITS=[["cup",/^(cups?|c\.?)\b/i],["tablespoon",/^(tablespoons?|tbsp\.?|tbs\.?|T)\b/],["teaspoon",/^(teaspoons?|tsp\.?|t)\b/]];
 function demoQty(line){const m=String(line||"").trim().match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.\d+|\d+|[½¼¾⅓⅔])\s*(.*)$/);if(!m)return null;
@@ -17,7 +96,7 @@ function demoQty(line){const m=String(line||"").trim().match(/^(\d+\s+\d+\/\d+|\
   rest=rest.replace(/^of\s+/i,"");return {n,unit,item:rest}}
 // how many cups or spoons to draw, and how full each is
 function demoFills(q){if(!q||!q.unit||!(q.n>0))return [];const out=[];let left=q.n;while(left>1e-6&&out.length<10){const f=Math.min(1,left);out.push(f);left-=f}return out}
-const demoFracText=n=>{const w=Math.floor(n+1e-9),f=n-w,F=[[.25,"1/4"],[1/3,"1/3"],[.5,"1/2"],[2/3,"2/3"],[.75,"3/4"]].find(([v])=>Math.abs(v-f)<.02);return (w?w+(F?" ":""):"")+(F?F[1]:f>.02?String(Math.round(f*100)/100):"")||String(n)};
+const demoFracText=n=>{const w=Math.floor(n+1e-9),f=n-w,F=[[.125,"1/8"],[.25,"1/4"],[1/3,"1/3"],[.5,"1/2"],[2/3,"2/3"],[.75,"3/4"]].find(([v])=>Math.abs(v-f)<.02);return (w?w+(F?" ":""):"")+(F?F[1]:f>.02?String(Math.round(f*100)/100):"")||String(n)};
 // a canvas, drawn at a set size in pixels, as a picture for both the PDF and the Word file
 function demoCanvas(w,h,draw){const c=document.createElement("canvas");c.width=w;c.height=h;const g=c.getContext("2d");g.lineCap="round";g.lineJoin="round";g.strokeStyle=DEMO_INK;g.fillStyle=DEMO_SOFT;g.lineWidth=DEMO_LINE;draw(g,w,h);return c.toDataURL("image/png")}
 const demoRR=(g,x,y,w,h,r)=>{g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
@@ -60,6 +139,9 @@ function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.re
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(q?q.item:l),name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
     for(const l of libLines(recPart(x,"Tools"))){const k=demoKey(l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(l),name:k.replace(/_/g," "),kind:"tool",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);if(q&&q.unit){const k=q.unit==="cup"?"measuring_cup":q.unit;if(!out.has(k))out.set(k,{key:k,name:q.unit==="cup"?"measuring cup":q.unit,kind:"measure",recipes:new Set()});out.get(k).recipes.add(x.title)}}}
+  // each food as the recipe changes it, such as apple chunks, once a recipe cuts, cooks or mashes it
+  for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){let steps=libLines(recPart(x,"Steps"));if(steps.length&&/^wash our hands\b/i.test(steps[0]))steps=steps.slice(1);
+    for(const w of demoFoodWalk(libLines(recPart(x,"Ingredients")),steps,x.title))for(const [f,st] of [...Object.entries(w.show),...w.now])if(st){const k=f+"_"+st;if(!out.has(k))out.set(k,{key:k,name:demoStateLabel(k),kind:"as the recipe changes it",recipes:new Set()});out.get(k).recipes.add(x.title)}}
   // the three pictures every demonstration set uses, washing hands, the timer and the adult hand
   for(const [k,name] of [["washing_hands","washing hands"],["kitchen_timer","kitchen timer"],["adult_hand","adult hand"]])if(!out.has(k))out.set(k,{key:k,name,kind:"every demonstration set",recipes:new Set(((libData&&libData.recipes)||[]).filter(r=>!r.draft).map(r=>r.title))});
   return [...out.values()]}
@@ -77,7 +159,7 @@ const DEMO_COOK=/\b(cooks?|simmers?|boils?|heats(?! off)|heat the|melts?|warms\b
 const DEMO_ACTS=[[DEMO_COOK,/(soup_pot|^pot$|_pot$|pan$|griddle|kettle)/],[DEMO_COOK,/(hot_plate|stove)/],[DEMO_BAKE,/(oven|toaster)/],[DEMO_BAKE,/(baking_sheet|baking_dish|loaf_pan|muffin_tin)/],
   [/\bscrub/i,/scrubber/],[/\b(cuts?|chops?|trims?|cores?)\b|\bhalves (the|each)\b|^(an adult )?slices?\b/i,/cutting_board/],[/\b(cuts?|chops?|trims?|cores?)\b|\bhalves (the|each)\b|^(an adult )?slices?\b/i,/child_knife/],[/\bblend/i,/(blender|food_processor)/],[/\bwhisk/i,/whisk/],[/\bmash/i,/(masher|fork)/],
   [/\b(stirs?|spoon)\b/i,/(large_spoon|^spoon$|wooden_spoon)/],[/\bgrat(e|es|ing)\b/i,/grater/],[/^(press|squeeze|juice)\b.*\b(lemons?|limes?|oranges?|citrus)\b/i,/(juicer|squeezer)/],[/\bpeel/i,/peeler/],[/\b(dehydrator|dries|dry)\b/i,/dehydrator/],[/\bsnip/i,/scissors/],[/\bstrain/i,/(strainer|colander|cheesecloth)/],[/^paint\b/i,/brush/],[/^gather\b/i,/basket/]];
-async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(recPart(x,"Ingredients")),tools=libLines(recPart(x,"Tools"));let steps=libLines(recPart(x,"Steps"));
+async function demoPlan(x){if(!libData)await loadLibrary();const ings=demoScaleLines(libLines(recPart(x,"Ingredients")),x),tools=libLines(recPart(x,"Tools"));let steps=libLines(recPart(x,"Steps"));
   // the washing sheet is always first, so a recipe's own first step about washing is not shown twice
   if(steps.length&&/^wash our hands\b/i.test(steps[0]))steps=steps.slice(1);
   const qs=ings.map(l=>({line:l,q:demoQty(l)}));const photos={};String((x.meta||{}).photos||"").split(/[;,]\s*/).forEach(p=>{const m=p.match(/^(\d+)=(.+)$/);if(m)photos[+m[1]]=m[2].trim()});
@@ -86,12 +168,8 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
   const clockImg=()=>timer?timer.data:demoClock();
   const sheets=[{n:1,text:"Wash our hands.",pics:[{img:wash?wash.data:demoWash(),w:1.2,drawn:!wash}],words:[],adult:false}];
   const measured=new Set();
-  // an item's head word, such as apple for 6 apples, cream for cream of tartar or color for color from our dye bed, found
-  // in a step in its singular or plural (November 5, 2026)
-  const DEMO_GENERIC=/^(small|large|handful|pinch|piece|bunch|cup|spoon|bowl|some|our|the|and)$/;
-  const headOf=k=>{const w=String(k||"").split("_").filter(Boolean);const i=w.findIndex(x=>/^(of|from|with|for)$/.test(x));const h=(i>0?w.slice(0,i):w).filter(x=>!DEMO_GENERIC.test(x));return h.length?h[h.length-1]:""};
-  const says=(s,word)=>{if(!word||word.length<3)return false;const st=word.replace(/(ies)$/,"y").replace(/(oes|ses|xes|ches|shes)$/,m=>m.slice(0,-2)).replace(/s$/,"");const root=st.replace(/y$/,"");const fv=/(fe|f)$/.test(st)?"|"+st.replace(/(fe|f)$/,"")+"ves":"";return new RegExp("\\b("+(st.endsWith("y")?root+"(y|ies)":st+"(e|es|s)?")+fv+")\\b","i").test(s)};
-  for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];
+  const headOf=demoHeadOf,says=demoSays;const walk=demoFoodWalk(ings,steps,x.title);
+  for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];const W=walk[i]||{show:{},refs:[],pron:[],now:[]};const shownFoods=new Set();
     // water for washing, such as a basin for scrubbing, is never the water the recipe measures
     const washing=/\b(scrub|wash|rinse|basin)\b/i.test(s);
     /* each item the step names. When two lines share a name, such as water and warm water, the one whose own words the step
@@ -109,8 +187,13 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
       // after its first use an item reads by its name alone, such as radishes for 1 1/2 pounds radishes
       if(!amount)label=label.replace(/^(or\s+\d+\s+)/,"").replace(/^((pounds?|ounces?|cloves?|stalks?|bunch(es)?|handfuls?|pinch(es)?|slices?|ears?|heads?|cans?|sticks?|pieces?|quarts?)\s+(of\s+)?)+/,"").replace(/\s+for (each|every|the) .*$|\s+for serving$/,"");
       let measure=null;if(first&&q&&q.unit){const mp=await demoPicData(demoPicOf(q.unit==="cup"?"measuring_cup":q.unit));if(mp)measure={img:mp.data,text:amount}}
-      const pd=await demoPicData(demoPicOf(key,demoKeyOld(q?q.item:line)));const cap=[amount,label].filter(Boolean).join(" ");
+      let pd=null;const st=W.show[key];if(st){const sp=await demoPicData(demoPicOf(key+"_"+st));if(sp){pd=sp;label=demoStateLabel(key+"_"+st)}}shownFoods.add(key);
+      if(!pd)pd=await demoPicData(demoPicOf(key,demoKeyOld(q?q.item:line)));const cap=[amount,label].filter(Boolean).join(" ");
       if(pd)pics.push({img:pd.data,w:.85,cap,label,amount,big:true,credit:pd.credit||"",measure});else words.push({big:cap,small:"",measure})}
+    // a food the step means without naming it, such as "the quarters" or "them", shows as it is right then
+    const foodPic=async(f,st)=>{const sk=st?f+"_"+st:"";const sp=sk?await demoPicData(demoPicOf(sk)):null;const pd=sp||await demoPicData(demoPicOf(f));const lb=sp?demoStateLabel(sk):f.replace(/_/g," ");
+      return pd?{img:pd.data,w:.85,cap:lb,label:lb,big:true,credit:pd.credit||""}:null};
+    for(const f of [...W.refs,...W.pron]){if(shownFoods.has(f))continue;shownFoods.add(f);const fp=await foodPic(f,W.show[f]);if(fp)pics.push(fp);else words.push({big:f.replace(/_/g," "),small:""})}
     /* the tools the step names, and the tool its action needs from this recipe's own list, such as the soup pot and the hot
        plate for cooking, the scrubber for scrubbing or the large spoon for spooning (November 5, 2026). Measuring cups and
        spoons show with their amounts, so they are left out here. */
@@ -131,6 +214,8 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
       if(toolPics.some(y=>y.key===x.tk))continue;const pd=await demoPicData(demoPicOf(x.tk,demoKeyOld(x.t)));const lb=x.t.replace(/^(a|an|the|two|three)\s+/i,"").split(",")[0];
       if(pd)toolPics.push({key:x.tk,act:actRe?actRe.source:"",img:pd.data,w:.85,cap:lb,label:lb,big:true,credit:pd.credit||"",tool:true});else words.push({big:lb,small:""})}
     pics.push(...toolPics.slice(0,Math.max(1,5-pics.length)).map(({key,act,...r})=>r));
+    // a step that names no food or tool shows the food we are working with, as it is right then, so no sheet is words alone
+    if(!pics.length&&!words.length)for(const [f,st] of W.now){const fp=await foodPic(f,st);if(fp)pics.push(fp)}
     // a cooking or waiting time shows the timer, for minutes, hours, overnight or a wait, and never for cool water
     const DN="(\\d+(?:\\s+\\d\\/\\d)?|\\d\\/\\d)";const tm=s.match(new RegExp(DN+"(?:\\s*(?:to|or)\\s*"+DN+")?\\s*(minutes?|hours?)","i"));
     if(tm)pics.push({img:clockImg(),w:.7,cap:tm[1]+(tm[2]?" to "+tm[2]:"")+" "+tm[3].toLowerCase().replace(/s?$/,(+(tm[2]||tm[1])===1?"":"s")),timer:true,drawn:!timer});
@@ -138,8 +223,13 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=libLines(r
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
   const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t),demoKeyOld(q?q.item:t)));return {text:t,img:pd?pd.data:null,credit:(pd&&pd.credit)||""}};
   const fin=await demoPicData(demoPicOf("finished_"+String(x.id||"").replace(/-/g,"_")));
-  const overview={title:x.title,finished:fin?fin.data:null,ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
-  return {overview,sheets,hand:hand?hand.data:demoHand()}}
+  const kids=demoKids(x);
+  const overview={title:x.title,finished:fin?fin.data:null,kids:kids?"For "+kids+" children":"",ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
+  // the last sheet, what we made, and for food who we will share it with (November 8, 2026)
+  const done={text:"We made it.",ask:recKindOf(x)==="food"?"Who will we share it with?":"",img:fin?fin.data:null};
+  // the sheets chosen on the recipe, all of them unless some are unticked. The poster always prints whole.
+  const skip=demoSkipFor[x.id]||new Set();
+  return {overview,sheets,hand:hand?hand.data:demoHand(),done,skip}}
 // the set as a PDF, letter or poster, Andika throughout
 const demoFmt=d=>/^data:image\/png/.test(d)?"PNG":"JPEG";
 /* words set to a width break only between whole words. When the longest word is wider than the room, the type is set a
@@ -197,16 +287,20 @@ async function demoTwoPdf(x){const blob=await demoPdf(x,"letter");const L=await 
 async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(size==="two")return demoTwoPdf(x);if(!window.jspdf)await TREE_KIT.loadScript(TREE_KIT.LIB.jspdf,"jspdf");await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size];const doc=TREE_KIT.pdf({size,orientation:"portrait"});const k=S.w/612,M=40*k,W=S.w-M*2;
   const font=b=>{try{doc.setFont(b?"pfB":"pfR","normal")}catch(e){doc.setFont("helvetica",b?"bold":"normal")}};
   const credit=list=>{const c=demoCredits(list);if(!c)return;font(false);doc.setFontSize(8*k);doc.setTextColor(90,100,90);doc.text(doc.splitTextToSize(c,W),M,S.h-M/2-8*k);doc.setTextColor(47,59,47)};
+  // only the sheets chosen on the recipe, each on its own page, the first one on the page the PDF opens with
+  let fresh=true;const next=()=>{if(fresh)fresh=false;else doc.addPage([S.w,S.h])};
   // the setup page, on one page. The title and the finished picture, then what we need in two columns, ingredients and tools
-  {doc.setTextColor(47,59,47);const fin=P.overview.finished,fw=fin?150*k:0;font(true);doc.setFontSize(34*k);const tl=doc.splitTextToSize(P.overview.title,W-fw-16*k);doc.text(tl,M,M+30*k);
+  if(!P.skip.has("need")){next();doc.setTextColor(47,59,47);const fin=P.overview.finished,fw=fin?150*k:0;font(true);doc.setFontSize(34*k);const tl=doc.splitTextToSize(P.overview.title,W-fw-16*k);doc.text(tl,M,M+30*k);
     if(fin)doc.addImage(fin,demoFmt(fin),S.w-M-fw,M,fw,fw);
-    const top=Math.max(M+30*k+tl.length*38*k,M+fw)+24*k;const colW=(W-20*k)/2;const avail=S.h-M-24*k-top-34*k;
+    // how many children the amounts are for, when a number was chosen
+    let kidsH=0;if(P.overview.kids){font(false);doc.setFontSize(18*k);doc.text(P.overview.kids,M,M+30*k+tl.length*38*k);kidsH=26*k}
+    const top=Math.max(M+30*k+tl.length*38*k+kidsH,M+fw)+24*k;const colW=(W-20*k)/2;const avail=S.h-M-24*k-top-34*k;
     const n=Math.max(P.overview.ings.length,P.overview.tools.length,1);const rh=Math.min(62*k,avail/n);const ps=rh-8*k;
     const col=(title,list,x0)=>{font(true);doc.setFontSize(20*k);doc.text(title,x0,top);let y=top+14*k;
       for(const it of list){if(it.img)doc.addImage(it.img,demoFmt(it.img),x0,y,ps,ps);font(false);const fz=Math.min(16*k,Math.max(10*k,rh*.3));doc.setFontSize(fz);doc.text(doc.splitTextToSize(it.text,colW-ps-12*k).slice(0,2),x0+(it.img?ps+10*k:0),y+ps/2+fz*.35);y+=rh}};
     col("What we need",P.overview.ings,M);if(P.overview.tools.length)col("Tools",P.overview.tools,M+colW+20*k);
     credit([...P.overview.ings,...P.overview.tools])}
-  for(const sh of P.sheets){doc.addPage([S.w,S.h]);doc.setTextColor(47,59,47);
+  for(const sh of P.sheets){if(P.skip.has(sh.n))continue;next();doc.setTextColor(47,59,47);
     // the band across the top, the step's number, and the adult hand with its words when only an adult does the step
     font(true);doc.setFillColor(47,59,47);doc.circle(M+28*k,M+28*k,28*k,"F");doc.setTextColor(255,255,255);doc.setFontSize(28*k);doc.text(String(sh.n),M+28*k,M+38*k,{align:"center"});doc.setTextColor(47,59,47);
     if(sh.adult){doc.addImage(P.hand,demoFmt(P.hand),S.w-M-64*k,M-4*k,64*k,64*k);font(false);doc.setFontSize(13*k);doc.text("An adult does this step",S.w-M-72*k,M+34*k,{align:"right"})}
@@ -226,14 +320,21 @@ async function demoPdf(x,size){if(size==="poster")return demoPosterPdf(x);if(siz
         if(r.measure){const ms=Math.min(s*.6,110*k);doc.addImage(r.measure.img,demoFmt(r.measure.img),S.w-M-ms,top+(s-ms)/2,ms,ms)}
         top+=rh}}
     credit(sh.pics)}
+  // the last sheet, what we made, its picture large and the words beneath it
+  if(P.done&&!P.skip.has("done")){next();doc.setTextColor(47,59,47);const d=P.done;let y=M+40*k;
+    if(d.img){const sz=Math.min(W*.8,S.h*.5);doc.addImage(d.img,demoFmt(d.img),M+(W-sz)/2,y,sz,sz);y+=sz+40*k}else y=S.h*.35;
+    font(true);doc.setFontSize(56*k);doc.text(d.text,S.w/2,y+30*k,{align:"center"});
+    if(d.ask){doc.setFontSize(36*k);doc.text(doc.splitTextToSize(d.ask,W),S.w/2,y+90*k,{align:"center"})}}
   return doc.output("blob")}
 // the same set as a Word file, one page for each sheet
 async function demoWord(x,size){if(size==="poster")return demoPosterWord(x);const D=await TREE_KIT.word();await TREE_KIT.fonts();const P=await demoPlan(x);const S=TREE_KIT.SIZES[size],k=S.w/612;
   const img=(data,w)=>new D.ImageRun({data:Uint8Array.from(atob(data.split(",")[1]),c=>c.charCodeAt(0)),type:/^data:image\/png/.test(data)?"png":"jpg",transformation:{width:Math.round(w),height:Math.round(w)}});
   const run=(t,pt,b)=>new D.TextRun({text:t,size:Math.round(pt*2*k),bold:!!b,font:"Andika"});
-  const sections=[{children:[new D.Paragraph({children:[run(P.overview.title,30,true)]}),new D.Paragraph({children:[run("What we need",18,true)]}),
+  const sections=P.skip.has("need")?[]:[{children:[new D.Paragraph({children:[run(P.overview.title,30,true)]}),...(P.overview.kids?[new D.Paragraph({children:[run(P.overview.kids,16)]})]:[]),new D.Paragraph({children:[run("What we need",18,true)]}),
     ...P.overview.ings.map(it=>new D.Paragraph({children:[...(it.img?[img(it.img,44*k)]:[]),run("  "+it.text,15)]})),...(P.overview.tools.length?[new D.Paragraph({children:[run("Tools",18,true)]}),...P.overview.tools.map(it=>new D.Paragraph({children:[...(it.img?[img(it.img,44*k)]:[]),run("  "+it.text,15)]}))]:[])]}];
-  for(const sh of P.sheets)sections.push({children:[new D.Paragraph({children:[run(String(sh.n),28,true),...(sh.adult?[run("     ",12),img(P.hand,70*k),run("  An adult does this step",13)]:[])]}),new D.Paragraph({spacing:{before:300,after:300},children:[run(sh.text,40,true)]}),
+  for(const sh of P.sheets.filter(x=>!P.skip.has(x.n)))sections.push({children:[new D.Paragraph({children:[run(String(sh.n),28,true),...(sh.adult?[run("     ",12),img(P.hand,70*k),run("  An adult does this step",13)]:[])]}),new D.Paragraph({spacing:{before:300,after:300},children:[run(sh.text,40,true)]}),
     ...sh.words.map(w=>new D.Paragraph({children:[run(w.big,32,true)]})),
     new D.Paragraph({children:sh.pics.flatMap(p=>[img(p.img,120*k*p.w),run("  ",10)])}),...(sh.pics.some(p=>p.cap)?[new D.Paragraph({children:[run(sh.pics.map(p=>p.cap).filter(Boolean).join(",  "),20,true)]})]:[]),...(demoCredits(sh.pics)?[new D.Paragraph({spacing:{before:240},children:[run(demoCredits(sh.pics),7)]})]:[])]});
+  if(P.done&&!P.skip.has("done"))sections.push({children:[...(P.done.img?[new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[img(P.done.img,300*k)]})]:[]),new D.Paragraph({alignment:D.AlignmentType.CENTER,spacing:{before:300},children:[run(P.done.text,48,true)]}),...(P.done.ask?[new D.Paragraph({alignment:D.AlignmentType.CENTER,children:[run(P.done.ask,32,true)]})]:[])]});
+  if(!sections.length)sections.push({children:[new D.Paragraph("")]});
   const docx=TREE_KIT.wordFile(D,{size,sections,styles:{default:{document:{run:{font:"Andika"}}}},fonts:TREE_KIT.wordFonts()});return TREE_KIT.wordBlob(D,docx)}
