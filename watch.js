@@ -181,8 +181,14 @@ module.exports = function watch(o) {
       const e = String(args[1] || '').split('\n'); note('error', first + (e[0] ? ': ' + e[0] : ''), { where: (e.find(l => /server\.js|\.js:\d/.test(l)) || '').trim().replace(/^at /, '').replace(/\(.*\//, '(').slice(0, 80) });
       return;
     }
+    // a save that fails once is tried again 30 seconds later. Only a retry that also fails is trouble (November 9, 2026).
+    if (/^Save written after earlier failures/.test(first)) { saveFails.delete(String(args[1] || '')); return; }
+    if (/^Save failed/.test(first)) { const p = String(args[1] || ''), n = (saveFails.get(p) || 0) + 1; saveFails.set(p, n);
+      if (saveFails.size > 500) saveFails.delete(saveFails.keys().next().value);
+      if (n >= 2) note('job', 'Save failed, and the retry did not work either'); return; }
     if (JOB_RE.test(first)) note('job', first);
   }
+  const saveFails = new Map();
   function refused(path, status, message, who) {
     const p = pathOf(path);
     if (!/^\/(api|family|public|login)/.test(p)) return;

@@ -152,3 +152,15 @@ test('how TREE feels to use becomes findings: slow to open, slow pages, hunting,
   const st = e.findings().find(x => x.kind === 'stuck');
   assert.ok(st); assert.strictEqual(st.count, 1);
 });
+
+test('a save that works on its retry is not a finding, and one whose retry also fails is (November 9, 2026)', () => {
+  const c = clock(); const w = makeWatch({ now: c.now }); w.load(null);
+  const safe = () => w.findings().filter(f => f.title === 'A job that keeps records safe could not run');
+  w.fromLog(['Save failed', 'notices/a.json', 'busy']); w.fromLog(['Save written after earlier failures', 'notices/a.json', 'after', 1, 'minutes']);
+  assert.strictEqual(safe().length, 0, 'the retry worked');
+  w.fromLog(['Save failed', 'notices/a.json', 'busy']); w.fromLog(['Save written after earlier failures', 'notices/a.json', 'after', 1, 'minutes']);
+  assert.strictEqual(safe().length, 0, 'a later one-time failure that recovers stays quiet too');
+  w.fromLog(['Save failed', 'notices/b.json', 'bad token']); w.fromLog(['Save failed', 'notices/b.json', 'bad token']);
+  assert.strictEqual(safe().length, 1, 'the retry did not work');
+  assert.match(safe()[0].text, /retry did not work/);
+});
