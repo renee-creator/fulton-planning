@@ -1,0 +1,21 @@
+{
+ "name": "s62ReadingDates",
+ "note": "Past dates taken out of PD Readings lists, November 10, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/depth/risk.md",
+   "from": "Active Supervision Video, California Department of Social Services, Community Care Licensing Division, used in our May 2026 training",
+   "to": "Active Supervision Video, California Department of Social Services, Community Care Licensing Division, used in our active supervision training"
+  },
+  {
+   "path": "staff/pd/modules/37-active-supervision.md",
+   "from": "Active Supervision Video, California Department of Social Services, Community Care Licensing Division, used in our May 2026 training",
+   "to": "Active Supervision Video, California Department of Social Services, Community Care Licensing Division, used in our active supervision training"
+  },
+  {
+   "path": "staff/pd/modules/34-development-and-anti-bias.md",
+   "from": "Maya Angelou, as quoted in our March 9, 2021 session.",
+   "to": "Maya Angelou, as quoted in this module."
+  }
+ ]
+}
