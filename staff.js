@@ -1262,6 +1262,7 @@ module.exports = function staffModule(o) {
     s61PastDates: ['code:once/s61-past-dates.json', 'Past dates taken out of educator-facing PD text, November 10, 2026'],
     s62ReadingDates: ['code:once/s62-reading-dates.json', 'Past dates taken out of PD Readings lists, November 10, 2026'],
     s63PhotoModule: ['code:once/s63-photo-module.json', 'Photographing Documentation, a new PD module as a draft, November 10, 2026'],
+    s64PhotoDepth: ['code:once/s64-photo-depth.json', 'Photographing Documentation, In depth tab and Presenting section, November 10, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],
