@@ -1,6 +1,6 @@
 'use strict';
 const test = require('node:test'); const assert = require('node:assert');
-const { start, browser, signedIn } = require('/home/claude/fulton-planning/.claude/worktrees/agent-a9a99338ad6f189cb/test/fixture.js');
+const { start, browser, signedIn } = require('./fixture.js');
 const day = 864e5;
 const more = put => {
   put('threads/t1.json', { id: 't1', name: 'Water and mud', classroom: 'West', question: 'Where does the water go?', status: 'growing', evidence: [{ planId: 'w0', week: '2026-10-26', text: 'Poured water down the hill' }], weeks: ['2026-10-26'], createdAt: Date.now() - 30 * day, followedBy: 'Ann' });
@@ -34,6 +34,6 @@ test('one project and lens moments keep their why', async t => {
   await s.p.click('[data-whyedit^="lens|"]'); await s.p.fill('[data-whybox^="lens|"]', 'A mark left in the mud'); await s.p.click('[data-whysave^="lens|"]'); await s.p.waitForTimeout(300);
   assert.strictEqual(await s.p.evaluate(() => scans.get('lens-All').moments[0].why), 'A mark left in the mud');
   // the staff room display is untouched by the width rule
-  assert.ok(!require('fs').readFileSync('/home/claude/fulton-planning/.claude/worktrees/agent-a9a99338ad6f189cb/display.html', 'utf8').includes('105ch'));
+  assert.ok(!require('fs').readFileSync(require('path').join(__dirname, '..', 'display.html'), 'utf8').includes('105ch'));
   assert.deepStrictEqual(s.errors, []);
 });

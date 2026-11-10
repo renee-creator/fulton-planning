@@ -1,6 +1,6 @@
 'use strict';
 const test = require('node:test'); const assert = require('node:assert');
-const { start, browser, signedIn } = require('/home/claude/fulton-planning/.claude/worktrees/agent-a9a99338ad6f189cb/test/fixture.js');
+const { start, browser, signedIn } = require('./fixture.js');
 const day = 864e5;
 const monday = () => { const d = new Date(); const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
 const isoOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');

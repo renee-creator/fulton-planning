@@ -1,6 +1,6 @@
 'use strict';
 const test = require('node:test'); const assert = require('node:assert');
-const { start, browser, signedIn } = require('/home/claude/fulton-planning/.claude/worktrees/agent-a9a99338ad6f189cb/test/fixture.js');
+const { start, browser, signedIn } = require('./fixture.js');
 test('reading width follows the card on a wide screen only', async t => {
   const b = await browser(); const fx = await start(); t.after(() => fx.stop());
   const br = await b.launch(); t.after(() => br.close());
