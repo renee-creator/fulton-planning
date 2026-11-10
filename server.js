@@ -794,6 +794,8 @@ ONCE.push(['s62ReadingDates', () => staff.once.edits('s62ReadingDates', recsEdit
 ONCE.push(['s63PhotoModule', () => staff.once.edits('s63PhotoModule', recsEdit)]);
 // Photographing Documentation, its In depth tab and Presenting section, November 10, 2026
 ONCE.push(['s64PhotoDepth', () => staff.once.edits('s64PhotoDepth', recsEdit)]);
+// Photographing Documentation source notes after the last checks, November 10, 2026
+ONCE.push(['s65PhotoChecks', () => staff.once.edits('s65PhotoChecks', recsEdit)]);
 // Lao sticky rice (khao niao), a new food recipe kept beside the rice balls, November 10, 2026
 ONCE.push(['s65LaoStickyRice', () => staff.once.edits('s65LaoStickyRice', recsEdit)]);
 // Sticky rice with seaweed renamed Rice balls with seaweed, November 10, 2026

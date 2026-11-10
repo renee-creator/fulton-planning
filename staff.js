@@ -1263,6 +1263,7 @@ module.exports = function staffModule(o) {
     s62ReadingDates: ['code:once/s62-reading-dates.json', 'Past dates taken out of PD Readings lists, November 10, 2026'],
     s63PhotoModule: ['code:once/s63-photo-module.json', 'Photographing Documentation, a new PD module as a draft, November 10, 2026'],
     s64PhotoDepth: ['code:once/s64-photo-depth.json', 'Photographing Documentation, In depth tab and Presenting section, November 10, 2026'],
+    s65PhotoChecks: ['code:once/s65-photo-checks.json', 'Photographing Documentation source notes after the last checks, November 10, 2026'],
     s65LaoStickyRice: ['code:once/s65-lao-sticky-rice.json', 'Lao sticky rice (khao niao), a new food recipe, November 10, 2026'],
     s66RiceBalls: ['code:once/s66-rice-balls.json', 'Sticky rice with seaweed renamed Rice balls with seaweed, November 10, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],

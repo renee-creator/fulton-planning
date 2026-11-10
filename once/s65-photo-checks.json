@@ -1,0 +1,21 @@
+{
+ "name": "s65PhotoChecks",
+ "note": "Photographing Documentation source notes after the last checks, November 10, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "The line on what children's photos showed comes from a press summary of that study and is worth checking against the book.",
+   "to": "The line on what children's photos showed is confirmed in Alison Clark's own Nursery World article, Say Your Piece."
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "The line on what children's photos showed comes from a press summary of that study and is worth checking against the book.",
+   "to": "The line on what children's photos showed is confirmed in Alison Clark's own Nursery World article, Say Your Piece."
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "The nineteen months pointing finding is from an index listing of the DeLoache study and is worth checking against the paper.",
+   "to": "The nineteen months pointing finding is in the study's abstract on the Psychological Science page."
+  }
+ ]
+}
