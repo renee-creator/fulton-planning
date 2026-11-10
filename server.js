@@ -786,6 +786,8 @@ ONCE.push(['s57PathLicensing', () => staff.once.edits('s57PathLicensing', recsEd
 ONCE.push(['s58PdPieces', () => staff.once.edits('s58PdPieces', recsEdit)]);
 ONCE.push(['s59BeanHouse', () => staff.once.edits('s59BeanHouse', recsEdit)]);
 ONCE.push(['s60IdeaFacts', () => staff.once.edits('s60IdeaFacts', recsEdit)]);
+// past dates taken out of educator-facing PD text, November 10, 2026
+ONCE.push(['s61PastDates', () => staff.once.edits('s61PastDates', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */

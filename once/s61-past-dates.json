@@ -1,0 +1,81 @@
+{
+ "name": "s61PastDates",
+ "note": "Past dates taken out of educator-facing PD text, November 10, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/depth/rhythms.md",
+   "from": "A decision made in October 2026 replaced the morning class meeting and the snack rotation with small groups soon after arrival and snack together on the piazza.",
+   "to": "We replaced the morning class meeting and the snack rotation with small groups soon after arrival and snack together on the piazza."
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "**Our fall 2026 groups.** Seven groups across three classes each have their own flower name, so children have a name for their own group.",
+   "to": "**Our small groups.** Each small group across our classes has its own flower name, so children have a name for their own group."
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "**The studio rotation, 2022.** The studio day held an arrival, a first group, a second group later in the morning, a break, time in the piazza, setup and a third group in the early afternoon. North class came on Monday and Friday and Wednesday afternoon, West class on Wednesday morning only, and South class on Tuesday and Thursday.",
+   "to": "**A studio day.** A studio day can hold an arrival, a first group, a second group later in the morning, a break, time in the piazza, setup and a third group in the early afternoon, with each class coming on its own days."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "beginning in fall 2025,",
+   "to": "beginning in the fall,"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "late September to early November 2025.",
+   "to": "late September to early November."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "mid-November 2025 to early February 2026.",
+   "to": "mid-November to early February."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "Ongoing from mid-February 2026.",
+   "to": "Ongoing from mid-February."
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "| Late February 2026 |",
+   "to": "| Late February |"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "| March 2026 |",
+   "to": "| March |"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "| April 2026 |",
+   "to": "| April |"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "| May 2026 onward |",
+   "to": "| May onward |"
+  },
+  {
+   "path": "staff/pd/modules/37-active-supervision.md",
+   "from": "The May 2026 training completions are kept in each educator's records",
+   "to": "Active supervision training completions are kept in each educator's records"
+  },
+  {
+   "path": "staff/pd/modules/39-looking-together.md",
+   "from": "Our October 2024 PD day took us to the Children's Museum of Sonoma County to study how a museum's spaces invite",
+   "to": "A PD day can take us to a place such as the Children's Museum of Sonoma County to study how a museum's spaces invite"
+  },
+  {
+   "path": "staff/pd/modules/40-questions-worth-asking.md",
+   "from": "Our Art page has told families the same thing in plain words since at least 2017.",
+   "to": "Our Art page has long told families the same thing in plain words."
+  },
+  {
+   "path": "staff/pd/printables/serving-two-year-olds.md",
+   "from": "Drawn from our capstone analysis, Serving Two-Year-Olds, October 2026.",
+   "to": "Drawn from our capstone analysis, Serving Two-Year-Olds."
+  }
+ ]
+}
