@@ -34,6 +34,6 @@ test('observations come into readings fairly, once per post, with their photo as
   assert.match(src, /function noticeOwnRoom/, 'an observation takes the class its tagged children share');
   assert.match(src, /shareRoom\(onePerPost\(ps\),160\)/, 'Find threads reads each post once and keeps room for observations');
   assert.match(src, /shareRoom\(onePerPost\(\[\.\.\.ps\]\),160\)/, 'the lens does the same');
-  assert.strictEqual((src.match(/\$\{PHOTO_RULE\}/g) || []).length, 4, 'every reading is told the photo note is context only');
+  assert.strictEqual((src.match(/\$\{PHOTO_RULE\}/g) || []).length, 5, 'every reading is told the photo note is context only');
   assert.match(src, /async function photoNoteAuto/);
 });

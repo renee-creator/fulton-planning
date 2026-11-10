@@ -4978,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="5db47d1480da";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="0362612481ca";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5582,6 +5582,7 @@ Return JSON {"emerging": text, "growing": text, "deepening": text, "resting": te
   const doc={id:wk+"-"+room,week:wk,room,createdAt:Date.now(),by:whoAmI(),support:(Array.isArray(out.support)?out.support:[out.support]).map(c).filter(Boolean).slice(0,3),
     changes:wrApplyStatuses(room,tr,out.statuses,c),
     weeks:tr.weeks,obs:tr.obs,threads:tr.threads.map(t=>({id:t.id,name:t.name,status:t.status,counts:t.counts}))};
+  doc.year=wrYearArc(room,wk,tr,doc.changes);
   for(const [k] of WR_PARTS)doc[k]=c(out[k]);
   reports.set(doc.id,doc);if(db)await db.doc("reports/"+doc.id).set(doc).catch(()=>{});return {ok:true}}
 // the reports this person may read, the director every one, a class team its own class's
@@ -5589,6 +5590,25 @@ function wrList(){if(isDirector()&&!VIEW_AS)return [...reports.values()];return 
 function wrLoadMine(){if(isDirector()&&!VIEW_AS)return;if(wrMine||!window.FP_API)return;wrMine={reports:[]};window.FP_API("/api/reports/mine",{}).then(r=>{wrMine=r||{reports:[]};if(view==="wreport"||view==="today")renderMain()}).catch(()=>{wrMine=null})}
 function wrSpark(c){const w=96,h=22,max=Math.max(1,...c),step=w/Math.max(1,c.length-1);const pts=c.map((v,i)=>`${(i*step).toFixed(1)},${(h-2-(v/max)*(h-4)).toFixed(1)}`).join(" ");
   return `<svg class="wrspark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(c.join(", "))} a week"><polyline points="${pts}" fill="none" stroke="var(--moss)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`}
+// the year record, for the director. Compare reads Find threads for the chosen class both ways on the same records, the
+// way it reads now and with the year record, and keeps neither on a thread. Use the year record turns it on for the
+// week's reading, and Stop using it turns it off.
+function yearCardHtml(){if(!isDirector()||VIEW_AS)return "";const on=yearOn();const room=wrRoom||"All";const where=room==="All"?"the whole school":"the "+room+" class";
+  const now=scans.get("compare-"+room+"-now"),yr=scans.get("compare-"+room);
+  const list=sc=>sc&&(sc.threads||[]).length?`<ul style="margin:4px 0 0;padding-left:20px">${sc.threads.map(t=>`<li>${esc(t.name)}${t.trackedId?`<div class="cnt">A thread we follow</div>`:""}</li>`).join("")}</ul>`:`<div class="cnt">No threads with enough evidence.</div>`;
+  const side=(h,sc)=>`<div><div class="lbl">${h}</div>${sc?`<div class="cnt">Read ${esc(shortDate(sc.createdAt))}.</div>${has(sc.summary)?`<p style="margin:6px 0">${esc(sc.summary)}</p>`:""}${list(sc)}${(sc.seenOnce||[]).length?`<div class="lbl" style="margin-top:8px">Seen once, kept for later</div><ul style="margin:4px 0 0;padding-left:20px">${sc.seenOnce.map(o=>`<li>${esc(o.idea)}</li>`).join("")}</ul>`:""}`:`<div class="cnt">Not read yet.</div>`}</div>`;
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">The year record</h3><span class="cnt">${on?"In use in the week's reading":"Not in use yet"}</span></div>
+    <p class="cnt" style="margin:4px 0">With the year record, the week's reading reads the last eight weeks in full and the rest of the school year through what each week found.</p>
+    <p class="cnt" style="margin:4px 0">Moments seen once are kept too, so a moment from early in the year can still join a thread later.</p>
+    <p class="cnt" style="margin:4px 0">Compare reads Find threads for ${esc(where)} both ways, on the same records. It reads twice, so it costs about two readings. Nothing joins a thread.</p>
+    <div class="actions" style="flex-wrap:wrap"><button class="btn small ghost" data-yearcmp="1" ${scanBusy?"disabled":""}>${scanBusy?"Reading":"Compare for "+esc(where)}</button><button class="btn small${on?" ghost":""}" data-yearon="${on?"0":"1"}">${on?"Stop using the year record":"Use the year record"}</button></div>
+    ${now||yr?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:12px">${side("As it reads now",now)}${side("With the year record",yr)}</div>`:""}</section>`}
+document.addEventListener("click",async e=>{if(view!=="wreport")return;const t=e.target.closest("[data-yearcmp],[data-yearon]");if(!t||!isDirector()||VIEW_AS)return;
+  if(t.dataset.yearon){PROGRAM_DOC.yearRecord=t.dataset.yearon==="1";saveProgram();renderMain();toast(yearOn()?"The week's reading will use the year record.":"The week's reading is back to the last eight weeks.");return}
+  if(scanBusy||weeklyBusy){toast("A reading is running. Try again when it finishes.");return}
+  const keep={tRoom,tRange};const room=wrRoom||"All";
+  try{tRoom=room;tRange="8";await findThreads({preview:"compare-"+room+"-now"});tRoom=room;tRange="8";await findThreads({preview:"compare-"+room,year:true})}
+  finally{tRoom=keep.tRoom;tRange=keep.tRange;renderMain()}});
 function renderWeeklyReport(){wrLoadMine();const dir=isDirector()&&!VIEW_AS;const all=wrList();
   const rooms=dir?["All",...CLASSROOMS]:[...new Set(all.map(r=>r.room))];if(!rooms.includes(wrRoom))wrRoom=rooms[0]||"";
   const weeks=[...new Set(all.filter(r=>r.room===wrRoom).map(r=>r.week))].sort().reverse();if(!weeks.includes(wrWeek))wrWeek=weeks[0]||"";
@@ -5598,6 +5618,7 @@ function renderWeeklyReport(){wrLoadMine();const dir=isDirector()&&!VIEW_AS;cons
     <section class="card wrbar"><div class="actions" style="flex-wrap:wrap">${rooms.length>1?rooms.map(x=>`<button class="chip-btn" data-wrroom="${esc(x)}" aria-pressed="${x===wrRoom}">${esc(name(x))}</button>`).join(""):""}
       ${weeks.length?`<label class="cnt">Week of <select data-wrweek="1" style="width:auto">${weeks.map(w=>`<option value="${esc(w)}" ${w===wrWeek?"selected":""}>${esc(fmtDate(w))}${w===wkNow?", this week":""}</option>`).join("")}</select></label>`:""}
       ${r?`<button class="btn small ghost" data-wrprint="1">Print or save as PDF</button>`:""}</div></section>
+    ${yearCardHtml()}
     ${r?wrHtml(r,name(wrRoom))+wrFindingsHtml(r):`<section class="card"><p class="muted" style="margin:0">${all.length?"No report for this one yet.":"The first report is written after the next week's reading. The director's first visit to TREE each week starts the reading."}</p></section>`}`}
 // what the reading found that week, kept with the report by the server as findings, folded under the report. Nothing shows
 // when the server did not keep any (November 4, 2026)
@@ -5614,12 +5635,23 @@ function wrFindingsHtml(r){const f=wrFindingsOf(r);if(!f||typeof f!=="object")re
   if(!rows.length)return "";
   return `<details class="card fold" data-fold="wrfind:${esc(r.id||r.week+r.room)}" ${foldOpen.has("wrfind:"+(r.id||r.week+r.room))?"open":""}><summary class="foldhead"><span class="lbl" style="margin:0">What the reading found</span><span class="cnt">${rows.length}</span></summary><div class="foldbody" style="display:grid;gap:8px">${rows.join("")}</div></details>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-readings]");if(!t||!isDirector())return;e.preventDefault();e.stopImmediatePropagation();wrRoom="All";wrWeek=mondayOf(new Date());goView("wreport")},true);
+// since the start of the school year, each followed thread's first week and the weeks its status changed, counted from
+// the thread itself and the reports kept by week. Nothing here is written by TREE.
+function wrYearArc(room,wk,tr,changes){const y0=schoolYearStart();
+  const past=[...reports.values()].filter(r=>r&&r.room===room&&r.week>=y0&&r.week<wk).sort((a,b)=>a.week.localeCompare(b.week));
+  const stAt=(r,id)=>{const ch=(r.changes||[]).find(x=>x.id===id);if(ch)return ch.to;const x=(r.threads||[]).find(z=>z.id===id);return x&&x.status||""};
+  return tr.threads.map(t=>{const th=threads.get(t.id)||{};const seen=[...(th.weeks||[]),...(th.evidence||[]).map(e=>e.week)].filter(w=>w&&w>=y0).sort();
+    const path=[];let last="";const add=(week,st)=>{if(st&&TSTATUS[st]&&st!==last){path.push({week,status:st});last=st}};
+    for(const r of past)add(r.week,stAt(r,t.id));const ch=(changes||[]).find(x=>x.id===t.id);add(wk,ch?ch.to:(th.status||t.status));
+    return {id:t.id,name:t.name,first:seen[0]||"",path:path.slice(-10)}}).filter(a=>a.first||a.path.length)}
+function wrYearHtml(r){if(!(r.year||[]).length)return "";
+  return `<div class="wrpart"><div class="lbl">Since the start of the school year</div><ul style="margin:4px 0 0;padding-left:20px">${r.year.map(a=>`<li><b>${esc(a.name)}</b>${a.first?`<div class="cnt">First seen the week of ${esc(fmtDate(a.first))}.</div>`:""}${a.path.length?`<div class="cnt">${a.path.map(p=>`${esc(TSTATUS[p.status]||p.status)} from ${esc(fmtDate(p.week))}`).join(", then ")}.</div>`:""}</li>`).join("")}</ul></div>`}
 function wrHtml(r,title){const part=(h,t)=>has(t)?`<div class="wrpart"><div class="lbl">${h}</div><div>${esc(t)}</div></div>`:"";
   const prev=wrList().filter(x=>x.room===r.room&&x.week<r.week).sort((a,b)=>b.week.localeCompare(a.week))[0];
   return `<section class="card wrrep"><div class="secthead"><h3 style="font-size:19px">${esc(title)}</h3><span class="cnt">Week of ${esc(fmtDate(r.week))}${prev?`, compared with the weeks before`:", the first report, so there is nothing to compare with yet"}</span></div>
     ${WR_PARTS.map(([k,l])=>part(l,r[k])).join("")}
     ${(r.changes||[]).length?`<div class="wrpart"><div class="lbl">Threads that changed this week</div><ul style="margin:4px 0 0;padding-left:20px">${r.changes.map(x=>`<li>${esc(x.thread)} moved from ${esc(TSTATUS[x.from]||x.from)} to ${esc(TSTATUS[x.to]||x.to)}. ${esc(x.why||"")}</li>`).join("")}</ul></div>`:""}
-    ${(r.support||[]).length?`<div class="wrpart"><div class="lbl">To support the work</div><ul style="margin:4px 0 0;padding-left:20px">${r.support.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}</section>
+    ${(r.support||[]).length?`<div class="wrpart"><div class="lbl">To support the work</div><ul style="margin:4px 0 0;padding-left:20px">${r.support.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}${wrYearHtml(r)}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Week by week</h3><span class="cnt">The six weeks to ${esc(fmtDate(r.week))}</span></div>
       <table class="wrtab"><tbody><tr><td>Observations kept</td><td>${wrSpark(r.obs||[])}</td><td class="cnt">${esc((r.obs||[]).join(", "))}</td><td></td></tr>
       ${(r.threads||[]).map(t=>{const was=prev&&(prev.threads||[]).find(o=>o.id===t.id);const st=t.status&&TSTATUS[t.status];
@@ -5640,6 +5672,8 @@ const rToast=m=>{if(!weeklyBusy)toast(m)};
 const weeklyProjects=()=>[...projects.values()].filter(x=>x&&!x.deleted&&(x.status||"active")==="active");
 const weeklyInquiries=()=>inqAll().filter(x=>(x.status||"open")==="open");
 function weeklySteps(){const rooms=["All",...CLASSROOMS],s=[];
+  // the year record is filled in once from the start of the school year, before the first reading that uses it
+  if(yearOn()&&PROGRAM_DOC.yearFilled!==schoolYearStart())rooms.forEach(r=>s.push("fill|"+r));
   rooms.forEach(r=>s.push("threads|"+r));
   LENSES.filter(l=>l.year).forEach(L=>rooms.forEach(r=>s.push("lens|"+L.id+"|"+r)));
   rooms.forEach(r=>s.push("moments|"+r));
@@ -5648,25 +5682,99 @@ function weeklySteps(){const rooms=["All",...CLASSROOMS],s=[];
   rooms.forEach(r=>s.push("report|"+r));
   return s}
 // one part of the week's reading. Nothing to read counts as done, and a reading that brought nothing back is tried again later.
-async function weeklyStep(step){const [kind,a,b]=step.split("|");const t0=Date.now();const fresh=k=>{const sc=scans.get(k);return sc&&(sc.createdAt||0)>=t0?sc:null};
+async function weeklyStep(step){const [kind,a,b]=step.split("|");const yr=yearOn();
+  if(kind==="fill")return await yearFill(a);
   if(kind==="report")return await weeklyReport(a);
-  if(kind==="threads"){tRoom=a;tRange="8";if(!rangePlans().length)return {ok:true};await findThreads();const sc=fresh(a);return {ok:!!sc,sc}}
-  if(kind==="lens"){if(!LENSES.some(l=>l.id===a))return {ok:true};setLens(a);lRoom=b;if(!lensPlans().length)return {ok:true};await lensRead();const sc=fresh(lensKey(b));return {ok:!!sc,sc}}
-  if(kind==="moments"){nRoom=a;mRange="8";if(momentsIn().length<3)return {ok:true};await momentsRead();const sc=fresh("moments-"+a);return {ok:!!sc,sc}}
-  if(kind==="project"){const x=projects.get(a);if(!x||x.deleted||(x.status||"active")!=="active")return {ok:true};const n=await foundRead("project",x);return {ok:n>=0,n}}
-  if(kind==="inquiry"){const x=inquiries.get(a);if(!inqOf(x)||(x.status||"open")!=="open")return {ok:true};const n=await foundRead("inquiry",x);return {ok:n>=0,n}}
+  // each reading hands back what it kept, or last week's when nothing it reads has changed
+  if(kind==="threads"){tRoom=a;tRange="8";if(!rangePlans().length)return {ok:true};const sc=await findThreads({weekly:true,year:yr});return {ok:!!sc,sc}}
+  if(kind==="lens"){if(!LENSES.some(l=>l.id===a))return {ok:true};setLens(a);lRoom=b;if(yr)lRange="8";if(!lensPlans().length)return {ok:true};const sc=await lensRead({weekly:true,year:yr});return {ok:!!sc,sc}}
+  if(kind==="moments"){nRoom=a;mRange="8";if(momentsIn().length<3)return {ok:true};const sc=await momentsRead({weekly:true,year:yr});return {ok:!!sc,sc}}
+  if(kind==="project"){const x=projects.get(a);if(!x||x.deleted||(x.status||"active")!=="active")return {ok:true};const n=await foundRead("project",x,{weekly:true});return {ok:n>=0,n}}
+  if(kind==="inquiry"){const x=inquiries.get(a);if(!inqOf(x)||(x.status||"open")!=="open")return {ok:true};const n=await foundRead("inquiry",x,{weekly:true});return {ok:n>=0,n}}
   return {ok:true}}
+/* ---------- The year record ----------
+   What each week's reading finds is kept by week on the server, as findings, threads found, patterns, lens moments and
+   moments seen once. With the year record in use, the week's reading reads the last eight weeks in full and the rest of
+   the school year through those findings, so nothing from earlier in the year falls away. A moment the record points to
+   is read again in its own words, so a thread or pattern can draw on it and its words are never retold. Moments seen
+   once are kept, so a moment from early in the year can still join a thread later. The director turns it on from the
+   weekly reading report, after comparing Find threads both ways. Before its first use, the weeks of this school year
+   before the week's findings were kept are filled in once from the records of those weeks. */
+const WK_DEVICE=Math.random().toString(36).slice(2)+Date.now().toString(36);
+let yearFind=null;
+const yearOn=()=>!!(PROGRAM_DOC&&PROGRAM_DOC.yearRecord);
+async function yearLoad(fresh){if(yearFind&&!fresh)return yearFind;try{const r=await window.FP_API("/api/findings",{});yearFind=(r&&r.findings)||[]}catch(e){yearFind=yearFind||[]}return yearFind}
+function sigOf(v){const t=JSON.stringify(v)||"";let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return t.length+"."+h}
+// the week's reading is held by one device at a time, and let go when it finishes
+async function weeklyHold(done){if(!window.FP_API)return true;try{const r=await window.FP_API("/api/weekly/claim",{device:WK_DEVICE,done:!!done});return !(r&&r.busy)}catch(e){return false}}
+// the weeks of this school year before the full reading's first week, oldest first, for one class or the whole school
+function yearWeeks(room,before,lk){const y0=schoolYearStart();return (yearFind||[]).filter(f=>f&&f.week>=y0&&f.week<before).sort((a,b)=>a.week.localeCompare(b.week)).map(f=>({week:f.week,
+    threads:(f.threads||[]).filter(t=>t&&t.room===room).map(t=>({name:t.name,question:firstLine(t.question||"",200),ids:t.ids||[]})),
+    patterns:(f.patterns||[]).filter(x=>x&&x.room===room).map(x=>({name:x.name,why:firstLine(x.why||"",200),ids:x.ids||[]})),
+    seenOnce:(f.seenOnce||[]).filter(x=>x&&x.room===room).map(x=>({id:x.id,idea:x.idea||""})),
+    lens:lk?(f.lens||[]).filter(m=>m&&m.room===lk.key&&m.lensId===lk.id).map(m=>({planId:m.id,quote:m.quote,language:m.language||""})):[]}))
+  .filter(w=>w.threads.length||w.patterns.length||w.seenOnce.length||w.lens.length)}
+// the records the year record points to, newest first, that are still kept
+function yearPointed(wks){const want=[];for(const w of [...wks].reverse()){for(const o of w.seenOnce)want.push(o.id);for(const t of w.threads)want.push(...t.ids);for(const x of w.patterns)want.push(...x.ids)}return [...new Set(want)]}
+async function yearThreads(room,before,ids){await yearLoad();const wks=yearWeeks(room,before);if(!wks.length)return null;
+  const early=digest(yearPointed(wks).map(id=>rec(id)).filter(p=>p&&!ids.has(p.id))).slice(0,30);
+  return {early,ask:`
+
+The year record. Earlier this school year, before the weeks above, the week's reading found these, week by week, oldest first. Read the weeks above against the whole year. Say in the summary when something began earlier in the year, rested, or came back.
+${wks.map(w=>JSON.stringify({week:w.week,threads:w.threads.map(t=>({name:t.name,question:t.question})),patterns:w.patterns.map(x=>x.name),seen_once:w.seenOnce})).join("\n")}
+${early.length?`Earlier moments the year record points to, one JSON object per line, in their own words. A thread may draw on these as evidence, using their own words.\n${early.map(x=>JSON.stringify(x)).join("\n")}\n`:""}Also return in the same JSON "seen_once", up to 8 {"planId": id, "idea": one short sentence naming what a child or group did or wondered}, for single moments in the weeks above that are not yet part of any thread but may begin one. Use only ids from the plans above.`}}
+async function yearLens(room,before){await yearLoad();const wks=yearWeeks(room,before,{key:lensKey(room),id:lensId}).filter(w=>w.lens.length);if(!wks.length)return "";
+  return `
+
+The year record. Earlier this school year, before the weeks above, this lens found these moments, week by week, oldest first, in the educators' own words. Read the plans above against them, and say in the summary what has carried on, changed or come back since earlier in the year. Choose moments only from the plans above.
+${wks.map(w=>JSON.stringify({week:w.week,moments:w.lens})).join("\n")}`}
+async function yearMoments(room,before,ids){await yearLoad();const wks=yearWeeks(room,before);if(!wks.length)return null;
+  const early=yearPointed(wks).filter(id=>!ids.has(id)).map(id=>notices.get(id)).filter(Boolean).slice(0,30).map(momentObj);
+  return {early,ask:`
+
+The year record. Earlier this school year, before the moments above, the week's reading found these, week by week, oldest first. Read the moments above against the whole year, and say in the summary when something began earlier in the year, rested, or came back.
+${wks.map(w=>JSON.stringify({week:w.week,patterns:w.patterns.map(x=>({name:x.name,why:x.why})),seen_once:w.seenOnce})).join("\n")}
+${early.length?`Earlier moments the year record points to, one JSON object per line, in their own words. A pattern may draw on these ids too.\n${early.map(x=>JSON.stringify(x)).join("\n")}`:""}`}}
+// fills in the weeks of this school year before the full reading, once, for the whole school or one class
+async function yearFill(room){const y0=schoolYearStart(),before=addDays(mondayOf(new Date()),-49);if(before<=y0)return {ok:true};
+  const ps=[...plans.values(),...noticePlans()].filter(p=>p&&p.id!=="example"&&p.weekOf>=y0&&p.weekOf<before&&(room==="All"||p.classroom===room));if(!ps.length)return {ok:true};
+  await yearLoad(true);const done=new Set((yearFind||[]).filter(f=>(f.filled||[]).includes(room)).map(f=>f.week));
+  const all=digest(ps).filter(x=>!done.has(x.week)).sort((a,b)=>a.week.localeCompare(b.week));if(!all.length)return {ok:true};
+  const parts=[];let cur=[],n=0;for(const x of all){const l=JSON.stringify(x).length+1;if(n+l>170000&&cur.length){parts.push(cur);cur=[];n=0}cur.push(x);n+=l}if(cur.length)parts.push(cur);
+  const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s+/g,". ").trim();
+  for(const d of parts){const ids=new Set(d.map(x=>x.id));const weeks=[...new Set(d.map(x=>x.week))].sort();const wset=new Set(weeks);
+    const prompt=`You are filling in the year record for ${room==="All"?"the whole school":"the "+room+" class"} at Fulton Community School & Farm, from the plans and observations saved earlier this school year, weeks ${weeks[0]} to ${weeks[weeks.length-1]}. For each week, name what the records show, as the week's reading would have named it then.
+Rules. Use only what the plans and entries say. ${PHOTO_RULE} Never invent children, quotes, or events. Never rate or praise a child or an educator, and never label a child. Phrase any reading of a child's idea as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. A thread is a question or idea children kept returning to, supported by at least two separate records. Put each thread in the week it first appears, with the weeks it shows up. A pattern is something children worked on across several moments. Seen once is a single moment that may begin a thread later. Keep close to the records' own words.
+${STYLE}
+Return JSON {"weeks":[{"week": a week from the records, "threads":[up to 4 {"name": 3 to 7 words, "question": one sentence that begins with the words Children may be asking, "ids": ids of the records, "weeks": the weeks it shows up}], "patterns":[up to 3 {"name": 2 to 6 words, "why": one sentence, "ids": ids of 2 to 6 records}], "seen_once":[up to 5 {"id": id, "idea": one short sentence}]}]}
+
+Records, one JSON object per line.
+${d.map(x=>JSON.stringify(x)).join("\n")}`;
+    let out;try{out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"year-fill"})}catch(e){return {ok:false}}
+    const keep=a=>(Array.isArray(a)?a:[]).filter(i=>ids.has(i));
+    for(const w of (Array.isArray(out&&out.weeks)?out.weeks:[])){if(!w||!wset.has(w.week))continue;
+      const body={week:w.week,room,
+        threads:(Array.isArray(w.threads)?w.threads:[]).map(t=>({name:c2(t&&t.name),question:c2(t&&t.question),ids:keep(t&&t.ids),weeks:(Array.isArray(t&&t.weeks)?t.weeks:[]).filter(x=>wset.has(x))})).filter(t=>t.name&&t.ids.length),
+        patterns:(Array.isArray(w.patterns)?w.patterns:[]).map(x=>({name:c2(x&&x.name),why:c2(x&&x.why),ids:keep(x&&x.ids)})).filter(x=>x.name&&x.ids.length),
+        seenOnce:(Array.isArray(w.seen_once)?w.seen_once:[]).filter(o=>o&&ids.has(o.id)).map(o=>({id:o.id,idea:c2(o.idea)})).filter(o=>o.idea)};
+      if(!body.threads.length&&!body.patterns.length&&!body.seenOnce.length)continue;
+      try{await window.FP_API("/api/findings/fill",body)}catch(e){return {ok:false}}}}
+  yearFind=null;return {ok:true}}
 async function weeklyReads(){
   if(weeklyBusy||weeklyRec===undefined||!isDirector()||VIEW_AS||!sample||!db||!navigator.onLine)return;
   const wk=mondayOf(new Date());const r=weeklyRec||{};
   if(r.week===wk&&(r.done||Date.now()-(r.startedAt||0)<(r.failed?60*60e3:15*60e3)))return;
   if(scanBusy||lensBusy||mBusy)return;
+  // only one device runs the reading, so two open copies of TREE never read the same parts twice
+  weeklyBusy=true;const held=await weeklyHold();weeklyBusy=false;if(!held)return;
   const same=r.week===wk,doneSteps=same?[...(r.doneSteps||[])]:[];
   const tally=Object.assign({threads:[],joined:[],moments:[],patterns:[],projects:[],inquiries:[]},same&&r.tally||{});
   weeklyBusy=true;weeklyRec={week:wk,startedAt:Date.now(),done:false,doneSteps,tally};await db.doc("settings/weekly").set(weeklyRec);if(view==="today")renderMain();
-  const keep={tRoom,tRange,lRoom,lensId,nRoom,mRange};const add=(k,v)=>{if(v&&!tally[k].includes(v))tally[k].push(v)};
+  const keep={tRoom,tRange,lRoom,lRange,lensId,nRoom,mRange};const add=(k,v)=>{if(v&&!tally[k].includes(v))tally[k].push(v)};
   let missed=0;
+  const filling=weeklySteps().some(x=>x.startsWith("fill|"));
   try{for(const step of weeklySteps()){if(doneSteps.includes(step))continue;if(!navigator.onLine){missed++;continue}
+      if(!(await weeklyHold())){missed++;break}
       let res={ok:false};try{res=await weeklyStep(step)}catch(e){}
       if(!res.ok){missed++;continue}
       const [kind,a]=step.split("|"),sc=res.sc;
@@ -5675,7 +5783,8 @@ async function weeklyReads(){
       if(kind==="moments"&&sc)(sc.patterns||[]).filter(p=>!p.matchId).forEach(p=>add("patterns",String(p.name||"").toLowerCase()));
       if((kind==="project"||kind==="inquiry")&&res.n>0)add(kind==="project"?"projects":"inquiries",a);
       doneSteps.push(step);weeklyRec=Object.assign({},weeklyRec,{doneSteps,tally});db.doc("settings/weekly").set(weeklyRec).catch(()=>{});if(view==="today")renderMain()}}
-  finally{tRoom=keep.tRoom;tRange=keep.tRange;lRoom=keep.lRoom;setLens(keep.lensId);nRoom=keep.nRoom;mRange=keep.mRange;weeklyBusy=false;
+  finally{weeklyHold(true);yearFind=null;if(filling&&!missed){PROGRAM_DOC.yearFilled=schoolYearStart();saveProgram()}
+    tRoom=keep.tRoom;tRange=keep.tRange;lRoom=keep.lRoom;lRange=keep.lRange;setLens(keep.lensId);nRoom=keep.nRoom;mRange=keep.mRange;weeklyBusy=false;
     weeklyRec={week:wk,startedAt:weeklyRec.startedAt,done:!missed,failed:!!missed,missed,doneAt:Date.now(),doneSteps,tally,
       threads:tally.threads.length,joined:tally.joined.length,moments:tally.moments.length,patterns:tally.patterns.length,projects:tally.projects.length,inquiries:tally.inquiries.length};
     db.doc("settings/weekly").set(weeklyRec).catch(()=>{});if(view==="today")renderMain()}}
@@ -10295,12 +10404,14 @@ function renderMoments(){
   if(shown<all.length)h+=`<div class="actions" style="margin-top:4px"><button class="btn small ghost" data-mmore="1">Show more</button><span class="cnt">Showing ${shown} of ${all.length}</span></div>`;
   $("#main").innerHTML=h;
 }
-async function momentsRead(){
-  if(mBusy||!sample||!isDirector())return;
+async function momentsRead(o){o=o||{};
+  if(mBusy||!sample||!isDirector())return null;
   const all=momentsIn();
-  if(all.length<3){rToast("Keep a few more observations first.");return}
-  const d=capDigest(onePerPostN(all).slice(0,160).map(n=>Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",by:obsBy(n),noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,400)},noticeExtras(n))),150000);
+  if(all.length<3){rToast("Keep a few more observations first.");return null}
+  const d=capDigest(onePerPostN(all).slice(0,160).map(momentObj),150000);
   const ids=new Set(d.map(x=>x.id));
+  const room0=nRoom==="none"?"All":nRoom;const sig=sigOf(d),prev=scans.get("moments-"+room0);if(o.weekly&&prev&&prev.sig===sig&&prev.range===mRange&&!!prev.year===!!o.year)return prev;
+  const yr=o.year&&(mRange==="4"||mRange==="8")?await yearMoments(room0,addDays(mondayOf(new Date()),mRange==="4"?-21:-49),ids):null;if(yr)for(const x of yr.early)ids.add(x.id);
   mBusy=true;renderMain();
   const room=nRoom==="none"?"All":nRoom;
   const followed=[...threads.values()].filter(t=>matchable(t)&&(room==="All"||!t.classroom||t.classroom===room)).map(t=>({id:t.id,name:t.name,question:firstLine(t.question||"",200),team_notes:tNotes(t),closed:t.status==="closed"}));
@@ -10312,7 +10423,8 @@ ${STYLE}
 Return JSON {"summary": two or three sentences on what these moments show children working on across the whole view, "patterns":[up to 5 {"name": the short label, "why": one or two sentences on what the moments show, grounded in them, "ids": the ids of 2 to 6 moments it draws on, "thread": the id of the followed thread it matches, or ""}], "questions":[2 or 3 questions the team could take to its next meeting]}
 
 Moments, one JSON object per line.
-${d.map(x=>JSON.stringify(x)).join("\n")}`;
+${d.map(x=>JSON.stringify(x)).join("\n")}${yr?yr.ask:""}`;
+  let res=null;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"moments"});
     const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();
@@ -10320,12 +10432,14 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
       ids:(Array.isArray(p&&p.ids)?p.ids:[]).filter(i=>ids.has(i)).slice(0,6),matchId:followed.some(t=>t.id===(p&&p.thread))?p.thread:""})).filter(p=>p.name&&p.ids.length).slice(0,5);
     for(const p of patterns)if(!p.matchId)delete p.matchId;
     const joined=patterns.filter(p=>patternMatch(p)).length;
-    saveScan({room:"moments-"+room,kind:"moments",range:mRange,createdAt:Date.now(),by:whoAmI(),count:d.length,
-      summary:c2(out?.summary),patterns,questions:(Array.isArray(out?.questions)?out.questions:[]).map(c2).filter(Boolean).slice(0,3)});
+    res={room:"moments-"+room,kind:"moments",range:mRange,sig,year:!!yr,createdAt:Date.now(),by:whoAmI(),count:d.length,
+      summary:c2(out?.summary),patterns,questions:(Array.isArray(out?.questions)?out.questions:[]).map(c2).filter(Boolean).slice(0,3)};saveScan(res);
     rToast(patterns.length?`Read ${d.length} observations and named ${patterns.length} pattern${patterns.length>1?"s":""}${joined?`, ${joined} already a thread you follow`:""}.`:`Read ${d.length} observations.`);
   }catch(err){rToast(assistError(err||"unknown"))}
   mBusy=false;renderMain();
+  return res;
 }
+function momentObj(n){return Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",by:obsBy(n),noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,400)},noticeExtras(n))}
 function momentsDocs(long,cap){
   const all=momentsIn();
   if(!all.length)return[];
@@ -11731,7 +11845,7 @@ function foundPool(kind,x){const since=Date.now()-56*864e5,have=foundHave(kind,x
 function foundSet(kind,x,found){x.found=found;if(!db)return kind==="project"?saveProject(x):saveInquiry(x);
   // only the waiting list is written, so the reading never moves a project or an inquiry to the top of its list
   db.doc((kind==="project"?"projects/":"inquiries/")+x.id).update({found:JSON.parse(JSON.stringify(found))}).catch(()=>{})}
-async function foundRead(kind,x){if(!sample||!isDirector())return -1;
+async function foundRead(kind,x,o){if(!sample||!isDirector())return -1;
   const pool=foundPool(kind,x);
   if(!pool.length){if(x.found&&(x.found.items||[]).length)foundSet(kind,x,{at:Date.now(),items:[]});return 0}
   const d=capDigest(pool.map(n=>Object.assign({id:n.id,date:shortDate(n.at),classroom:momentRoomsText(n)||n.classroom||"",noticed:String(n.noticed||"").slice(0,900),wonder:String(n.wonder||"").slice(0,300)},noticeExtras(n))),120000);
@@ -11743,6 +11857,8 @@ The project ${JSON.stringify({name:x.name||"",experience_it_grew_from:x.experien
 The inquiry ${JSON.stringify({question:x.name||"",what_the_team_sees:x.see||"",when_and_where:x.whenwhere||"",hypotheses:inqOpenHyps(x).map(h=>h.text),what_to_watch_for:x.watch||"",belongs_to:x.room?x.room+" class":"the whole school"})}
 ${IQ_POLICY}
 An observation helps when it shows the moments the team is wondering about, what came just before or after them, or times when things went well, which matter as much.`;
+  // the week's reading leaves a project or inquiry as it is when nothing it would read has changed since last time
+  const sig=sigOf([d,about]);if(o&&o.weekly&&x.found&&x.found.sig===sig)return (x.found.items||[]).length;
   const prompt=`You are reading observations kept by educators at Fulton Community School & Farm, to find the ones that may belong to ${about}
 Rules. Use only what the observations say. ${PHOTO_RULE} Never invent children, quotes, materials, or events. Never rate or praise a child or an educator, and never label a child. Phrase any reading of a child's idea or behavior as a hypothesis, beginning with words such as Perhaps or It may be, since only the child knows. Choose at most 6, the clearest first, and none when nothing fits. Only use an id from the list. Return only the JSON, with no other text.
 ${STYLE}
@@ -11753,7 +11869,7 @@ ${d.map(o=>JSON.stringify(o)).join("\n")}`;
   try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:kind==="project"?"project-find":"inquiry-find"});
     const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s+/g,". ").trim();const got=new Set();
     const items=(Array.isArray(out?.found)?out.found:[]).filter(f=>f&&ids.has(f.id)&&!got.has(f.id)&&got.add(f.id)).slice(0,6).map(f=>({id:f.id,why:sentCut(c2(f.why),300)}));
-    foundSet(kind,x,{at:Date.now(),items});return items.length}
+    foundSet(kind,x,{at:Date.now(),items,sig});return items.length}
   catch(err){return -1}}
 function foundWaiting(kind,x){if(!x||!x.found)return [];const have=foundHave(kind,x),no=new Set(x.foundNo||[]);
   return (x.found.items||[]).filter(f=>notices.has(f.id)&&!have.has(f.id)&&!no.has(f.id))}
@@ -13433,12 +13549,14 @@ function lensDigest(ps){
     for(const [label,text] of lensPlanParts(p))o.text[label]=text.trim().slice(0,520);
     const mk=lensMarked(p);if(mk.length)o.languages_marked=mk;return o}).filter(o=>Object.keys(o.text).length);
 }
-async function lensRead(){
-  if(lensBusy||!sample||!isDirector())return;
-  const ps=lensPlans();const full=lensDigest(ps);const d=capDigest(full,170000);if(!d.length){rToast("Save a few plans first.");return}
+async function lensRead(o){o=o||{};
+  if(lensBusy||!sample||!isDirector())return null;
+  const ps=lensPlans();const full=lensDigest(ps);const d=capDigest(full,170000);if(!d.length){rToast("Save a few plans first.");return null}
+  const sig=sigOf(d),prev=scans.get(lensKey(lRoom));if(o.weekly&&prev&&prev.sig===sig&&prev.range===lRange&&!!prev.year===!!o.year)return prev;
   if(d.length<full.length)rToast(`Reading the ${d.length} most recent plans. Choose a shorter range or one class to include older ones.`);
   lensBusy=true;renderMain();
   const ids=new Set(d.map(x=>x.id));const n=LENS.questions.length;const room=lRoom,range=lRange;
+  const yr=o.year&&(range==="4"||range==="8")?await yearLens(room,lensRangeStart()):null;
   const prompt=`You are reading saved curriculum plans from ${room==="All"?"all classes":"the "+room+" class"} at Fulton Community School & Farm through one of this year's lenses. Each lens is its own, so read only through this one, as its own description and questions frame it.
 The lens is ${LENS.name}. ${LENS.description}
 ${LENS.languages.length?`The languages this lens looks for are ${LENS.languages.join(", ")}.\n`:""}Find up to 14 moments that speak to this lens. Choose across classrooms and weeks, and prefer moments where a child or group returned to an idea or carried it further.
@@ -13448,16 +13566,18 @@ ${STYLE}
 Return JSON {"summary": two or three sentences on what this lens shows of children in this range, "moments":[{"planId": id, "quote": exact words from that plan, "language": ${LENS.languages.length?"one of the lens languages, or an empty string":"an empty string"}, "why": one short sentence on why this passage speaks to the lens, "answers": [${n} strings, one for each question in order]}], "gaps":[up to 4 short sentences naming what the plans rarely record, each phrased as something educators could notice next], "teamQuestions":[2 or 3 questions the team could take to its next meeting]}
 
 Plans, one JSON object per line.
-${d.map(x=>JSON.stringify(x)).join("\n")}`;
+${d.map(x=>JSON.stringify(x)).join("\n")}${yr||""}`;
+  let res=null;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"lens"});
     const c2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ").trim();const lmap=new Map(LENS.languages.map(l=>[l.toLowerCase(),l]));
     const moments=(Array.isArray(out?.moments)?out.moments:[]).filter(m=>m&&ids.has(m.planId)&&c2(m.quote)).slice(0,14).map(m=>({planId:m.planId,quote:sentCut(c2(m.quote),300),language:lmap.get(String(m.language||"").trim().toLowerCase())||"",why:sentCut(c2(m.why),240),answers:Array.from({length:n},(_,i)=>sentCut(c2((Array.isArray(m.answers)?m.answers:[])[i]),500))}));
     const strs=(a,k)=>(Array.isArray(a)?a:[]).map(c2).filter(Boolean).slice(0,k);
-    saveScan({room:lensKey(room),kind:"lens",range,createdAt:Date.now(),by:whoAmI(),lensId,lensName:LENS.name,questionsAsked:[...LENS.questions],summary:c2(out?.summary),moments,gaps:strs(out?.gaps,4),teamQuestions:strs(out?.teamQuestions,3)});
+    res={room:lensKey(room),kind:"lens",range,sig,year:!!yr,createdAt:Date.now(),by:whoAmI(),lensId,lensName:LENS.name,questionsAsked:[...LENS.questions],summary:c2(out?.summary),moments,gaps:strs(out?.gaps,4),teamQuestions:strs(out?.teamQuestions,3)};saveScan(res);
     rToast(moments.length?`Read ${d.length} plans and found ${moments.length} moment${moments.length>1?"s":""}.`:"No moments with enough in the plans yet.");
   }catch(err){rToast(assistError(err||"unknown"))}
   lensBusy=false;renderMain();
+  return res;
 }
 function lensClick(t){
   if(t.dataset.lensgo){setLens(t.dataset.lensgo);lLang="";view="lens";LS.set("fps.view",view);currentId=null;renderNav();renderMain();jumpTop();return true}
@@ -15425,11 +15545,14 @@ function digest(ps){
     return o}).filter(o=>Object.keys(o.text).length);
 }
 function capDigest(d,max){const out=[];let n=0;for(const x of d){const l=JSON.stringify(x).length+1;if(n+l>max)break;out.push(x);n+=l}return out}
-async function findThreads(){
-  const ps=rangePlans();const full=digest(ps);const d=capDigest(full,170000);if(!d.length){rToast("Save a few plans with observations first.");return}
+async function findThreads(o){o=o||{};
+  const ps=rangePlans();const full=digest(ps);const d=capDigest(full,170000);if(!d.length){rToast("Save a few plans with observations first.");return null}
+  // the week's reading keeps last week's reading when nothing it would read has changed
+  const sig=sigOf(d),prev=scans.get(tRoom);if(o.weekly&&prev&&prev.sig===sig&&prev.range===tRange&&!!prev.year===!!o.year)return prev;
   if(d.length<full.length)rToast(`Reading the ${d.length} most recent plans. Choose a shorter range or one class to include older ones.`);
   scanBusy=true;renderMain();
   const ids=new Set(d.map(x=>x.id));const byId=new Map(d.map(x=>[x.id,x]));
+  const yr=o.year&&(tRange==="4"||tRange==="8")?await yearThreads(tRoom,rangeStart(),ids):null;if(yr)for(const x of yr.early){ids.add(x.id);byId.set(x.id,x)}
   const tracked=[...threads.values()].filter(t=>threadLive(t)&&(tRoom==="All"||t.classroom===tRoom||!t.classroom)).map(t=>({id:t.id,name:t.name,question:t.question,team_notes:tNotes(t),closed:t.status==="closed"}));
   const prompt=`You are reading saved curriculum plans from ${tRoom==="All"?"all classes":"the "+tRoom+" class"} at Fulton Community School & Farm, weeks ${rangeWeeks(ps)[0]} to ${mondayOf(new Date())}.
 Find the threads. A thread is a question or idea children keep returning to across several sittings or weeks, carrying weight for them. Look across Classroom team plans, Individual plans, Small Group plans, and observations, which are single moments an educator wrote down as they happened. Notice when different educators or groups describe the same thread.
@@ -15440,7 +15563,8 @@ ${STYLE}
 Return JSON {"summary": two or three sentences on the overall picture of children's thinking in this range, "threads":[{"name": 3 to 7 words naming what children keep returning to, "question": the educators' hypothesis about what children may be asking, written as one sentence that begins with the words Children may be asking, never phrased in a child's voice, "classroom": "West" or "North" or "South" or "", "groups": [flower group names involved, only if named], "status": "emerging" or "growing" or "deepening" or "resting" (resting means not seen in the latest two weeks), "weeks": [week ids from the plans], "evidence": [{"planId": id, "week": week id, "text": exact words from that plan, under 25 words}], "languages": [only from ${JSON.stringify(langList())}], "next": [2 to 4 possible provocations or environment changes grounded in the evidence, naming specific materials, each an invitation children may take up in their own way, never a rule, a chart of right and wrong, a job assigned by adults, or a question that tests], "trackedId": "", "relatedProject": ""}]}
 
 Plans, one JSON object per line.
-${d.map(x=>JSON.stringify(x)).join("\n")}`;
+${d.map(x=>JSON.stringify(x)).join("\n")}${yr?yr.ask:""}`;
+  let res=null;
   try{
     const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"threads"});
     const clean2=v=>String(v||"").replace(/\s*[—–]\s*/g,", ");
@@ -15451,14 +15575,16 @@ ${d.map(x=>JSON.stringify(x)).join("\n")}`;
     }).filter(x=>x.evidence.length);
     // update followed threads with new evidence
     const joined=[];
-    for(const x of ths){if(!x.trackedId)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
+    for(const x of ths){if(!x.trackedId||o.preview)continue;const th=threads.get(x.trackedId);const have=new Set((th.evidence||[]).map(e=>e.planId+e.text));
       const add=x.evidence.filter(e=>!have.has(e.planId+e.text)).map(e=>Object.assign({},e,{via:"find",at:Date.now()},has(x.question)&&x.question!==th.question?{why:x.question}:{}));if(add.length)joined.push({id:th.id,name:th.name,n:add.length,closed:th.status==="closed"});th.evidence=[...(th.evidence||[]),...add];th.weeks=[...new Set([...(th.weeks||[]),...x.weeks])].sort();th.lastWeek=th.weeks.slice(-1)[0]||"";if(th.status!=="closed")th.status=x.status;
       th.next=(th.next||[]).length?th.next:x.next;th.languages=[...new Set([...(th.languages||[]),...x.languages])];saveThread(th)}
-    saveScan({room:tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths,joined});
+    const seenOnce=yr?(Array.isArray(out?.seen_once)?out.seen_once:[]).filter(x=>x&&ids.has(x.planId)).slice(0,8).map(x=>({planId:x.planId,idea:sentCut(clean2(x.idea).trim(),200)})).filter(x=>x.idea):[];
+    res={room:o.preview||tRoom,range:tRange,createdAt:Date.now(),summary:clean2(out?.summary),threads:ths,joined,sig,year:!!yr,seenOnce};if(o.preview)res.kind="compare";saveScan(res);
     const nNew=ths.filter(x=>!x.trackedId).length;
     rToast(nNew||joined.length?[nNew?`Found ${nNew} new thread${nNew>1?"s":""}`:"",joined.length?`added to ${joined.length} thread${joined.length>1?"s":""} you follow`:""].filter(Boolean).join(" and ").replace(/^./,c=>c.toUpperCase())+".":"No new threads with enough evidence yet.");
   }catch(err){rToast(assistError(err||"unknown"))}
   scanBusy=false;renderMain();
+  return res;
 }
 async function writeStory(th){
   if(!th)return;storyBusy[th.id]=true;renderMain();

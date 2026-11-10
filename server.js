@@ -2329,13 +2329,15 @@ async function gatherForInquiry(qid) {
    written again whenever a scan or a waiting list of the current week changes. */
 function weekFindings(wk) {
   const inWeek = t => t && mondayFor(laDayOf(t)) === wk;
-  const out = { id: wk + '-findings', kind: 'findings', week: wk, threads: [], joined: [], patterns: [], lens: [], projects: [], inquiries: [], updatedAt: Date.now() };
-  for (const [sid, r] of store.recs.scans) { const s = r && !r.deleted && r.doc; if (!s || !inWeek(s.createdAt)) continue;
+  const out = { id: wk + '-findings', kind: 'findings', week: wk, threads: [], joined: [], patterns: [], lens: [], seenOnce: [], projects: [], inquiries: [], updatedAt: Date.now() };
+  for (const [sid, r] of store.recs.scans) { const s = r && !r.deleted && r.doc; if (!s || !inWeek(s.createdAt) || s.kind === 'compare') continue;
     const room = String(s.room || sid).replace(/^(lens|moments)-/, '').replace(/^[^-]+-/, '') || 'All';
     if (s.kind === 'lens') { for (const m of s.moments || []) if (m && m.planId) out.lens.push({ lens: s.lensName || '', lensId: s.lensId || '', room: s.room, id: m.planId, quote: String(m.quote || '').slice(0, 300), language: m.language || '' }); }
     else if (s.kind === 'moments') { for (const p of s.patterns || []) if (p && p.name) out.patterns.push({ room: String(s.room || '').replace(/^moments-/, ''), name: p.name, why: String(p.why || '').slice(0, 400), ids: p.ids || [], matchId: p.matchId || '' }); }
     else if (Array.isArray(s.threads)) { for (const t of s.threads) if (t && t.name) out.threads.push({ room, name: t.name, question: String(t.question || '').slice(0, 300), trackedId: t.trackedId || '', ids: (t.evidence || []).map(e => e && e.planId).filter(Boolean) });
-      for (const j of s.joined || []) if (j && j.id) out.joined.push({ room, id: j.id, name: j.name || '', n: j.n || 0 }); }
+      for (const j of s.joined || []) if (j && j.id) out.joined.push({ room, id: j.id, name: j.name || '', n: j.n || 0 });
+      // single moments that did not yet make a thread, kept so a later week can connect them
+      for (const o of s.seenOnce || []) if (o && o.planId) out.seenOnce.push({ room, id: o.planId, idea: String(o.idea || '').slice(0, 240) }); }
   }
   for (const [id, r] of store.recs.projects) { const x = r && !r.deleted && r.doc; if (!x) continue; const items = (x.found && inWeek(x.found.at) ? x.found.items : []) || [];
     if (items.length || (x.threadSuggest || []).length) out.projects.push({ id, name: x.name || '', found: items.map(i => ({ id: i.id, why: i.why || '' })), threads: (x.threadSuggest || []).map(s => ({ id: s.id, why: s.why || '' })) }); }
@@ -2344,12 +2346,15 @@ function weekFindings(wk) {
   return out;
 }
 let findingsTimer = null;
+let weeklyHold = { device: '', at: 0 };
 function keepFindingsSoon() { clearTimeout(findingsTimer); findingsTimer = setTimeout(() => { try { keepFindings(); } catch (e) { log('The week\'s findings could not be kept', e.message); } }, 2000); findingsTimer.unref(); }
 function keepFindings() {
   if (!store.ready) return; const wk = mondayFor(laDayOf(Date.now())); const doc = weekFindings(wk); const id = doc.id;
   const cur = store.recs.reports.get(id); const was = cur && !cur.deleted && cur.doc ? cur.doc : null;
   const same = was && JSON.stringify(Object.assign({}, was, { updatedAt: 0 })) === JSON.stringify(Object.assign({}, doc, { updatedAt: 0 })); if (same) return;
-  if (!was && !doc.threads.length && !doc.joined.length && !doc.patterns.length && !doc.lens.length && !doc.projects.length && !doc.inquiries.length) return;
+  if (!was && !doc.threads.length && !doc.joined.length && !doc.patterns.length && !doc.lens.length && !doc.seenOnce.length && !doc.projects.length && !doc.inquiries.length) return;
+  // a week filled in from the records of earlier in the year keeps what was filled in
+  if (was && Array.isArray(was.filled)) { doc.filled = was.filled; for (const k of ['threads', 'patterns', 'seenOnce']) doc[k] = [...(was[k] || []).filter(x => x && x.filled), ...doc[k]]; }
   store.recs.reports.set(id, { doc: Object.assign(doc, { updatedByName: 'TREE' }), sha: cur && cur.sha, path: `reports/${id}.json`, local: true });
   noteChange('reports', id); scheduleSave('reports', id);
 }
@@ -3438,7 +3443,35 @@ async function handle(req, res) {
     const list = []; for (const [, r] of store.recs.reports) { const d = r && !r.deleted && r.doc; if (d && d.kind === 'findings') list.push(d); }
     list.sort((a, b) => String(b.week || '').localeCompare(String(a.week || '')));
     const forRoom = d => room ? Object.assign({}, d, { threads: d.threads.filter(t => t.room === room || t.room === 'All'), joined: d.joined.filter(t => t.room === room || t.room === 'All'), patterns: d.patterns.filter(p => p.room === room || p.room === 'All'), lens: d.lens.filter(m => new RegExp('(^|-)' + room + '$').test(String(m.room || '')) || /(^|-)All$/.test(String(m.room || ''))), projects: [], inquiries: [] }) : d;
-    json(req, res, 200, { room, findings: list.slice(0, 26).map(forRoom) }); return; }
+    json(req, res, 200, { room, findings: list.slice(0, 60).map(forRoom).map(d => room ? Object.assign({}, d, { seenOnce: (d.seenOnce || []).filter(o => o.room === room || o.room === 'All') }) : d) }); return; }
+  // the year record. A week from earlier in the school year, before the week's reading kept its findings, is filled in once
+  // from the records of that week, for the whole school or one class. What is there already for that class stays.
+  if (path === '/api/findings/fill') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director fills in the year record.'); return; }
+    const wk = String(body.week || ''), room = String(body.room || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(wk) || wk >= mondayFor(laDayOf(Date.now())) || !room) { err(req, res, 400, 'That week cannot be filled in.'); return; }
+    const id = wk + '-findings'; const cur = store.recs.reports.get(id); const was = cur && !cur.deleted && cur.doc ? cur.doc : { id, kind: 'findings', week: wk, threads: [], joined: [], patterns: [], lens: [], seenOnce: [], projects: [], inquiries: [] };
+    const filled = Array.isArray(was.filled) ? was.filled : [];
+    if (filled.includes(room)) { json(req, res, 200, { ok: true, again: true }); return; }
+    const arr = (v, n) => (Array.isArray(v) ? v : []).slice(0, n); const str = (v, n) => String(v || '').slice(0, n);
+    const doc = Object.assign({}, was, { filled: [...filled, room], updatedAt: Date.now(), updatedByName: 'TREE' });
+    doc.threads = [...(was.threads || []), ...arr(body.threads, 8).filter(t => t && t.name).map(t => ({ room, name: str(t.name, 120), question: str(t.question, 300), trackedId: '', ids: arr(t.ids, 12).map(String), weeks: arr(t.weeks, 20).map(String), filled: true }))];
+    doc.patterns = [...(was.patterns || []), ...arr(body.patterns, 6).filter(p => p && p.name).map(p => ({ room, name: str(p.name, 60), why: str(p.why, 400), ids: arr(p.ids, 6).map(String), filled: true }))];
+    doc.seenOnce = [...(was.seenOnce || []), ...arr(body.seenOnce, 10).filter(o => o && o.id).map(o => ({ room, id: str(o.id, 80), idea: str(o.idea, 240), filled: true }))];
+    store.recs.reports.set(id, { doc, sha: cur && cur.sha, path: `reports/${id}.json`, local: true });
+    noteChange('reports', id); scheduleSave('reports', id);
+    json(req, res, 200, { ok: true }); return;
+  }
+  // one device at a time runs the week's reading. A device holds it while it works and lets go when it finishes, and a
+  // device that has gone quiet for six minutes no longer holds it.
+  if (path === '/api/weekly/claim') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the week\'s reading.'); return; }
+    const dev = String(body.device || '').slice(0, 80), now = Date.now();
+    if (!dev) { err(req, res, 400, 'No device.'); return; }
+    if (body.done) { if (weeklyHold.device === dev) weeklyHold = { device: '', at: 0 }; json(req, res, 200, { ok: true }); return; }
+    if (weeklyHold.device && weeklyHold.device !== dev && now - weeklyHold.at < 6 * 60e3) { json(req, res, 200, { busy: true }); return; }
+    weeklyHold = { device: dev, at: now }; json(req, res, 200, { ok: true }); return;
+  }
   // the director runs the nightly pass now, for a check, and reads the cycle's health
   if (path === '/api/nightly') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director runs the nightly pass.'); return; } const r = await nightlyPass(true); json(req, res, 200, r ? { ok: true, counts: r.counts, lens: r.lens, sort: r.sort } : { busy: true }); return; }
   // the director asks for tonight's lens reading now. The answer carries the passages record, so the page shows it at once
