@@ -1,0 +1,11 @@
+{
+ "name": "s66RiceBalls",
+ "note": "Sticky rice with seaweed renamed Rice balls with seaweed, November 10, 2026",
+ "changes": [
+  {
+   "path": "staff/library/recipes/sticky-rice-seaweed.md",
+   "from": "# Sticky rice with seaweed\n",
+   "to": "# Rice balls with seaweed\n"
+  }
+ ]
+}

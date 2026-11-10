@@ -796,6 +796,8 @@ ONCE.push(['s63PhotoModule', () => staff.once.edits('s63PhotoModule', recsEdit)]
 ONCE.push(['s64PhotoDepth', () => staff.once.edits('s64PhotoDepth', recsEdit)]);
 // Lao sticky rice (khao niao), a new food recipe kept beside the rice balls, November 10, 2026
 ONCE.push(['s65LaoStickyRice', () => staff.once.edits('s65LaoStickyRice', recsEdit)]);
+// Sticky rice with seaweed renamed Rice balls with seaweed, November 10, 2026
+ONCE.push(['s66RiceBalls', () => staff.once.edits('s66RiceBalls', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
