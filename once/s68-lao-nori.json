@@ -1,0 +1,21 @@
+{
+ "name": "s68LaoNori",
+ "note": "Lao sticky rice nori lines tidied, November 11, 2026",
+ "changes": [
+  {
+   "path": "staff/library/recipes/lao-sticky-rice.md",
+   "from": " dipped in jeow or eaten with khai paen. For our demonstration, we are using nori.\n",
+   "to": " dipped in jeow or eaten with khai paen.\n"
+  },
+  {
+   "path": "staff/library/recipes/lao-sticky-rice.md",
+   "from": "- For our demonstration, we use nori, the thin sheets of seaweed used in Japanese cooking.\n",
+   "to": "- For our demonstration, we use nori, the thin sheets of seaweed eaten in Japan and Korea.\n"
+  },
+  {
+   "path": "staff/library/recipes/lao-sticky-rice.md",
+   "from": "- I wonder how a plant from a river can become a flat sheet.\n",
+   "to": "- I wonder how a plant from the water can become a flat sheet.\n"
+  }
+ ]
+}
