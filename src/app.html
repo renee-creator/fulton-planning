@@ -5242,6 +5242,20 @@ function wrSpark(c){const w=96,h=22,max=Math.max(1,...c),step=w/Math.max(1,c.len
 // the year record, for the director. Compare reads Find threads for the chosen class both ways on the same records, the
 // way it reads now and with the year record, and keeps neither on a thread. Use the year record turns it on for the
 // week's reading, and Stop using it turns it off.
+// Read this week again, for the director. After many observations come in at once, such as the Kaymbu look back, the
+// week's reading runs again now, with the new observations, in place of waiting for next Monday. Parts with nothing new
+// keep their reading, so it costs no more than one week's reading.
+function againCardHtml(){if(!isDirector()||VIEW_AS)return "";const r=weeklyRec||{};const running=!!(weeklyBusy||(r.week===mondayOf(new Date())&&!r.done&&!r.failed&&Date.now()-(r.startedAt||0)<15*60e3));
+  return `<section class="card"><div class="secthead"><h3 style="font-size:17px">Read this week again</h3><span class="cnt">${running?"Reading now":r.doneAt?"Last read "+esc(shortDate(r.doneAt)):""}</span></div>
+    <p class="cnt" style="margin:4px 0">Use this after many observations come in at once, such as the Kaymbu look back.</p>
+    <p class="cnt" style="margin:4px 0">The week's reading runs again now, for the school and each class. Parts with nothing new keep their reading, so it costs no more than one week's reading.</p>
+    <div class="actions"><button class="btn small ghost" data-readagain="1" ${running?"disabled":""}>${running?"Reading":"Read this week again"}</button></div></section>`}
+document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.closest("[data-readagain]");if(!t||view!=="wreport"||!isDirector()||VIEW_AS)return;e.preventDefault();
+  if(weeklyBusy||scanBusy||lensBusy||mBusy){toast("A reading is running. Try again when it finishes.");return}
+  if(!db){toast("TREE is still connecting. Try again in a moment.");return}
+  t.disabled=true;t.textContent="Reading";
+  try{weeklyRec={week:mondayOf(new Date()),startedAt:0,done:false,doneSteps:[],again:Date.now()};await db.doc("settings/weekly").set(weeklyRec);toast("The week's reading runs again now. It takes a few minutes.");weeklyReads().catch(()=>{})}
+  catch(er){toast("That did not start. Try again.");t.disabled=false;t.textContent="Read this week again"}});
 function yearCardHtml(){if(!isDirector()||VIEW_AS)return "";const on=yearOn();const room=wrRoom||"All";const where=room==="All"?"the whole school":"the "+room+" class";
   const now=scans.get("compare-"+room+"-now"),yr=scans.get("compare-"+room);
   const list=sc=>sc&&(sc.threads||[]).length?`<ul style="margin:4px 0 0;padding-left:20px">${sc.threads.map(t=>`<li>${esc(t.name)}${t.trackedId?`<div class="cnt">A thread we follow</div>`:""}</li>`).join("")}</ul>`:`<div class="cnt">No threads with enough evidence.</div>`;
@@ -5267,7 +5281,7 @@ function renderWeeklyReport(){wrLoadMine();const dir=isDirector()&&!VIEW_AS;cons
     <section class="card wrbar"><div class="actions" style="flex-wrap:wrap">${rooms.length>1?rooms.map(x=>`<button class="chip-btn" data-wrroom="${esc(x)}" aria-pressed="${x===wrRoom}">${esc(name(x))}</button>`).join(""):""}
       ${weeks.length?`<label class="cnt">Week of <select data-wrweek="1" style="width:auto">${weeks.map(w=>`<option value="${esc(w)}" ${w===wrWeek?"selected":""}>${esc(fmtDate(w))}${w===wkNow?", this week":""}</option>`).join("")}</select></label>`:""}
       ${r?`<button class="btn small ghost" data-wrprint="1">Print or save as PDF</button>`:""}</div></section>
-    ${yearCardHtml()}
+    ${againCardHtml()}${yearCardHtml()}
     ${r?wrHtml(r,name(wrRoom))+wrFindingsHtml(r):`<section class="card"><p class="muted" style="margin:0">${all.length?"No report for this one yet.":"The first report is written after the next week's reading. The director's first visit to TREE each week starts the reading."}</p></section>`}`}
 // what the reading found that week, kept with the report by the server as findings, folded under the report. Nothing shows
 // when the server did not keep any (November 4, 2026)

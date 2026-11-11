@@ -72,6 +72,8 @@ TREE also reads Kaymbu itself, every hour, signed in with the school's TREE logi
 
 Before a Moment comes in, a screener looks at it, and nothing is deleted. It sets aside a photo with no words and no children tagged, a photo taken before the school year, a photo too dark or too blurred to see, and a photo nearly the same as another in its post, keeping the clearest. Only a photo with words and no children tagged is read by the quick lane, which sets it aside when it is a sign, a menu, a flyer, a calendar, a sign-up sheet, a screenshot or a picture from outside school. A photo with no words of its own takes its post's words. What is set aside waits in Settings, Kaymbu Moments, with its reason, Put it back, and Accept all for each class. Videos go to Video clips and become draft observations with the children tagged in Kaymbu. A Moment Kaymbu keeps for staff only stays off the staff room display.
 
+The weekly reading report has Read this week again for the director, which runs the week's reading again now, after many observations come in at once such as the look back. Parts with nothing new keep their reading.
+
 The look back brings in the Moments published since August 15, 2026. The director counts it first in Settings, which shows what it would bring in, what is already in TREE, what would be set aside and about what the writing help would cost. It runs only after she chooses Start the look back, in the evenings, at night and on weekends, up to 250 photos an hour. Its observations come in quietly, never as Just shared from Kaymbu on Today, a Moment with no small group is credited to its class team, and threads are left for the week's reading.
 
 ## Video clips

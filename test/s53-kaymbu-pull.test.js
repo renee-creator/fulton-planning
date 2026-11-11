@@ -127,3 +127,15 @@ test('Settings shows Kaymbu Moments to the director, with what was set aside and
   assert.strictEqual((await fx.as(dee, '/api/write', { op: 'put', kind: 'kaymbu', id: 'state', data: {} })).status, 403, 'TREE keeps these records itself');
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('the weekly reading report offers Read this week again to the director', async t => {
+  const { start, browser, signedIn } = require('./fixture.js');
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({}); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => goView('wreport'));
+  await s.p.waitForFunction(() => /Read this week again/.test(document.querySelector('#main').innerText), null, { timeout: 15000 });
+  assert.match(await s.p.evaluate(() => document.querySelector('[data-readagain]').textContent), /Read this week again/);
+  assert.deepStrictEqual(s.errors, []);
+});
