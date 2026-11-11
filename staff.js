@@ -1268,6 +1268,7 @@ module.exports = function staffModule(o) {
     s66RiceBalls: ['code:once/s66-rice-balls.json', 'Sticky rice with seaweed renamed Rice balls with seaweed, November 10, 2026'],
     s67LaoJeow: ['code:once/s67-lao-jeow.json', 'Lao sticky rice with jeow and khai paen, rice balls named by culture, November 10, 2026'],
     s68LaoNori: ['code:once/s68-lao-nori.json', 'Lao sticky rice nori lines tidied, November 11, 2026'],
+    s69RecognizableFaces: ['code:once/s69-recognizable-faces.json', 'Photographing Documentation public rule becomes no recognizable faces, November 11, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

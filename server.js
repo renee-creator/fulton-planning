@@ -804,6 +804,8 @@ ONCE.push(['s66RiceBalls', () => staff.once.edits('s66RiceBalls', recsEdit)]);
 ONCE.push(['s67LaoJeow', () => staff.once.edits('s67LaoJeow', recsEdit)]);
 // Lao sticky rice nori lines tidied, November 11, 2026
 ONCE.push(['s68LaoNori', () => staff.once.edits('s68LaoNori', recsEdit)]);
+// Photographing Documentation public rule becomes no recognizable faces, November 11, 2026
+ONCE.push(['s69RecognizableFaces', () => staff.once.edits('s69RecognizableFaces', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */

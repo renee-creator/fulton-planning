@@ -1,0 +1,71 @@
+{
+ "name": "s69RecognizableFaces",
+ "note": "Photographing Documentation public-facing rule becomes no recognizable faces, November 11, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "Outside our community, faces never appear. Anything shown publicly",
+   "to": "Outside our community, no face appears that someone could recognize. A face turned away, out of the frame or too small to make out is fine. Anything shown publicly"
+  },
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "- **We share within our community.** Faces stay inside",
+   "to": "- **We share within our community.** Recognizable faces stay inside"
+  },
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "- **No faces.** Hands, work, posture and setting tell the story.",
+   "to": "- **No recognizable faces.** A face turned away, out of the frame or too small to make out is fine. Hands, work, posture and setting tell the story."
+  },
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "Anything handed out shows no faces.",
+   "to": "Anything handed out shows no recognizable faces."
+  },
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "- **Why our public photos show no faces.** Families know our care for each child's privacy, and that faces stay within our community.",
+   "to": "- **Why our public photos show no recognizable faces.** Families know our care for each child's privacy, and that recognizable faces stay within our community."
+  },
+  {
+   "path": "staff/pd/modules/50-photographing-documentation.md",
+   "from": "Anything handed out shows no faces, and every handout",
+   "to": "Anything handed out shows no recognizable faces, and every handout"
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "Outside our community, faces never appear. Anything shown publicly",
+   "to": "Outside our community, no face appears that someone could recognize. A face turned away, out of the frame or too small to make out is fine. Anything shown publicly"
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "- **We share within our community.** Faces stay inside",
+   "to": "- **We share within our community.** Recognizable faces stay inside"
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "- **No faces.** Hands, work, posture and setting tell the story.",
+   "to": "- **No recognizable faces.** A face turned away, out of the frame or too small to make out is fine. Hands, work, posture and setting tell the story."
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "Anything handed out shows no faces.",
+   "to": "Anything handed out shows no recognizable faces."
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "- **Why our public photos show no faces.** Families know our care for each child's privacy, and that faces stay within our community.",
+   "to": "- **Why our public photos show no recognizable faces.** Families know our care for each child's privacy, and that recognizable faces stay within our community."
+  },
+  {
+   "path": "staff/pd/depth/photographing-documentation.md",
+   "from": "Anything handed out shows no faces, and every handout",
+   "to": "Anything handed out shows no recognizable faces, and every handout"
+  },
+  {
+   "path": "staff/pd/printables/photographing-documentation.md",
+   "from": "**No faces.** Hands, work, posture and setting tell the story.",
+   "to": "**No recognizable faces.** Hands, work, posture and setting tell the story."
+  }
+ ]
+}
