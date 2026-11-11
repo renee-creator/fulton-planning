@@ -3205,6 +3205,7 @@ async function handle(req, res) {
       else if (step === '/start') kaymbuPull.approve(me.name);
       else if (step === '/pause') kaymbuPull.pause(body.on !== false);
       else if (step === '/back') { if (typeof body.id !== 'string' || !ID_RE.test(body.id)) throw new Error('That Moment is not valid.'); await kaymbuPull.putBack(body.id); }
+      else if (step === '/bringall') kaymbuPull.bringAll(typeof body.room === 'string' ? body.room.slice(0, 40) : '');
       else if (step === '/accept') kaymbuPull.acceptClass(typeof body.room === 'string' ? body.room.slice(0, 40) : '');
       else if (step !== '') { err(req, res, 404, 'Not found'); return; }
     } catch (e) { err(req, res, 400, e.message || 'That did not work. Try again.'); return; }

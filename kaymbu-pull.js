@@ -420,6 +420,18 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       return out;
     } finally { busy = ''; }
   }
+  // Bring all into TREE, for one class. Each is put back in turn, after the call answers, since each photo is fetched from Kaymbu.
+  let bringing = '';
+  function bringAll(room) {
+    if (busy || bringing) throw new Error('TREE is reading Kaymbu right now. Try again in a minute.');
+    const ids = []; for (const [id, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside' && (!room || (d.room || '') === room)) ids.push(id); }
+    if (!ids.length) return 0;
+    bringing = room || 'all';
+    (async () => { let n = 0; try { for (const id of ids) { for (let k = 0; k < 30 && busy; k++) await new Promise(ok => setTimeout(ok, 10000));
+      try { await putBack(id); n++; } catch (e) { log('A set aside Moment could not be brought into TREE', e.message); } } }
+      finally { bringing = ''; log(`Brought ${n} set aside Kaymbu Moments into TREE${room ? ' for ' + room + ' class' : ''}`); } })();
+    return ids.length;
+  }
   function acceptClass(room) {
     let n = 0;
     for (const [id, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (!d || !d.kid || d.status !== 'aside') continue;
@@ -433,7 +445,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const list = []; for (const [, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside') list.push(d); }
     list.sort((a, b) => (b.published || 0) - (a.published || 0));
     const accepted = [...store.recs.kaymbu.values()].filter(r => r && !r.deleted && r.doc && r.doc.status === 'accepted').length;
-    return { configured: configured(), email: EMAIL(), busy, lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' },
+    return { configured: configured(), email: EMAIL(), busy: busy || (bringing ? 'back' : ''), lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' },
       quiet: quietHours(), aside: list.map(d => ({ id: d.id, reason: d.reason, why: d.why, thumb: d.thumb, video: d.video, room: d.room, kaymbuClass: d.kaymbuClass, words: d.words, students: d.students, day: d.day })), accepted, reasons: REASON };
   }
   const statusLine = () => [configured(), configured() ? `TREE reads Kaymbu every hour as ${EMAIL()}${stateDoc().lastError ? ', but the last look stopped. ' + stateDoc().lastError : '.'}` : 'TREE does not read Kaymbu yet. Add KAYMBU_EMAIL and KAYMBU_PASSWORD under Environment.'];
@@ -445,7 +457,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     setInterval(() => lookbackTick().catch(() => {}), 10 * 60e3).unref();
   }
 
-  return { start, hourly, startEstimate, estimate, approve, pause, lookbackTick, putBack, acceptClass, view, statusLine, configured,
+  return { start, hourly, startEstimate, estimate, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
     keyOf, matchChildren, takePost, posts, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };

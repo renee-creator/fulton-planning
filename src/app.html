@@ -16402,13 +16402,13 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
       <div class="actions" style="margin-top:4px"><button class="linkbtn" data-kpback="${esc(a.id)}">Put it back</button></div></div></div>`;
     const shown=24+kpMore;let left=shown;
     aside=`<details style="margin-top:14px"><summary><b>Set aside, ${as.length.toLocaleString()}</b></summary>
-      <div class="cnt" style="margin:6px 0">Each Moment the screener held back, with the reason. Put it back brings it into TREE. Accept all agrees with every one for that class, and they leave this list.</div>
+      <div class="cnt" style="margin:6px 0">Each Moment the screener held back, with the reason.</div><div class="cnt" style="margin:0 0 6px">Put it back brings one into TREE. Bring all into TREE brings in every one for that class. Leave all out keeps them out of TREE and clears them from this list.</div>
       ${rooms.map(r=>{const list=as.filter(a=>(a.room||"")===r);const part=list.slice(0,Math.max(0,left));left-=part.length;
-        return `<div style="margin-top:10px"><div class="prow"><div><b>${esc(r?r+" class":"No class")}</b><div class="cnt">${list.length.toLocaleString()} set aside</div></div><button class="btn small ghost" data-kpaccept="${esc(r)}">Accept all</button></div>${part.map(item).join("")}</div>`}).join("")}
+        return `<div style="margin-top:10px"><div class="prow"><div><b>${esc(r?r+" class":"No class")}</b><div class="cnt">${list.length.toLocaleString()} set aside</div></div><span class="actions" style="margin:0;flex-wrap:wrap"><button class="btn small" data-kpbring="${esc(r)}" ${k.busy?"disabled":""}>Bring all into TREE</button><button class="btn small ghost" data-kpaccept="${esc(r)}">Leave all out</button></span></div>${part.map(item).join("")}</div>`}).join("")}
       ${as.length>shown?`<div class="actions"><button class="linkbtn" data-kpmore="1">Show more</button></div>`:""}</details>`}
-  else if(k.configured)aside=`<div class="cnt" style="margin-top:14px">Nothing is set aside right now.${k.accepted?` ${KP_N(k.accepted,"Moment")} you accepted stay out of TREE.`:""}</div>`;
+  else if(k.configured)aside=`<div class="cnt" style="margin-top:14px">Nothing is set aside right now.${k.accepted?` ${KP_N(k.accepted,"Moment")} you left out stay out of TREE.`:""}</div>`;
   return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${aside}</section>`}
-document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const d=t.dataset;
   if(d.kpmore){kpMore+=24;kpRedraw();return}
   if(d.kpcheck){t.disabled=true;t.textContent="Looking";kpLoad("/api/kaymbu/pull/check",{},"Kaymbu is read.");return}
@@ -16416,7 +16416,8 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(d.kpstart){kpLoad("/api/kaymbu/pull/start",{},"The look back starts this evening.");return}
   if(d.kppause){kpLoad("/api/kaymbu/pull/pause",{on:d.kppause==="1"},d.kppause==="1"?"Paused.":"It carries on this evening.");return}
   if(d.kpback){t.disabled=true;t.textContent="Bringing it in";kpLoad("/api/kaymbu/pull/back",{id:d.kpback},"It is in TREE now.");return}
-  if(d.kpaccept!=null){kpLoad("/api/kaymbu/pull/accept",{room:d.kpaccept},"Accepted. Those Moments stay out of TREE.");return}});
+  if(d.kpbring!=null){t.disabled=true;t.textContent="Bringing them in";kpLoad("/api/kaymbu/pull/bringall",{room:d.kpbring},"They are coming into TREE now. This takes a minute or two.");return}
+  if(d.kpaccept!=null){kpLoad("/api/kaymbu/pull/accept",{room:d.kpaccept},"Left out. Those Moments stay out of TREE.");return}});
 document.addEventListener("change",e=>{const t=e.target.closest("#videofolder");if(!t||!isDirector()||VIEW_AS)return;const m=String(t.value||"").match(/[-\w]{20,}/);PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoFolderId:m?m[0]:""});saveProgram();toast(m?"The folder link is saved.":"The folder link is cleared.")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-videoclips]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const on=t.dataset.videoclips==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoClipsOn:on,videoClipsAt:Date.now()});saveProgram();renderSettings();toast(on?"Video clips are on. Clips that waited are read now.":"Video clips are off. Clips that arrive wait.")});
