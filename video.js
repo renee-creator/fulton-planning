@@ -170,7 +170,7 @@ Rules
     let fallback = false;
     if (!by) { const ds = directors(); by = ds[0] || ''; fallback = !!by; }
     const acct = by ? accountFor(by) : null;
-    const room = sub.room || (acct && acct.room ? String(acct.room) : '');
+    const room = sub.room || rec.room || (acct && acct.room ? String(acct.room) : '');
     return { by, room, rooms: sub.rooms || [], smallGroup: sub.smallGroup || '', projectId: sub.projectId || '', threadId: sub.threadId || '', fallback };
   }
   async function keepStill(rec, buf, i) {
@@ -200,7 +200,9 @@ Rules
     const nid = 'n' + at.toString(36) + crypto.randomBytes(3).toString('hex');
     const group = stills.length > 1 ? 'v' + rec.id : '';
     const clip = { id: rec.id, fileId: rec.fileId, name: String(rec.name || ''), at, ...(clipNote ? { note: clipNote } : {}), ...(error ? { error } : {}) };
-    const base = { noticed, wonder: '', classroom: who.room, ...(who.rooms.length > 1 ? { classrooms: who.rooms } : {}), ...(who.smallGroup ? { smallGroup: who.smallGroup } : {}), by: who.by, at, week: mondayOf(day), projectId: who.projectId, threadId: who.threadId, ...(group ? { group } : {}) };
+    // a clip from Kaymbu brings the children tagged in it there, and its Kaymbu mark, so it is never brought in twice
+    const kids = Array.isArray(rec.children) ? rec.children.filter(Boolean) : [];
+    const base = { noticed, wonder: '', ...(kids.length ? { children: kids } : {}), ...(rec.kaymbu ? { kaymbu: rec.kaymbu } : {}), classroom: who.room, ...(who.rooms.length > 1 ? { classrooms: who.rooms } : {}), ...(who.smallGroup ? { smallGroup: who.smallGroup } : {}), by: who.by, at, week: mondayOf(day), projectId: who.projectId, threadId: who.threadId, ...(group ? { group } : {}) };
     const form = Object.assign({ id: nid }, base, stills[0] ? { photo: stills[0] } : {}, { clip });
     if (stills.length > 1) form.siblings = stills.slice(1).map((ph, i) => Object.assign({ id: nid + 's' + (i + 1) }, base, { noticed: '', photo: ph, at: at + i + 1 }));
     const id = 'dv' + rec.id;
@@ -222,7 +224,7 @@ Rules
       read = await readWithGemini(up, over, secs);
       const st = await stillsFor(rec, clip, read, secs);
       const noticed = noticedLines(read, over);
-      draftId = makeDraft(rec, who, noticed, st.stills, [st.note, who.fallback ? 'TREE could not tell which educator this clip is for, so it waits with the director. Name the class and the educator in the file name or the email subject next time, such as North Ann.' : ''].filter(Boolean).join(' '), read, '');
+      draftId = makeDraft(rec, who, noticed, st.stills, [st.note, who.fallback ? (rec.sent === 'kaymbu' ? 'Kaymbu does not say which educator took this clip, so it waits with the director. Choose the educator in Kept by.' : 'TREE could not tell which educator this clip is for, so it waits with the director. Name the class and the educator in the file name or the email subject next time, such as North Ann.') : ''].filter(Boolean).join(' '), read, '');
       Object.assign(rec, { status: 'done', draftId, doneAt: Date.now(), seconds: Math.round(secs), over, counts: { words: read.transcript.length, actions: read.actions.length, stills: st.stills.length }, tokens: read.tokens }); delete rec.error; saveRec(rec);
       log(`Clip ${rec.name || rec.id} read for ${who.by}: ${read.transcript.length} things said, ${read.actions.length} actions, ${st.stills.length} stills, ${Math.round(secs)} seconds${over ? ', first three minutes only' : ''}, ${read.tokens.in} tokens in and ${read.tokens.out} out, ${Math.round((Date.now() - t0) / 1000)} s`);
     } catch (e) {
@@ -352,6 +354,46 @@ Rules
     return { error: 'Unknown step.' };
   }
 
+  /* ---------- a video Moment brought in straight from Kaymbu ----------
+     Kaymbu keeps its own copy of each video. TREE fetches it once, keeps it in the TREE Drive like a clip sent from TREE,
+     and reads it into a draft observation with the children tagged in Kaymbu. It waits, like every clip, until Video
+     clips is turned on. A video already brought in is never brought in again. */
+  const KAYMBU_HOST = /^d[a-z0-9]+\.cloudfront\.net$/i;
+  function download(url, file, hops = 0) {
+    return new Promise((resolve, reject) => {
+      let u; try { u = new URL(url); } catch (e) { reject(new Error('bad address')); return; }
+      if (u.protocol !== 'https:' || !KAYMBU_HOST.test(u.hostname)) { reject(new Error('not a Kaymbu address')); return; }
+      const req = require('https').get(u, { headers: { 'User-Agent': 'TREE' } }, res => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 3) { res.resume(); resolve(download(new URL(res.headers.location, u).href, file, hops + 1)); return; }
+        if (res.statusCode !== 200) { res.resume(); reject(new Error('Kaymbu answered ' + res.statusCode + ' for the video')); return; }
+        const out = fs.createWriteStream(file); let size = 0;
+        res.on('data', c => { size += c.length; if (size > MAX_BYTES) req.destroy(new Error('The video is larger than TREE reads')); });
+        res.pipe(out); out.on('finish', () => resolve(size)); out.on('error', reject); res.on('error', reject);
+      });
+      req.setTimeout(120000, () => req.destroy(new Error('Kaymbu did not send the video in time')));
+      req.on('error', reject);
+    });
+  }
+  async function fromKaymbu(v) {
+    const key = v && v.kaymbu && v.kaymbu.key;
+    if (!key) throw new Error('The video has no Kaymbu mark');
+    const have = [...store.recs.clips.values()].find(r => !r.deleted && r.doc && r.doc.kaymbu && r.doc.kaymbu.key === key);
+    if (have) return have.doc.id;
+    if (!drive.on()) throw new Error('Google Drive is not set up for TREE yet, so videos cannot be kept');
+    fs.mkdirSync(UP_DIR, { recursive: true });
+    const id = 'v' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
+    const file = path.join(UP_DIR, id + '.bin');
+    let size = 0;
+    try { size = await download(v.url, file); } catch (e) { try { fs.unlinkSync(file); } catch (x) {} throw e; }
+    const at = Number(v.at) || Date.now();
+    const rec = { id, fileId: '', name: String(v.name || 'Kaymbu video').slice(0, 200), mimeType: 'video/mp4', size, by: firstName(v.by), subject: String(v.room || ''), room: String(v.room || ''),
+      createdAt: new Date(at).toISOString(), at: Date.now(), status: 'preparing', sent: 'kaymbu', educator: String(v.by || ''),
+      children: Array.isArray(v.children) ? v.children.filter(Boolean) : [], kaymbu: v.kaymbu };
+    saveRec(rec);
+    await prepare({ file, size, type: 'video/mp4' }, rec);
+    return id;
+  }
+
   // the director's Settings line
   function status() {
     const all = [...store.recs.clips.values()].filter(r => !r.deleted && r.doc).map(r => r.doc);
@@ -359,5 +401,5 @@ Rules
   }
   const statusLine = () => { const s = status(); return [s.on && s.key, !s.on ? 'Video clips are off. The director turns them on in Settings.' : !s.key ? 'Video clips are on, but GEMINI_API_KEY is not set on Render, so clips wait.' : `Video clips are on, read with ${s.model}${s.ffmpeg ? '' : ', without ffmpeg for stills'}.`]; };
 
-  return { handle, upload, run, kick, on, status, statusLine, parseAnswer, noticedLines, LIMIT_S };
+  return { handle, upload, fromKaymbu, run, kick, on, status, statusLine, parseAnswer, noticedLines, LIMIT_S };
 };

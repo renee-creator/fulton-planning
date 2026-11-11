@@ -4,36 +4,6 @@
 const SET_GROUPS=[["People",["See TREE as an educator","Sign-ins","Educators","Reminders","Team meetings","Classes","Garden group","Small groups","Staff birthdays","Names on plans"]],
   ["Teaching lists",["Lenses","Story frames","Provocations and curiosity prompts","Artists","Museums and cultural places","Spaces","Classroom areas","Languages of expression","Materials library"]],["Kitchen",["Monthly menus"]],
   ["Display and printing",["Releases","Staff room display","Printing","Proofreading"]],["Keeping records",["Backups","Storage","Keeping records","Server status","Program watch"]]];
-function setStatus(t,x){try{
-  const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
-  if(t==="See TREE as an educator")return "Any page, as an educator sees it";
-  if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
-  if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
-  if(t==="Educators")return plural(rosterNames().length,"educator");
-  if(t==="Team meetings")return "Each class, the Mondays without the all-staff meeting";
-  if(t==="Small groups")return plural(GROUPS.length,"group");
-  if(t==="Garden group")return gardenGroupName()+(gardeners().length?", "+gardeners().join(", "):", held by you");
-  if(t==="Classes")return CLASSROOMS.join(", ");
-  if(t==="Staff birthdays")return plural(staffBdays.length,"birthday");
-  if(t==="Names on plans")return plural(rosterNames().length,"name");
-  if(t==="Lenses")return plural(LENSES.length,"lens").replace("lenss","lenses");
-  if(t==="Provocations and curiosity prompts")return libData&&libData.provocations?plural((libData.provocations.parts||[]).filter(p=>!/^Where /i.test(p.key)).reduce((n,p)=>n+libLines(p.text).length,0),"wondering"):"In the records";
-  if(t==="Artists")return libData&&libData.artists?plural((libData.artists.parts||[]).length,"artist"):"In the records";
-  if(t==="Museums and cultural places")return libData&&libData.places?plural(mqCount(libData.places),"place")+(libData.parks?", "+plural(mqCount(libData.parks),"park"):""):"In the records";
-  if(t==="Monthly menus"){const ym=iso(new Date()).slice(0,7);const has=[...menus.values()].some(m=>m&&m.month===ym);return has?MENU_MONTH(ym)+" is in":MENU_MONTH(ym)+" not added yet"}
-  if(t==="Staff room display")return displayInfo?(displayLink()?"On":"Off"):"";
-  if(t==="Releases"){const c=gthConf();return (c.release||{}).page?"Gatherings released":"Gatherings hidden from educators"}
-  if(t==="Printing")return "Children's names, "+((NAME_MODES.find(([k])=>k===PRINT.names)||[])[1]||"as set").toLowerCase();
-  if(t==="Proofreading")return PROOF_SAVE?"Proofread before save is on":"Proofread before save is off";
-  if(t==="Backups"){const at=backupInfo&&backupInfo.lastAt;return bkMissed()?(at?"Last night's backup was missed":"No backup yet"):"Last "+new Date(at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
-  if(t==="Program watch")return watchInfo&&watchInfo.findings?watchInfo.findings.length?plural(watchInfo.findings.length,"thing")+" to correct":"Nothing to correct":"";
-  if(t==="Server status")return srvStat?(srvStat.lines||[]).every(x=>x.ok)?"Every part is working":"A part needs attention":"";
-  if(t==="Storage"){const si=storageInfo();return si?(si.drive?plural(si.inDrive,"photo")+" in Google Drive":si.usedText+" used of 1 GB"):""}
-  if(t==="Keeping records")return keepInfo&&!keepInfo.error?[keepInfo.childYears?`Children's records ${keepInfo.childYears} years`:"Children's records not set",keepInfo.staffYears?`staff ${keepInfo.staffYears} years`:"staff not set"].join(", "):"";
-  if(t==="Story frames")return plural(x.querySelectorAll("details").length,"frame");
-  const n=x.querySelectorAll(".chip,.sgrow,.rchip").length;if(n)return plural(n,"item");
-  const h=x.querySelector(".hint");return h?sentFit(h.textContent,70):"";
-}catch(e){return ""}}
 function settingsFold(){const m=$("#main");if(!m||!isDirector())return;const secs=[...m.querySelectorAll(":scope > section.card")];if(!secs.length)return;
   let lens=null;const cards=[];
   for(const x of secs){const lbl=x.querySelector(":scope > .lbl");const t=lbl?lbl.textContent.trim():"";
@@ -91,6 +61,7 @@ function renderSettings(){
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
   ${videoClipsHtml()}
+  ${kaymbuPullHtml()}
   <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
     <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
     <div class="actions"><input type="text" id="c-new" placeholder="A new class" style="width:200px"><button class="btn small" id="c-add">Add a class</button></div>${oneListsNote()}</section>

@@ -16341,6 +16341,68 @@ function videoClipsHtml(){if(!isDirector())return"";const on=clipsOn(),st=(windo
       <div class="seg" role="group" aria-label="Video clips"><button data-videoclips="1" aria-pressed="${on}">On</button><button data-videoclips="0" aria-pressed="${!on}">Off</button></div></div>
     <label class="cnt" style="display:block;margin-top:8px">Video folder link, for clips added from the Drive app<input id="videofolder" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${esc(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId?"https://drive.google.com/drive/folders/"+PROGRAM_DOC.videoFolderId:"")}" style="margin-top:4px"></label>
     ${all.length?`<div class="cnt">${waiting} waiting, ${done} read, ${failed} could not be read.</div><div style="display:grid;gap:4px;margin-top:6px">${recent.map(x=>`<div class="cnt">${esc(x.name||x.fileId)}, ${esc(word[x.status]||x.status)}${x.educator?", for "+esc(x.educator):""}${x.seconds?", "+Math.round(x.seconds)+" seconds":""}${x.error?". "+esc(x.error):""} ${clipsOn()?`<button class="linkbtn" data-clipwatch="${esc(x.fileId)}" data-clipname="${esc(x.name||"")}">Watch</button>`:""}</div>`).join("")}</div>`:`<div class="cnt">No clips have arrived yet.</div>`}</section>`}
+/* Kaymbu Moments, the director's card. TREE reads Kaymbu every hour, the look back reaches to the start of the school
+   year once she says yes to its count, and what the screener set aside waits here with Put it back. */
+let kpInfo=null,kpBusy=false,kpMore=0,kpPoll=null;
+function kpLoad(path,body,msg){if(kpBusy)return;kpBusy=true;window.FP_API(path||"/api/kaymbu/pull",body||{}).then(j=>{kpInfo=j;if(msg)toast(msg)},e=>{if(path)toast(e&&e.message||"That did not work. Try again.");else kpInfo={error:e&&e.message||"Kaymbu Moments could not be read."}}).finally(()=>{kpBusy=false;if(view==="settings")kpRedraw();
+  clearTimeout(kpPoll);if(kpInfo&&view==="settings"&&(kpInfo.busy||(kpInfo.lookback&&kpInfo.lookback.status==="counting")))kpPoll=setTimeout(()=>kpLoad(),15000)})}
+// the card is redrawn in place. Inside the folded Settings card only its body changes, so it stays open where it is.
+function kpRedraw(){const c=$("#kpcard");if(!c)return;const body=c.querySelector(".setbody");if(!body){c.outerHTML=kaymbuPullHtml();return}
+  const tmp=document.createElement("div");tmp.innerHTML=kaymbuPullHtml();const sec=tmp.querySelector("section");if(!sec)return;const l=sec.querySelector(":scope > .lbl");if(l)l.remove();
+  body.innerHTML=sec.innerHTML;const st=c.querySelector("summary .cnt");if(st)st.textContent=setStatus("Kaymbu Moments",body)}
+const KP_DATE=t=>{if(!t)return"";const d=new Date(t);return d.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})+" at "+clockTime(d.getHours()*60+d.getMinutes())};
+const KP_N=(n,one,many)=>`${(n||0).toLocaleString()} ${n===1?one:(many||one+"s")}`;
+function kpReasons(r){const R=(kpInfo&&kpInfo.reasons)||{};return Object.entries(r||{}).filter(([,n])=>n).map(([k,n])=>`<li class="cnt">${esc(R[k]||k)}, ${n.toLocaleString()}</li>`).join("")}
+function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
+  if(!kpInfo){kpLoad();return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div><div class="cnt">Reading</div></section>`}
+  const k=kpInfo;if(k.error)return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div><div class="cnt" style="color:var(--clay)">${esc(k.error)}</div></section>`;
+  const lc=k.lastCounts||{},lb=k.lookback||{},est=lb.estimate||{},done=lb.done||{};
+  const hint=`<div class="hint">TREE reads Kaymbu every hour with the TREE login. Each Moment educators publish comes in with its photo, its words, its class and the children tagged in Kaymbu.</div><div class="hint">A photo already in TREE is never brought in twice. It keeps everything educators wrote or changed here.</div>`;
+  const look=!k.configured?`<div class="cnt" style="color:var(--clay)">Add KAYMBU_EMAIL and KAYMBU_PASSWORD under Environment on Render to turn this on.</div>`:
+    `<div class="prow"><div><b>Every hour</b><div class="cnt">${k.lastRun?`Last look ${esc(KP_DATE(k.lastRun))}.`:"The first look is a few minutes after TREE starts."}${lc.read!=null?` ${KP_N(lc.kept,"Moment")} brought in, ${KP_N(lc.merged,"photo")} already in TREE, ${(lc.aside||0).toLocaleString()} set aside${lc.videos?`, ${KP_N(lc.videos,"video")} to Video clips`:""}.`:""}</div>
+      ${k.lastError?`<div class="cnt" style="color:var(--clay)">The last look stopped. ${esc(k.lastError)}</div>`:""}</div>
+      <button class="btn small ghost" data-kpcheck="1" ${k.busy?"disabled":""}>${k.busy==="hourly"?"Looking":"Look now"}</button></div>`;
+  let back="";
+  if(k.configured){const since=lb.since?new Date(lb.since+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):"";
+    const st=lb.status||"none";
+    back=`<div class="lbl" style="margin-top:14px">The look back</div>`;
+    if(st==="none")back+=`<div class="cnt">Brings in the Moments published since ${esc(since)}.</div><div class="cnt">TREE counts first and shows you what it would bring in and what it would cost. Nothing comes in until you say yes.</div>${lb.lastError?`<div class="cnt" style="color:var(--clay)">The count stopped. ${esc(lb.lastError)}</div>`:""}<div class="actions"><button class="btn small" data-kpcount="1">Count the look back</button></div>`;
+    else if(st==="counting")back+=`<div class="cnt"><span class="spin"></span> Counting the Moments since ${esc(since)}. This takes a few minutes.</div>`;
+    else if(st==="ready")back+=`<div class="cnt">Since ${esc(since)}, Kaymbu holds ${KP_N(est.moments,"Moment")} in ${KP_N(est.posts,"post")}.</div>
+      <ul style="margin:6px 0 6px 20px;padding:0"><li class="cnt">${KP_N(est.kept,"photo")} to bring in, in ${KP_N(est.newPosts,"observation")}</li><li class="cnt">${KP_N(est.merged,"photo")} already in TREE, given their children where nobody has tagged any</li>${est.videos?`<li class="cnt">${KP_N(est.videos,"video")} to Video clips as drafts</li>`:""}<li class="cnt">${(est.aside||0).toLocaleString()} set aside before reading the photos</li></ul>
+      ${est.aside?`<ul style="margin:0 0 6px 36px;padding:0">${kpReasons(est.reasons)}</ul>`:""}
+      <div class="cnt">A few more may be set aside once the photos are read, for being dark, blurred or nearly the same as another.</div>
+      <div class="cnt"><b>About $${(est.dollars||0).toLocaleString()}</b> in writing help, for sorting each post's words once${est.asked?` and reading ${KP_N(est.asked,"photo")} with no children tagged`:""}${est.videos?`, plus reading the videos`:""}.</div>
+      <div class="cnt">It runs in the evenings, at night and on weekends, over about ${KP_N(est.nights,"night")}. Counted ${esc(KP_DATE(est.at))}.</div>
+      <div class="actions"><button class="btn small" data-kpstart="1">Start the look back</button><button class="btn small ghost" data-kpcount="1">Count again</button></div>`;
+    else if(st==="done")back+=`<div class="cnt">Finished ${esc(KP_DATE(lb.finishedAt))}. ${KP_N(done.kept,"photo")} brought in, ${KP_N(done.merged,"photo")} already in TREE, ${(done.aside||0).toLocaleString()} set aside${done.videos?`, ${KP_N(done.videos,"video")} to Video clips`:""}.</div>`;
+    else back+=`<div class="cnt">${st==="paused"?"Paused.":k.quiet?"Running now, in the evening, night and weekend hours.":"Waiting for the evening. It runs in the evenings, at night and on weekends."}</div>
+      <div class="cnt">So far ${KP_N(done.kept,"photo")} brought in, ${KP_N(done.merged,"photo")} already in TREE, ${(done.aside||0).toLocaleString()} set aside${done.videos?`, ${KP_N(done.videos,"video")} to Video clips`:""}.</div>${lb.lastError?`<div class="cnt" style="color:var(--clay)">The last part stopped. ${esc(lb.lastError)} It tries again in ten minutes.</div>`:""}
+      <div class="actions"><button class="btn small ghost" data-kppause="${st==="paused"?"0":"1"}">${st==="paused"?"Carry on":"Pause"}</button></div>`}
+  const as=k.aside||[];let aside="";
+  if(as.length){const rooms=[...new Set(as.map(a=>a.room||""))];
+    const item=a=>`<div class="kpitem" style="display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)">
+      ${a.thumb?`<img src="${esc(a.thumb)}" alt="" loading="lazy" style="width:96px;height:96px;object-fit:cover;border-radius:6px">`:`<div></div>`}
+      <div><div class="cnt"><b>${esc(a.why||"")}</b></div><div class="cnt">${esc(new Date(a.day+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}))}${a.kaymbuClass?`, ${esc(a.kaymbuClass)}`:""}${a.video?", a video":""}</div>
+      ${a.words?`<div class="cnt">${esc(a.words.length>160?a.words.slice(0,160)+"…":a.words)}</div>`:""}${(a.students||[]).length?`<div class="cnt">Tagged in Kaymbu, ${esc(a.students.join(", "))}</div>`:""}
+      <div class="actions" style="margin-top:4px"><button class="linkbtn" data-kpback="${esc(a.id)}">Put it back</button></div></div></div>`;
+    const shown=24+kpMore;let left=shown;
+    aside=`<details style="margin-top:14px"><summary><b>Set aside, ${as.length.toLocaleString()}</b></summary>
+      <div class="cnt" style="margin:6px 0">Each Moment the screener held back, with the reason. Put it back brings it into TREE. Accept all agrees with every one for that class, and they leave this list.</div>
+      ${rooms.map(r=>{const list=as.filter(a=>(a.room||"")===r);const part=list.slice(0,Math.max(0,left));left-=part.length;
+        return `<div style="margin-top:10px"><div class="prow"><div><b>${esc(r?r+" class":"No class")}</b><div class="cnt">${list.length.toLocaleString()} set aside</div></div><button class="btn small ghost" data-kpaccept="${esc(r)}">Accept all</button></div>${part.map(item).join("")}</div>`}).join("")}
+      ${as.length>shown?`<div class="actions"><button class="linkbtn" data-kpmore="1">Show more</button></div>`:""}</details>`}
+  else if(k.configured)aside=`<div class="cnt" style="margin-top:14px">Nothing is set aside right now.${k.accepted?` ${KP_N(k.accepted,"Moment")} you accepted stay out of TREE.`:""}</div>`;
+  return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${aside}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
+  if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const d=t.dataset;
+  if(d.kpmore){kpMore+=24;kpRedraw();return}
+  if(d.kpcheck){t.disabled=true;t.textContent="Looking";kpLoad("/api/kaymbu/pull/check",{},"Kaymbu is read.");return}
+  if(d.kpcount){kpLoad("/api/kaymbu/pull/count",{},"Counting. This takes a few minutes.");return}
+  if(d.kpstart){kpLoad("/api/kaymbu/pull/start",{},"The look back starts this evening.");return}
+  if(d.kppause){kpLoad("/api/kaymbu/pull/pause",{on:d.kppause==="1"},d.kppause==="1"?"Paused.":"It carries on this evening.");return}
+  if(d.kpback){t.disabled=true;t.textContent="Bringing it in";kpLoad("/api/kaymbu/pull/back",{id:d.kpback},"It is in TREE now.");return}
+  if(d.kpaccept!=null){kpLoad("/api/kaymbu/pull/accept",{room:d.kpaccept},"Accepted. Those Moments stay out of TREE.");return}});
 document.addEventListener("change",e=>{const t=e.target.closest("#videofolder");if(!t||!isDirector()||VIEW_AS)return;const m=String(t.value||"").match(/[-\w]{20,}/);PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoFolderId:m?m[0]:""});saveProgram();toast(m?"The folder link is saved.":"The folder link is cleared.")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-videoclips]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const on=t.dataset.videoclips==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoClipsOn:on,videoClipsAt:Date.now()});saveProgram();renderSettings();toast(on?"Video clips are on. Clips that waited are read now.":"Video clips are off. Clips that arrive wait.")});
@@ -16557,6 +16619,7 @@ const plural=(n,w)=>n+" "+w+(n===1?"":"s");
 function setStatus(t,x){try{
   const sl=(signins.list||[]).filter(a=>!a.director&&!a.former);
   if(t==="See TREE as an educator")return "Any page, as an educator sees it";
+  if(t==="Kaymbu Moments")return kpInfo&&!kpInfo.error?(!kpInfo.configured?"Not turned on":(kpInfo.aside||[]).length?plural(kpInfo.aside.length,"Moment")+" set aside":"Read every hour"):"";
   if(t==="Reminders")return signins.list?`${sl.filter(a=>a.phones>0).length} of ${plural(sl.length,"phone")}`:"";
   if(t==="Sign-ins"){if(!signins.list)return "";const n=sl.filter(a=>notSetUp(a)).length;return plural(sl.length,"sign-in")+(n?`, ${n} not set up yet`:"")}
   if(t==="Educators")return plural(rosterNames().length,"educator");
@@ -16641,6 +16704,7 @@ function renderSettings(){
     <div class="prow"><div><b>Proofread before save, for every educator</b><div class="cnt">${PROOF_SAVE?"On. Educators proofread as they save.":"Off. Educators use the Proofread button when they choose."}</div></div>
       <div class="seg" role="group" aria-label="Proofread before save"><button data-proofsave="1" aria-pressed="${PROOF_SAVE}">On</button><button data-proofsave="0" aria-pressed="${!PROOF_SAVE}">Off</button></div></div></section>
   ${videoClipsHtml()}
+  ${kaymbuPullHtml()}
   <section class="card"><div class="lbl">Classes</div><div class="hint">The one list of classes. Conferences, the calendar, the Educators pages and the Garden all read it from here.</div>
     <div class="chips">${chipList(CLASSROOMS,"data-cdel")}</div>
     <div class="actions"><input type="text" id="c-new" placeholder="A new class" style="width:200px"><button class="btn small" id="c-add">Add a class</button></div>${oneListsNote()}</section>

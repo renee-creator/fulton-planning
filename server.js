@@ -34,7 +34,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips', 'screenings'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips', 'screenings', 'kaymbu'];
 // a clip record, clips/<id>.json, is written by the server alone as a video clip arrives and is read. The educator it is for and the director receive it.
 const OWN_KINDS = ['drafts', 'clips', 'screenings'];
 /* an ASQ-3 or ASQ:SE-2 screening, screenings/<id>.json, is for the director and the educators of the child's class, and
@@ -46,7 +46,8 @@ const screenSeen = (doc, name) => !!doc && (nameKey(doc.createdBy) === nameKey(n
 const KIND_RE = new RegExp('^(' + KINDS.join('|') + ')\\/([^/]+)\\.json$');
 // records only the director sees and changes. The monthly family newsletter is made in the director's view. The weekly
 // reading report is the director's, and each class team reads its own class's through /api/reports/mine.
-const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports'];
+// kaymbu/ holds where TREE's reading of Kaymbu has reached and the Moments its screener set aside, for the director
+const DIRECTOR_KINDS = ['newsletters', 'grant', 'posts', 'reports', 'kaymbu'];
 // a project's wall is the director's. Educators receive the project without it, and their saves keep it as it is.
 // a child's enrollment health and contact details and the signed agreement are for the director and the office, so
 // an educator receives the child without them. The parts a family writes on the Family page are kept through any
@@ -499,7 +500,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map(), screenings: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map(), screenings: new Map(), kaymbu: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -545,6 +546,10 @@ const kaymbuInbox = require('./kaymbu.js')({ isDirector: name => isDirector(name
 // video clips from the Video folder or the TREE address become draft observations, read once by Google's Gemini API, when the director has turned Video clips on
 const videoClips = require('./video.js')({ store, log, drive: photosDrive, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id), accountFor: n => accountFor(n), readSubject: s => kaymbuInbox.readSubject(s), photoSize: b => kaymbuInbox.size(b), isDirector: n => isDirector(n),
   directors: () => [...new Set([...roles.directors, ...accounts.list.filter(a => a.director && !isFormerAccount(a)).map(a => a.name), ...TEACHERS.map(t => t.name).filter(n => DIRECTORS.includes(n.toLowerCase()))].map(String).filter(Boolean))] });
+// Kaymbu Moments read straight from Kaymbu every hour, and the look back to the start of the school year (kaymbu-pull.js)
+const kaymbuPull = require('./kaymbu-pull.js')({ store, log, kaymbu: kaymbuInbox, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id),
+  askClaude: (c, careful, extra) => askClaude(c, careful, extra), video: videoClips, onPost: (ids, o) => kaymbuPost(ids, o) });
+kaymbuPull.start();
 // the month's menus, opened from the links in the Kitchen Digest and read by Claude
 // a file TREE keeps, such as a menu PDF, goes to Google Drive like the photos, or to the records when Drive is not set up
 async function keepOriginal(id, buf, type, message) {
@@ -2029,6 +2034,27 @@ async function runSortQueue() {
     catch (e) { if (job.tries < 1) { job.tries++; setTimeout(() => { sortQueue.push(job); runSortQueue(); }, 30000); } else log('Sorting skipped for', job.id, e.message); } } }
   finally { sortRunning = false; }
 }
+/* A post brought in straight from Kaymbu. Its photos share one caption, so the caption is sorted into noticed and wondered
+   once for the whole post, the way a caption that arrives by email is sorted. A post from the look back is sorted at the
+   pace the hourly allowance leaves room for, and its threads are left for the week's reading. */
+const postSortQueue = []; let postSorting = false;
+function kaymbuPost(ids, o) {
+  for (const id of ids) placeSoon(id);
+  if (!(o && o.back) && ids[0]) queueThreadSuggest(ids[0]);
+  postSortQueue.push({ ids, tries: 0 }); runPostSorts();
+}
+async function runPostSorts() {
+  if (postSorting) return; postSorting = true;
+  try { while (postSortQueue.length) { const job = postSortQueue.shift();
+    const docs = job.ids.map(id => { const r = store.recs.notices.get(id); return r && !r.deleted && r.doc ? r.doc : null; }).filter(Boolean);
+    const first = docs.find(d => sortEnough(d) && !d.sorted && !d.sortDismissed); if (!first || !anthropicKey()) continue;
+    const text = first.noticed; let r;
+    try { r = await sortNoticed(text); }
+    catch (e) { if (/allowance/.test(e.message) && job.tries < 30) { job.tries++; postSortQueue.push(job); await new Promise(ok => setTimeout(ok, 10 * 60e3).unref()); continue; } log('A Kaymbu post was not sorted,', e.message); continue; }
+    for (const d of docs) { if (d.noticed !== text || String(d.wonder || '').trim() || d.sorted) continue;
+      if (r) writeSorted(d.id, d, r, r.why); else { d.sortChecked = Date.now(); noteChange('notices', d.id); scheduleSave('notices', d.id); } } } }
+  finally { postSorting = false; }
+}
 // a Kaymbu caption is sorted and kept. A typed observation is offered its sort and nothing moves.
 async function sortOne(id, mode) {
   const rec = store.recs.notices.get(id); const d = rec && !rec.deleted && rec.doc; if (!d || !sortEnough(d) || d.sorted || d.sortDismissed || !anthropicKey()) return;
@@ -2572,6 +2598,7 @@ function statusLines() {
   ];
   lines.push(calendar.statusLine());
   lines.push(kaymbuInbox.statusLine());
+  lines.push(kaymbuPull.statusLine());
   lines.push(videoClips.statusLine());
   lines.push(feedBin.statusLine());
   lines.push(menuIntake.statusLine());
@@ -2645,7 +2672,8 @@ async function displayFeed() {
   const notices = live('notices');
   const inquiries = live('inquiries');
   const held = new Set(); for (const x of inquiries) for (const id of x.obs || []) held.add(id);
-  const shown = notices.filter(n => !held.has(n.id) && photoOf(n)).sort((a, b) => (b.at || 0) - (a.at || 0));
+  // a Moment Kaymbu kept for staff only is for educators in TREE, and stays off the staff room display
+  const shown = notices.filter(n => !held.has(n.id) && photoOf(n) && !(n.kaymbu && n.kaymbu.internal)).sort((a, b) => (b.at || 0) - (a.at || 0));
   const now = Date.now();
   let recent = shown.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (recent.length < 10) recent = shown.slice(0, 10);
@@ -2657,7 +2685,7 @@ async function displayFeed() {
   const latestPhoto = test => { const n = shown.find(test); return n ? photoOf(n) : null; };
   const firstName = s => String(s || '').trim().split(/\s+/)[0] || '';
   // observations kept in words alone, over the same recent stretch as the photos. One still waiting for its photo stays off.
-  const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
+  const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && !(n.kaymbu && n.kaymbu.internal) && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
   let wordsRecent = wordsAll.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (wordsRecent.length < 4) wordsRecent = wordsAll.slice(0, 4);
   const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.kaymbu && n.kaymbu.sentBy ? '' : n.by),
@@ -3156,6 +3184,22 @@ async function handle(req, res) {
   // and the director reads the findings with their plans of correction and marks one handled once it is done
   if (path === '/api/watch/usage') { if (pageReportOk(me.name)) watch.usage(body, me.name); json(req, res, 200, { ok: true }); return; }
   if (path === '/api/watch/page') { if (pageReportOk(me.name)) watch.fromPage(body, me.name); json(req, res, 200, { ok: true }); return; }
+  // Kaymbu Moments in Settings, the director's only. The hourly look, the look back and what the screener set aside.
+  if (path.startsWith('/api/kaymbu/pull')) {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees Kaymbu Moments.'); return; }
+    if (stopping) { err(req, res, 503, 'The server is restarting. Try again in a minute.'); return; }
+    const step = path.slice('/api/kaymbu/pull'.length);
+    try {
+      if (step === '/check') { const r = await kaymbuPull.hourly('asked'); if (!r && kaymbuPull.view().lastError) throw new Error(kaymbuPull.view().lastError); }
+      else if (step === '/count') kaymbuPull.startEstimate();
+      else if (step === '/start') kaymbuPull.approve(me.name);
+      else if (step === '/pause') kaymbuPull.pause(body.on !== false);
+      else if (step === '/back') { if (typeof body.id !== 'string' || !ID_RE.test(body.id)) throw new Error('That Moment is not valid.'); await kaymbuPull.putBack(body.id); }
+      else if (step === '/accept') kaymbuPull.acceptClass(typeof body.room === 'string' ? body.room.slice(0, 40) : '');
+      else if (step !== '') { err(req, res, 404, 'Not found'); return; }
+    } catch (e) { err(req, res, 400, e.message || 'That did not work. Try again.'); return; }
+    json(req, res, 200, kaymbuPull.view()); return;
+  }
   if (path === '/api/watch') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the program watch.'); return; } try { await watchTick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }
   if (path === '/api/watch/handled') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director marks a finding handled.'); return; } const k = String(body.key || '').slice(0, 300); if (!k) { err(req, res, 400, 'Choose a finding first.'); return; } if (body.undo) watch.reopen(k); else watch.handle(k, me.name); try { await watch.tick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }
   if (path === '/api/notify/status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees reminders.'); return; } json(req, res, 200, reminders.status()); return; }
@@ -3178,6 +3222,7 @@ async function handle(req, res) {
     if (!KINDS.includes(kind) || typeof id !== 'string' || !ID_RE.test(id)) { err(req, res, 400, 'That record name is not valid.'); return; }
     if (kind === 'lens') { err(req, res, 403, 'The lens passages are kept by the reading and changed from the Lens page.'); return; }
     if (kind === 'clips') { err(req, res, 403, 'A clip record is written by the server as the clip arrives and is read.'); return; }
+    if (kind === 'kaymbu') { err(req, res, 403, 'TREE keeps its Kaymbu records itself. Use Kaymbu Moments in Settings.'); return; }
     // a screening is changed by the director and the educators of the child's class, and every result is kept
     if (kind === 'screenings' && !isDirector(me.name)) {
       const was = store.recs.screenings.get(id); const wd = was && !was.deleted ? was.doc : null;

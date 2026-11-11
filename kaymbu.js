@@ -329,6 +329,15 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
       const k = m.photo ? (m.photo.split('/').pop().split('?')[0].replace(/_display(\.\w+)$/i, '$1')) : crypto.createHash('sha1').update(m.title + '\n' + m.note).digest('hex').slice(0, 16);
       if (have.has(k) || seen.has(k)) {
         // a photo already kept from its Moment keeps its own words. The newsletter adds only its small group and that it was shared.
+        // a photo TREE already brought in straight from Kaymbu has no educator, since Kaymbu signs in by class. The
+        // educator named in this email's subject is given to it and to the rest of its post, unless someone chose one.
+        if (!board && have.has(k) && (sub.educator || by)) { const ed = sub.educator || by;
+          const hit = [...store.recs.notices].find(([, r]) => !r.deleted && r.doc && r.doc.kaymbu && r.doc.kaymbu.key === k);
+          if (hit && hit[1].doc.kaymbu.pull && !String(hit[1].doc.by || '').trim() && !hit[1].doc.kaymbu.byHand && !(hit[1].doc.smallGroup && groupLeads(hit[1].doc))) {
+            const g = hit[1].doc.group;
+            for (const [nid, r] of store.recs.notices) { const d = r.doc; if (r.deleted || !d || !d.kaymbu || !d.kaymbu.pull || String(d.by || '').trim() || d.kaymbu.byHand) continue;
+              if (!(nid === hit[0] || (g && d.group === g))) continue;
+              d.by = ed; d.updatedByName = ed; d.kaymbu = Object.assign({}, d.kaymbu, { byMail: 1 }); noteChange('notices', nid); scheduleSave('notices', nid); linked++; } } }
         if (board && have.has(k)) { const hit = [...store.recs.notices].find(([, r]) => !r.deleted && r.doc && r.doc.kaymbu && r.doc.kaymbu.key === k);
           if (hit) { const [nid, r] = hit, d = r.doc; let ch = false;
             if (m.smallGroup && !d.smallGroup && !d.editedBy) { d.smallGroup = m.smallGroup; ch = true; }
@@ -446,5 +455,7 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
     if (g) log('Kaymbu photos given the group of their post,', g);
   }
 
-  return { handle, repair, postGroup, subjectDay, parseMoments, parseStoryboard, headingGroup, size, readSubject, findChildren, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
+  return { handle, repair, postGroup, subjectDay, parseMoments, parseStoryboard, headingGroup, size, readSubject, findChildren,
+    // shared with kaymbu-pull.js, which brings Moments in straight from Kaymbu
+    bestPhoto, keepPhoto, getBuf, kidsPlace, groupLead, groupLeads, laDay, mondayOf, isClassName, isWordName, statusLine: () => [!!KEY(), KEY() ? 'The Kaymbu inbox is on, so Moments shared from Kaymbu to the TREE address arrive as moments.' : 'The Kaymbu inbox is off. Add KAYMBU_INBOX_KEY under Environment to bring Kaymbu Moments into TREE.'] };
 };
