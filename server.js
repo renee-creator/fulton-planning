@@ -1313,6 +1313,14 @@ async function recheckRecords() {
     try { const doc = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); store.recs[m[1]].set(m[2], { doc, sha: f.sha, path: f.path }); noteChange(m[1], m[2]); n++; } catch (e) {}
   }
   if (n) log('Read', n, 'records again that changed while the server was starting');
+  // photos kept by the server this one replaced, while this one was starting, are found by their markers too
+  let ph = 0;
+  for (const f of (tree.json.tree || [])) {
+    if (f.type !== 'blob') continue;
+    const r = f.path.match(/^photos\/([^~/]+)~/); if (r && !store.originals.has(r[1]) && photosDrive.seen(f.path)) { ph++; continue; }
+    const o = f.path.match(/^originals\/([^/]+)$/); if (o && !store.originals.has(o[1])) { store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size }); ph++; }
+  }
+  if (ph) log('Found', ph, 'photos kept while the server was starting');
   if (store.partial) {
     const unread = (tree.json.tree || []).filter(f => { const m = f.type === 'blob' && f.path.match(KIND_RE); return m && !store.recs[m[1]].has(m[2]); });
     if (!unread.length) { store.partial = false; log('Every record is read now, so the one-time steps can run'); runOnce(); }
@@ -2853,7 +2861,9 @@ async function handle(req, res) {
       const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/originals/${encodeURIComponent(id)}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`);
       if (r.status === 200 && r.json && r.json.sha) { o = { path: `originals/${id}`, sha: r.json.sha, size: r.json.size }; store.originals.set(id, o); log('Photo found in the records directly', id.slice(0, 60)); }
     }
-    if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60)); send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
+    if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60));
+      // a photo another copy of the server kept while this one started is found by reading the records again, at most every five minutes
+      if (store.ready && Date.now() - (store.photoRecheckAt || 0) > 5 * 60e3) { store.photoRecheckAt = Date.now(); recheckRecords().catch(e => log('Could not read the records again', e.message)); } send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
     const ext = id.split('.').pop().toLowerCase();
     const type = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext] || 'application/octet-stream';
     // a small copy already made is sent from disk at once, without fetching the original from Drive or GitHub
