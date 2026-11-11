@@ -134,6 +134,17 @@ async function demoPicData(pic){if(!pic)return null;const ck=pic.from+"|"+(pic.i
   // drawn onto white as a JPEG, so the PDF and Word file stay small and every picture sits on the same white
   const url=await new Promise(ok=>{const im=new Image();const u=URL.createObjectURL(blob);im.onload=()=>{const m=900,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok({data:c.toDataURL("image/jpeg",.86),w:c.width,h:c.height})};im.onerror=()=>{URL.revokeObjectURL(u);ok(null)};im.src=u});
   const out=url&&pic.from==="web"?Object.assign({},url,{credit:pic.credit||""}):url;demoPicCache.set(ck,out);return out}
+// Optional recipe metadata lists the library image keys for numbered demonstration sheets.
+function demoStepPictures(x) {
+  const pictures = new Map();
+  for (const entry of String(x.meta?.steppictures || "").split(",")) {
+    const match = entry.trim().match(/^(\d+)=([a-z0-9_]+)$/);
+    if (match) pictures.set(Number(match[1]), match[2]);
+  }
+  return pictures;
+}
+const demoFinishedKey = x => "finished_" + String(x.id || "").replace(/-/g, "_");
+const demoStepPictureLabel = key => key === "sticky_rice_soaked" ? "soaked sticky rice" : demoStateLabel(key);
 // every item the recipes name, ingredients and tools, by key, for the Pictures still needed list
 function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(q?q.item:l),name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
@@ -142,6 +153,16 @@ function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.re
   // each food as the recipe changes it, such as apple chunks, once a recipe cuts, cooks or mashes it
   for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){let steps=libLines(recPart(x,"Steps"));if(steps.length&&/^wash our hands\b/i.test(steps[0]))steps=steps.slice(1);
     for(const w of demoFoodWalk(libLines(recPart(x,"Ingredients")),steps,x.title))for(const [f,st] of [...Object.entries(w.show),...w.now])if(st){const k=f+"_"+st;if(!out.has(k))out.set(k,{key:k,name:demoStateLabel(k),kind:"as the recipe changes it",recipes:new Set()});out.get(k).recipes.add(x.title)}}
+  for (const x of ((libData && libData.recipes) || []).filter(r => !r.draft)) {
+    const stepPictures = demoStepPictures(x);
+    if (!stepPictures.size) continue;
+    for (const key of stepPictures.values()) {
+      if (!out.has(key)) out.set(key, {key, name: demoStepPictureLabel(key), kind: "as the recipe changes it", recipes: new Set()});
+      out.get(key).recipes.add(x.title);
+    }
+    const key = demoFinishedKey(x);
+    out.set(key, {key, name: x.title + " — We made it", kind: "finished recipe", recipes: new Set([x.title])});
+  }
   // the three pictures every demonstration set uses, washing hands, the timer and the adult hand
   for(const [k,name] of [["washing_hands","washing hands"],["kitchen_timer","kitchen timer"],["adult_hand","adult hand"]])if(!out.has(k))out.set(k,{key:k,name,kind:"every demonstration set",recipes:new Set(((libData&&libData.recipes)||[]).filter(r=>!r.draft).map(r=>r.title))});
   return [...out.values()]}
@@ -168,6 +189,7 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=demoScaleL
   const clockImg=()=>timer?timer.data:demoClock();
   const sheets=[{n:1,text:"Wash our hands.",pics:[{img:wash?wash.data:demoWash(),w:1.2,drawn:!wash}],words:[],adult:false}];
   const measured=new Set();
+  const stepPictures = demoStepPictures(x);
   const headOf=demoHeadOf,says=demoSays;const walk=demoFoodWalk(ings,steps,x.title);
   for(let i=0;i<steps.length;i++){const s=steps[i];const adult=/^an adult\b/i.test(s);const pics=[],words=[];const W=walk[i]||{show:{},refs:[],pron:[],now:[]};const shownFoods=new Set();
     // water for washing, such as a basin for scrubbing, is never the water the recipe measures
@@ -220,9 +242,20 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=demoScaleL
     const DN="(\\d+(?:\\s+\\d\\/\\d)?|\\d\\/\\d)";const tm=s.match(new RegExp(DN+"(?:\\s*(?:to|or)\\s*"+DN+")?\\s*(minutes?|hours?)","i"));
     if(tm)pics.push({img:clockImg(),w:.7,cap:tm[1]+(tm[2]?" to "+tm[2]:"")+" "+tm[3].toLowerCase().replace(/s?$/,(+(tm[2]||tm[1])===1?"":"s")),timer:true,drawn:!timer});
     else if(/\b(wait|overnight|let (it|them) (rest|cool|sit|rise)|until (it is |they are )?cool)\b/i.test(s))pics.push({img:clockImg(),w:.7,cap:/overnight/i.test(s)?"overnight":"wait",timer:true,drawn:!timer});
+    const stageKey = stepPictures.get(i + 2);
+    if (stageKey) {
+      const stage = await demoPicData(demoPicOf(stageKey));
+      if (stage) {
+        const duplicate = pics.findIndex(pic => pic.img === stage.data);
+        const label = demoStepPictureLabel(stageKey);
+        const picture = duplicate >= 0 ? pics.splice(duplicate, 1)[0] :
+          {img: stage.data, w: .85, cap: label, label, big: true, credit: stage.credit || ""};
+        pics.unshift(picture);
+      }
+    }
     sheets.push({n:i+2,text:s,adult,pics,words,photo:photos[i+2]||photos[String(i+2)]||""})}
   const item=async t=>{const q=demoQty(t);const pd=await demoPicData(demoPicOf(demoKey(q?q.item:t),demoKeyOld(q?q.item:t)));return {text:t,img:pd?pd.data:null,credit:(pd&&pd.credit)||""}};
-  const fin=await demoPicData(demoPicOf("finished_"+String(x.id||"").replace(/-/g,"_")));
+  const fin=await demoPicData(demoPicOf(demoFinishedKey(x)));
   const kids=demoKids(x);
   const overview={title:x.title,finished:fin?fin.data:null,kids:kids?"For "+kids+" children":"",ings:await Promise.all(qs.map(({line})=>item(line))),tools:await Promise.all(tools.map(item))};
   // the last sheet, what we made, and for food who we will share it with (November 8, 2026)
