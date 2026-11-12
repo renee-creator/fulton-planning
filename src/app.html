@@ -4405,7 +4405,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-clipwatch]
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElementById("clipsheet"))clipClose()});
 // the line under an observation form or card that came from a clip, with anything TREE wants the educator to know about it
 function clipLineHtml(n){if(!n||!n.clip||!n.clip.fileId)return"";const c=n.clip;
-  return `<div class="cnt clipline" style="margin:4px 0 8px">From the clip ${esc(c.name||"")}${clipsOn()?" "+clipBtn(n):""}${c.error?`<div class="hint warnline" style="margin-top:4px">${esc(c.error)}</div>`:""}${c.note?`<div class="muted" style="margin-top:2px">${esc(c.note)}</div>`:""}</div>`}
+  return `<div class="cnt clipline" style="margin:4px 0 8px">From the clip ${esc(c.name||"")}${clipsOn()?" "+clipBtn(n):""}${c.error?`<div class="hint warnline" style="margin-top:4px">${esc(c.error)}</div>`:""}${c.note?`<div class="muted" style="margin-top:2px">${esc(c.note)}</div>`:""}${c.timeline?`<details style="margin-top:4px"><summary>Moment by moment</summary><div class="muted" style="white-space:pre-line;margin-top:4px">${esc(c.timeline)}</div></details>`:""}</div>`}
 const draftIsMine=d=>!!d&&!!me()&&String(d.by||"").toLowerCase()===String(whoAmI()||"").toLowerCase();
 function sdClean(x){const c=jclone(Object.assign({},x,{pick:undefined,siblings:undefined,restored:undefined}));if(c&&c.photo){delete c.photo.status;delete c.photo.error;delete c.photo.data}return c}
 function serverDraftSoon(){clearTimeout(sdT);sdT=setTimeout(serverDraftNow,1200)}

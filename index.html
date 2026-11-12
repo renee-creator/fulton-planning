@@ -4756,7 +4756,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-clipwatch]
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElementById("clipsheet"))clipClose()});
 // the line under an observation form or card that came from a clip, with anything TREE wants the educator to know about it
 function clipLineHtml(n){if(!n||!n.clip||!n.clip.fileId)return"";const c=n.clip;
-  return `<div class="cnt clipline" style="margin:4px 0 8px">From the clip ${esc(c.name||"")}${clipsOn()?" "+clipBtn(n):""}${c.error?`<div class="hint warnline" style="margin-top:4px">${esc(c.error)}</div>`:""}${c.note?`<div class="muted" style="margin-top:2px">${esc(c.note)}</div>`:""}</div>`}
+  return `<div class="cnt clipline" style="margin:4px 0 8px">From the clip ${esc(c.name||"")}${clipsOn()?" "+clipBtn(n):""}${c.error?`<div class="hint warnline" style="margin-top:4px">${esc(c.error)}</div>`:""}${c.note?`<div class="muted" style="margin-top:2px">${esc(c.note)}</div>`:""}${c.timeline?`<details style="margin-top:4px"><summary>Moment by moment</summary><div class="muted" style="white-space:pre-line;margin-top:4px">${esc(c.timeline)}</div></details>`:""}</div>`}
 const draftIsMine=d=>!!d&&!!me()&&String(d.by||"").toLowerCase()===String(whoAmI()||"").toLowerCase();
 function sdClean(x){const c=jclone(Object.assign({},x,{pick:undefined,siblings:undefined,restored:undefined}));if(c&&c.photo){delete c.photo.status;delete c.photo.error;delete c.photo.data}return c}
 function serverDraftSoon(){clearTimeout(sdT);sdT=setTimeout(serverDraftNow,1200)}
@@ -4978,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="805ae0966ae4";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="32c2fa60a70b";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");

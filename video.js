@@ -163,6 +163,45 @@ Rules
     if (over) lines.push('[Only the first three minutes of the clip were read.]');
     return lines.join('\n');
   }
+  /* What I noticed reads as a short narration, in short paragraphs, with the children's words exactly as said in
+     quotation marks. A paragraph begins at what a child does, and the words that follow stay together. Who spoke is
+     named when the speaker changes, at the start of a paragraph when it is not the child just seen, and every time an adult speaks. The timed
+     list above stays with the clip, under Moment by moment, for checking when something was said. */
+  function narrate(read, over) {
+    const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+    const adult = w => /educator|adult|teacher/.test(w);
+    const items = [...read.transcript.map(x => ({ t: x.t, say: true, who: String(x.who || 'a child').replace(/^the\s+/, '').replace(/teacher/g, 'educator'), words: String(x.words || '').replace(/^"|"$/g, '') })),
+      ...read.actions.map(x => ({ t: x.t, say: false, what: String(x.what || '').replace(/\.$/, '') }))].sort((a, b) => a.t - b.t || (a.say ? 1 : -1));
+    const paras = []; let cur = null;
+    for (const x of items) {
+      if (!x.say) { if (!cur || cur.quoted) { cur = { parts: [], quoted: false, acted: true }; paras.push(cur); } cur.parts.push(cap(x.what) + '.'); continue; }
+      if (!cur) { cur = { parts: [], quoted: false, acted: false }; paras.push(cur); }
+      const w = x.words.replace(/\s+$/, ''); const q = '"' + w + (/[.!?…]$/.test(w) ? '' : '.') + '"';
+      const named = adult(x.who) || (cur.quoted ? x.who !== cur.lastWho : !(cur.acted && /^a child$/.test(x.who)));
+      cur.parts.push(named ? `${cap(adult(x.who) ? 'the ' + x.who : x.who)} says, ${q}` : q); cur.quoted = true; cur.lastWho = x.who;
+    }
+    const out = paras.map(p => p.parts.join(' ')).filter(Boolean);
+    if (over) out.push('[Only the first three minutes of the clip were read.]');
+    return out.join('\n\n');
+  }
+  // a timed list already written, read back into what was said and done, for drafts made before the narration
+  function readLines(text) {
+    const transcript = [], actions = [];
+    for (const l of String(text || '').split('\n')) { const m = l.match(/^At (\d+):(\d{2}) (.+)$/); if (!m) { if (l.trim()) return null; continue; }
+      const t = +m[1] * 60 + +m[2]; const q = m[3].match(/^(.+?) says, "(.*)"$/);
+      if (q) transcript.push({ t, who: q[1], words: q[2] }); else actions.push({ t, what: m[3] }); }
+    return transcript.length || actions.length ? { transcript, actions } : null;
+  }
+  // video drafts still waiting, written as a timed list, become the narration once. Their timed list stays with the clip.
+  function renarrateDrafts() {
+    let n = 0;
+    for (const [id, r] of store.recs.drafts) { const d = r && !r.deleted && r.doc; const f = d && d.form; if (!f || !d.fromClip || !f.clip || f.clip.timeline) continue;
+      const read = readLines(f.noticed); if (!read) continue;
+      const over = /first three minutes/.test(f.noticed);
+      f.clip = Object.assign({}, f.clip, { timeline: f.noticed }); f.noticed = narrate(read, over); d.updatedAt = Date.now();
+      noteChange('drafts', id); scheduleSave('drafts', id); n++; }
+    if (n) log(`${n} video drafts now read as a narration`);
+  }
   function educatorFor(rec) {
     const sub = readSubject ? readSubject([rec.subject, String(rec.name || '').replace(/\.[a-z0-9]+$/i, '')].filter(Boolean).join(' ')) : { room: '', rooms: [], smallGroup: '', educator: '', projectId: '', threadId: '' };
     let by = sub.educator || '';
@@ -199,7 +238,7 @@ Rules
     const at = Date.parse(rec.createdAt) || rec.at || Date.now(); const day = laDay(at);
     const nid = 'n' + at.toString(36) + crypto.randomBytes(3).toString('hex');
     const group = stills.length > 1 ? 'v' + rec.id : '';
-    const clip = { id: rec.id, fileId: rec.fileId, name: String(rec.name || ''), at, ...(clipNote ? { note: clipNote } : {}), ...(error ? { error } : {}) };
+    const clip = { id: rec.id, fileId: rec.fileId, name: String(rec.name || ''), at, ...(rec.timeline ? { timeline: rec.timeline } : {}), ...(clipNote ? { note: clipNote } : {}), ...(error ? { error } : {}) };
     // a clip from Kaymbu brings the children tagged in it there, and its Kaymbu mark, so it is never brought in twice
     const kids = Array.isArray(rec.children) ? rec.children.filter(Boolean) : [];
     const base = { noticed, wonder: '', ...(kids.length ? { children: kids } : {}), ...(rec.kaymbu ? { kaymbu: rec.kaymbu } : {}), classroom: who.room, ...(who.rooms.length > 1 ? { classrooms: who.rooms } : {}), ...(who.smallGroup ? { smallGroup: who.smallGroup } : {}), by: who.by, at, week: mondayOf(day), projectId: who.projectId, threadId: who.threadId, ...(group ? { group } : {}) };
@@ -223,7 +262,8 @@ Rules
       up = await uploadToGemini(clip.file, clip.size, clip.type, clip.name);
       read = await readWithGemini(up, over, secs);
       const st = await stillsFor(rec, clip, read, secs);
-      const noticed = noticedLines(read, over);
+      const noticed = narrate(read, over);
+      rec.timeline = noticedLines(read, over);
       draftId = makeDraft(rec, who, noticed, st.stills, [st.note, who.fallback ? (rec.sent === 'kaymbu' ? 'Kaymbu does not say which educator took this clip, so it waits with the director. Choose the educator in Kept by.' : 'TREE could not tell which educator this clip is for, so it waits with the director. Name the class and the educator in the file name or the email subject next time, such as North Ann.') : ''].filter(Boolean).join(' '), read, '');
       Object.assign(rec, { status: 'done', draftId, doneAt: Date.now(), seconds: Math.round(secs), over, counts: { words: read.transcript.length, actions: read.actions.length, stills: st.stills.length }, tokens: read.tokens }); delete rec.error; saveRec(rec);
       log(`Clip ${rec.name || rec.id} read for ${who.by}: ${read.transcript.length} things said, ${read.actions.length} actions, ${st.stills.length} stills, ${Math.round(secs)} seconds${over ? ', first three minutes only' : ''}, ${read.tokens.in} tokens in and ${read.tokens.out} out, ${Math.round((Date.now() - t0) / 1000)} s`);
@@ -245,12 +285,14 @@ Rules
   let busy = false, timer = null;
   const waiting = () => [...store.recs.clips.values()].filter(r => !r.deleted && r.doc && (r.doc.status === 'waiting' || (r.doc.status === 'reading' && Date.now() - (r.doc.readAt || 0) > 30 * 60e3))).map(r => r.doc).sort((a, b) => (a.at || 0) - (b.at || 0));
   async function run() {
+    if (store.ready && !renarrated) { renarrated = true; try { renarrateDrafts(); } catch (e) { log('Video drafts could not be read as a narration', e.message); } }
     if (busy || !store.ready || !on()) return;
     if (!ready()) { if (waiting().length) log('Clips wait,', !KEY() ? 'GEMINI_API_KEY is not set on Render' : 'DRIVE_PHOTOS_URL is not set on Render'); return; }
     busy = true;
     try { for (const rec of waiting()) { if (!on()) break; await readClip(rec); } }
     finally { busy = false; }
   }
+  let renarrated = false;
   function kick() { clearTimeout(timer); timer = setTimeout(() => run().catch(e => log('The clip reading stopped', e.message)), 800); timer.unref(); }
   setInterval(() => { if (waiting().length) kick(); }, 10 * 60e3).unref();
 
@@ -401,5 +443,5 @@ Rules
   }
   const statusLine = () => { const s = status(); return [s.on && s.key, !s.on ? 'Video clips are off. The director turns them on in Settings.' : !s.key ? 'Video clips are on, but GEMINI_API_KEY is not set on Render, so clips wait.' : `Video clips are on, read with ${s.model}${s.ffmpeg ? '' : ', without ffmpeg for stills'}.`]; };
 
-  return { handle, upload, fromKaymbu, run, kick, on, status, statusLine, parseAnswer, noticedLines, LIMIT_S };
+  return { handle, upload, fromKaymbu, run, kick, on, status, statusLine, parseAnswer, noticedLines, narrate, readLines, LIMIT_S };
 };

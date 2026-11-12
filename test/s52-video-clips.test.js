@@ -98,7 +98,8 @@ test('a clip waits while the switch is off, is read when it turns on, and leaves
   assert.strictEqual(d.by, 'Ann'); assert.strictEqual(d.form.by, 'Ann'); assert.strictEqual(d.form.classroom, 'North');
   assert.strictEqual(d.form.wonder, '');
   const lines = d.form.noticed.split('\n');
-  assert.deepStrictEqual(lines, ['At 0:01 a child pushes the long block under the water.', 'At 0:01 a child says, "Look, it is [unclear] sinking"', 'At 0:02 the educator says, "What do you notice?"', 'At 0:02 another child holds a cup over the tub.']);
+  assert.deepStrictEqual(lines, ['A child pushes the long block under the water. "Look, it is [unclear] sinking." The educator says, "What do you notice?"', '', 'Another child holds a cup over the tub.'], 'a narration with the children\'s words');
+  assert.deepStrictEqual(d.form.clip.timeline.split('\n'), ['At 0:01 a child pushes the long block under the water.', 'At 0:01 a child says, "Look, it is [unclear] sinking"', 'At 0:02 the educator says, "What do you notice?"', 'At 0:02 another child holds a cup over the tub.'], 'the timed list stays with the clip');
   assert.deepStrictEqual({ fileId: d.form.clip.fileId, name: d.form.clip.name, id: d.form.clip.id }, { fileId, name: 'North Ann water.mp4', id: rec.id });
   assert.ok(!d.form.clip.error, 'no error on a read clip');
   // the stills, frames from ffmpeg when it is here, else the Drive thumbnail
@@ -220,4 +221,11 @@ test('Send a clip from inside TREE comes in pieces, is kept in Drive as a smalle
   assert.match(rec.name, /Ann clip/);
   const d = h.read('drafts/' + rec.draftId + '.json'); assert.ok(d, 'a draft is left');
   assert.strictEqual(d.by, 'Ann');
+});
+
+test('What I noticed reads as a narration with the children\'s words, and the timed list stays with the clip', () => {
+  const v = require('../video.js')({ store: { recs: { clips: new Map(), drafts: new Map() } }, log: () => {}, drive: {}, noteChange() {}, scheduleSave() {} });
+  const read = v.readLines('At 0:00 a child pours liquid into a bowl.\nAt 0:07 a child says, "I mixed it."\nAt 0:14 another child says, "It\'s more purple."\nAt 0:17 another child says, "A dark purple"\nAt 0:24 a child squirts liquid from a bottle.\nAt 0:30 the educator says, "What do you notice?"');
+  assert.strictEqual(v.narrate(read), 'A child pours liquid into a bowl. "I mixed it." Another child says, "It\'s more purple." "A dark purple."\n\nA child squirts liquid from a bottle. The educator says, "What do you notice?"');
+  assert.strictEqual(v.readLines('An educator wrote this.'), null, 'a draft someone changed is left as it is');
 });
