@@ -84,3 +84,28 @@ test('Proofread observations', async t => {
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 });
+
+test('Proofread and approve all keeps going, and lists the changed ones with Undo', async t => {
+  const chromium = await browser(); if (!chromium) { t.skip('Playwright is not installed here'); return; }
+  const now = Date.now();
+  const fx = await start({ more: put => {
+    for (let i = 0; i < 20; i++) put(`notices/a${i}.json`, { id: 'a' + i, noticed: i % 2 ? 'The childs plantd garlic.' + i : 'Fine as written ' + i + '.', wonder: '', classroom: 'West', by: 'Bea', at: now - (30 - i) * 864e5, week: '2026-10-12' });
+  } });
+  const b = await chromium.launch(); t.after(async () => { await b.close(); await fx.stop(); });
+  const s = await signedIn(fx, b, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.route('**/api/read', async route => { const prompt = JSON.parse(route.request().postData()).content.map(c => c.text || '').join('');
+    const ids = [...prompt.matchAll(/<text id="([^"]+)">([^<]*)</g)];
+    const fixes = ids.filter(m => /plantd/.test(m[2])).map(m => ({ id: m[1], from: 'childs plantd', to: 'children planted', why: 'Spelling' }));
+    await route.fulfill({ json: { text: JSON.stringify({ fixes }) } }); });
+  await s.p.evaluate(() => goView('proofobs'));
+  await s.p.waitForSelector('[data-pfauto]', { timeout: 15000 }); await s.p.click('[data-pfauto]');
+  await s.p.waitForFunction(() => /Every observation has been proofread/.test(document.querySelector('#main').innerText), null, { timeout: 30000 });
+  const text = await s.p.evaluate(() => document.querySelector('#main').innerText);
+  assert.match(text, /Changed, 10/, 'only the ones whose words changed are listed');
+  await s.p.waitForTimeout(2500);
+  const rec = id => JSON.parse(fs.readFileSync(path.join(fx.dir, 'notices', id + '.json'), 'utf8'));
+  assert.strictEqual(rec('a1').noticed, 'The children planted garlic.1'); assert.ok(rec('a0').proofread, 'unchanged ones are marked as proofread too');
+  await s.p.click('[data-pfundo="a19"]'); await s.p.waitForTimeout(2500);
+  assert.strictEqual(rec('a19').noticed, 'The childs plantd garlic.19', 'Undo puts the words back as written');
+  assert.deepStrictEqual(s.errors, []);
+});

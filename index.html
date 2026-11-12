@@ -4978,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="32c2fa60a70b";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="75f7412d1746";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -15944,7 +15944,7 @@ function pfGather(){const seen=new Map();
     if(seen.has(key))seen.get(key).ids.push(n.id);else seen.set(key,{id:n.id,ids:[n.id]})}
   return [...seen.values()]}
 const pfLeft=()=>pfGather().length;
-function pfStart(){const list=pfGather();pf={items:new Map(list.map(x=>[x.id,Object.assign(x,{status:"waiting"})])),order:list.map(x=>x.id),running:false,paused:false,error:"",read:0,saved:0,skipped:0};pfRun()}
+function pfStart(){const list=pfGather();pf={items:new Map(list.map(x=>[x.id,Object.assign(x,{status:"waiting"})])),order:list.map(x=>x.id),running:false,paused:false,error:"",read:0,saved:0,skipped:0,auto:false,changed:(pf&&pf.changed)||[]};pfRun()}
 // a fix that would change a child's name, a class or a child's quoted words is left out, whatever the proofread says
 function pfSafe(text,f){const at=text.indexOf(f.from);if(at<0)return false;const end=at+f.from.length;
   const quotes=[...text.matchAll(/["“][^"”]{1,400}["”]/g)];
@@ -15956,10 +15956,10 @@ function pfSafe(text,f){const at=text.indexOf(f.from);if(at<0)return false;const
   return true}
 function pfApply(text,fixes){let t=String(text||"");for(const f of fixes)if(t.includes(f.from)&&pfSafe(t,f))t=t.replace(f.from,f.to);return t}
 // more is read while some are still waiting and fewer than a page's worth wait for the director
-const pfWants=()=>!!pf&&!pf.running&&!pf.paused&&pf.order.some(id=>pf.items.get(id).status==="waiting")&&pf.order.filter(id=>pf.items.get(id).status==="ready").length<PF_AHEAD;
+const pfWants=()=>!!pf&&!pf.running&&!pf.paused&&pf.order.some(id=>pf.items.get(id).status==="waiting")&&(pf.auto||pf.order.filter(id=>pf.items.get(id).status==="ready").length<PF_AHEAD);
 async function pfRun(){if(!pfWants())return;pf.running=true;
   try{for(;;){if(!pf||pf.paused||view!=="proofobs")break;
-    const ready=pf.order.filter(id=>pf.items.get(id).status==="ready").length;if(ready>=PF_AHEAD)break;
+    const ready=pf.order.filter(id=>pf.items.get(id).status==="ready").length;if(ready>=PF_AHEAD&&!pf.auto)break;
     const batch=pf.order.filter(id=>pf.items.get(id).status==="waiting").slice(0,PF_BATCH).map(id=>pf.items.get(id));if(!batch.length)break;
     const F=[];for(const x of batch){const n=notices.get(x.id);if(!n){x.status="gone";continue}x.status="reading";x.orig={noticed:String(n.noticed||""),wonder:String(n.wonder||"")};
       if(x.orig.noticed.trim())F.push({k:x.id+"|n",text:x.orig.noticed});if(x.orig.wonder.trim())F.push({k:x.id+"|w",text:x.orig.wonder})}
@@ -15970,7 +15970,9 @@ async function pfRun(){if(!pfWants())return;pf.running=true;
       pf.paused=true;break}
     const fixes=proofFixes(out,F);
     for(const x of batch){if(x.status!=="reading")continue;const mine=k=>fixes.filter(f=>f.k===x.id+"|"+k);
-      x.fixed={noticed:pfApply(x.orig.noticed,mine("n")),wonder:pfApply(x.orig.wonder,mine("w"))};x.status="ready";pf.read++}
+      x.fixed={noticed:pfApply(x.orig.noticed,mine("n")),wonder:pfApply(x.orig.wonder,mine("w"))};x.status="ready";pf.read++;
+      // Proofread and approve all saves each as it is read, and keeps the ones whose words changed for the director to look over
+      if(pf.auto){const changed=x.fixed.noticed!==x.orig.noticed||x.fixed.wonder!==x.orig.wonder;if(pfSave(x)&&changed)pf.changed.push({id:x.id,ids:x.ids.slice(),orig:x.orig,fixed:x.fixed,at:Date.now()})}}
     pf.error="";pfPaint()}}
   finally{if(pf)pf.running=false;setTimeout(pfPaint,0)}}
 // the words as written and as proofread, word by word, with what was taken out and what was put in marked
@@ -16002,9 +16004,19 @@ function renderProofObs(){
     <section class="card"><div class="pfcount"><b id="pf-left">${left===0?"Every observation has been proofread.":left===1?"1 observation left to proofread.":left+" observations left to proofread."}</b>${pf.skipped?` <span class="cnt">${pf.skipped} skipped for now.</span>`:""}</div>
       ${total?`<div class="pfbar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${pf.read}" aria-label="Proofread so far"><span style="width:${Math.round(100*pf.read/Math.max(1,total))}%"></span></div><div class="cnt">Proofread ${pf.read} of ${total}${doneN?`. ${pf.saved} approved`:""}.${reading?" Reading the next few.":pf.paused&&!pf.error?" Paused.":""}</div>`:""}
       ${pf.error?`<div class="hint warnline" role="alert" style="margin-top:8px">${esc(pf.error)}</div>`:""}
-      <div class="actions">${ready.length?`<button class="btn small" data-pfall="1">Approve all ${ready.length}</button>`:""}${pf.error?`<button class="btn small ghost" data-pfgo="1">Try again</button>`:pf.paused?`<button class="btn small ghost" data-pfgo="1">Go on</button>`:items.some(x=>x.status==="waiting")?`<button class="btn small ghost" data-pfpause="1">Pause</button>`:""}</div></section>
-    ${shown.map(pfItemHtml).join("")||(left?"":`<div class="empty">Nothing is waiting to be proofread.</div>`)}`;
+      <div class="actions">${pf.auto&&!pf.paused&&left?`<button class="btn small" data-pfstop="1">Pause</button>`:left?`<button class="btn small" data-pfauto="1">Proofread and approve all</button>`:""}${ready.length&&!pf.auto?`<button class="btn small ghost" data-pfall="1">Approve all ${ready.length}</button>`:""}${pf.error?`<button class="btn small ghost" data-pfgo="1">Try again</button>`:pf.paused?`<button class="btn small ghost" data-pfgo="1">Go on</button>`:items.some(x=>x.status==="waiting")?`<button class="btn small ghost" data-pfpause="1">Pause</button>`:""}</div></section>
+    ${pf.auto?`<section class="card"><div class="cnt">${pf.paused?"Paused.":left?"Proofreading and approving as it goes. Keep this page open.":"Done."} ${pf.saved.toLocaleString()} approved so far.</div></section>`:shown.map(pfItemHtml).join("")||(left?"":`<div class="empty">Nothing is waiting to be proofread.</div>`)}
+    ${pfChangedHtml()}`;
   if(pfWants())setTimeout(pfRun,0)}
+// the observations whose words changed while Proofread and approve all ran, as written beside proofread, each with Undo
+function pfChangedHtml(){const list=(pf&&pf.changed||[]).filter(c=>!c.undone);if(!list.length)return "";
+  return `<details class="card" ${pf.auto&&!pf.paused&&pfLeft()?"":"open"}><summary><b>Changed, ${list.length.toLocaleString()}</b> <span class="cnt">the observations whose words changed, newest first</span></summary>
+    ${list.slice().reverse().slice(0,60).map(c=>{const n=notices.get(c.id);if(!n)return "";
+      const parts=[["noticed","What I noticed"],["wonder","What I wonder"]].filter(([k])=>c.orig[k]!==c.fixed[k]);
+      return `<div style="border-top:1px solid var(--line);padding:8px 0"><div class="cnt"><b>${esc(momentHeading(n)||firstLine(n.noticed,60)||"An observation")}</b>, ${esc(n.by||"An educator")}</div>
+        ${parts.map(([k,l])=>{const [o,f]=pfDiff(c.orig[k],c.fixed[k]);return `<div class="pfrow"><div><div class="lbl">${l}, as written</div><div class="pftext">${o}</div></div><div><div class="lbl">${l}, proofread</div><div class="pftext">${f}</div></div></div>`}).join("")}
+        <div class="actions"><button class="linkbtn" data-pfundo="${esc(c.id)}">Undo</button></div></div>`}).join("")}
+    ${list.length>60?`<div class="cnt">The newest 60 are shown.</div>`:""}</details>`}
 function pfPaint(){if(view==="proofobs"){const y=window.scrollY;const ae=document.activeElement,k=ae&&ae.dataset&&ae.dataset.pfedit;if(k)return;renderProofObs();window.scrollTo(0,y)}}
 function pfSave(x){const n0=notices.get(x.id);if(!n0)return false;const at=Date.now(),by=whoAmI();
   for(const id of x.ids){const n=notices.get(id);if(!n)continue;const patch={proofread:{at,by}};
@@ -16013,7 +16025,11 @@ function pfSave(x){const n0=notices.get(x.id);if(!n0)return false;const at=Date.
     patchNotice(id,patch)}
   x.status="done";pf.saved++;return true}
 document.addEventListener("input",e=>{const t=e.target.closest&&e.target.closest("[data-pfedit]");if(!t||!pf)return;const [id,k]=t.dataset.pfedit.split("|");const x=pf.items.get(id);if(x&&x.fixed)x.fixed[k]=t.value});
-document.addEventListener("click",e=>{const t=e.target.closest("[data-pfok],[data-pfskip],[data-pfedit1],[data-pfall],[data-pfgo],[data-pfpause]");if(!t||!pf||view!=="proofobs")return;const d=t.dataset;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-pfok],[data-pfskip],[data-pfedit1],[data-pfall],[data-pfgo],[data-pfpause],[data-pfauto],[data-pfstop],[data-pfundo]");if(!t||!pf||view!=="proofobs")return;const d=t.dataset;
+  if(d.pfauto){pf.auto=true;pf.paused=false;pf.error="";const r=pf.order.map(id=>pf.items.get(id)).filter(x=>x.status==="ready");for(const x of r){const ch=x.fixed.noticed!==x.orig.noticed||x.fixed.wonder!==x.orig.wonder;if(pfSave(x)&&ch)pf.changed.push({id:x.id,ids:x.ids.slice(),orig:x.orig,fixed:x.fixed,at:Date.now()})}}
+  else if(d.pfstop){pf.paused=true}
+  else if(d.pfundo){const c=pf.changed.find(x=>x.id===d.pfundo&&!x.undone);if(c){for(const id of c.ids){const n=notices.get(id);if(!n)continue;const patch={};if(n.noticed===c.fixed.noticed)patch.noticed=c.orig.noticed;if((n.wonder||"")===c.fixed.wonder)patch.wonder=c.orig.wonder;if(Object.keys(patch).length)patchNotice(id,patch)}c.undone=true;toast("Put back as written.")}}
+  else
   if(d.pfok){const x=pf.items.get(d.pfok);if(x&&x.status==="ready"){pfSave(x);toast("Saved as proofread.")}}
   else if(d.pfskip){const x=pf.items.get(d.pfskip);if(x){x.status="skipped";pf.skipped++}}
   else if(d.pfedit1){const x=pf.items.get(d.pfedit1);if(x)x.edit=true}

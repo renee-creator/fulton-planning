@@ -2687,6 +2687,15 @@ async function displayFeed() {
   if (recent.length < 10) recent = shown.slice(0, 10);
   // photos and observations take turns across the classes, so no one class fills the screen
   const byRoom = list => { const groups = new Map(); for (const n of list) { const r = roomsOf(n)[0] || ''; if (!groups.has(r)) groups.set(r, []); groups.get(r).push(n); } const out = []; const gs = [...groups.values()]; for (let i = 0; out.length < list.length; i++) for (const g of gs) if (g[i]) out.push(g[i]); return out; };
+  // one photo from each observation, so a post with many photos takes one place, the largest photo of the post
+  { const best = new Map(); for (const n of recent) { const k = n.group || n.id; const p = photoOf(n); const size = (p.w || 1) * (p.h || 1);
+      const b = best.get(k); if (!b || size > b.size) best.set(k, { n, size }); }
+    recent = recent.filter(n => best.get(n.group || n.id).n === n); }
+  // the four weeks take turns through the day. The pick changes each hour, the newest week always has a place.
+  { const hour = Math.floor(now / 36e5); const mix = id => crypto.createHash('sha1').update(id + '|' + hour).digest().readUInt32BE(0);
+    const newest = recent.filter(n => now - (n.at || 0) < 7 * 864e5).slice(0, 12);
+    const rest = recent.filter(n => !newest.includes(n)).sort((a, b) => mix(a.id) - mix(b.id)).slice(0, 36 - newest.length);
+    recent = [...newest, ...rest].sort((a, b) => (b.at || 0) - (a.at || 0)); }
   recent = byRoom(recent.slice(0, 36));
   const moments = recent.map(n => ({ id: n.id, at: n.at || 0, photo: photoOf(n), noticed: trim(n.noticed, 300), wonder: trim(n.wonder, 200), rooms: roomsOf(n),
     children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
