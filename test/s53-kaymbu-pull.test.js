@@ -140,22 +140,27 @@ test('the weekly reading report offers Read this week again to the director', as
   assert.deepStrictEqual(s.errors, []);
 });
 
-test('earlier years are counted for enrolled children only, before the school year, and nothing comes in', () => {
+test('earlier years are counted by Kaymbu\'s own id for each child enrolled now, and nothing comes in', () => {
   const x = setup();
   x.store.recs.children.set('c4', { doc: { first: 'Moss', last: 'Fen', classroom: 'South', status: 'withdrawn' } });
+  x.store.recs.children.get('c3').doc.dob = '2022-04-06';
   const kids = x.pull.enrolledKids(); const hold = x.pull.holding();
   const before = x.pull.laMidnight('2026-08-15');
-  const acc = { seen: new Set(), read: 0, oldest: 0, moments: 0, photos: 0, videos: 0, held: 0, kids: {} };
-  const old = '2024-10-02T17:00:00.000Z', older = '2023-09-05T17:00:00.000Z';
+  const acc = { seen: new Set(), read: 0, names: {}, link: {}, early: [] };
+  const old = '2024-10-02T17:00:00.000Z', older = '2023-09-05T17:00:00.000Z', long = '2014-07-18T17:00:00.000Z';
+  const who = (pairs) => ({ students: pairs.map(p => p[0]), studentInfo: Object.fromEntries(pairs.map(p => [p[0], { firstName: p[1], lastName: p[2] }])) });
   x.pull.tallyBook(acc, [
-    mom('b1', Object.assign({ dateCaptured: old, creationDate: old }, tag('Wren Alder', 'Pip Cedar'))),
-    mom('b2', Object.assign({ dateCaptured: older, creationDate: older, video: true }, tag('Pip Cedar'))),
-    mom('b3', Object.assign({ dateCaptured: old, creationDate: old }, tag('Moss Fen'))),
-    mom('b4', Object.assign({}, tag('Wren Alder'))),
-    mom('b1', Object.assign({ dateCaptured: old, creationDate: old }, tag('Wren Alder'))),
+    mom('b4', who([['kW', 'Wren', 'Alder']])),                                                       // this year ties kW to Wren
+    mom('b5', who([['kP', 'Pip', 'Cedar']])),
+    mom('b1', Object.assign({ dateCaptured: old, creationDate: old }, who([['kW', 'Wren', 'Alder'], ['kP', 'Pip', 'Cedar']]))),
+    mom('b2', Object.assign({ dateCaptured: older, creationDate: older, video: true }, who([['kP', 'Pip', 'Cedar']]))),
+    mom('b3', Object.assign({ dateCaptured: old, creationDate: old }, who([['kM', 'Moss', 'Fen']]))),
+    mom('b6', Object.assign({ dateCaptured: long, creationDate: long }, who([['kOld', 'Pip', 'Cedar']]))),   // another Pip Cedar, before this one was born
+    mom('b7', Object.assign({ dateCaptured: long, creationDate: long }, who([['kW2', 'Wren', '']]))),        // a first name only, from years ago
+    mom('b1', Object.assign({ dateCaptured: old, creationDate: old }, who([['kW', 'Wren', 'Alder']]))),
   ], before, kids, hold);
-  assert.deepStrictEqual([acc.read, acc.moments, acc.photos, acc.videos], [4, 2, 1, 1], 'a withdrawn child, this year and a repeat are left out');
   const s = x.pull.bookSummary(acc, kids, before);
+  assert.deepStrictEqual([s.moments, s.photos, s.videos], [2, 1, 1], 'a withdrawn child, an older child of the same name, a first name only and a repeat are left out');
   assert.strictEqual(s.oldest, '2023-09-05');
   assert.deepStrictEqual(s.rooms.South, { children: 1, withMoments: 1, moments: 2, videos: 1, first: '2023-09-05' });
   assert.deepStrictEqual(s.rooms.North, { children: 2, withMoments: 1, moments: 1, videos: 0, first: '2024-10-02' });

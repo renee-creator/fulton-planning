@@ -413,31 +413,58 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       out.set(id, { id, name: [c.first, c.last].filter(Boolean).join(' '), room: c.classroom || '' }); }
     return out;
   }
-  // one page of Moments added to the tallies. Only Moments taken before `before` and tagged with an enrolled child count.
+  // Kaymbu's own record of each child tagged in a Moment, its id with the name
+  function kaymbuIds(m) {
+    const info = m.studentInfo || {};
+    return (m.students || []).map(x => typeof x === 'object' && x ? { sid: String(x._id || x.id || ''), first: clean(x.firstName), last: clean(x.lastName) }
+      : { sid: String(x), first: clean((info[x] || {}).firstName), last: clean((info[x] || {}).lastName) }).filter(x => x.sid && x.first);
+  }
+  // One page of Moments added to the tallies. Each child is followed by Kaymbu's own id for them, so a child from years
+  // ago with the same name is never counted as a child here now. This year's Moments tie each Kaymbu id to a child in
+  // TREE. Earlier Moments are kept as small lines and counted at the end.
   function tallyBook(acc, list, before, kids, hold) {
     for (const m of list) {
       if (!m || !m._id || acc.seen.has(m._id)) continue; acc.seen.add(m._id); acc.read++;
       const at = capturedAt(m); if (!at) continue;
-      if (!acc.oldest || at < acc.oldest) acc.oldest = at;
-      if (at >= before) continue;
-      const ids = matchChildren(kaymbuStudents(m)).ids.filter(id => kids.has(id)); if (!ids.length) continue;
-      const vid = !!m.video, held = hold.byKey.has(keyOf(m)) || hold.byKid.has(m._id);
-      acc.moments++; if (vid) acc.videos++; else acc.photos++; if (held) acc.held++;
-      for (const id of ids) { const k = acc.kids[id] || (acc.kids[id] = { n: 0, videos: 0, first: at, last: at });
-        k.n++; if (vid) k.videos++; if (at < k.first) k.first = at; if (at > k.last) k.last = at; }
+      const tagged = kaymbuIds(m); if (!tagged.length) continue;
+      for (const t of tagged) if (!acc.names[t.sid]) acc.names[t.sid] = [t.first, t.last];
+      if (at >= before) {
+        for (const t of tagged) { if (acc.link[t.sid]) continue;
+          const id = matchChildren([{ first: t.first, last: t.last }]).ids[0]; if (id && kids.has(id)) acc.link[t.sid] = id; }
+        continue;
+      }
+      acc.early.push([at, m.video ? 1 : 0, hold.byKey.has(keyOf(m)) || hold.byKid.has(m._id) ? 1 : 0, tagged.map(t => t.sid)]);
     }
     return acc;
   }
+  // the earlier Moments counted for each child enrolled now. A Kaymbu id not seen this year is tied to a child only by
+  // first and last name together, and never for a Moment taken before that child was born.
+  function bookTotals(acc, kids) {
+    const n = s => words(s).replace(/\s/g, '');
+    const link = Object.assign({}, acc.link), born = {};
+    for (const [id, c] of kids) { const r = store.recs.children.get(id); const dob = r && r.doc && r.doc.dob; born[id] = /^\d{4}-\d{2}-\d{2}$/.test(dob || '') ? laMidnight(dob) : 0; }
+    for (const [sid, [first, last]] of Object.entries(acc.names)) { if (link[sid] || !last) continue;
+      const hit = [...kids.values()].filter(c => { const d = (store.recs.children.get(c.id) || {}).doc || {}; return [d.first, d.preferred].some(f => f && n(f) === n(first)) && n(d.last) === n(last); });
+      if (hit.length === 1) link[sid] = hit[0].id; }
+    const out = { moments: 0, photos: 0, videos: 0, held: 0, oldest: 0, kids: {} };
+    for (const [at, vid, held, sids] of acc.early) {
+      const ids = [...new Set(sids.map(s => link[s]).filter(id => id && at >= born[id]))]; if (!ids.length) continue;
+      out.moments++; if (vid) out.videos++; else out.photos++; if (held) out.held++; if (!out.oldest || at < out.oldest) out.oldest = at;
+      for (const id of ids) { const k = out.kids[id] || (out.kids[id] = { n: 0, videos: 0, first: at, last: at });
+        k.n++; if (vid) k.videos++; if (at < k.first) k.first = at; if (at > k.last) k.last = at; }
+    }
+    return out;
+  }
   function bookSummary(acc, kids, before) {
-    const rooms = {};
+    const t = bookTotals(acc, kids); const rooms = {};
     for (const [id, c] of kids) { const room = c.room || 'No class'; const r = rooms[room] || (rooms[room] = { children: 0, withMoments: 0, moments: 0, videos: 0, first: 0 });
-      r.children++; const k = acc.kids[id]; if (!k) continue;
+      r.children++; const k = t.kids[id]; if (!k) continue;
       r.withMoments++; r.moments += k.n; r.videos += k.videos; if (!r.first || k.first < r.first) r.first = k.first; }
     for (const r of Object.values(rooms)) r.first = r.first ? laDay(r.first) : '';
-    const list = [...kids.values()].map(c => { const k = acc.kids[c.id] || {}; return { id: c.id, name: c.name, room: c.room, n: k.n || 0, videos: k.videos || 0, first: k.first ? laDay(k.first) : '' }; })
+    const list = [...kids.values()].map(c => { const k = t.kids[c.id] || {}; return { id: c.id, name: c.name, room: c.room, n: k.n || 0, videos: k.videos || 0, first: k.first ? laDay(k.first) : '' }; })
       .sort((a, b) => a.room.localeCompare(b.room) || b.n - a.n);
-    return { at: Date.now(), before: laDay(before), read: acc.read, oldest: acc.oldest ? laDay(acc.oldest) : '', moments: acc.moments, photos: acc.photos, videos: acc.videos, held: acc.held,
-      mb: Math.round(acc.photos * BOOK_MB), rooms, kids: list };
+    return { at: Date.now(), before: laDay(before), read: acc.read, oldest: t.oldest ? laDay(t.oldest) : '', moments: t.moments, photos: t.photos, videos: t.videos, held: t.held,
+      mb: Math.round(t.photos * BOOK_MB), rooms, kids: list };
   }
   function startBookCount() {
     if (!configured()) throw new Error('KAYMBU_EMAIL and KAYMBU_PASSWORD are not both set on Render.');
@@ -452,7 +479,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     busy = 'book'; const t0 = Date.now();
     try {
       const before = laMidnight(since()); const kids = enrolledKids(); const hold = holding();
-      const acc = { seen: new Set(), read: 0, oldest: 0, moments: 0, photos: 0, videos: 0, held: 0, kids: {} };
+      const acc = { seen: new Set(), read: 0, names: {}, link: {}, early: [] };
       let after = Date.now() + 864e5;
       for (let page = 0; page < 20000; page++) {
         const list = await api('POST', '/api/moments/grid', gridBody(after));
@@ -466,7 +493,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       }
       const est = bookSummary(acc, kids, before);
       saveState({ book: { status: 'ready', estimate: est, lastError: '' } });
-      log(`Earlier years counted: ${acc.read} Moments read back to ${est.oldest}, ${acc.moments} of enrolled children before ${est.before}, ${Math.round((Date.now() - t0) / 1000)} s`);
+      log(`Earlier years counted: ${acc.read} Moments read, ${est.moments} of enrolled children before ${est.before} back to ${est.oldest}, ${Math.round((Date.now() - t0) / 1000)} s`);
       return est;
     } finally { busy = ''; }
   }
@@ -531,5 +558,5 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
 
   return { start, hourly, startEstimate, estimate, startBookCount, bookCount, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
-    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
+    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };
