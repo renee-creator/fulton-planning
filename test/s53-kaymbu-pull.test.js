@@ -139,3 +139,26 @@ test('the weekly reading report offers Read this week again to the director', as
   assert.match(await s.p.evaluate(() => document.querySelector('[data-readagain]').textContent), /Read this week again/);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('earlier years are counted for enrolled children only, before the school year, and nothing comes in', () => {
+  const x = setup();
+  x.store.recs.children.set('c4', { doc: { first: 'Moss', last: 'Fen', classroom: 'South', status: 'withdrawn' } });
+  const kids = x.pull.enrolledKids(); const hold = x.pull.holding();
+  const before = x.pull.laMidnight('2026-08-15');
+  const acc = { seen: new Set(), read: 0, oldest: 0, moments: 0, photos: 0, videos: 0, held: 0, kids: {} };
+  const old = '2024-10-02T17:00:00.000Z', older = '2023-09-05T17:00:00.000Z';
+  x.pull.tallyBook(acc, [
+    mom('b1', Object.assign({ dateCaptured: old, creationDate: old }, tag('Wren Alder', 'Pip Cedar'))),
+    mom('b2', Object.assign({ dateCaptured: older, creationDate: older, video: true }, tag('Pip Cedar'))),
+    mom('b3', Object.assign({ dateCaptured: old, creationDate: old }, tag('Moss Fen'))),
+    mom('b4', Object.assign({}, tag('Wren Alder'))),
+    mom('b1', Object.assign({ dateCaptured: old, creationDate: old }, tag('Wren Alder'))),
+  ], before, kids, hold);
+  assert.deepStrictEqual([acc.read, acc.moments, acc.photos, acc.videos], [4, 2, 1, 1], 'a withdrawn child, this year and a repeat are left out');
+  const s = x.pull.bookSummary(acc, kids, before);
+  assert.strictEqual(s.oldest, '2023-09-05');
+  assert.deepStrictEqual(s.rooms.South, { children: 1, withMoments: 1, moments: 2, videos: 1, first: '2023-09-05' });
+  assert.deepStrictEqual(s.rooms.North, { children: 2, withMoments: 1, moments: 1, videos: 0, first: '2024-10-02' });
+  assert.strictEqual(s.kids.find(k => k.id === 'c2').n, 0);
+  assert.strictEqual(x.store.recs.notices.size + x.store.recs.kaymbu.size, 0);
+});

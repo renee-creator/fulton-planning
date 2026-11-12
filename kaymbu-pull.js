@@ -401,6 +401,76 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     finally { busy = ''; }
   }
 
+  /* ---------- earlier years, for the children's books ---------- */
+  // Counts the Moments taken before this school year of every child enrolled now, as far back as Kaymbu holds them. It
+  // keeps nothing and reads no photos, so it costs nothing. Its numbers show the director what the books could draw on
+  // before anything is brought in. It reads Kaymbu page by page and keeps only the tallies.
+  const BOOK_MB = 0.35;                         // about how large one photo is, kept at the size Kaymbu shows it
+  function enrolledKids() {
+    const out = new Map();
+    for (const [id, r] of store.recs.children) { const c = r && !r.deleted && r.doc; if (!c || !c.first) continue;
+      if ((c.status || 'active') !== 'active') continue;
+      out.set(id, { id, name: [c.first, c.last].filter(Boolean).join(' '), room: c.classroom || '' }); }
+    return out;
+  }
+  // one page of Moments added to the tallies. Only Moments taken before `before` and tagged with an enrolled child count.
+  function tallyBook(acc, list, before, kids, hold) {
+    for (const m of list) {
+      if (!m || !m._id || acc.seen.has(m._id)) continue; acc.seen.add(m._id); acc.read++;
+      const at = capturedAt(m); if (!at) continue;
+      if (!acc.oldest || at < acc.oldest) acc.oldest = at;
+      if (at >= before) continue;
+      const ids = matchChildren(kaymbuStudents(m)).ids.filter(id => kids.has(id)); if (!ids.length) continue;
+      const vid = !!m.video, held = hold.byKey.has(keyOf(m)) || hold.byKid.has(m._id);
+      acc.moments++; if (vid) acc.videos++; else acc.photos++; if (held) acc.held++;
+      for (const id of ids) { const k = acc.kids[id] || (acc.kids[id] = { n: 0, videos: 0, first: at, last: at });
+        k.n++; if (vid) k.videos++; if (at < k.first) k.first = at; if (at > k.last) k.last = at; }
+    }
+    return acc;
+  }
+  function bookSummary(acc, kids, before) {
+    const rooms = {};
+    for (const [id, c] of kids) { const room = c.room || 'No class'; const r = rooms[room] || (rooms[room] = { children: 0, withMoments: 0, moments: 0, videos: 0, first: 0 });
+      r.children++; const k = acc.kids[id]; if (!k) continue;
+      r.withMoments++; r.moments += k.n; r.videos += k.videos; if (!r.first || k.first < r.first) r.first = k.first; }
+    for (const r of Object.values(rooms)) r.first = r.first ? laDay(r.first) : '';
+    const list = [...kids.values()].map(c => { const k = acc.kids[c.id] || {}; return { id: c.id, name: c.name, room: c.room, n: k.n || 0, videos: k.videos || 0, first: k.first ? laDay(k.first) : '' }; })
+      .sort((a, b) => a.room.localeCompare(b.room) || b.n - a.n);
+    return { at: Date.now(), before: laDay(before), read: acc.read, oldest: acc.oldest ? laDay(acc.oldest) : '', moments: acc.moments, photos: acc.photos, videos: acc.videos, held: acc.held,
+      mb: Math.round(acc.photos * BOOK_MB), rooms, kids: list };
+  }
+  function startBookCount() {
+    if (!configured()) throw new Error('KAYMBU_EMAIL and KAYMBU_PASSWORD are not both set on Render.');
+    if (busy) throw new Error('TREE is reading Kaymbu right now. Try again in a few minutes.');
+    const bk = stateDoc().book || {};
+    if (bk.status === 'counting') return stateDoc();
+    saveState({ book: Object.assign({}, bk, { status: 'counting', startedAt: Date.now(), lastError: '' }) });
+    bookCount().catch(e => { saveState({ book: Object.assign({}, stateDoc().book, { status: bk.estimate ? 'ready' : 'none', lastError: String(e.message || e).slice(0, 300) }) }); log('The earlier years could not be counted', e.message); });
+    return stateDoc();
+  }
+  async function bookCount() {
+    busy = 'book'; const t0 = Date.now();
+    try {
+      const before = laMidnight(since()); const kids = enrolledKids(); const hold = holding();
+      const acc = { seen: new Set(), read: 0, oldest: 0, moments: 0, photos: 0, videos: 0, held: 0, kids: {} };
+      let after = Date.now() + 864e5;
+      for (let page = 0; page < 20000; page++) {
+        const list = await api('POST', '/api/moments/grid', gridBody(after));
+        if (!Array.isArray(list) || !list.length) break;
+        tallyBook(acc, list, before, kids, hold);
+        const last = list[list.length - 1];
+        if (!last.searchAfter || last.searchAfter === after) break;
+        after = last.searchAfter;
+        if (Date.now() - t0 > 50 * 60e3) throw new Error('Counting took longer than 50 minutes, so it stopped');
+        if (page % 50 === 49) saveState({ book: Object.assign({}, stateDoc().book, { progress: acc.read }) });
+      }
+      const est = bookSummary(acc, kids, before);
+      saveState({ book: { status: 'ready', estimate: est, lastError: '' } });
+      log(`Earlier years counted: ${acc.read} Moments read back to ${est.oldest}, ${acc.moments} of enrolled children before ${est.before}, ${Math.round((Date.now() - t0) / 1000)} s`);
+      return est;
+    } finally { busy = ''; }
+  }
+
   /* ---------- the director's choices on what was set aside ---------- */
   async function putBack(id) {
     const r = store.recs.kaymbu.get(id); const d = r && !r.deleted && r.doc; if (!d || !d.kid) throw new Error('That Moment is no longer set aside.');
@@ -445,19 +515,21 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const list = []; for (const [, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside') list.push(d); }
     list.sort((a, b) => (b.published || 0) - (a.published || 0));
     const accepted = [...store.recs.kaymbu.values()].filter(r => r && !r.deleted && r.doc && r.doc.status === 'accepted').length;
-    return { configured: configured(), email: EMAIL(), busy: busy || (bringing ? 'back' : ''), lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' },
+    return { configured: configured(), email: EMAIL(), busy: busy || (bringing ? 'back' : ''), lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' }, book: st.book || { status: 'none' },
       quiet: quietHours(), aside: list.map(d => ({ id: d.id, reason: d.reason, why: d.why, thumb: d.thumb, video: d.video, room: d.room, kaymbuClass: d.kaymbuClass, words: d.words, students: d.students, day: d.day })), accepted, reasons: REASON };
   }
   const statusLine = () => [configured(), configured() ? `TREE reads Kaymbu every hour as ${EMAIL()}${stateDoc().lastError ? ', but the last look stopped. ' + stateDoc().lastError : '.'}` : 'TREE does not read Kaymbu yet. Add KAYMBU_EMAIL and KAYMBU_PASSWORD under Environment.'];
 
   // the hourly look starts a few minutes after the records load, and the look back runs in its quiet hours
   function start() {
+    // a count cut short by a restart is shown as stopped, so it can be started again
+    const bk = stateDoc().book; if (bk && bk.status === 'counting') saveState({ book: Object.assign({}, bk, { status: bk.estimate ? 'ready' : 'none', lastError: 'TREE restarted while counting. Count again.' }) });
     setTimeout(() => hourly('start').catch(() => {}), 4 * 60e3).unref();
     setInterval(() => hourly().catch(() => {}), 60 * 60e3).unref();
     setInterval(() => lookbackTick().catch(() => {}), 10 * 60e3).unref();
   }
 
-  return { start, hourly, startEstimate, estimate, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
+  return { start, hourly, startEstimate, estimate, startBookCount, bookCount, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
-    keyOf, matchChildren, takePost, posts, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
+    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };

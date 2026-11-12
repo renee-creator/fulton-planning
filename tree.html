@@ -4978,7 +4978,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="75f7412d1746";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="f782c0ea4d9e";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -17484,7 +17484,7 @@ function videoClipsHtml(){if(!isDirector())return"";const on=clipsOn(),st=(windo
    year once she says yes to its count, and what the screener set aside waits here with Put it back. */
 let kpInfo=null,kpBusy=false,kpMore=0,kpPoll=null;
 function kpLoad(path,body,msg){if(kpBusy)return;kpBusy=true;window.FP_API(path||"/api/kaymbu/pull",body||{}).then(j=>{kpInfo=j;if(msg)toast(msg)},e=>{if(path)toast(e&&e.message||"That did not work. Try again.");else kpInfo={error:e&&e.message||"Kaymbu Moments could not be read."}}).finally(()=>{kpBusy=false;if(view==="settings")kpRedraw();
-  clearTimeout(kpPoll);if(kpInfo&&view==="settings"&&(kpInfo.busy||(kpInfo.lookback&&kpInfo.lookback.status==="counting")))kpPoll=setTimeout(()=>kpLoad(),15000)})}
+  clearTimeout(kpPoll);if(kpInfo&&view==="settings"&&(kpInfo.busy||(kpInfo.lookback&&kpInfo.lookback.status==="counting")||(kpInfo.book&&kpInfo.book.status==="counting")))kpPoll=setTimeout(()=>kpLoad(),15000)})}
 // the card is redrawn in place. Inside the folded Settings card only its body changes, so it stays open where it is.
 function kpRedraw(){const c=$("#kpcard");if(!c)return;const body=c.querySelector(".setbody");if(!body){c.outerHTML=kaymbuPullHtml();return}
   const tmp=document.createElement("div");tmp.innerHTML=kaymbuPullHtml();const sec=tmp.querySelector("section");if(!sec)return;const l=sec.querySelector(":scope > .lbl");if(l)l.remove();
@@ -17518,6 +17518,21 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
     else back+=`<div class="cnt">${st==="paused"?"Paused.":k.quiet?"Running now, in the evening, night and weekend hours.":"Waiting for the evening. It runs in the evenings, at night and on weekends."}</div>
       <div class="cnt">So far ${KP_N(done.kept,"photo")} brought in, ${KP_N(done.merged,"photo")} already in TREE, ${(done.aside||0).toLocaleString()} set aside${done.videos?`, ${KP_N(done.videos,"video")} to Video clips`:""}.</div>${lb.lastError?`<div class="cnt" style="color:var(--clay)">The last part stopped. ${esc(lb.lastError)} It tries again in ten minutes.</div>`:""}
       <div class="actions"><button class="btn small ghost" data-kppause="${st==="paused"?"0":"1"}">${st==="paused"?"Carry on":"Pause"}</button></div>`}
+  let book="";
+  if(k.configured){const bk=k.book||{},be=bk.estimate||null,bs=bk.status||"none";
+    const MON=d=>d?new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}):"";
+    book=`<div class="lbl" style="margin-top:14px">Earlier years, for the books</div>`;
+    if(bs==="counting")book+=`<div class="cnt"><span class="spin"></span> Counting every enrolled child's earlier Moments${bk.progress?`. ${KP_N(bk.progress,"Moment")} read so far`:""}.</div><div class="cnt">This can take half an hour. You can leave this page.</div>`;
+    else if(!be)book+=`<div class="cnt">Counts the Moments of every child enrolled now from before this school year, as far back as Kaymbu holds them.</div><div class="cnt">It reads no photos and brings nothing in, so it costs nothing.</div>${bk.lastError?`<div class="cnt" style="color:var(--clay)">The count stopped. ${esc(bk.lastError)}</div>`:""}<div class="actions"><button class="btn small" data-kpbook="1" ${k.busy?"disabled":""}>Count earlier years</button></div>`;
+    else{const order=["North","South","West"],rs=Object.keys(be.rooms||{}).sort((a,b)=>((order.indexOf(a)+1)||9)-((order.indexOf(b)+1)||9));
+      book+=`<div class="cnt">Kaymbu holds Moments back to ${esc(MON(be.oldest))}.</div>
+      <div class="cnt">Before ${esc(new Date(be.before+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}))}, children enrolled now are in ${KP_N(be.moments,"Moment")}, ${KP_N(be.photos,"photo")} and ${KP_N(be.videos,"video")}.${be.held?` ${be.held.toLocaleString()} of them ${be.held===1?"is":"are"} already in TREE.`:""}</div>
+      ${rs.map(r=>{const x=be.rooms[r];return `<div class="prow" style="margin-top:8px"><div><b>${esc(r==="No class"?r:r+" class")}</b><div class="cnt">${x.withMoments} of ${KP_N(x.children,"child","children")} have earlier Moments, ${KP_N(x.moments,"Moment")}${x.first?`, back to ${esc(MON(x.first))}`:""}</div></div></div>`}).join("")}
+      <div class="cnt" style="margin-top:8px">About ${be.mb>=1000?(be.mb/1000).toFixed(1)+" GB":be.mb+" MB"} in Google Drive once the photos come in. The screener drops dark, blurred and repeated photos first, so it will be less.</div>
+      <div class="cnt">Nothing has come in. Bringing these into each child's book is the next step, once you say yes.</div>
+      <details style="margin-top:8px"><summary class="cnt"><b>Each child</b></summary>${(be.kids||[]).map(c=>`<div class="cnt" style="padding:3px 0">${esc(c.name)}, ${esc(c.room||"no class")}. ${c.n?`${KP_N(c.n,"Moment")}${c.videos?`, ${KP_N(c.videos,"video")}`:""}, from ${esc(MON(c.first))}`:"None earlier"}</div>`).join("")}</details>
+      ${bk.lastError?`<div class="cnt" style="color:var(--clay)">The last count stopped. ${esc(bk.lastError)}</div>`:""}
+      <div class="cnt">Counted ${esc(KP_DATE(be.at))}.</div><div class="actions"><button class="btn small ghost" data-kpbook="1" ${k.busy?"disabled":""}>Count again</button></div>`}}
   const as=k.aside||[];let aside="";
   if(as.length){const rooms=[...new Set(as.map(a=>a.room||""))];
     const item=a=>`<div class="kpitem" style="display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)">
@@ -17532,11 +17547,12 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
         return `<div style="margin-top:10px"><div class="prow"><div><b>${esc(r?r+" class":"No class")}</b><div class="cnt">${list.length.toLocaleString()} set aside</div></div><span class="actions" style="margin:0;flex-wrap:wrap"><button class="btn small" data-kpbring="${esc(r)}" ${k.busy?"disabled":""}>Bring all into TREE</button><button class="btn small ghost" data-kpaccept="${esc(r)}">Leave all out</button></span></div>${part.map(item).join("")}</div>`}).join("")}
       ${as.length>shown?`<div class="actions"><button class="linkbtn" data-kpmore="1">Show more</button></div>`:""}</details>`}
   else if(k.configured)aside=`<div class="cnt" style="margin-top:14px">Nothing is set aside right now.${k.accepted?` ${KP_N(k.accepted,"Moment")} you left out stay out of TREE.`:""}</div>`;
-  return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${aside}</section>`}
-document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
+  return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${book}${aside}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpbook],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const d=t.dataset;
   if(d.kpmore){kpMore+=24;kpRedraw();return}
   if(d.kpcheck){t.disabled=true;t.textContent="Looking";kpLoad("/api/kaymbu/pull/check",{},"Kaymbu is read.");return}
+  if(d.kpbook){kpLoad("/api/kaymbu/pull/bookcount",{},"Counting. This can take half an hour.");return}
   if(d.kpcount){kpLoad("/api/kaymbu/pull/count",{},"Counting. This takes a few minutes.");return}
   if(d.kpstart){kpLoad("/api/kaymbu/pull/start",{},"The look back starts this evening.");return}
   if(d.kppause){kpLoad("/api/kaymbu/pull/pause",{on:d.kppause==="1"},d.kppause==="1"?"Paused.":"It carries on this evening.");return}

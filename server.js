@@ -3211,6 +3211,7 @@ async function handle(req, res) {
     try {
       if (step === '/check') { const r = await kaymbuPull.hourly('asked'); if (!r && kaymbuPull.view().lastError) throw new Error(kaymbuPull.view().lastError); }
       else if (step === '/count') kaymbuPull.startEstimate();
+      else if (step === '/bookcount') kaymbuPull.startBookCount();
       else if (step === '/start') kaymbuPull.approve(me.name);
       else if (step === '/pause') kaymbuPull.pause(body.on !== false);
       else if (step === '/back') { if (typeof body.id !== 'string' || !ID_RE.test(body.id)) throw new Error('That Moment is not valid.'); await kaymbuPull.putBack(body.id); }
