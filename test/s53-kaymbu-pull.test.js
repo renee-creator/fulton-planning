@@ -64,7 +64,7 @@ test('one post comes in as one observation, and the screener sets aside without 
   assert.ok(ns.every(n => n.by === 'Dee' && n.smallGroup === 'Marigold' && n.classroom === 'North'));
   assert.ok(ns.every(n => n.kaymbu.pull === 1 && n.kaymbu.batch === 'b1' && n.kaymbu.check === false));
   const aside = [...x.store.recs.kaymbu.values()].map(v => v.doc);
-  assert.strictEqual(aside.length, 2); assert.ok(aside.every(a => a.status === 'aside' && a.why));
+  assert.strictEqual(aside.length, 2); assert.ok(aside.every(a => a.why)); assert.ok(aside.every(a => a.status === (a.reason === 'similar' ? 'accepted' : 'aside')), 'a near copy is left out by itself');
   assert.strictEqual(x.posts.length, 1, 'the caption is sorted once for the post');
   // the same post read again changes nothing
   const again = await x.pull.takePost(post, {});
@@ -188,4 +188,15 @@ test('the earlier years count keeps its place, and what it saved reads back to t
   delete a.at; delete b.at;
   assert.deepStrictEqual(b, a);
   assert.strictEqual(saved.after, 'cursor');
+});
+
+test('a near copy of a kept photo is left out by itself and never waits on the Set aside list', () => {
+  const x = setup();
+  const put = (id, reason) => x.store.recs.kaymbu.set(id, { doc: { id, kid: id.slice(1), reason, status: 'aside' } });
+  put('a1', 'similar'); put('a2', 'dark');
+  assert.strictEqual(x.pull.leaveNearCopies(), 1);
+  const v = x.pull.view();
+  assert.deepStrictEqual(v.aside.map(a => a.id), ['a2']);
+  assert.strictEqual(v.accepted, 0, 'one TREE left out is not counted as one the director left out');
+  assert.strictEqual(x.store.recs.kaymbu.get('a1').doc.status, 'accepted');
 });

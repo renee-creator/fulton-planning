@@ -211,6 +211,12 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     if (!changed) return false;
     d.kaymbu = k; noteChange('notices', id); scheduleSave('notices', id); return true;
   }
+  // a near copy of a photo that was kept is left out by itself, since the kept one is in TREE, and never waits on the
+  // director's Set aside list (November 12, 2026)
+  const leftOut = () => ({ status: 'accepted', acceptedAt: Date.now(), auto: true });
+  function leaveNearCopies() { let n = 0;
+    for (const [, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside' && d.reason === 'similar') { saveAside(Object.assign({}, d, leftOut())); n++; } }
+    if (n) log(`Left out ${n} near copies of kept Kaymbu photos`); return n; }
   function aside(m, reason, why, extra) {
     const id = 'a' + m._id;
     const kids = kaymbuStudents(m);
@@ -235,7 +241,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       todo.push({ m, key, kids, own: momentWords(m) });
     }
     if (!todo.length) return out;
-    const put = (t, reason, why) => { out.aside++; out.reasons[reason] = (out.reasons[reason] || 0) + 1; if (!o.count) aside(t.m, reason, why); t.out = true; };
+    const put = (t, reason, why) => { out.aside++; out.reasons[reason] = (out.reasons[reason] || 0) + 1; if (!o.count) aside(t.m, reason, why, reason === 'similar' ? leftOut() : null); t.out = true; };
     // the rules that need no photo. A Moment the director put back skips the screener.
     for (const t of todo) {
       if (o.chosen) { t.words = t.own || batchWords; continue; }
@@ -577,7 +583,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const st = stateDoc();
     const list = []; for (const [, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside') list.push(d); }
     list.sort((a, b) => (b.published || 0) - (a.published || 0));
-    const accepted = [...store.recs.kaymbu.values()].filter(r => r && !r.deleted && r.doc && r.doc.status === 'accepted').length;
+    const accepted = [...store.recs.kaymbu.values()].filter(r => r && !r.deleted && r.doc && r.doc.status === 'accepted' && !r.doc.auto).length;
     return { configured: configured(), email: EMAIL(), busy: busy || (bringing ? 'back' : ''), lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' }, book: st.book || { status: 'none' },
       quiet: quietHours(), aside: list.map(d => ({ id: d.id, reason: d.reason, why: d.why, thumb: d.thumb, video: d.video, room: d.room, kaymbuClass: d.kaymbuClass, words: d.words, students: d.students, day: d.day })), accepted, reasons: REASON };
   }
@@ -585,6 +591,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
 
   // the hourly look starts a few minutes after the records load, and the look back runs in its quiet hours
   function start() {
+    setTimeout(() => { if (store.ready) leaveNearCopies(); }, 60e3).unref();
     // a count cut short by a restart carries on from its saved place
     setTimeout(() => resumeBook(0), 90e3).unref();
     setTimeout(() => hourly('start').catch(() => {}), 4 * 60e3).unref();
@@ -594,5 +601,5 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
 
   return { start, hourly, startEstimate, estimate, startBookCount, bookCount, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
-    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
+    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, leaveNearCopies, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };
