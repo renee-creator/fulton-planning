@@ -167,3 +167,25 @@ test('earlier years are counted by Kaymbu\'s own id for each child enrolled now,
   assert.strictEqual(s.kids.find(k => k.id === 'c2').n, 0);
   assert.strictEqual(x.store.recs.notices.size + x.store.recs.kaymbu.size, 0);
 });
+
+test('the earlier years count keeps its place, and what it saved reads back to the same counts', () => {
+  const x = setup();
+  const kids = x.pull.enrolledKids(); const hold = x.pull.holding(); const before = x.pull.laMidnight('2026-08-15');
+  const old = '2024-10-02T17:00:00.000Z', older = '2023-09-05T17:00:00.000Z';
+  const who = (pairs) => ({ students: pairs.map(p => p[0]), studentInfo: Object.fromEntries(pairs.map(p => [p[0], { firstName: p[1], lastName: p[2] }])) });
+  const pageA = [mom('a1', who([['kW', 'Wren', 'Alder']])), mom('a2', Object.assign({ dateCaptured: old, creationDate: old }, who([['kW', 'Wren', 'Alder'], ['kP', 'Pip', 'Cedar']])))];
+  const pageB = [mom('a2', Object.assign({ dateCaptured: old, creationDate: old }, who([['kW', 'Wren', 'Alder']]))), mom('a3', Object.assign({ dateCaptured: older, creationDate: older, video: true }, who([['kP', 'Pip', 'Cedar']])))];
+  // all at once
+  const one = { seen: new Set(), read: 0, names: {}, link: {}, early: [] };
+  x.pull.tallyBook(one, pageA, before, kids, hold); x.pull.tallyBook(one, pageB, before, kids, hold);
+  // saved after the first page, read back after a restart, then the second page
+  const part = { seen: new Set(), read: 0, names: {}, link: {}, early: [] };
+  x.pull.tallyBook(part, pageA, before, kids, hold);
+  const saved = JSON.parse(JSON.stringify(x.pull.packAcc(part, before, 'cursor', pageA.map(m => m._id))));
+  const back = x.pull.unpackAcc(saved);
+  x.pull.tallyBook(back, pageB, before, kids, hold);
+  const a = x.pull.bookSummary(one, kids, before), b = x.pull.bookSummary(back, kids, before);
+  delete a.at; delete b.at;
+  assert.deepStrictEqual(b, a);
+  assert.strictEqual(saved.after, 'cursor');
+});

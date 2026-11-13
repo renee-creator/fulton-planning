@@ -471,16 +471,41 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     if (busy) throw new Error('TREE is reading Kaymbu right now. Try again in a few minutes.');
     const bk = stateDoc().book || {};
     if (bk.status === 'counting') return stateDoc();
-    saveState({ book: Object.assign({}, bk, { status: 'counting', startedAt: Date.now(), lastError: '' }) });
-    bookCount().catch(e => { saveState({ book: Object.assign({}, stateDoc().book, { status: bk.estimate ? 'ready' : 'none', lastError: String(e.message || e).slice(0, 300) }) }); log('The earlier years could not be counted', e.message); });
+    // Count again starts fresh, so its place from any earlier count is let go
+    saveWip(null);
+    saveState({ book: Object.assign({}, bk, { status: 'counting', startedAt: Date.now(), lastError: '', progress: 0 }) });
+    runBook();
     return stateDoc();
+  }
+  function runBook() {
+    const bk = stateDoc().book || {};
+    bookCount().catch(e => { saveState({ book: Object.assign({}, stateDoc().book, { status: bk.estimate ? 'ready' : 'none', lastError: String(e.message || e).slice(0, 300) }) }); log('The earlier years could not be counted', e.message); });
+  }
+  /* The count keeps its place (November 12, 2026). Every 25 pages it writes how far it has read and what it has tallied, in a
+     record of its own, so a restart of the server carries on from there and loses nothing. The tally is kept in columns so the
+     record stays small. */
+  function wipDoc() { const r = store.recs.kaymbu.get('bookwip'); const d = r && !r.deleted && r.doc; return d && d.after ? d : null; }
+  // saved to the records only, never sent to anyone's browser, since nobody needs to see it
+  function saveWip(d) { const doc = Object.assign({ id: 'bookwip' }, d || { done: true });
+    store.recs.kaymbu.set('bookwip', Object.assign({}, store.recs.kaymbu.get('bookwip') || {}, { doc, path: 'kaymbu/bookwip.json', local: true })); scheduleSave('kaymbu', 'bookwip'); }
+  function packAcc(acc, before, after, lastIds) {
+    const sidList = [], ix = {}; const at = [], f = [], sx = [];
+    for (const [t, vid, held, sids] of acc.early) { at.push(Math.round(t / 60000)); f.push((vid ? 1 : 0) | (held ? 2 : 0));
+      sx.push(sids.map(sid => ix[sid] != null ? ix[sid] : (ix[sid] = sidList.push(sid) - 1))); }
+    return { before, after, read: acc.read, names: acc.names, link: acc.link, sidList, at, f, s: sx, lastIds, savedAt: Date.now() };
+  }
+  function unpackAcc(w) {
+    const early = (w.at || []).map((t, i) => [t * 60000, w.f[i] & 1, w.f[i] & 2 ? 1 : 0, (w.s[i] || []).map(k => w.sidList[k])]);
+    return { seen: new Set(w.lastIds || []), read: w.read || 0, names: w.names || {}, link: w.link || {}, early };
   }
   async function bookCount() {
     busy = 'book'; const t0 = Date.now();
     try {
       const before = laMidnight(since()); const kids = enrolledKids(); const hold = holding();
-      const acc = { seen: new Set(), read: 0, names: {}, link: {}, early: [] };
-      let after = Date.now() + 864e5;
+      const w = wipDoc(); const resume = !!(w && w.before === before);
+      const acc = resume ? unpackAcc(w) : { seen: new Set(), read: 0, names: {}, link: {}, early: [] };
+      let after = resume ? w.after : Date.now() + 864e5;
+      if (resume) log(`The earlier years count carries on from ${acc.read} Moments read`);
       for (let page = 0; page < 20000; page++) {
         const list = await api('POST', '/api/moments/grid', gridBody(after));
         if (!Array.isArray(list) || !list.length) break;
@@ -488,14 +513,25 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
         const last = list[list.length - 1];
         if (!last.searchAfter || last.searchAfter === after) break;
         after = last.searchAfter;
-        if (Date.now() - t0 > 50 * 60e3) throw new Error('Counting took longer than 50 minutes, so it stopped');
-        if (page % 50 === 49) saveState({ book: Object.assign({}, stateDoc().book, { progress: acc.read }) });
+        if (page % 25 === 24) {
+          // only the last page's ids are kept to skip repeats, since the next page always starts after it
+          const lastIds = list.map(m => m && m._id).filter(Boolean); acc.seen = new Set(lastIds);
+          saveWip(packAcc(acc, before, after, lastIds));
+          saveState({ book: Object.assign({}, stateDoc().book, { progress: acc.read }) });
+        }
       }
       const est = bookSummary(acc, kids, before);
+      saveWip(null);
       saveState({ book: { status: 'ready', estimate: est, lastError: '' } });
       log(`Earlier years counted: ${acc.read} Moments read, ${est.moments} of enrolled children before ${est.before} back to ${est.oldest}, ${Math.round((Date.now() - t0) / 1000)} s`);
       return est;
     } finally { busy = ''; }
+  }
+  // a count the server restarted in the middle of carries on by itself once Kaymbu can be read, waiting out any other reading
+  function resumeBook(tries) {
+    if ((stateDoc().book || {}).status !== 'counting') return;
+    if (!configured() || !store.ready || busy) { if ((tries || 0) < 60) setTimeout(() => resumeBook((tries || 0) + 1), 60e3).unref(); return; }
+    runBook();
   }
 
   /* ---------- the director's choices on what was set aside ---------- */
@@ -549,8 +585,8 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
 
   // the hourly look starts a few minutes after the records load, and the look back runs in its quiet hours
   function start() {
-    // a count cut short by a restart is shown as stopped, so it can be started again
-    const bk = stateDoc().book; if (bk && bk.status === 'counting') saveState({ book: Object.assign({}, bk, { status: bk.estimate ? 'ready' : 'none', lastError: 'TREE restarted while counting. Count again.' }) });
+    // a count cut short by a restart carries on from its saved place
+    setTimeout(() => resumeBook(0), 90e3).unref();
     setTimeout(() => hourly('start').catch(() => {}), 4 * 60e3).unref();
     setInterval(() => hourly().catch(() => {}), 60 * 60e3).unref();
     setInterval(() => lookbackTick().catch(() => {}), 10 * 60e3).unref();
@@ -558,5 +594,5 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
 
   return { start, hourly, startEstimate, estimate, startBookCount, bookCount, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
-    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
+    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };

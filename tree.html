@@ -4982,7 +4982,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="1d731c565ec0";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="7650d1f89472";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -17534,7 +17534,7 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
       ${rs.map(r=>{const x=be.rooms[r];return `<div class="prow" style="margin-top:8px"><div><b>${esc(r==="No class"?r:r+" class")}</b><div class="cnt">${x.withMoments} of ${KP_N(x.children,"child","children")} have earlier Moments, ${KP_N(x.moments,"Moment")}${x.first?`, back to ${esc(MON(x.first))}`:""}</div></div></div>`}).join("")}
       <div class="cnt" style="margin-top:8px">About ${be.mb>=1000?(be.mb/1000).toFixed(1)+" GB":be.mb+" MB"} in Google Drive once the photos come in. The screener drops dark, blurred and repeated photos first, so it will be less.</div>
       <div class="cnt">Nothing has come in. Bringing these into each child's book is the next step, once you say yes.</div>
-      <details style="margin-top:8px"><summary class="cnt"><b>Each child</b></summary>${(be.kids||[]).map(c=>`<div class="cnt" style="padding:3px 0">${esc(c.name)}, ${esc(c.room||"no class")}. ${c.n?`${KP_N(c.n,"Moment")}${c.videos?`, ${KP_N(c.videos,"video")}`:""}, from ${esc(MON(c.first))}`:"None earlier"}</div>`).join("")}</details>
+      <details style="margin-top:8px" data-fold="kpkids" ${foldOpen.has("kpkids")?"open":""}><summary class="cnt"><b>Each child</b></summary>${(be.kids||[]).map(c=>`<div class="cnt" style="padding:3px 0">${esc(c.name)}, ${esc(c.room||"no class")}. ${c.n?`${KP_N(c.n,"Moment")}${c.videos?`, ${KP_N(c.videos,"video")}`:""}, from ${esc(MON(c.first))}`:"None earlier"}</div>`).join("")}</details>
       ${bk.lastError?`<div class="cnt" style="color:var(--clay)">The last count stopped. ${esc(bk.lastError)}</div>`:""}
       <div class="cnt">Counted ${esc(KP_DATE(be.at))}.</div><div class="actions"><button class="btn small ghost" data-kpbook="1" ${k.busy?"disabled":""}>Count again</button></div>`}}
   const as=k.aside||[];let aside="";
@@ -17545,7 +17545,7 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
       ${a.words?`<div class="cnt">${esc(a.words.length>160?a.words.slice(0,160)+"…":a.words)}</div>`:""}${(a.students||[]).length?`<div class="cnt">Tagged in Kaymbu, ${esc(a.students.join(", "))}</div>`:""}
       <div class="actions" style="margin-top:4px"><button class="linkbtn" data-kpback="${esc(a.id)}">Put it back</button></div></div></div>`;
     const shown=24+kpMore;let left=shown;
-    aside=`<details style="margin-top:14px"><summary><b>Set aside, ${as.length.toLocaleString()}</b></summary>
+    aside=`<details style="margin-top:14px" data-fold="kpaside" ${foldOpen.has("kpaside")?"open":""}><summary><b>Set aside, ${as.length.toLocaleString()}</b></summary>
       <div class="cnt" style="margin:6px 0">Each Moment the screener held back, with the reason.</div><div class="cnt" style="margin:0 0 6px">Put it back brings one into TREE. Bring all into TREE brings in every one for that class. Leave all out keeps them out of TREE and clears them from this list.</div>
       ${rooms.map(r=>{const list=as.filter(a=>(a.room||"")===r);const part=list.slice(0,Math.max(0,left));left-=part.length;
         return `<div style="margin-top:10px"><div class="prow"><div><b>${esc(r?r+" class":"No class")}</b><div class="cnt">${list.length.toLocaleString()} set aside</div></div><span class="actions" style="margin:0;flex-wrap:wrap"><button class="btn small" data-kpbring="${esc(r)}" ${k.busy?"disabled":""}>Bring all into TREE</button><button class="btn small ghost" data-kpaccept="${esc(r)}">Leave all out</button></span></div>${part.map(item).join("")}</div>`}).join("")}
