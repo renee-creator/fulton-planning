@@ -1464,16 +1464,36 @@ let drdpSha = '', DRDP_DESC = null;
 const DRDP_LV = { RE: 'Responding Earlier', RL: 'Responding Later', EE: 'Exploring Earlier', EM: 'Exploring Middle', EL: 'Exploring Later', BE: 'Building Earlier', BM: 'Building Middle', BL: 'Building Later', IE: 'Integrating Earlier', IM: 'Integrating Middle', IL: 'Integrating Later' };
 async function loadDrdp() {
   if (!drdpSha) { DRDP_DESC = null; log('No DRDP descriptors in the records, so DRDP requests go without the official wording'); return; }
-  try { const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${drdpSha}`); if (b.status !== 200 || !b.json || typeof b.json.content !== 'string') throw new Error('GitHub answered ' + b.status); drdpFails = 0; DRDP_DESC = JSON.parse(Buffer.from(b.json.content, 'base64').toString('utf8')); log('DRDP descriptors loaded,', Object.keys(DRDP_DESC.ptk || {}).length, 'preschool and', Object.keys(DRDP_DESC.it || {}).length, 'infant and toddler measures'); }
-  catch (e) { DRDP_DESC = null; drdpRetryAt = Date.now() + [2, 5, 10][Math.min(drdpFails, 2)] * 60000; drdpFails++; log('Could not read the DRDP descriptors, trying again when they are next needed', e.message); }
+  const take = (text, how) => { const d = JSON.parse(text); DRDP_DESC = d; drdpFails = 0; drdpRetryAt = 0; clearTimeout(drdpTimer); log('DRDP descriptors loaded' + how + ',', Object.keys(d.ptk || {}).length, 'preschool and', Object.keys(d.it || {}).length, 'infant and toddler measures'); };
+  let why = '', resetAt = 0;
+  try {
+    const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${drdpSha}`);
+    if (b.status === 200 && b.json && typeof b.json.content === 'string') { take(Buffer.from(b.json.content, 'base64').toString('utf8'), ''); return; }
+    why = 'GitHub answered ' + b.status;
+    // a spent allowance says when it comes back, so the next try waits for that rather than a fixed time
+    if (isRateLimit(b)) { const h = b.headers || {}; resetAt = h['retry-after'] ? Date.now() + Number(h['retry-after']) * 1000 : Number(h['x-ratelimit-reset']) * 1000 || 0; }
+  } catch (e) { why = e.message; }
+  /* When GitHub refuses the ordinary read, most often because the hourly allowance is spent after a restart, the
+     wording is read through GraphQL, which has an allowance of its own, the way the records are. Until November 13,
+     2026 the wording stayed unread for up to an hour after a restart, and DRDP readings went without it. */
+  try { const t = (await gqlTexts([drdpSha])).get(drdpSha); if (t) { take(t, ' through GraphQL'); return; } why += ', and GraphQL gave nothing'; }
+  catch (e) { why += ', and ' + e.message; }
+  DRDP_DESC = null;
+  const wait = resetAt > Date.now() ? Math.min(Math.max(resetAt - Date.now() + 5000, 60e3), 60 * 60e3) : [2, 5, 10][Math.min(drdpFails, 2)] * 60e3;
+  drdpRetryAt = Date.now() + wait; drdpFails++;
+  // the next try comes by itself, so the wording is ready before the next reading asks for it
+  clearTimeout(drdpTimer); drdpTimer = setTimeout(() => { ensureDrdp().catch(() => {}); }, wait + 1000); if (drdpTimer.unref) drdpTimer.unref();
+  log('Could not read the DRDP descriptors, trying again in', Math.round(wait / 60e3), 'minutes,', why);
 }
-// descriptors that could not be read at the start are read again the next time someone needs them, after a short wait
-let drdpFails = 0, drdpRetryAt = 0, drdpLoading = null;
+// descriptors that could not be read at the start are read again by themselves after a wait, or sooner if a reading needs them
+let drdpFails = 0, drdpRetryAt = 0, drdpLoading = null, drdpTimer = null;
 async function ensureDrdp() {
   if (DRDP_DESC || !drdpSha || Date.now() < drdpRetryAt) return;
   if (!drdpLoading) drdpLoading = loadDrdp().finally(() => { drdpLoading = null; });
   await drdpLoading;
 }
+// the records hold the official wording but it is not read yet, so a DRDP reading now would go without it
+const drdpWaiting = () => !!drdpSha && !DRDP_DESC;
 function drdpBlock(view, codes) {
   const v = DRDP_DESC && DRDP_DESC[view]; if (!v) return '';
   const want = Array.isArray(codes) && codes.length ? new Set(codes.map(String)) : null;
@@ -3707,7 +3727,7 @@ async function handle(req, res) {
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
       log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '', msg.stop_reason === 'max_tokens' ? 'ANSWER CUT OFF' : '');
-      json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens', drdp: drdpUsed });
+      json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens', drdp: drdpUsed, ...(body.purpose === 'drdp' && !drdpUsed && drdpWaiting() ? { drdpWait: true } : {}) });
     } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'TREE\'s writing help could not be reached just now. Check the connection and try again.'); }
     finally { readsRunning--; }
     return;

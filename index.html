@@ -1181,7 +1181,7 @@ window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];i
   }
   const sample=Object.assign(async(input,opts)=>{ const j=await ask(input,opts); return {text:j.text, truncated:!!j.truncated, modelTierApplied:"default"}; }, {
     limits:async()=>({maxPromptBytes:262144, images:{maxCount:5, maxInputBytes:20e6, mediaTypes:["image/jpeg","image/png","image/webp","image/gif"]}}),
-    json:async(input,opts)=>{ const j=await ask(input,opts); const v=looseJson(j.text); if(v===undefined) throw {code:j.truncated?"truncated":"invalid_json", text:j.text}; if(v&&typeof v==="object"&&j.drdp!==undefined) Object.defineProperty(v,"__official",{value:!!j.drdp}); return v; }
+    json:async(input,opts)=>{ const j=await ask(input,opts); const v=looseJson(j.text); if(v===undefined) throw {code:j.truncated?"truncated":"invalid_json", text:j.text}; if(v&&typeof v==="object"&&j.drdp!==undefined) Object.defineProperty(v,"__official",{value:!!j.drdp}); if(v&&typeof v==="object"&&j.drdpWait) Object.defineProperty(v,"__drdpWait",{value:true}); return v; }
   });
   const downloads={ async save({filename,data}){ const blob=data instanceof Blob? data : new Blob([data]); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); return {status:"saved"}; } };
   const caps={db,user,sample,downloads};
@@ -2618,7 +2618,7 @@ async function drdpRead(v,cs,S,srcId,o){o=o||{};const at=o.at||Date.now(),key=(o
     items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpEmergeOk(v,code,level)),evidence:sentFit(String(m.evidence||"").replace(/\s*[—–]\s*/g,", "),600)});
   }
   const clean=t=>{t=String(t||"").replace(/\s*[—–]\s*/g,", ").trim();return /^(none|n\/a|no photos\.?|)$/i.test(t)?"":sentFit(t,900)};
-  return {items:items.slice(0,24),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official};
+  return {items:items.slice(0,24),photo:clean(out?.photo),summary:clean(out?.summary),official:out&&out.__official,wait:!!(out&&out.__drdpWait)};
 }
 // without TREE, or when an educator asks for it, keywords point to possible measures. They give no level.
 function drdpKeywords(v,cs,text){
@@ -2642,7 +2642,11 @@ async function drdpAnalyze(kind,id,mode,quiet){
     let items=[],photo="",summary="",official;
     for(const [v,cs] of Object.entries(groups)){
       if(useKw){items.push(...drdpKeywords(v,cs,S.text));continue}
-      const r=await drdpRead(v,cs,S,id,{kind,at:rec.at||Date.now()});items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
+      const r=await drdpRead(v,cs,S,id,{kind,at:rec.at||Date.now()});
+      // a reading TREE runs by itself waits while the server is still reading the official wording, rather than keeping
+      // suggestions made without it for good. One an educator asks for goes ahead and says so (November 13, 2026).
+      if(quiet&&r.wait)return "wait";
+      items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
     }
     const before=rec.drdp&&rec.drdp.items||[];
     rec.drdp={at:Date.now(),by:whoAmI(),mode:useKw?"keywords":"reading",official:useKw?undefined:official,photo,summary,items};
@@ -2680,7 +2684,9 @@ async function drdpAutoKaymbu(){
     .sort((a,b)=>when(b)-when(a))
     .filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return !noteGroup(n).some(x=>x.drdp||busyMark(x))})[0];
   if(!next)return;drdpAutoBusy=true;
-  try{patchNotice(next.id,{drdpAuto:Date.now(),drdpTries:(next.drdpTries||0)+1});await drdpAnalyze("notices",next.id,"",true)}finally{drdpAutoBusy=false}}
+  const tries=next.drdpTries||0;
+  // a wait for the official wording does not count as a try, and the observation comes round again after the hour
+  try{patchNotice(next.id,{drdpAuto:Date.now(),drdpTries:tries+1});if(await drdpAnalyze("notices",next.id,"",true)==="wait")patchNotice(next.id,{drdpTries:tries})}finally{drdpAutoBusy=false}}
 setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},30000);
 /* What a photo shows, for an observation the DRDP reading does not describe, such as one with no children tagged. Read
    once, a few minutes after the observation is kept, from the educator's photo. It describes only what is visible and
@@ -3246,7 +3252,11 @@ async function drdpEarlyTick(){
       if(kids.length){const day=shortDate(pk.at),title=firstLine(pk.words,60)||("A photo from "+day);
         const S={text:`A photo an educator shared with families through Kaymbu on ${day}${pk.room?", "+pk.room+" class":""}, with these words. ${String(pk.words||"").trim()||"No words were written."}`,photos:[{id:"early-"+pk.m,photo:{id:pk.photo}}],kids,title};
         const groups={};for(const c of kids){const v=kidViewAt(c,pk.at);(groups[v]=groups[v]||[]).push(c)}
-        const items=[];for(const [v,cs] of Object.entries(groups)){const r=await drdpRead(v,cs,S,pk.m,{kind:"book",at:pk.at,early:true});items.push(...r.items)}
+        const items=[];for(const [v,cs] of Object.entries(groups)){const r=await drdpRead(v,cs,S,pk.m,{kind:"book",at:pk.at,early:true});
+          // the server has the official wording but has not read it yet, after a restart. The photo is kept for later and
+          // not marked read, so it is never read for good without the wording (November 13, 2026).
+          if(r.wait){drdpEarlyWait=Date.now()+300e3;return}
+          items.push(...r.items)}
         const byKid={};for(const x of items)(byKid[x.childId]=byKid[x.childId]||[]).push(x);
         for(const [cid,xs] of Object.entries(byKid)){const c=children.get(cid);if(!c)continue;const patch={};
           for(const old of kidDrdpItems(c))if(old.src&&old.src.kind==="book"&&old.src.id===pk.m&&old.status==="suggested")patch[old.id]={__delete__:true};
@@ -5110,7 +5120,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="67c9a33c11f0";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="6f680f7be842";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");

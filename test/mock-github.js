@@ -46,6 +46,8 @@ function start(dir, port, opt) {
       if (/^\/git\/trees\//.test(rest) && opt.treeDelay && trees++ > 0) { setTimeout(() => send(200, { truncated: false, tree: walk(dir).map(p => { const b = fs.readFileSync(path.join(dir, p)); return { type: 'blob', path: p, sha: blobSha(b), size: b.length }; }) }), opt.treeDelay); return; }
       if (/^\/git\/trees\//.test(rest)) return send(200, { truncated: false, tree: walk(dir).map(p => { const b = fs.readFileSync(path.join(dir, p)); return { type: 'blob', path: p, sha: blobSha(b), size: b.length }; }) });
       const bl = rest.match(/^\/git\/blobs\/([a-f0-9]+)$/);
+      // with opt.refuseFile, reading that one file through REST is refused the way a spent allowance is refused
+      if (bl && opt.refuseFile && fs.existsSync(path.join(dir, opt.refuseFile)) && bl[1] === blobSha(fs.readFileSync(path.join(dir, opt.refuseFile)))) { opt.refused = (opt.refused || 0) + 1; res.writeHead(403, { 'Content-Type': 'application/json', 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600) }); return res.end(JSON.stringify({ message: 'API rate limit exceeded' })); }
       if (bl) { const b = blobs().get(bl[1]); if (!b) return send(404, { message: 'Not Found' });
         if (/raw/.test(req.headers.accept || '')) { res.writeHead(200); return res.end(b); }
         return send(200, { sha: bl[1], content: b.toString('base64'), encoding: 'base64', size: b.length }); }
