@@ -4982,7 +4982,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="7650d1f89472";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="453698b70ab4";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -17533,7 +17533,12 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
       <div class="cnt">Before ${esc(new Date(be.before+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}))}, children enrolled now are in ${KP_N(be.moments,"Moment")}, ${KP_N(be.photos,"photo")} and ${KP_N(be.videos,"video")}.${be.held?` ${be.held.toLocaleString()} of them ${be.held===1?"is":"are"} already in TREE.`:""}</div>
       ${rs.map(r=>{const x=be.rooms[r];return `<div class="prow" style="margin-top:8px"><div><b>${esc(r==="No class"?r:r+" class")}</b><div class="cnt">${x.withMoments} of ${KP_N(x.children,"child","children")} have earlier Moments, ${KP_N(x.moments,"Moment")}${x.first?`, back to ${esc(MON(x.first))}`:""}</div></div></div>`}).join("")}
       <div class="cnt" style="margin-top:8px">About ${be.mb>=1000?(be.mb/1000).toFixed(1)+" GB":be.mb+" MB"} in Google Drive once the photos come in. The screener drops dark, blurred and repeated photos first, so it will be less.</div>
-      <div class="cnt">Nothing has come in. Bringing these into each child's book is the next step, once you say yes.</div>
+      ${(()=>{const br=bk.bring||{},dn=br.done||{},st=br.status||"none",lbOn=["approved","running"].includes((k.lookback||{}).status);
+        const got=`${KP_N(dn.kept||0,"photo")} kept in Drive${dn.inTree?`, ${(dn.inTree).toLocaleString()} already in TREE`:""}${dn.failed?`, ${KP_N(dn.failed,"photo")} Kaymbu would not send`:""}.`;
+        if(st==="none")return `<div class="cnt" style="margin-top:8px">Keep them in Drive puts every earlier photo into each child's book collection in Google Drive, so the school has them even without Kaymbu. They stay out of observations, readings and the displays. Videos stay in Kaymbu.</div><div class="cnt">It runs in the evenings and on weekends, after this year's look back.</div><div class="actions"><button class="btn small" data-kpkeep="1">Keep them in Drive</button></div>`;
+        if(st==="done")return `<div class="cnt" style="margin-top:8px"><b>Every earlier photo is kept.</b> ${got}</div>`;
+        if(st==="paused")return `<div class="cnt" style="margin-top:8px"><b>Keeping earlier photos is paused.</b> ${got}</div><div class="actions"><button class="btn small" data-kpkeep="1">Go on</button></div>`;
+        return `<div class="cnt" style="margin-top:8px"><b>Keeping earlier photos in Drive.</b> ${got}</div><div class="cnt">${lbOn?"It starts once this year's look back is done.":k.quiet?"It is working now.":"It works in the evenings and on weekends."}</div>${br.lastError?`<div class="cnt" style="color:var(--clay)">It stopped for now. ${esc(br.lastError)} It tries again in a few minutes.</div>`:""}<div class="actions"><button class="btn small ghost" data-kpkeeppause="1">Pause</button></div>`})()}
       <details style="margin-top:8px" data-fold="kpkids" ${foldOpen.has("kpkids")?"open":""}><summary class="cnt"><b>Each child</b></summary>${(be.kids||[]).map(c=>`<div class="cnt" style="padding:3px 0">${esc(c.name)}, ${esc(c.room||"no class")}. ${c.n?`${KP_N(c.n,"Moment")}${c.videos?`, ${KP_N(c.videos,"video")}`:""}, from ${esc(MON(c.first))}`:"None earlier"}</div>`).join("")}</details>
       ${bk.lastError?`<div class="cnt" style="color:var(--clay)">The last count stopped. ${esc(bk.lastError)}</div>`:""}
       <div class="cnt">Counted ${esc(KP_DATE(be.at))}.</div><div class="actions"><button class="btn small ghost" data-kpbook="1" ${k.busy?"disabled":""}>Count again</button></div>`}}
@@ -17552,11 +17557,13 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
       ${as.length>shown?`<div class="actions"><button class="linkbtn" data-kpmore="1">Show more</button></div>`:""}</details>`}
   else if(k.configured)aside=`<div class="cnt" style="margin-top:14px">Nothing is set aside right now.${k.accepted?` ${KP_N(k.accepted,"Moment")} you left out stay out of TREE.`:""}</div>`;
   return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${book}${aside}</section>`}
-document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpbook],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpbook],[data-kpkeep],[data-kpkeeppause],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const d=t.dataset;
   if(d.kpmore){kpMore+=24;kpRedraw();return}
   if(d.kpcheck){t.disabled=true;t.textContent="Looking";kpLoad("/api/kaymbu/pull/check",{},"Kaymbu is read.");return}
   if(d.kpbook){kpLoad("/api/kaymbu/pull/bookcount",{},"Counting. This can take half an hour.");return}
+  if(d.kpkeep){kpLoad("/api/kaymbu/pull/bookbring",{},"The earlier photos will be kept in Drive, in the evenings and on weekends.");return}
+  if(d.kpkeeppause){kpLoad("/api/kaymbu/pull/bookpause",{},"Paused.");return}
   if(d.kpcount){kpLoad("/api/kaymbu/pull/count",{},"Counting. This takes a few minutes.");return}
   if(d.kpstart){kpLoad("/api/kaymbu/pull/start",{},"The look back starts this evening.");return}
   if(d.kppause){kpLoad("/api/kaymbu/pull/pause",{on:d.kppause==="1"},d.kppause==="1"?"Paused.":"It carries on this evening.");return}

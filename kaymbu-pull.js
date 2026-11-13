@@ -528,7 +528,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       }
       const est = bookSummary(acc, kids, before);
       saveWip(null);
-      saveState({ book: { status: 'ready', estimate: est, lastError: '' } });
+      saveState({ book: Object.assign({}, stateDoc().book, { status: 'ready', estimate: est, lastError: '', progress: 0 }) });
       log(`Earlier years counted: ${acc.read} Moments read, ${est.moments} of enrolled children before ${est.before} back to ${est.oldest}, ${Math.round((Date.now() - t0) / 1000)} s`);
       return est;
     } finally { busy = ''; }
@@ -538,6 +538,96 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     if ((stateDoc().book || {}).status !== 'counting') return;
     if (!configured() || !store.ready || busy) { if ((tries || 0) < 60) setTimeout(() => resumeBook((tries || 0) + 1), 60e3).unref(); return; }
     runBook();
+  }
+
+  /* ---------- earlier years brought into Google Drive, for the books ---------- */
+  // Once the director says yes, every earlier photo of each child enrolled now is kept in the school's Google Drive at
+  // the size Kaymbu shows it, so the school keeps them even without Kaymbu. They go into each child's book collection
+  // only, never into observations, readings or the displays, and nothing is read by AI. Videos stay in Kaymbu. It runs in
+  // the quiet hours after this year's look back, a few hundred an hour, and goes on where it stopped.
+  const BRING_PER_HOUR = 300;
+  const bringTimes = [];
+  const bookId = kid => 'book-' + kid;
+  function bookDoc(kid) { const r = store.recs.kaymbu.get(bookId(kid)); return (r && !r.deleted && r.doc) || { id: bookId(kid), child: kid, items: [] }; }
+  function saveBook(doc) { saveAside(Object.assign(doc, { savedAt: Date.now() })); }
+  function startBring() {
+    if (!configured()) throw new Error('KAYMBU_EMAIL and KAYMBU_PASSWORD are not both set on Render.');
+    const bk = stateDoc().book || {};
+    if (!bk.estimate) throw new Error('Count the earlier years first.');
+    const br = bk.bring || {};
+    if (['approved', 'running'].includes(br.status)) return stateDoc();
+    saveState({ book: Object.assign({}, bk, { bring: Object.assign({ done: { kept: 0, inTree: 0, videos: 0, failed: 0 }, link: {}, after: 0 }, br, { status: 'approved', approvedAt: Date.now(), lastError: '' }) }) });
+    return stateDoc();
+  }
+  function pauseBring() { const bk = stateDoc().book || {}; if (!bk.bring) return stateDoc(); saveState({ book: Object.assign({}, bk, { bring: Object.assign({}, bk.bring, { status: 'paused' }) }) }); return stateDoc(); }
+  // a Kaymbu id tied to a child enrolled now. This year's Moments tie it first. Otherwise a first and last name together.
+  function linkOf(link, t, kids) {
+    if (link[t.sid] !== undefined) return link[t.sid];
+    if (!t.last) return '';
+    const n = s => words(s).replace(/\s/g, '');
+    const hit = [...kids.values()].filter(c => { const d = (store.recs.children.get(c.id) || {}).doc || {}; return [d.first, d.preferred].some(f => f && n(f) === n(t.first)) && n(d.last) === n(t.last); });
+    return hit.length === 1 ? hit[0].id : '';
+  }
+  function bornOf(kid) { const d = ((store.recs.children.get(kid) || {}).doc || {}).dob; return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? laMidnight(d) : 0; }
+  // one Moment kept for each child it belongs to. Returns 'kept', 'inTree', 'have', 'video' or ''.
+  async function bringMoment(m, kids, link, hold, batchWords) {
+    const at = capturedAt(m); if (!at) return '';
+    const ids = [...new Set(kaymbuIds(m).map(t => linkOf(link, t, kids)).filter(id => id && kids.has(id) && at >= bornOf(id)))];
+    if (!ids.length) return '';
+    if (m.video) return 'video';
+    if (ids.every(id => bookDoc(id).items.some(x => x.m === m._id))) return 'have';
+    const base = { m: m._id, at, day: laDay(at), words: momentWords(m) || batchWords || '', kids: ids, room: roomOf(m) || '', ...(m.batchId ? { batch: m.batchId } : {}) };
+    const inTree = hold.byKey.get(keyOf(m));
+    let item;
+    if (inTree) item = Object.assign(base, { notice: inTree });
+    else {
+      if (!m.pictureSource && !m.pictureThumb) return '';
+      const display = mediaUrl(m.pictureSource || String(m.pictureThumb).replace(/_thumb(\.\w+)$/i, '_display$1'));
+      const p = await kaymbu.bestPhoto(display);
+      if (!p) throw new Error('Kaymbu would not send the photo');
+      item = Object.assign(base, { photo: await kaymbu.keepPhoto(p.buf, 'the book look back'), w: p.w, h: p.h, src: p.url });
+    }
+    for (const id of ids) { const d = bookDoc(id); if (d.items.some(x => x.m === m._id)) continue; d.items.push(item); d.items.sort((a, b) => a.at - b.at); saveBook(d); }
+    return inTree ? 'inTree' : 'kept';
+  }
+  async function bringTick(force) {
+    const bk = stateDoc().book || {}, br = bk.bring || {};
+    if (!configured() || !store.ready || busy || !['approved', 'running'].includes(br.status)) return null;
+    const lb = stateDoc().lookback || {};
+    if (['approved', 'running'].includes(lb.status)) return null;          // this year's look back goes first
+    if (!force && !quietHours()) return null;
+    while (bringTimes.length && Date.now() - bringTimes[0] > 36e5) bringTimes.shift();
+    let room = BRING_PER_HOUR - bringTimes.length; if (room <= 0) return null;
+    busy = 'book'; const t0 = Date.now();
+    const before = laMidnight(since()), kids = enrolledKids(), hold = holding();
+    const link = Object.assign({}, br.link || {}), done = Object.assign({ kept: 0, inTree: 0, videos: 0, failed: 0 }, br.done || {});
+    let after = br.after || (Date.now() + 864e5), finished = false, failedNow = 0;
+    try {
+      while (room > 0 && Date.now() - t0 < 8 * 60e3) {
+        const list = await api('POST', '/api/moments/grid', gridBody(after));
+        if (!Array.isArray(list) || !list.length) { finished = true; break; }
+        const batchWords = new Map(); for (const m of list) { const w = momentWords(m); if (m.batchId && w && !batchWords.has(m.batchId)) batchWords.set(m.batchId, w); }
+        for (const m of list) {
+          const at = capturedAt(m);
+          if (at >= before) { for (const t of kaymbuIds(m)) if (link[t.sid] === undefined) { const id = matchChildren([{ first: t.first, last: t.last }]).ids[0]; if (id && kids.has(id)) link[t.sid] = id; } continue; }
+          try {
+            const r = await bringMoment(m, kids, link, hold, batchWords.get(m.batchId) || '');
+            if (r === 'kept') { done.kept++; bringTimes.push(Date.now()); room--; }
+            else if (r === 'inTree') done.inTree++;
+            else if (r === 'video') done.videos++;
+          } catch (e) { done.failed++; failedNow++; if (failedNow > 10) throw e; }
+        }
+        const last = list[list.length - 1];
+        if (!last.searchAfter || last.searchAfter === after) { finished = true; break; }
+        after = last.searchAfter;
+      }
+      saveState({ book: Object.assign({}, stateDoc().book, { bring: Object.assign({}, stateDoc().book.bring, { status: finished ? 'done' : 'running', link, after, done, lastAt: Date.now(), ...(finished ? { finishedAt: Date.now() } : {}) }) }) });
+      log(`Earlier years for the books ${finished ? 'finished' : 'continue'}: ${done.kept} photos kept in Drive, ${done.inTree} already in TREE, ${done.failed} could not be kept`);
+      return done;
+    } catch (e) {
+      saveState({ book: Object.assign({}, stateDoc().book, { bring: Object.assign({}, stateDoc().book.bring, { link, after, done, lastError: String(e.message || e).slice(0, 300), lastAt: Date.now() }) }) });
+      log('The earlier years stopped for now', e.message); return null;
+    } finally { busy = ''; }
   }
 
   /* ---------- the director's choices on what was set aside ---------- */
@@ -597,9 +687,10 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     setTimeout(() => hourly('start').catch(() => {}), 4 * 60e3).unref();
     setInterval(() => hourly().catch(() => {}), 60 * 60e3).unref();
     setInterval(() => lookbackTick().catch(() => {}), 10 * 60e3).unref();
+    setInterval(() => bringTick().catch(() => {}), 10 * 60e3 + 30e3).unref();
   }
 
-  return { start, hourly, startEstimate, estimate, startBookCount, bookCount, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
+  return { start, hourly, startEstimate, estimate, startBookCount, bookCount, startBring, pauseBring, bringTick, bringMoment, bookDoc, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
     keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, leaveNearCopies, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };

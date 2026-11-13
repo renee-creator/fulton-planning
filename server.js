@@ -2591,7 +2591,7 @@ function snapshotText(director, kitchen, office, name) {
   const key = [director ? 'd' : '', kitchen ? 'k' : '', office ? 'o' : ''].join('');
   let c = snapCache.get(key);
   if (!c || c.rev !== rev || Date.now() - c.at > 30000) {
-    const out = {}; for (const k of KINDS) { if (OWN_KINDS.includes(k)) continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
+    const out = {}; for (const k of KINDS) { if (OWN_KINDS.includes(k)) continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && !(k === 'kaymbu' && id.startsWith('book')) && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
     c = { rev, at: Date.now(), text: JSON.stringify(out) }; snapCache.set(key, c);
   }
   const own = {}; for (const k of OWN_KINDS) { own[k] = {}; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && draftSeen(k, r.doc, name, director)) own[k][id] = forViewer(k, r.doc, director); }
@@ -3212,6 +3212,8 @@ async function handle(req, res) {
       if (step === '/check') { const r = await kaymbuPull.hourly('asked'); if (!r && kaymbuPull.view().lastError) throw new Error(kaymbuPull.view().lastError); }
       else if (step === '/count') kaymbuPull.startEstimate();
       else if (step === '/bookcount') kaymbuPull.startBookCount();
+      else if (step === '/bookbring') kaymbuPull.startBring();
+      else if (step === '/bookpause') kaymbuPull.pauseBring();
       else if (step === '/start') kaymbuPull.approve(me.name);
       else if (step === '/pause') kaymbuPull.pause(body.on !== false);
       else if (step === '/back') { if (typeof body.id !== 'string' || !ID_RE.test(body.id)) throw new Error('That Moment is not valid.'); await kaymbuPull.putBack(body.id); }
@@ -3233,7 +3235,7 @@ async function handle(req, res) {
   if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, cycleHealth: isDirector(me.name) ? cycleHealthCached() : undefined, photoSizes: sharpLib ? [1200, 1920] : [], clips: isDirector(me.name) ? videoClips.status() : undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { const r = store.recs[c.kind].get(c.id); if (OWN_KINDS.includes(c.kind) && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { if (c.kind === 'kaymbu' && String(c.id).startsWith('book')) continue; const r = store.recs[c.kind].get(c.id); if (OWN_KINDS.includes(c.kind) && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {

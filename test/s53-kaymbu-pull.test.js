@@ -200,3 +200,22 @@ test('a near copy of a kept photo is left out by itself and never waits on the S
   assert.strictEqual(v.accepted, 0, 'one TREE left out is not counted as one the director left out');
   assert.strictEqual(x.store.recs.kaymbu.get('a1').doc.status, 'accepted');
 });
+
+test('earlier photos are kept once in Drive for each child they belong to, never as observations, and videos stay in Kaymbu', async () => {
+  const x = setup();
+  x.store.recs.children.get('c3').doc.dob = '2022-04-06';
+  const kids = x.pull.enrolledKids(); const hold = x.pull.holding();
+  const old = '2024-10-02T17:00:00.000Z', long = '2014-07-18T17:00:00.000Z';
+  const who = (pairs) => ({ students: pairs.map(p => p[0]), studentInfo: Object.fromEntries(pairs.map(p => [p[0], { firstName: p[1], lastName: p[2] }])) });
+  const link = { kW: 'c1', kP: 'c3' };
+  const both = mom('e1', Object.assign({ dateCaptured: old, creationDate: old, caption: 'Ramps' }, who([['kW', 'Wren', 'Alder'], ['kP', 'Pip', 'Cedar']])));
+  assert.strictEqual(await x.pull.bringMoment(both, kids, link, hold, ''), 'kept');
+  assert.strictEqual(await x.pull.bringMoment(both, kids, link, hold, ''), 'have', 'a second pass keeps nothing twice');
+  assert.strictEqual(await x.pull.bringMoment(mom('e2', Object.assign({ dateCaptured: old, creationDate: old, video: true }, who([['kP', 'Pip', 'Cedar']]))), kids, link, hold, ''), 'video');
+  assert.strictEqual(await x.pull.bringMoment(mom('e3', Object.assign({ dateCaptured: long, creationDate: long }, who([['kOld', 'Pip', 'Cedar']]))), kids, link, hold, ''), '', 'before the child was born');
+  const a = x.pull.bookDoc('c1'), b = x.pull.bookDoc('c3');
+  assert.strictEqual(a.items.length, 1); assert.strictEqual(b.items.length, 1);
+  assert.strictEqual(a.items[0].photo, 'p1'); assert.strictEqual(b.items[0].photo, 'p1', 'one photo kept for both children');
+  assert.deepStrictEqual([a.items[0].words, a.items[0].day, a.items[0].kids], ['Ramps', '2024-10-02', ['c1', 'c3']]);
+  assert.strictEqual(x.store.recs.notices.size, 0);
+});
