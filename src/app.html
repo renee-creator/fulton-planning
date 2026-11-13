@@ -316,6 +316,11 @@ span.pfstate{cursor:default;border-style:dashed}
 .drrow>summary::-webkit-details-marker{display:none}.drrow[open]>summary{background:var(--sun-wash)}
 .drcode{min-width:0;flex:1 1 260px}.drnow{text-align:right}.drbody{display:grid;gap:6px;padding:6px 2px 12px}
 .drev{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px dashed var(--line)}.drev:first-child{border-top:0}
+.drstep{border-left:3px solid var(--line);padding:4px 0 4px 10px;margin:6px 0}.drstep.part{border-left-color:var(--sun)}.drstep.full{border-left-color:var(--moss)}.drstep.open{opacity:.75}
+.drsteph{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}.drstep.now>.drsteph b{color:var(--moss)}.drstep .drev:first-of-type{border-top:0}
+.dropen{display:grid;gap:6px}.dropen .dol{display:grid;grid-template-columns:minmax(120px,1.4fr) 3fr;gap:4px 10px;align-items:center;padding:3px 0;border-top:1px dashed var(--line)}
+.dropen .doc{display:flex;flex-wrap:wrap;gap:3px}.dropen .dc{font-size:11px;line-height:1;padding:4px 5px;border-radius:5px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.dropen .dc.part{border-color:var(--sun);color:var(--ink)}.dropen .dc.full{background:var(--moss);border-color:var(--moss);color:#fff}.dropen .dc.now{outline:2px solid var(--moss);outline-offset:1px}
 .chip.sug{border-style:dashed}
 .kmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:420px;overflow:auto}.kmph{display:grid;gap:3px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:4px;cursor:pointer;font:inherit;font-size:12.5px;text-align:left;color:var(--ink)}.kmph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.kmnone{aspect-ratio:1;display:grid;place-items:center;color:var(--muted);background:var(--bg);border-radius:6px}
 .drpick{display:grid;gap:4px;margin:4px 0}.drpk{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14.5px;line-height:1.4;background:var(--paper)}.drpk input{margin-top:3px;flex:none}.drpk:has(input:checked){border-color:var(--moss);background:var(--moss-soft)}.drlow{color:var(--clay);font-weight:700}
@@ -1426,6 +1431,7 @@ function renderMain(){
   if(view==="participation"){if(!isOffice()){view="children";renderMain();return}renderParticipation();return}
   if(view==="volunteer"){if(!isOffice()){view="children";renderMain();return}renderVolunteer();return}
   if(view==="drdpreview"){renderDrdpReview();return}
+  if(view==="drdpopen"){if(!isDirector()){view="children";renderMain();return}renderDrdpOpen();return}
   if(view==="wreport"){renderWeeklyReport();return}
   if(view==="drdpreport"){if(!isDirector()){view="children";renderMain();return}renderDrdpReport();return}
   if(view==="children"){renderChildren();return}
@@ -1883,6 +1889,7 @@ const NAV_NAMES={recipes:"Recipes",songs:"Songs and stories",today:"Today",grant
 function navLabel(s){
   if(s.view==="search")return "Search";
   if(s.view==="drdpreview")return "DRDP review";
+  if(s.view==="drdpopen")return "DRDP open levels";
   if(s.view==="wreport")return "Weekly reading report";
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details",transition:"transition summary",screen:"screening"})[s.kidTab]||"their page":""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
@@ -2185,9 +2192,9 @@ async function fetchPhoto(u){
 // a picture on a card that does not load is asked for again once, with a fresh key
 document.addEventListener("error",e=>{const im=e.target;if(!(im instanceof HTMLImageElement)||!/\/original\//.test(im.src)||im.dataset.retried)return;im.dataset.retried="1";
   const m=im.src.match(/\/original\/([^?]+)/);Promise.resolve(window.FP_RENEW_KEY&&window.FP_RENEW_KEY()).then(()=>{if(m&&window.FP_ORIGINAL_URL)im.src=window.FP_ORIGINAL_URL(decodeURIComponent(m[1]))+"&r="+Date.now()})},true);
-function drdpPrompt(v,cs,S,ms,nPhotos,srcId){
+function drdpPrompt(v,cs,S,ms,nPhotos,full){
   const eld=cs.some(kidEld);
-  const well=cs.map(c=>({c,w:drdpWellShown(c,v,srcId)})).filter(x=>x.w.length);
+  const well=cs.map(c=>({c,w:(full&&full.get(c.id))||[]})).filter(x=>x.w.length);
   return `You are helping educators at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program, read their documentation against the DRDP (2025) ${DRDP_VIEW[v]} View. An educator reviews every suggestion and accepts, changes or sets it aside. Nothing you return is a DRDP rating.
 
 [[DRDP_DESCRIPTORS]]
@@ -2199,8 +2206,8 @@ Children in this documentation. ${cs.map(c=>`${c.first}${c.last?" "+c.last[0]+".
 
 How to read it.
 Read the documentation${nPhotos?" and the "+nPhotos+" photo"+(nPhotos>1?"s":""):""} against the definitions and the level descriptors above. Include a measure only when the documentation${nPhotos?" or a photo":""} clearly shows evidence for it for one named child.
-For each child, give every measure this documentation clearly shows, up to four, the clearest first, each with its own evidence. Our children do most things together, and our educators write narrations of what happened, so read past the obvious. Beside how children are together, look at what their hands and bodies are doing, the counting, sorting, comparing or measuring inside the play, the words and gestures they use with one another, the cause and effect they are testing, and the care routines in the moment. When the documentation only touches a measure, or shows too little to place it at a level, leave that measure out.
-${well.length?"Measures already well documented this rating period. "+well.map(x=>x.c.first+" has "+x.w.map(w=>w.code+", "+w.count+" pieces at "+w.levels.join(" or ")).join("; ")).join(". ")+". Give one of these for that child only when this documentation shows a different level than those, and look first for the other measures this documentation shows for that child.\n":""}child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
+For each child, give every measure this documentation clearly shows, up to six, the clearest first, each with its own evidence. Our children do most things together, and our educators write narrations of what happened, so read past the obvious. Beside how children are together, look at what their hands and bodies are doing, the counting, sorting, comparing or measuring inside the play, the words and gestures they use with one another, the cause and effect they are testing, and the care routines in the moment. When the documentation only touches a measure, or shows too little to place it at a level, leave that measure out.
+${well.length?"Levels that already have their evidence. "+well.map(x=>x.c.first+" has "+x.w.map(w=>w.code+" at "+w.levels.join(" and ")).join("; ")).join(". ")+". When this documentation shows one of these measures at a level named here for that child, leave that measure out for that child and give the next clearest measure this documentation shows. Every other level of every measure is still wanted.\n":""}child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
 level is the latest level whose descriptor this evidence is consistent with. Read only what this one piece of documentation shows. Give one level only, never a range. Leave the measure out when the evidence does not show a level clearly.
 emerging is true only when the evidence also shows the child beginning to show the descriptor of the next level.
 evidence quotes or closely paraphrases the documentation, or says what a photo shows, in one or two sentences.
@@ -2212,18 +2219,40 @@ Return only JSON {"measures":[{"code":"one listed measure code","child":"the chi
 The documentation.
 ${S.text}`;
 }
-/* a child's measures already well documented this rating period, three or more accepted pieces since August 1 for fall or
-   January 1 for spring, not counting this documentation, so the reading can look further (November 6, 2026) */
-function drdpPeriodStart(){const d=new Date();return new Date(d.getMonth()>=7?d.getFullYear():d.getFullYear(),d.getMonth()>=7?7:0,1).getTime()}
-function drdpWellShown(c,v,srcId){const from=drdpPeriodStart(),n={},lv={};
-  for(const x of kidDrdpItems(c)){if(!(x.status==="accepted"||x.status==="changed")||!x.level||x.view!==v)continue;if(x.src&&x.src.id===srcId)continue;
-    if((x.src&&x.src.at||x.at||0)<from)continue;n[x.code]=(n[x.code]||0)+1;(lv[x.code]=lv[x.code]||new Set()).add(x.level)}
-  return Object.keys(n).filter(k=>n[k]>=3).map(k=>({code:k,count:n[k],levels:[...lv[k]]}))}
-async function drdpRead(v,cs,S,srcId){
+/* Two accepted pieces satisfy a level of a measure for a child, counted across all the child's years with us and both
+   DRDP views (November 13, 2026). A satisfied level takes no more, so a reading that lands there is left out and the
+   next clearest measure is offered. The child's current level, the latest one with evidence, stays open for two fresh
+   pieces each conference period, fall from August 1 and spring from January 1, so every conference has current
+   evidence. This takes the place of the three pieces for a measure rule of November 6. */
+const DRDP_PER_LEVEL=2;
+function drdpPeriodStart(){const d=new Date();return new Date(d.getFullYear(),d.getMonth()>=7?7:0,1).getTime()}
+const drdpDone=x=>!!(x&&(x.status==="accepted"||x.status==="changed")&&x.level);
+// every level a measure uses across both views, earliest to latest. The views share their early levels.
+const drdpLadder=code=>{const a=drdpLevels("ptk",code),b=drdpLevels("it",code);return a.length>=b.length?a:b};
+const drdpSrcAt=x=>(x&&x.src&&x.src.at)||(x&&x.at)||0;
+// for each measure, how many pieces each level holds, how many of them are from this conference period, and the child's
+// current level. The pieces from one piece of documentation can be left out, and waiting ones can count too.
+function drdpLevelState(c,exceptKey,withWaiting){const from=drdpPeriodStart(),st={};
+  for(const x of kidDrdpItems(c)){const done=drdpDone(x);if(!done&&!(withWaiting&&x.status==="suggested"&&x.level))continue;
+    if(exceptKey&&x.src&&(x.src.kind||"")+"|"+x.src.id===exceptKey)continue;
+    const r=drdpLadder(x.code).indexOf(x.level);if(r<0)continue;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1});
+    m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=from)m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(done&&r>m.top)m.top=r}
+  return st}
+// whether a level can take one more piece, from documentation dated at
+function drdpLevelOpen(st,code,level,at){const m=st[code];if(!m||(m.n[level]||0)<DRDP_PER_LEVEL)return true;
+  return drdpLadder(code).indexOf(level)===m.top&&(at||0)>=drdpPeriodStart()&&(m.fresh[level]||0)<DRDP_PER_LEVEL}
+const drdpLevelAdd=(st,x)=>{const r=drdpLadder(x.code).indexOf(x.level);if(r<0)return;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1});
+  m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=drdpPeriodStart())m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(r>m.top)m.top=r};
+// the levels that take no more for a child, for the measures of one view, named for the reading
+function drdpLevelsFull(st,v,ms,at){const out=[];for(const k of ms){const ls=drdpLevels(v,k).filter(l=>!drdpLevelOpen(st,k,l,at));if(ls.length)out.push({code:k,levels:ls})}return out}
+async function drdpRead(v,cs,S,srcId,o){o=o||{};const at=o.at||Date.now(),key=(o.kind||"notices")+"|"+srcId;
+  // the earlier years count the suggestions still waiting too, so a level never gathers more than it needs before review
+  const states=new Map(cs.map(c=>[c.id,drdpLevelState(c,key,!!o.early)]));
   // the conditional health measures are required with an IEP or IFSP and optional otherwise, so they are always read
   const ms=Object.keys(DRDP_M[v]).filter(k=>{const m=DRDP_M[v][k];return m.c!=="eld"||cs.some(kidEld)});
   const imgs=await drdpPhotoBlobs(S.photos);
-  const out=await askRead(drdpPrompt(v,cs,S,ms,imgs.length,srcId),{purpose:"drdp",drdp:{view:v,codes:ms},images:imgs.length?imgs:undefined,modelTier:"complex",cache:false});
+  const full=new Map(cs.map(c=>[c.id,drdpLevelsFull(states.get(c.id),v,ms,at)]));
+  const out=await askRead(drdpPrompt(v,cs,S,ms,imgs.length,full),{purpose:"drdp",drdp:{view:v,codes:ms},images:imgs.length?imgs:undefined,modelTier:"complex",cache:false});
   const byId=new Map(cs.map(c=>[c.id,c]));const seen=new Set();const items=[];
   for(const m of (Array.isArray(out?.measures)?out.measures:[])){
     if(!m||typeof m!=="object")continue;const code=String(m.code||"").replace(/\s+/g," ").trim().toUpperCase();
@@ -2231,6 +2260,8 @@ async function drdpRead(v,cs,S,srcId){
     if(!c&&cs.length===1)c=cs[0];
     if(!c||!ms.includes(code)||(DRDP_M[v][code].c==="eld"&&!kidEld(c))||seen.has(code+"|"+c.id))continue;seen.add(code+"|"+c.id);
     const level=drdpLevelOk(v,code,m.level);if(!level)continue;
+    // a level that already has its evidence is left out, and the next clearest measure takes its place
+    if(!drdpLevelOpen(states.get(c.id),code,level,at))continue;
     // up to four measures for each child, the clearest first, each with its own evidence
     if(items.filter(x=>x.childId===c.id).length>=4)continue;
     items.push({id:drdpId(),code,view:v,childId:c.id,level,emerging:!!(level&&m.emerging===true&&drdpEmergeOk(v,code,level)),evidence:sentFit(String(m.evidence||"").replace(/\s*[—–]\s*/g,", "),600)});
@@ -2260,7 +2291,7 @@ async function drdpAnalyze(kind,id,mode,quiet){
     let items=[],photo="",summary="",official;
     for(const [v,cs] of Object.entries(groups)){
       if(useKw){items.push(...drdpKeywords(v,cs,S.text));continue}
-      const r=await drdpRead(v,cs,S,id);items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
+      const r=await drdpRead(v,cs,S,id,{kind,at:rec.at||Date.now()});items.push(...r.items);photo=photo||r.photo;summary=summary||r.summary;if(r.official!==undefined)official=(official!==false)&&r.official;
     }
     const before=rec.drdp&&rec.drdp.items||[];
     rec.drdp={at:Date.now(),by:whoAmI(),mode:useKw?"keywords":"reading",official:useKw?undefined:official,photo,summary,items};
@@ -2281,11 +2312,13 @@ async function drdpAnalyze(kind,id,mode,quiet){
 // evidence by itself, once, newest first, from the start of the school year. One being written is left until it has rested
 // two minutes. The suggestions wait on each child's page for an educator to accept, change or set aside. A post of several
 // photos is read once. Each is marked before it is read, so two devices do not read the same one.
-let drdpAutoBusy=false;
+let drdpAutoBusy=false,drdpSwept=false;
 // the readings TREE runs by itself happen only on the director's computer, never on an educator's phone (November 12, 2026)
 const bgReader=()=>!REM_PHONE&&isDirector();
 async function drdpAutoKaymbu(){
   if(drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden||!bgReader())return;
+  // once each time TREE opens on the director's computer, suggestions waiting for a level that already has its evidence are set aside
+  if(!drdpSwept&&children.size){drdpSwept=true;for(const c of children.values())if(kidAt(c))drdpLevelSweep(c)}
   const rm=myRoom(),dir=isDirector()||isOffice(),since=parseIso(schoolYearStart()).getTime(),seen=new Set(),now=Date.now();
   const when=n=>(n.kaymbu&&n.kaymbu.keptAt)||n.at||0;
   // a reading that did not finish is tried again after an hour, up to three times, so a failed one is never stuck
@@ -2584,7 +2617,9 @@ let drdpEdit="",drdpShowAside=false;
    suggestion one at a time, each with all it shows on the child's page, and Accept, Change or Set aside opens the next
    one at once, the next child's too. Skip leaves one waiting. Nothing is accepted without a tap. */
 let drQ=null;
-const drQWaiting=c=>{const v=drdpViewOf(c).v;return kidDrdpItems(c).filter(x=>x.status==="suggested"&&(x.view===v||!x.view)).sort((a,b)=>(b.at||0)-(a.at||0))};
+// a suggestion read from the earlier years waits for the director alone, so years of review never land on the educators
+const drdpMine=x=>!x.early||(isDirector()&&!VIEW_AS);
+const drQWaiting=c=>kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)).sort((a,b)=>(b.at||0)-(a.at||0));
 function drQStart(scope){const rm=myRoom(),dir=isDirector()&&!VIEW_AS;
   const kids=scope&&scope.startsWith("kid:")?[children.get(scope.slice(4))].filter(Boolean):kidsAt().filter(c=>dir||!rm||c.classroom===rm);
   const list=kids.flatMap(c=>drQWaiting(c).map(x=>({c:c.id,id:x.id})));
@@ -2611,8 +2646,8 @@ function drQTickHtml(){const rows=drQ.list.filter(e=>!drQ.skip.has(e.id)&&drQLiv
 // Accept all for a child, and Accept the ticked ones, each saved for its own child
 function drQAccept(entries){const who=whoAmI(),now=Date.now(),by=new Map();
   for(const e of entries){const x=drQItem(e);if(!x||!x.level||x.status!=="suggested")continue;if(!by.has(e.c))by.set(e.c,{});by.get(e.c)[e.id]={status:"accepted",reviewedBy:who,reviewedAt:now}}
-  let n=0,held=0;for(const [cid,items0] of by){const c=children.get(cid);if(!c)continue;const r=drdpKeepTwo(c,items0);held+=r.held;if(Object.keys(r.items).length)kidDrdpPatch(c,{drdp:{items:r.items}});n+=Object.keys(r.items).length}
-  if(n||held){drQ.done+=n;toast(`${n} accepted.${held?` ${held} kept waiting, since an observation counts for two measures at most.`:""}`)}drdpEdit="";drQGo()}
+  let n=0,held=0,aside=0;for(const [cid,items0] of by){const c=children.get(cid);if(!c)continue;const r=drdpAcceptSave(c,items0);held+=r.held;aside+=r.aside;n+=r.n}
+  if(n||held||aside){drQ.done+=n;toast(drdpAcceptText(n,held,aside))}drdpEdit="";drQGo()}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drqall],[data-drqtick],[data-drqone],[data-drqaccept]");if(!t||!drQ)return;e.preventDefault();e.stopPropagation();
   if(t.dataset.drqall){drQAccept(drQ.list.filter(x=>x.c===t.dataset.drqall&&!drQ.skip.has(x.id)&&drQLive(x)));return}
   if(t.dataset.drqtick){drQ.tick=true;drdpEdit="";renderMain();return}
@@ -2639,12 +2674,15 @@ function drdpCompareHtml(v,code,level,open){
     <ol>${drdpLevels(v,code).map(l=>`<li class="${l===level?"on":""}"><b>${esc(l)}</b> ${esc(drdpLevelDesc(v,code,l))}</li>`).join("")}</ol></details>`}
 // the evidence itself, the photos and the educator's own words, so a level can be confirmed without leaving the page
 function drSourceHtml(x){const src=x&&x.src;if(!src)return"";let ns=[],tx="";
+  if(src.kind==="book"){const u=src.photo&&window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(src.photo):"";if(!u&&!src.words)return"";
+    return `<div class="drsrc">${u?`<div class="drph"><img src="${esc(u)}" alt="" loading="lazy" data-drzoomu="${esc(u)}"></div>`:""}${src.words?`<div class="drtx" data-drmore="1" title="Tap to read all">${esc(src.words)}</div>`:""}</div>`}
   if(src.kind==="slides"){const sl=slides.get(src.id);if(!sl)return"";ns=slidePhotos(sl).map(id=>notices.get(id)).filter(Boolean);const ms=(sl.momentIds||[]).map(id=>notices.get(id)).filter(Boolean);
     tx=[sl.title,String(sl.text||"").trim(),...(sl.quotes||[]).filter(q=>q&&q.words).map(q=>`${q.name?q.name+", ":""}"${q.words}"`),...ms.map(n=>String(n.noticed||"").trim())].filter(Boolean).join("\n")}
   else{const n=notices.get(src.id);if(!n)return"";ns=[n];tx=[String(n.noticed||"").trim(),String(n.wonder||"").trim()].filter(Boolean).join("\n")}
   const ph=ns.filter(n=>n.photo).slice(0,3);if(!ph.length&&!tx)return"";
   return `<div class="drsrc">${ph.length?`<div class="drph">${ph.map(n=>`<img src="${esc(photoThumb(n))}" alt="" loading="lazy" data-drzoom="${esc(n.id)}">`).join("")}</div>`:""}${tx?`<div class="drtx" data-drmore="1" title="Tap to read all">${esc(tx)}</div>`:""}</div>`}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drmore]");if(t){t.classList.toggle("all");return}
+  const zu=e.target.closest("[data-drzoomu]");if(zu){const w=document.createElement("div");w.className="drzoom";w.innerHTML=`<img src="${esc(zu.dataset.drzoomu)}" alt="">`;w.onclick=()=>w.remove();document.body.appendChild(w);return}
   const z=e.target.closest("[data-drzoom]");if(z){const n=notices.get(z.dataset.drzoom);if(!n)return;const w=document.createElement("div");w.className="drzoom";w.innerHTML=`<img src="${esc(photoSrc(n))}" alt="">`;w.onclick=()=>w.remove();document.body.appendChild(w)}});
 /* ---------- One view of a DRDP measure ----------
    Every measure and level in TREE opens the same view with one tap, the view the staff room's DRDP in practice screens
@@ -2680,11 +2718,29 @@ const drdpFullText=c=>`This observation already counts for two of ${c.first}'s m
 function drdpKeepTwo(c,items){const out={};let held=0;const used=new Map();
   for(const [id,v] of Object.entries(items)){const x=((c.drdp||{}).items||{})[id];const k=drdpSrcKey(x);if(k){const n=(used.has(k)?used.get(k):drdpUsedFrom(c,x,id));if(n>=DRDP_PER_OBS){held++;continue}used.set(k,n+1)}out[id]=v}
   return {items:out,held}}
+/* Accepting keeps each level to its pieces. In a batch the first ones listed are accepted, and any others for a level
+   that has its evidence by then are set aside, where Review again brings one back. One an educator brings back is
+   accepted as they choose. After any review, suggestions still waiting for a level that now has its evidence are set
+   aside too, so nobody reviews evidence that is no longer needed (November 13, 2026). */
+const drdpAsideLevel=()=>({status:"aside",reviewedBy:"TREE",reviewedAt:Date.now(),asideWhy:"level"});
+function drdpLevelGate(c,items){const st=drdpLevelState(c),out={},aside={};
+  for(const [id,v] of Object.entries(items)){const x=((c.drdp||{}).items||{})[id];if(!x)continue;
+    if(v.status==="accepted"&&x.level&&!x.back&&!drdpLevelOpen(st,x.code,x.level,drdpSrcAt(x))){aside[id]=drdpAsideLevel();continue}
+    out[id]=v;if(v.status==="accepted"&&x.level)drdpLevelAdd(st,x)}
+  return {items:out,aside}}
+function drdpLevelSweep(c){const st=drdpLevelState(c),patch={};
+  for(const x of kidDrdpItems(c))if(x.status==="suggested"&&x.level&&!x.back&&!drdpLevelOpen(st,x.code,x.level,drdpSrcAt(x)))patch[x.id]=drdpAsideLevel();
+  const n=Object.keys(patch).length;if(n)kidDrdpPatch(c,{drdp:{items:patch}});return n}
+// one save for any accept, two measures for an observation at most, then each level kept to its pieces
+function drdpAcceptSave(c,items){const two=drdpKeepTwo(c,items),g=drdpLevelGate(c,two.items);const n=Object.keys(g.items).length,a=Object.keys(g.aside).length;
+  if(n||a)kidDrdpPatch(c,{drdp:{items:Object.assign({},g.items,g.aside)}});
+  return {n,held:two.held,aside:a+drdpLevelSweep(c)}}
+const drdpAcceptText=(n,held,aside)=>(n===1?"1 accepted.":n+" accepted.")+(held?` ${held} kept waiting, since an observation counts for two measures at most.`:"")+(aside?` ${aside} set aside, since ${aside===1?"its level already has":"their levels already have"} two pieces.`:"");
 // what a child's DRDP tab and the DRDP review page show for a suggestion, with its level, what it means, what was seen,
 // where it came from, and Accept, Change and Set aside
-function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);const done=all.filter(x=>x.status==="accepted"||x.status==="changed");
+function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view||DRDP_M[v][x.code]);const done=all.filter(x=>x.status==="accepted"||x.status==="changed");
   const latest=code=>done.filter(x=>x.code===code&&x.level).sort((a,b)=>drdpRank(b.view||v,code,b.level)-drdpRank(a.view||v,code,a.level)||(b.src?.at||b.at||0)-(a.src?.at||a.at||0))[0];
-  const srcBtn=x=>x.src?`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-kmopen="${esc(x.src.id)}" data-ktab="docs"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`:"";
+  const srcBtn=x=>!x.src?"":x.src.kind==="book"?`${esc(x.src.title||"An earlier photo")}, ${shortDate(x.src.at||x.at)}`:`<button class="linkbtn" ${x.src.kind==="slides"?`data-slide="${esc(x.src.id)}"`:`data-kmopen="${esc(x.src.id)}" data-ktab="docs"`}>${esc(x.src.title||"Documentation")}</button>, ${shortDate(x.src.at||x.at)}`;
   // choosing a level shows every level with what it means, the current choice marked, and a tap chooses
   const levelSel=x=>{const vv=x.view||v;return `<div class="drpick" role="radiogroup" aria-label="Level">${drdpLevels(vv,x.code).map(l=>`<label class="drpk"><input type="radio" name="drl-${esc(x.id)}" data-drlevel="${esc(x.id)}" value="${esc(l)}" ${l===(x.level||"")?"checked":""}><span><b>${esc(l)}</b> ${esc(drdpLevelDesc(vv,x.code,l)||"")}</span></label>`).join("")}</div>`};
   const curHtml=x=>{const l=latest(x.code);if(!l||l.id===x.id)return "";const vv=x.view||v;const lower=x.level&&drdpRank(vv,x.code,x.level)+(x.emerging?.5:0)<drdpRank(l.view||vv,x.code,l.level)+(l.emerging?.5:0);
@@ -2701,14 +2757,14 @@ function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>
   return {latest,srcBtn,levelSel,curHtml,reviewRow}}
 function kidDrdpHtml(c){
   loadDrdpTxt();
-  const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
-  const wait=all.filter(x=>x.status==="suggested").sort((a,b)=>(b.at||0)-(a.at||0));
+  const {v,why}=drdpViewOf(c);const ms=drdpMeasuresFor(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view||DRDP_M[v][x.code]);
+  const wait=all.filter(x=>x.status==="suggested"&&drdpMine(x)).sort((a,b)=>(b.at||0)-(a.at||0));
   const done=all.filter(x=>x.status==="accepted"||x.status==="changed");const aside=all.filter(x=>x.status==="aside");
   const marks=(c.drdp&&c.drdp.marks)||{};
   const legacy={};for(const [code,list] of kidEvidence(c))legacy[code]=list;
   // a measure's current evidence is the strongest reviewed level, and of those the most recent
   const {latest,srcBtn,levelSel,curHtml,reviewRow}=drdpKit(c);
-  const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoThumb(n))}" alt="" loading="lazy">`:""};
+  const thumbOf=x=>{const src=x&&x.src;let n=null;if(src&&src.kind==="book")return src.photo&&window.FP_ORIGINAL_URL?`<img class="drthumb" src="${esc(window.FP_ORIGINAL_URL(src.photo))}" alt="" loading="lazy">`:"";if(src&&src.kind==="notices")n=notices.get(src.id);else if(src&&src.kind==="slides"){const sl=slides.get(src.id);n=sl&&notices.get(slidePhotos(sl)[0])}return n&&n.photo?`<img class="drthumb" src="${esc(photoThumb(n))}" alt="" loading="lazy">`:""};
   const evEdit=x=>x.status==="suggested"?"":drdpEdit===x.id?`<div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>${levelSel(x)}<div class="actions"><label class="radio" style="margin:0"><input type="checkbox" data-dremerg="${esc(x.id)}" ${x.emerging?"checked":""}><span>Emerging to the next level</span></label><button class="btn small" data-drsave="${esc(x.id)}">Save</button><button class="linkbtn" data-drcancel="1">Cancel</button></div>`
     :`<div class="actions" style="margin-top:2px"><button class="linkbtn" data-drchange="${esc(x.id)}">Change</button><button class="linkbtn" data-draside="${esc(x.id)}">Set aside</button></div>`;
   // an accepted level shows the same detail as one waiting for review, what it means, the photo and words, What was seen,
@@ -2718,10 +2774,16 @@ function kidDrdpHtml(c){
       ${has(x.evidence)?`<div class="cnt"><b>What was seen.</b> ${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>
       ${drdpEdit===x.id?"":drdpCompareHtml(x.view||v,x.code,x.level,false)}${evEdit(x)}</div>`;
   const evLine=x=>x.status!=="suggested"&&x.level?accRow(x):`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
-  const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));const lg=legacy[code]||[];const n=evs.length+lg.length;const wn=wait.filter(x=>x.code===code).length;
+  // each measure shows its levels in order, earliest to latest, with the evidence for each and the ones still open, so the
+  // child's progression reads as one line across both views (November 13, 2026)
+  const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code);const lg=legacy[code]||[];const n=evs.length+lg.length;const ws=wait.filter(x=>x.code===code);const wn=ws.length;
+    const L=drdpLadder(code);const got=L.filter(lv=>evs.filter(x=>x.level===lv).length>=DRDP_PER_LEVEL).length;
+    const steps=L.map(lv=>{const es=evs.filter(x=>x.level===lv).sort((a,b)=>drdpSrcAt(a)-drdpSrcAt(b)),w2=ws.filter(x=>x.level===lv);const k=es.length,now=l&&l.level===lv;
+      return `<div class="drstep ${k>=DRDP_PER_LEVEL?"full":k?"part":"open"}${now?" now":""}" data-drstep="${esc(lv)}"><div class="drsteph"><b>${esc(lv)}</b><span class="cnt">${k>=DRDP_PER_LEVEL?`${k} pieces`:k?`${k} of ${DRDP_PER_LEVEL} pieces`:"Open"}${w2.length?`, ${w2.length} waiting`:""}${now?`, where ${esc(c.first)} is now`:""}</span></div>${es.map(evLine).join("")}${w2.map(evLine).join("")}</div>`}).join("");
+    const loose=ws.filter(x=>!x.level||!L.includes(x.level));
     return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><button class="linkbtn" data-drdef="${esc([code,l?l.level:"",v,l&&l.src?l.src.kind:"",l&&l.src?l.src.id:""].join("|"))}" aria-label="What ${esc(code)} means"><b>${esc(code)}</b></button> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
-        <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:""}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
-      <div class="drbody">${evs.map(evLine).join("")}${wait.filter(x=>x.code===code).map(evLine).join("")}
+        <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:""}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence · ${got} of ${L.length} levels have two</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
+      <div class="drbody">${steps}${loose.map(evLine).join("")}
         ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
 
 </div></details>`};
@@ -2737,18 +2799,19 @@ function kidDrdpHtml(c){
   return (queue||`<section class="card" id="kdrdp"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><span class="cnt">${wait.length}</span>${wait.length>1?`<span class="actions"><button class="btn small" data-drqueue="kid:${esc(c.id)}">Review all waiting, one at a time</button><button class="btn small ghost" data-tview="drdpreview" data-drpkid="${esc(c.id)}">Tick and accept</button></span>`:""}</div>
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>`)+`
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with documentation</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
-      <div class="cnt">Each level is read from documentation and reviewed by an educator. Tap a measure to see the moments behind it.</div>
+      <div class="cnt">Each level is read from documentation and reviewed by an educator.</div>
+      <div class="cnt">Tap a measure to see its levels in order, with the moments behind each. Two pieces fill a level.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
         <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool Transitional Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
         <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
         ${v==="ptk"?`<label class="radio"><input type="checkbox" data-dreld="${esc(c.id)}" ${kidEld(c)?"checked":""}><span>Speaks a home language other than English, and the family has named spoken English. This adds ELD 1 to 3.</span></label>`:""}
         <label class="radio"><input type="checkbox" data-driep="${esc(c.id)}" ${kidIep(c)?"checked":""} ${(c.drdp||{}).iep===undefined&&kidIep(c)?"disabled":""}><span>Has an IEP or IFSP. The conditional health measures are then required.</span></label></details>
       ${doms.map(domBlock).join("")}
-      ${(()=>{const ov=v==="ptk"?"it":"ptk";const ex=kidDrdpItems(c).filter(x=>x.view===ov&&(x.status==="accepted"||x.status==="changed")&&x.level);if(!ex.length)return"";
+      ${(()=>{const ov=v==="ptk"?"it":"ptk";const ex=kidDrdpItems(c).filter(x=>x.view===ov&&!DRDP_M[v][x.code]&&(x.status==="accepted"||x.status==="changed")&&x.level);if(!ex.length)return"";
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
         return `<details class="drset" data-drrow="__earlier" ${drdpOpen.has("__earlier")?"open":""}><summary class="cnt"><b>Levels in the ${DRDP_VIEW[ov]} View</b>, ${codes.length} measure${codes.length===1?"":"s"}, kept from before</summary>
           ${codes.map(k=>{const evs=ex.filter(x=>x.code===k).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));return `<div class="drrow" style="padding:8px 0"><div class="drcode"><b>${esc(k)}</b> ${esc(DRDP_M[ov][k].n)}</div><div class="drbody">${evs.map(evLine).join("")}</div></div>`}).join("")}</details>`})()}
-      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
+      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
     </section>`;
 }
 /* ---------- DRDP review ----------
@@ -2772,23 +2835,88 @@ function renderDrdpReview(){loadDrdpTxt();const ks=drpKids();const one=drpKid&&c
         <div style="display:grid;gap:10px">${o.wait.map(x=>{const key=c.id+"|"+x.id;
           return `<div class="drprow">${x.level?`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`:`<div class="cnt">No level yet. Choose one below.</div>`}${k.reviewRow(x)}</div>`}).join("")}</div></section>`}).join("")}
     ${on?`<section class="card" data-keep="1"><div class="actions">${accBtn}<button class="linkbtn" data-tview="today">Back to Today</button></div></section>`:""}`}
-function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0,held=0;
+function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0,held=0,aside=0;
   for(const o of list){const items={};for(const x of o.xs)if(x.level&&x.status==="suggested")items[x.id]={status:"accepted",reviewedBy:who,reviewedAt:now};
-    const r=drdpKeepTwo(o.c,items);held+=r.held;const k=Object.keys(r.items).length;if(k){kidDrdpPatch(o.c,{drdp:{items:r.items}});n+=k}}
-  if(n||held)toast((n===1?"1 accepted.":n+" accepted.")+(held?` ${held} kept waiting, since an observation counts for two measures at most.`:""));drdpEdit="";renderMain();window.scrollTo(0,0)}
+    const r=drdpAcceptSave(o.c,items);held+=r.held;aside+=r.aside;n+=r.n}
+  if(n||held||aside)toast(drdpAcceptText(n,held,aside));drdpEdit="";renderMain();window.scrollTo(0,0)}
 document.addEventListener("click",e=>{if(view!=="drdpreview")return;const t=e.target.closest("[data-drpacc],[data-drpall],[data-drpopen]");if(!t)return;e.preventDefault();e.stopPropagation();
   if(t.dataset.drpopen){kidOpen=t.dataset.drpopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
   if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);const xs=o?o.wait.filter(x=>!drpOff.has(o.c.id+"|"+x.id)):[];if(xs.length)drpAccept([{c:o.c,xs}]);else if(o)toast("Nothing is ticked for "+o.c.first+".");return}
   drpAccept(drpKids().map(o=>({c:o.c,xs:drpOn(o)})))},true);
 document.addEventListener("change",e=>{const t=e.target;if(view!=="drdpreview"||t.dataset.drpoff===undefined)return;if(t.checked)drpOff.delete(t.dataset.drpoff);else drpOff.add(t.dataset.drpoff);renderMain()});
+/* ---------- DRDP open levels ----------
+   The director's page of what is still open, for each child and each class. Every measure shows its levels as small
+   marks, filled once a level has its two pieces, outlined with one, plain while open, and ringed where the child is now.
+   A level counts as open for a child from the earliest level up to where they are now (November 13, 2026). */
+let droRoom="All";const droKids=new Set();
+const droShort=l=>LV_KEY[l]||String(l).split(" ").map(w=>w[0]).join("");
+function droOf(c){const ms=drdpMeasuresFor(c),st=drdpLevelState(c);let full=0,part=0,gaps=0,none=0;
+  const rows=ms.map(code=>{const L=drdpLadder(code),m=st[code]||{n:{},top:-1};if(m.top<0)none++;
+    const cells=L.map((lv,i)=>{const k=m.n[lv]||0;if(k>=DRDP_PER_LEVEL)full++;else{if(k)part++;if(i<=m.top)gaps++}return {lv,k,now:i===m.top}});return {code,cells}});
+  return {rows,full,part,gaps,none,measures:ms.length}}
+function droKidBody(c,o){const v=drdpViewOf(c).v;
+  return `<div class="dropen">${o.rows.map(r=>`<div class="dol"><div class="cnt"><b>${esc(r.code)}</b> ${esc((DRDP_M[v][r.code]||{}).n||DRDP[r.code]||"")}</div><div class="doc">${r.cells.map(x=>`<span class="dc ${x.k>=DRDP_PER_LEVEL?"full":x.k?"part":""}${x.now?" now":""}" title="${esc(x.lv)}, ${x.k?x.k+(x.k===1?" piece":" pieces"):"open"}">${esc(droShort(x.lv))}</span>`).join("")}</div></div>`).join("")}</div>
+    <div class="actions"><button class="btn small ghost" data-droopen="${esc(c.id)}">Open ${esc(c.first)}'s DRDP</button></div>`}
+function renderDrdpOpen(){const rooms=droRoom==="All"?CLASSROOMS:[droRoom];const all=kidsAt();
+  const sect=r=>{const ks=all.filter(c=>c.classroom===r).sort((a,b)=>a.first.localeCompare(b.first));if(!ks.length)return"";const os=new Map(ks.map(c=>[c.id,droOf(c)]));
+    const gaps=ks.reduce((n,c)=>n+os.get(c.id).gaps,0),none=ks.reduce((n,c)=>n+os.get(c.id).none,0);
+    return `<section class="card"><div class="secthead"><h3 style="font-size:18px">${esc(r)} class</h3><span class="cnt">${ks.length} ${ks.length===1?"child":"children"}</span></div>
+      <div class="cnt">${gaps} ${gaps===1?"level":"levels"} still open up to where each child is now.</div><div class="cnt">${none} ${none===1?"measure":"measures"} with no evidence yet.</div>
+      ${ks.map(c=>{const o=os.get(c.id),open=droKids.has(c.id);
+        return `<details class="drrow" data-drokid="${esc(c.id)}" ${open?"open":""}><summary><span class="drcode"><b>${esc(kidName(c))}</b></span><span class="drnow"><span class="cnt">${o.gaps} open up to now · ${o.none} of ${o.measures} measures with no evidence · ${o.full} ${o.full===1?"level":"levels"} filled</span></span></summary>${open?`<div class="drbody">${droKidBody(c,o)}</div>`:""}</details>`}).join("")}</section>`};
+  const body=rooms.map(sect).join("");
+  $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">DRDP open levels</h2>
+    <div class="sub">What is still open for each child and each class. Two pieces fill a level.</div></div>
+    <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Class">${["All",...CLASSROOMS].map(r=>`<button data-droroom="${esc(r)}" aria-pressed="${droRoom===r}">${esc(r)}</button>`).join("")}</div><button class="linkbtn" data-tview="children">Back to Children</button></div>
+    <section class="card dropen"><div class="cnt">How to read the marks. Tap a child to see every measure.</div>
+      <div class="doc" style="gap:6px 8px;align-items:center"><span class="dc full">BE</span><span class="cnt" style="margin-right:10px">two pieces</span><span class="dc part">BE</span><span class="cnt" style="margin-right:10px">one piece</span><span class="dc">BE</span><span class="cnt" style="margin-right:10px">open</span><span class="dc full now">BE</span><span class="cnt">where the child is now</span></div></section>
+    ${body||`<div class="empty">No children in this class yet.</div>`}`}
+document.addEventListener("click",e=>{if(view!=="drdpopen")return;const t=e.target.closest("[data-droroom],[data-droopen]");if(!t)return;e.preventDefault();e.stopPropagation();
+  if(t.dataset.droopen){kidOpen=t.dataset.droopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
+  droRoom=t.dataset.droroom;renderMain()},true);
+document.addEventListener("toggle",e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.dataset.drokid||view!=="drdpopen")return;const k=d.dataset.drokid;
+  if(d.open&&!droKids.has(k)){droKids.add(k);const c=children.get(k);if(c&&!d.querySelector(".drbody"))d.insertAdjacentHTML("beforeend",`<div class="drbody">${droKidBody(c,droOf(c))}</div>`)}else if(!d.open)droKids.delete(k)},true);
+
+/* ---------- The earlier years, read for DRDP evidence ----------
+   The earlier photos kept for the books are also read for DRDP evidence once the director starts it in Settings, after
+   seeing how many photos it would read. TREE asks the server for one photo at a time, oldest first, and reads it against
+   the view each child was in on that day. A level that already holds two pieces, accepted or waiting, takes no more. The
+   suggestions wait for the director alone, and the photo stays in the book collection (November 13, 2026). */
+const kidViewAt=(c,at)=>{if(!c||!c.dob)return drdpViewOf(c).v;const b=parseIso(String(c.dob).slice(0,10)),n=new Date(at);let m=(n.getFullYear()-b.getFullYear())*12+(n.getMonth()-b.getMonth());if(n.getDate()<b.getDate())m--;return m<36?"it":"ptk"};
+let drdpEarlyBusy=false,drdpEarlyWait=0;
+async function drdpEarlyTick(){
+  if(drdpEarlyBusy||drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden||!bgReader()||!window.FP_API||Date.now()<drdpEarlyWait)return;
+  drdpEarlyBusy=true;
+  try{const j=await window.FP_API("/api/drdp/early/next",{});const pk=j&&j.pick;
+    // nothing to read now, so the next look waits ten minutes
+    if(!pk){drdpEarlyWait=Date.now()+600e3;return}
+    let ok=false,found=0;
+    try{const kids=(pk.kids||[]).map(id=>children.get(id)).filter(c=>c&&kidAt(c));
+      if(kids.length){const day=shortDate(pk.at),title=firstLine(pk.words,60)||("A photo from "+day);
+        const S={text:`A photo an educator shared with families through Kaymbu on ${day}${pk.room?", "+pk.room+" class":""}, with these words. ${String(pk.words||"").trim()||"No words were written."}`,photos:[{id:"early-"+pk.m,photo:{id:pk.photo}}],kids,title};
+        const groups={};for(const c of kids){const v=kidViewAt(c,pk.at);(groups[v]=groups[v]||[]).push(c)}
+        const items=[];for(const [v,cs] of Object.entries(groups)){const r=await drdpRead(v,cs,S,pk.m,{kind:"book",at:pk.at,early:true});items.push(...r.items)}
+        const byKid={};for(const x of items)(byKid[x.childId]=byKid[x.childId]||[]).push(x);
+        for(const [cid,xs] of Object.entries(byKid)){const c=children.get(cid);if(!c)continue;const patch={};
+          for(const old of kidDrdpItems(c))if(old.src&&old.src.kind==="book"&&old.src.id===pk.m&&old.status==="suggested")patch[old.id]={__delete__:true};
+          for(const x of xs)patch[x.id]={code:x.code,view:x.view,level:x.level,emerging:x.emerging,evidence:x.evidence,src:{kind:"book",id:pk.m,title,at:pk.at,photo:pk.photo,words:String(pk.words||"").slice(0,1200)},at:Date.now(),by:"reading",early:true,status:"suggested",suggested:{level:x.level,emerging:x.emerging}};
+          kidDrdpPatch(c,{drdp:{items:patch}})}
+        found=items.length}
+      ok=true}
+    catch(e){drdpEarlyWait=Date.now()+120e3}
+    await window.FP_API("/api/drdp/early/done",{m:pk.m,ok,found}).catch(()=>{});
+    if(view==="settings"&&typeof kpLoad==="function")kpLoad()}
+  catch(e){drdpEarlyWait=Date.now()+300e3}
+  finally{drdpEarlyBusy=false}}
+setInterval(()=>{drdpEarlyTick().catch(()=>{})},40000);
 function drdpKid(){return children.get(kidOpen)}
 // on the DRDP review page a card belongs to the child named on its group
 function drdpKidOf(el){if(view==="drdpreview"){const g=el&&el.closest("[data-drkid]");return g?children.get(g.dataset.drkid):null}return drdpKid()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||(view!=="child"&&view!=="drdpreview"))return;const c=drdpKidOf(t);if(!c)return;
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
-  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}kidDrdpPatch(c,{drdp:{items:{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}}}});toast(`Accepted for ${x.code}.`);drQNext();return}
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}const r=drdpAcceptSave(c,{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}});toast(r.n?`Accepted for ${x.code}.${r.aside?` ${r.aside} more set aside, since ${r.aside===1?"its level has":"their levels have"} two pieces now.`:""}`:"Set aside, since that level already has two pieces.");drQNext();return}
   if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");drQNext();return}
-  if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested"}}}});renderMain();return}
+  if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested",back:true}}}});renderMain();return}
   if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}
   if(t.dataset.drcancel){drdpEdit="";renderMain();return}
   if(t.dataset.drqskip){if(drQ){drQ.skip.add(t.dataset.drqskip);drdpEdit="";drQGo()}return}
@@ -2798,7 +2926,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
     if(drdpFull(c,x,id)){toast(drdpFullText(c));return}
     const sug=x.suggested||{};const same=lv===sug.level&&em===!!sug.emerging;
     kidDrdpPatch(c,{drdp:{items:{[id]:{level:lv,emerging:em&&drdpEmergeOk(x.view||drdpViewOf(c).v,x.code,lv),status:same?"accepted":"changed",reviewedBy:who,reviewedAt:now}}}});
-    drdpEdit="";toast(`Saved for ${x.code}.`);drQNext();return}
+    drdpLevelSweep(c);drdpEdit="";toast(`Saved for ${x.code}.`);drQNext();return}
 });
 document.addEventListener("change",e=>{const t=e.target;if(view!=="child"&&view!=="drdpreview")return;const c=drdpKidOf(t);if(!c)return;
   if(t.dataset.drview!==undefined){kidDrdpPatch(c,{drdp:{view:t.value}});renderMain();return}
@@ -4624,7 +4752,7 @@ const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New E
 // educators see the planning resources once the director turns them on. The director and the kitchen always do.
 const planResOk=()=>isDirector()||isKitchenUser()||!!(PROGRAM_DOC&&PROGRAM_DOC.planResOn);
 const PLAN_RES=[["ideabank","Idea bank"],["garden","Garden"],["artists","Artists"],["recipes","Recipes"],["songs","Songs and stories"]];
-const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",drdpreview:"today",wreport:"today",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",drdpreview:"today",drdpopen:"children",wreport:"today",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"plans",gatherings:"docs",recipes:"plans",songs:"plans",artists:"plans",museums:"staff",ideabank:"plans",guide:"plans",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
@@ -4880,7 +5008,7 @@ function todayWaiting(){
     out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}
   {const w=wrTodayItem();if(w)out.push(w)}
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
-  {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested").length]).filter(x=>x[1]);
+  {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)).length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
       out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-tview="drdpreview" data-drpkid=""`,b:"Review"})}}
   // order lines TREE is not sure were bought for meals, for the director to place
@@ -15479,7 +15607,7 @@ function renderChildren(){
   const today=iso(new Date());
   const card=c=>{const nx=kidNext(c);const n=mCount(c);
     const cf=[...conferences.values()].filter(x=>x.childId===c.id&&x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
-    const dw=kidDrdpItems(c).filter(x=>x.status==="suggested").length;
+    const dw=kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)).length;
     // every card has the same lines in the same order, so children compare at a glance
     const line=(on,t)=>`<span class="kline ${on?"ksoon":""}">${esc(t)}</span>`;
     const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"long",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":""),...(dietLine(c)?[`<span class="kline kdiet">${esc(dietLine(c))}</span>`]:[])]
@@ -15498,7 +15626,7 @@ function renderChildren(){
       <label>Small group<select id="ka-group"><option value="">None</option>${GROUPS.map(g=>`<option>${esc(g.name)}</option>`).join("")}</select></label>
       <label>Birthday<input type="date" id="ka-dob"></label><label>First day<input type="date" id="ka-date" value="${iso(new Date())}"></label></div>
       <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div><div class="cnt">Family details, the schedule and the program are added on the child's conference record.</div></section>`
-    :kMove?kMoveHtml():`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button><button class="btn small ghost" data-kmvopen="1">Move children</button></div>`):"";
+    :kMove?kMoveHtml():`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button><button class="btn small ghost" data-kmvopen="1">Move children</button><button class="btn small ghost" data-tview="drdpopen">DRDP open levels</button></div>`):"";
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children, ${esc(yearLabel(yearFromTime(Date.now())))}</h2>
     <div class="sub">Each child's documentation, conferences and years at our school in one place.${dir?" Changes made here are the roster.":""}</div></div>
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At our school ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
@@ -16426,7 +16554,7 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
       <div class="cnt" style="margin-top:8px">About ${be.mb>=1000?(be.mb/1000).toFixed(1)+" GB":be.mb+" MB"} in Google Drive once the photos come in. The screener drops dark, blurred and repeated photos first, so it will be less.</div>
       ${(()=>{const br=bk.bring||{},dn=br.done||{},st=br.status||"none",lbOn=["approved","running"].includes((k.lookback||{}).status);
         const got=`${KP_N(dn.kept||0,"photo")} kept in Drive${dn.inTree?`, ${(dn.inTree).toLocaleString()} already in TREE`:""}${dn.failed?`, ${KP_N(dn.failed,"photo")} Kaymbu would not send`:""}.`;
-        if(st==="none")return `<div class="cnt" style="margin-top:8px">Keep them in Drive puts every earlier photo into each child's book collection in Google Drive, so the school has them even without Kaymbu. They stay out of observations, readings and the displays. Videos stay in Kaymbu.</div><div class="cnt">It runs in the evenings and on weekends, after this year's look back.</div><div class="actions"><button class="btn small" data-kpkeep="1">Keep them in Drive</button></div>`;
+        if(st==="none")return `<div class="cnt" style="margin-top:8px">Keep them in Drive puts every earlier photo into each child's book collection in Google Drive, so the school has them even without Kaymbu. They stay out of observations, threads and the displays, and are read for DRDP evidence only if you start that below. Videos stay in Kaymbu.</div><div class="cnt">It runs in the evenings and on weekends, after this year's look back.</div><div class="actions"><button class="btn small" data-kpkeep="1">Keep them in Drive</button></div>`;
         if(st==="done")return `<div class="cnt" style="margin-top:8px"><b>Every earlier photo is kept.</b> ${got}</div>`;
         if(st==="paused")return `<div class="cnt" style="margin-top:8px"><b>Keeping earlier photos is paused.</b> ${got}</div><div class="actions"><button class="btn small" data-kpkeep="1">Go on</button></div>`;
         return `<div class="cnt" style="margin-top:8px"><b>Keeping earlier photos in Drive.</b> ${got}</div><div class="cnt">${lbOn?"It starts once this year's look back is done.":k.quiet?"It is working now.":"It works in the evenings and on weekends."}</div>${br.lastError?`<div class="cnt" style="color:var(--clay)">It stopped for now. ${esc(br.lastError)} It tries again in a few minutes.</div>`:""}<div class="actions"><button class="btn small ghost" data-kpkeeppause="1">Pause</button></div>`})()}
@@ -16447,11 +16575,21 @@ function kaymbuPullHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS)return"";
         return `<div style="margin-top:10px"><div class="prow"><div><b>${esc(r?r+" class":"No class")}</b><div class="cnt">${list.length.toLocaleString()} set aside</div></div><span class="actions" style="margin:0;flex-wrap:wrap"><button class="btn small" data-kpbring="${esc(r)}" ${k.busy?"disabled":""}>Bring all into TREE</button><button class="btn small ghost" data-kpaccept="${esc(r)}">Leave all out</button></span></div>${part.map(item).join("")}</div>`}).join("")}
       ${as.length>shown?`<div class="actions"><button class="linkbtn" data-kpmore="1">Show more</button></div>`:""}</details>`}
   else if(k.configured)aside=`<div class="cnt" style="margin-top:14px">Nothing is set aside right now.${k.accepted?` ${KP_N(k.accepted,"Moment")} you left out stay out of TREE.`:""}</div>`;
-  return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${book}${aside}</section>`}
-document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpcheck],[data-kpbook],[data-kpkeep],[data-kpkeeppause],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
+  let early="";
+  if(k.configured&&k.early){const ev=k.early,MY=d=>d?new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"}):"";
+    early=`<div class="lbl" style="margin-top:14px">Earlier years, for DRDP evidence</div>`;
+    const plan=`<div class="cnt">${KP_N(ev.photos,"photo")} of ${KP_N(ev.children,"child","children")}, from ${esc(MY(ev.oldest))} to ${esc(MY(ev.newest))}.</div><div class="cnt">Up to ${ev.perMonth} for each child for each month, the ones with words first. A photo of several children is read once.</div>`;
+    if(!ev.photos)early+=`<div class="cnt">Once the earlier photos are kept in Drive, TREE can read a few of them for each child, so a child's levels show from their first year with us.</div>`;
+    else if(ev.status==="none")early+=`<div class="cnt"><b>TREE would read</b></div>${plan}<div class="cnt">Each is one DRDP reading, the same as for an observation. A level that already has two pieces takes no more.</div><div class="cnt">It reads while TREE is open on your computer. The suggestions wait for you alone, with Accept all.</div><div class="actions"><button class="btn small" data-kpearly="start">Read the earlier years</button></div>`;
+    else if(ev.status==="done")early+=`<div class="cnt"><b>The earlier years are read.</b> ${KP_N(ev.done,"photo")} read, ${KP_N(ev.found,"suggestion")} found.</div><div class="actions"><button class="btn small ghost" data-tview="drdpreview" data-drpkid="">Review them</button></div>`;
+    else early+=`<div class="cnt"><b>${ev.status==="paused"?"Reading the earlier years is paused.":"Reading the earlier years."}</b> ${KP_N(ev.done,"photo")} read, ${KP_N(ev.left,"photo")} to go, ${KP_N(ev.found,"suggestion")} found so far.</div>${ev.status==="paused"?"":`<div class="cnt">It reads while TREE is open on your computer, about ninety photos an hour.</div>`}
+      <div class="actions"><button class="btn small ghost" data-kpearly="${ev.status==="paused"?"go":"pause"}">${ev.status==="paused"?"Carry on":"Pause"}</button><button class="linkbtn" data-tview="drdpreview" data-drpkid="">Review what is found</button></div>`}
+  return `<section class="card" id="kpcard"><div class="lbl">Kaymbu Moments</div>${hint}${look}${back}${book}${early}${aside}</section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-kpearly],[data-kpcheck],[data-kpbook],[data-kpkeep],[data-kpkeeppause],[data-kpcount],[data-kpstart],[data-kppause],[data-kpback],[data-kpbring],[data-kpaccept],[data-kpmore]");if(!t||view!=="settings"||!isDirector())return;e.preventDefault();
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const d=t.dataset;
   if(d.kpmore){kpMore+=24;kpRedraw();return}
   if(d.kpcheck){t.disabled=true;t.textContent="Looking";kpLoad("/api/kaymbu/pull/check",{},"Kaymbu is read.");return}
+  if(d.kpearly){if(d.kpearly==="start"){drdpEarlyWait=0;kpLoad("/api/kaymbu/pull/earlystart",{},"TREE will read the earlier years while it is open on your computer.")}else{drdpEarlyWait=0;kpLoad("/api/kaymbu/pull/earlypause",{on:d.kpearly==="pause"},d.kpearly==="pause"?"Paused.":"Reading again.")}return}
   if(d.kpbook){kpLoad("/api/kaymbu/pull/bookcount",{},"Counting. This can take half an hour.");return}
   if(d.kpkeep){kpLoad("/api/kaymbu/pull/bookbring",{},"The earlier photos will be kept in Drive, in the evenings and on weekends.");return}
   if(d.kpkeeppause){kpLoad("/api/kaymbu/pull/bookpause",{},"Paused.");return}

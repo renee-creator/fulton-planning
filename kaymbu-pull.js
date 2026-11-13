@@ -543,7 +543,8 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
   /* ---------- earlier years brought into Google Drive, for the books ---------- */
   // Once the director says yes, every earlier photo of each child enrolled now is kept in the school's Google Drive at
   // the size Kaymbu shows it, so the school keeps them even without Kaymbu. They go into each child's book collection
-  // only, never into observations, readings or the displays, and nothing is read by AI. Videos stay in Kaymbu. It runs in
+  // only, never into observations, threads or the displays. They are read for DRDP evidence only once the director starts
+  // that, below (November 13, 2026). Videos stay in Kaymbu. It runs in
   // the quiet hours after this year's look back, a few hundred an hour, and goes on where it stopped.
   const BRING_PER_HOUR = 300;
   const bringTimes = [];
@@ -630,6 +631,51 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     } finally { busy = ''; }
   }
 
+  /* ---------- earlier years read for DRDP evidence (November 13, 2026) ----------
+     The director chose to have the earlier photos kept for the books also read for DRDP evidence, so a child's levels
+     show from their first year with us. Nothing is read until she starts it, after a count. A few photos for each child
+     for each month are chosen, the ones with words first and one photo of a post, oldest first. A photo that tags several
+     children is read once for all of them. The reading itself runs in TREE on the director's computer, one photo at a
+     time, and asks here for the next one. The photos stay in the book collection and never become observations. */
+  const EARLY_PER_MONTH = 3;
+  function earlyDoc() { const r = store.recs.kaymbu.get('drdpearly'); const d = r && !r.deleted && r.doc; return d || { id: 'drdpearly', status: 'none', read: {} }; }
+  function saveEarly(d) { saveAside(Object.assign(d, { savedAt: Date.now() })); return d; }
+  function earlyPlan() {
+    const kids = enrolledKids(); const picks = new Map();
+    for (const id of kids.keys()) {
+      const byMonth = new Map();
+      for (const it of bookDoc(id).items || []) { if (!it || !it.photo || !it.at || !it.m) continue; const k = String(it.day || '').slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(it); }
+      for (const list of byMonth.values()) {
+        const len = it => String(it.words || '').trim().length;
+        list.sort((a, b) => (len(b) >= 15) - (len(a) >= 15) || len(b) - len(a) || a.at - b.at);
+        const posts = new Set(); let n = 0;
+        for (const it of list) { if (n >= EARLY_PER_MONTH) break; if (it.batch) { if (posts.has(it.batch)) continue; posts.add(it.batch); } n++;
+          if (!picks.has(it.m)) picks.set(it.m, { m: it.m, at: it.at, day: it.day || '', words: String(it.words || '').slice(0, 3000), photo: it.photo, room: it.room || '', kids: (it.kids || []).filter(k => kids.has(k)) }); }
+      }
+    }
+    return [...picks.values()].filter(p => p.kids.length).sort((a, b) => a.at - b.at);
+  }
+  function earlyView() {
+    const d = earlyDoc(); const plan = earlyPlan(); const read = d.read || {}; const left = plan.filter(p => !read[p.m]);
+    return { status: d.status || 'none', photos: plan.length, left: left.length, done: plan.length - left.length, children: new Set(plan.flatMap(p => p.kids)).size,
+      oldest: plan.length ? plan[0].day : '', newest: plan.length ? plan[plan.length - 1].day : '', perMonth: EARLY_PER_MONTH, startedAt: d.startedAt || 0, finishedAt: d.finishedAt || 0, found: d.found || 0 };
+  }
+  function earlyStart(who) { const d = earlyDoc(); if (!earlyPlan().length) throw new Error('No earlier photos are kept yet. Keep them in Drive first.'); saveEarly(Object.assign(d, { status: 'reading', startedAt: d.startedAt || Date.now(), by: who || '' })); }
+  function earlyPause(on) { const d = earlyDoc(); if (d.status === 'reading' || d.status === 'paused') saveEarly(Object.assign(d, { status: on ? 'paused' : 'reading' })); }
+  // the next photo to read, or none once every chosen photo is read
+  function earlyNext() {
+    const d = earlyDoc(); if (d.status !== 'reading') return { status: d.status || 'none' };
+    const read = d.read || {}; const p = earlyPlan().find(x => !read[x.m]);
+    if (!p) { saveEarly(Object.assign(d, { status: 'done', finishedAt: Date.now() })); return { status: 'done' }; }
+    return { status: 'reading', pick: p };
+  }
+  // a photo is marked once it is read, or after it could not be read three times, so the reading never stops on one photo
+  function earlyMark(m, ok, found) {
+    const d = earlyDoc(); const read = Object.assign({}, d.read); const tries = Object.assign({}, d.tries);
+    if (ok) { read[m] = 1; delete tries[m]; } else { tries[m] = (tries[m] || 0) + 1; if (tries[m] >= 3) { read[m] = 2; delete tries[m]; } }
+    saveEarly(Object.assign(d, { read, tries, found: (d.found || 0) + (ok ? Math.max(0, Number(found) || 0) : 0) }));
+  }
+
   /* ---------- the director's choices on what was set aside ---------- */
   async function putBack(id) {
     const r = store.recs.kaymbu.get(id); const d = r && !r.deleted && r.doc; if (!d || !d.kid) throw new Error('That Moment is no longer set aside.');
@@ -674,7 +720,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const list = []; for (const [, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside') list.push(d); }
     list.sort((a, b) => (b.published || 0) - (a.published || 0));
     const accepted = [...store.recs.kaymbu.values()].filter(r => r && !r.deleted && r.doc && r.doc.status === 'accepted' && !r.doc.auto).length;
-    return { configured: configured(), email: EMAIL(), busy: busy || (bringing ? 'back' : ''), lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' }, book: st.book || { status: 'none' },
+    return { configured: configured(), email: EMAIL(), busy: busy || (bringing ? 'back' : ''), lastRun: st.lastRun || 0, lastError: st.lastError || '', lastCounts: st.lastCounts || null, lookback: st.lookback || { since: since(), status: 'none' }, book: st.book || { status: 'none' }, early: earlyView(),
       quiet: quietHours(), aside: list.map(d => ({ id: d.id, reason: d.reason, why: d.why, thumb: d.thumb, video: d.video, room: d.room, kaymbuClass: d.kaymbuClass, words: d.words, students: d.students, day: d.day })), accepted, reasons: REASON };
   }
   const statusLine = () => [configured(), configured() ? `TREE reads Kaymbu every hour as ${EMAIL()}${stateDoc().lastError ? ', but the last look stopped. ' + stateDoc().lastError : '.'}` : 'TREE does not read Kaymbu yet. Add KAYMBU_EMAIL and KAYMBU_PASSWORD under Environment.'];
@@ -690,7 +736,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     setInterval(() => bringTick().catch(() => {}), 10 * 60e3 + 30e3).unref();
   }
 
-  return { start, hourly, startEstimate, estimate, startBookCount, bookCount, startBring, pauseBring, bringTick, bringMoment, bookDoc, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
+  return { start, hourly, startEstimate, estimate, startBookCount, bookCount, startBring, pauseBring, bringTick, bringMoment, bookDoc, earlyPlan, earlyView, earlyStart, earlyPause, earlyNext, earlyMark, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
     keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, leaveNearCopies, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };

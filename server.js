@@ -3214,6 +3214,8 @@ async function handle(req, res) {
       else if (step === '/bookcount') kaymbuPull.startBookCount();
       else if (step === '/bookbring') kaymbuPull.startBring();
       else if (step === '/bookpause') kaymbuPull.pauseBring();
+      else if (step === '/earlystart') kaymbuPull.earlyStart(me.name);
+      else if (step === '/earlypause') kaymbuPull.earlyPause(body.on !== false);
       else if (step === '/start') kaymbuPull.approve(me.name);
       else if (step === '/pause') kaymbuPull.pause(body.on !== false);
       else if (step === '/back') { if (typeof body.id !== 'string' || !ID_RE.test(body.id)) throw new Error('That Moment is not valid.'); await kaymbuPull.putBack(body.id); }
@@ -3222,6 +3224,12 @@ async function handle(req, res) {
       else if (step !== '') { err(req, res, 404, 'Not found'); return; }
     } catch (e) { err(req, res, 400, e.message || 'That did not work. Try again.'); return; }
     json(req, res, 200, kaymbuPull.view()); return;
+  }
+  // the earlier years' photos, read for DRDP evidence on the director's computer, one at a time (November 13, 2026)
+  if (path === '/api/drdp/early/next' || path === '/api/drdp/early/done') {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director reads the earlier years.'); return; }
+    if (path.endsWith('/done')) { if (typeof body.m !== 'string' || !body.m || body.m.length > 80) { err(req, res, 400, 'That photo is not valid.'); return; } kaymbuPull.earlyMark(body.m, body.ok === true, body.found); json(req, res, 200, { ok: true }); return; }
+    json(req, res, 200, kaymbuPull.earlyNext()); return;
   }
   if (path === '/api/watch') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the program watch.'); return; } try { await watchTick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }
   if (path === '/api/watch/handled') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director marks a finding handled.'); return; } const k = String(body.key || '').slice(0, 300); if (!k) { err(req, res, 400, 'Choose a finding first.'); return; } if (body.undo) watch.reopen(k); else watch.handle(k, me.name); try { await watch.tick(); } catch (e) {} json(req, res, 200, watch.view(false)); return; }

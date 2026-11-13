@@ -1,0 +1,160 @@
+'use strict';
+// Two accepted pieces satisfy a level of a DRDP measure for a child, across all their years and both views. A satisfied
+// level takes no more, the current level stays open for two fresh pieces each conference period, the child's page shows
+// each measure's levels in order, the director has a page of open levels, and the earlier years are read for the
+// director alone (November 13, 2026). Made-up names only.
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs'), path = require('path');
+const { start, browser, signedIn } = require('./fixture.js');
+
+const DAY = 864e5, OLD = Date.now() - 400 * DAY, NOW = Date.now() - DAY;
+const it = (code, level, status, at, src, more) => Object.assign({ code, level, view: 'ptk', status, at, evidence: 'Stacked the blocks and tried again when they fell.', src: { kind: 'notices', id: src, title: 'Block tower ' + src, at } }, status === 'accepted' ? { reviewedBy: 'Ann', reviewedAt: at } : {}, more || {});
+const more = put => {
+  // Pip, every piece from an earlier year. One accepted at Building Earlier and three waiting there.
+  put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', dob: '2022-03-01', drdp: { items: {
+    a0: it('ATL 1', 'Building Earlier', 'accepted', OLD, 'n0'), w1: it('ATL 1', 'Building Earlier', 'suggested', OLD + 3, 'n1'), w2: it('ATL 1', 'Building Earlier', 'suggested', OLD + 2, 'n2'), w3: it('ATL 1', 'Building Earlier', 'suggested', OLD + 1, 'n3'),
+    // a level accepted while Pip was under three, in the other view
+    e1: Object.assign(it('ATL 1', 'Exploring Later', 'accepted', OLD - 300 * DAY, 'n9'), { view: 'it' }),
+    // read from the earlier years, for the director alone
+    y1: Object.assign(it('SED 4', 'Exploring Later', 'suggested', OLD - 200 * DAY, 'km1', { early: true, view: 'it' }), { src: { kind: 'book', id: 'km1', title: 'Passing the watering can', at: OLD - 200 * DAY, photo: 'p-early.jpg', words: 'Pip passed the watering can to a friend.' } }) } } });
+  // Ivy, two levels with two old pieces each. Building Middle is where she is now, Building Earlier is behind her.
+  put('children/ivy.json', { first: 'Ivy', last: 'Test', classroom: 'West', status: 'active', dob: '2022-05-01', drdp: { items: {
+    b1: it('ATL 2', 'Building Earlier', 'accepted', OLD, 'm1'), b2: it('ATL 2', 'Building Earlier', 'accepted', OLD, 'm2'),
+    c1: it('ATL 2', 'Building Middle', 'accepted', OLD, 'm3'), c2: it('ATL 2', 'Building Middle', 'accepted', OLD, 'm4'),
+    f1: it('ATL 2', 'Building Middle', 'suggested', NOW, 'm5'), f2: it('ATL 2', 'Building Middle', 'suggested', NOW - 1, 'm6'), f3: it('ATL 2', 'Building Middle', 'suggested', NOW - 2, 'm7'),
+    g1: it('ATL 2', 'Building Earlier', 'suggested', NOW, 'm8') } } });
+};
+const items = (fx, id) => JSON.parse(fs.readFileSync(path.join(fx.dir, `children/${id}.json`), 'utf8')).drdp.items;
+
+test('a level takes two pieces, and the current level two fresh ones each conference period', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('[data-tview="drdpreview"]', { timeout: 15000 });
+  // the earlier years' suggestion is not Ann's to review, 3 of Pip's and 4 of Ivy's
+  assert.match(await s.p.innerText('#main'), /7 DRDP suggestions to review/);
+  const state = await s.p.evaluate(() => { const c = children.get('ivy'), st = drdpLevelState(c), now = Date.now(), old = now - 400 * 864e5;
+    return [drdpLevelOpen(st, 'ATL 2', 'Building Earlier', now), drdpLevelOpen(st, 'ATL 2', 'Building Middle', now), drdpLevelOpen(st, 'ATL 2', 'Building Middle', old), drdpLevelOpen(st, 'ATL 2', 'Building Later', now), drdpLadder('ATL 1').length, drdpLadder('COG 1').length]; });
+  assert.deepStrictEqual(state, [false, true, false, true, 10, 5], 'a level behind her is closed, where she is now is open to fresh evidence only, the next level is open');
+  await s.p.click('button:has-text("Review")[data-tview="drdpreview"]'); await s.p.waitForSelector('[data-drpall="pip"]');
+  // Accept all for Pip. The first fills the level, and the other two are set aside.
+  await s.p.click('[data-drpall="pip"]'); await s.p.waitForFunction(() => !document.querySelector('[data-drkid="pip"]'), null, { timeout: 15000 });
+  // Accept all for Ivy. Two fresh pieces where she is now, the third set aside, and the one for a level behind her too.
+  await s.p.click('[data-drpall="ivy"]'); await s.p.waitForFunction(() => !document.querySelector('[data-drkid="ivy"]'), null, { timeout: 15000 });
+  assert.deepStrictEqual(s.errors, []);
+  await new Promise(r => setTimeout(r, 2500));
+  const pip = items(fx, 'pip'), ivy = items(fx, 'ivy');
+  assert.deepStrictEqual([pip.w1.status, pip.w2.status, pip.w3.status], ['accepted', 'aside', 'aside']);
+  assert.deepStrictEqual([pip.w2.asideWhy, pip.w2.reviewedBy], ['level', 'TREE']);
+  assert.strictEqual(pip.y1.status, 'suggested', 'the earlier years wait for the director');
+  assert.deepStrictEqual([ivy.f1.status, ivy.f2.status, ivy.f3.status, ivy.g1.status], ['accepted', 'accepted', 'aside', 'aside']);
+  // one set aside can be brought back and accepted, as the educator chooses
+  await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('[data-drrow="ATL 1"]', { state: 'attached', timeout: 15000 });
+  await s.p.click('summary:has-text("Set aside")'); assert.match(await s.p.innerText('#main'), /since its level already has two pieces/);
+  await s.p.click('[data-drback="w2"]'); await s.p.waitForSelector('[data-draccept="w2"]'); await s.p.click('[data-draccept="w2"]');
+  await s.p.waitForFunction(() => children.get('pip').drdp.items.w2.status === 'accepted');
+  assert.deepStrictEqual(s.errors, []);
+});
+
+test('a child\'s page shows each measure\'s levels in order, across both views', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('[data-drrow="dom:ATL"] summary', { timeout: 15000 }); await s.p.click('[data-drrow="dom:ATL"] > summary'); await s.p.waitForSelector('[data-drrow="ATL 1"] [data-drstep]');
+  const steps = await s.p.evaluate(() => [...document.querySelectorAll('[data-drrow="ATL 1"] [data-drstep]')].map(x => [x.dataset.drstep, x.className.replace('drstep ', ''), x.querySelector('.drsteph .cnt').textContent]));
+  assert.strictEqual(steps.length, 10, 'every level of the measure');
+  assert.deepStrictEqual(steps[0], ['Responding Earlier', 'open', 'Open']);
+  assert.deepStrictEqual(steps[3].slice(0, 2), ['Exploring Later', 'part'], 'the level from the Infant and Toddler View sits in the same line');
+  assert.match(steps[3][2], /1 of 2 pieces/);
+  assert.deepStrictEqual(steps[4].slice(0, 2), ['Building Earlier', 'part now']); assert.match(steps[4][2], /1 of 2 pieces, 3 waiting, where Pip is now/);
+  assert.match(await s.p.innerText('[data-drrow="ATL 1"] summary'), /2 pieces of evidence · 0 of 10 levels have two/);
+  // an educator never sees the earlier years waiting
+  assert.doesNotMatch(await s.p.innerText('#main'), /Passing the watering can/);
+  assert.deepStrictEqual(s.errors, []);
+  // the director does, with its photo and words kept with the suggestion
+  const d = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => d.close());
+  await d.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await d.p.waitForSelector('#dr-y1', { timeout: 15000 });
+  const row = await d.p.innerText('#dr-y1'); assert.match(row, /Pip passed the watering can to a friend/); assert.match(row, /From Passing the watering can/);
+  assert.ok(await d.p.$('#dr-y1 img[data-drzoomu]'), 'the earlier photo shows');
+  assert.deepStrictEqual(d.errors.filter(e => !/p-early\.jpg|404|Failed to load/.test(e)), []);
+});
+
+test('the director has a page of open levels for each child and class', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const d = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => d.close());
+  await d.p.evaluate(() => goView('children')); await d.p.waitForSelector('[data-tview="drdpopen"]', { timeout: 15000 });
+  await d.p.click('[data-tview="drdpopen"]'); await d.p.waitForSelector('[data-drokid="ivy"]');
+  const txt = await d.p.innerText('#main'); assert.match(txt, /DRDP open levels/); assert.match(txt, /West class/);
+  // Ivy has two levels filled, and the four earlier levels of that measure are open up to where she is now
+  assert.match(await d.p.innerText('[data-drokid="ivy"] summary'), /4 open up to now · \d+ of \d+ measures with no evidence · 2 levels filled/);
+  await d.p.click('[data-drokid="ivy"] summary'); await d.p.waitForSelector('[data-drokid="ivy"] .dol');
+  const marks = await d.p.evaluate(() => { const r = [...document.querySelectorAll('[data-drokid="ivy"] .dol')].find(x => /ATL 2/.test(x.textContent)); return [...r.querySelectorAll('.dc')].map(x => x.textContent + (x.classList.contains('full') ? '*' : '') + (x.classList.contains('now') ? '!' : '')); });
+  assert.deepStrictEqual(marks, ['RE', 'RL', 'EE', 'EL', 'BE*', 'BM*!', 'BL', 'IE', 'IM', 'IL']);
+  await d.p.click('[data-droopen="ivy"]'); await d.p.waitForSelector('[data-drrow="ATL 2"]', { state: 'attached' });
+  assert.deepStrictEqual(d.errors, []);
+  // an educator who reaches the page goes to Children
+  const s = await signedIn(fx, br, 'Ann', '1357', 390); t.after(() => s.close());
+  await s.p.evaluate(() => goView('drdpopen')); assert.strictEqual(await s.p.evaluate(() => view), 'children');
+});
+
+test('a reading leaves out a level that has its evidence and offers the next measure', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const d = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => d.close());
+  await d.p.evaluate(() => goView('children')); await d.p.waitForFunction(() => children.get('ivy'), null, { timeout: 15000 });
+  const r = await d.p.evaluate(async () => { let asked = '';
+    askRead = async prompt => { asked = prompt; return { measures: [
+      { code: 'ATL 2', child: 'ivy', level: 'Building Earlier', evidence: 'A level behind her that is full.' },
+      { code: 'ATL 2', child: 'ivy', level: 'Building Later', evidence: 'Never reached, since a measure is given once.' },
+      { code: 'ATL 1', child: 'ivy', level: 'Building Middle', evidence: 'Stayed with the ramp for a long time.' },
+      { code: 'SED 4', child: 'ivy', level: 'Building Earlier', evidence: 'Built beside a friend.' }], photo: '', summary: 'Ramps.' }; };
+    const c = children.get('ivy'); const S = { text: 'Ivy built a ramp.', photos: [], kids: [c], title: 'Ramps' };
+    const old = Date.now() - 400 * 864e5;
+    const now = await drdpRead('ptk', [c], S, 'nx', { kind: 'notices', at: Date.now() });
+    // the earlier years count what is waiting too. Ivy has three waiting at Building Middle of ATL 2.
+    askRead = async prompt => ({ measures: [{ code: 'ATL 2', child: 'ivy', level: 'Building Middle', evidence: 'Full, with the waiting ones.' }, { code: 'ATL 3', child: 'ivy', level: 'Exploring Later', evidence: 'Tried another way.' }] });
+    const early = await drdpRead('ptk', [c], S, 'km9', { kind: 'book', at: old, early: true });
+    return { asked, now: now.items.map(x => x.code + ' ' + x.level), early: early.items.map(x => x.code + ' ' + x.level), view: [kidViewAt(c, Date.parse('2024-10-01')), kidViewAt(c, Date.parse('2025-06-01'))] }; });
+  assert.deepStrictEqual(r.now, ['ATL 1 Building Middle', 'SED 4 Building Earlier']);
+  assert.match(r.asked, /Levels that already have their evidence\. Ivy has ATL 2 at Responding Earlier|Levels that already have their evidence\. Ivy has ATL 2 at Building Earlier/);
+  assert.match(r.asked, /leave that measure out for that child and give the next clearest measure/);
+  assert.doesNotMatch(r.asked, /ATL 2 at [^.;]*Building Middle/, 'where she is now is still open to fresh evidence');
+  assert.deepStrictEqual(r.early, ['ATL 3 Exploring Later']);
+  assert.deepStrictEqual(r.view, ['it', 'ptk'], 'an earlier photo is read against the view the child was in that day');
+  assert.deepStrictEqual(d.errors, []);
+});
+
+// the server's side of the earlier years, which photos are chosen and in what order
+const recs = () => ({ notices: new Map(), children: new Map(), settings: new Map(), drafts: new Map(), clips: new Map(), kaymbu: new Map() });
+test('the earlier years choose a few photos for each child for each month, oldest first', () => {
+  const store = { ready: true, recs: recs() };
+  store.recs.children.set('c1', { doc: { first: 'Wren', last: 'Alder', classroom: 'North' } }); store.recs.children.set('c2', { doc: { first: 'Pip', last: 'Birch', classroom: 'North' } });
+  store.recs.children.set('c3', { doc: { first: 'Gone', last: 'Away', classroom: 'North', status: 'left' } });
+  const pull = require('../kaymbu-pull.js')({ store, log: () => {}, kaymbu: {}, noteChange: () => {}, scheduleSave: () => {}, askClaude: async () => ({}), video: {}, onPost: () => {} });
+  const T = d => Date.parse(d + 'T18:00:00Z');
+  const item = (m, day, words, kids, o) => Object.assign({ m, at: T(day), day, words, kids, room: 'North', photo: 'ph-' + m }, o || {});
+  const c1 = [item('a1', '2025-03-03', '', ['c1']), item('a2', '2025-03-05', 'Wren carried the watering can across the garden.', ['c1', 'c2']), item('a3', '2025-03-07', 'Short', ['c1']),
+    item('a4', '2025-03-09', 'Wren and a friend built a long road of blocks together.', ['c1'], { batch: 'b1' }), item('a5', '2025-03-09', 'Wren and a friend built a long road of blocks together.', ['c1'], { batch: 'b1' }),
+    item('a6', '2025-03-20', 'Wren counted the eggs in the basket, one at a time.', ['c1', 'c3']), item('a7', '2024-11-02', 'Wren poured water into the mud kitchen pot.', ['c1']),
+    Object.assign(item('a8', '2024-11-03', 'Already an observation in TREE.', ['c1']), { photo: undefined, notice: 'n77' })];
+  store.recs.kaymbu.set('book-c1', { doc: { id: 'book-c1', child: 'c1', items: c1 } });
+  store.recs.kaymbu.set('book-c2', { doc: { id: 'book-c2', child: 'c2', items: [c1[1]] } });
+  const plan = pull.earlyPlan();
+  assert.deepStrictEqual(plan.map(p => p.m), ['a7', 'a2', 'a4', 'a6'], 'oldest first, three for March, the ones with words, one photo of a post, and never one already in TREE');
+  assert.deepStrictEqual(plan.find(p => p.m === 'a2').kids, ['c1', 'c2'], 'read once for both children'); assert.deepStrictEqual(plan.find(p => p.m === 'a6').kids, ['c1'], 'only children enrolled now');
+  let v = pull.earlyView(); assert.deepStrictEqual([v.status, v.photos, v.left, v.children, v.oldest, v.newest], ['none', 4, 4, 2, '2024-11-02', '2025-03-20']);
+  assert.deepStrictEqual(pull.earlyNext(), { status: 'none' }, 'nothing is read until the director starts it');
+  pull.earlyStart('Dee'); assert.strictEqual(pull.earlyNext().pick.m, 'a7');
+  pull.earlyMark('a7', true, 2); assert.strictEqual(pull.earlyNext().pick.m, 'a2');
+  // one that cannot be read is tried three times, then passed
+  pull.earlyMark('a2', false); pull.earlyMark('a2', false); assert.strictEqual(pull.earlyNext().pick.m, 'a2'); pull.earlyMark('a2', false); assert.strictEqual(pull.earlyNext().pick.m, 'a4');
+  pull.earlyPause(true); assert.deepStrictEqual(pull.earlyNext(), { status: 'paused' }); pull.earlyPause(false);
+  pull.earlyMark('a4', true, 1); pull.earlyMark('a6', true, 0);
+  assert.deepStrictEqual(pull.earlyNext(), { status: 'done' }); v = pull.earlyView(); assert.deepStrictEqual([v.status, v.left, v.done, v.found], ['done', 0, 4, 3]);
+});
