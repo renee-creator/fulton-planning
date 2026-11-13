@@ -2605,7 +2605,7 @@ async function drdpAnalyze(kind,id,mode,quiet){
   if(!S.kids.length){toast("Tag the children this documentation is about first. A level always belongs to one child.");return}
   if(!has(S.text)&&!S.photos.length){toast("There is nothing to read yet.");return}
   const useKw=mode==="keywords"||!sample||!navigator.onLine;
-  drdpBusy[key]=true;drdpRefresh();
+  drdpBusy[key]=true;drdpRefresh(quiet);
   try{
     const groups={};for(const c of S.kids){const v=drdpViewOf(c).v;(groups[v]=groups[v]||[]).push(c)}
     let items=[],photo="",summary="",official;
@@ -2626,15 +2626,17 @@ async function drdpAnalyze(kind,id,mode,quiet){
       if(Object.keys(patch).length)kidDrdpPatch(c,{drdp:{items:patch}})}
     if(!quiet)toast(items.length?`${items.length} suggestion${items.length===1?"":"s"} now wait${items.length===1?"s":""} on ${Object.keys(byKid).length===1?children.get(Object.keys(byKid)[0])?.first+"'s page":"the children's pages"} for review.`:"No measure was clear enough from this documentation.");
   }catch(e){if(!quiet)toast(assistError(e||"unknown","Nothing changed."))}
-  finally{delete drdpBusy[key];drdpRefresh()}
+  finally{delete drdpBusy[key];drdpRefresh(quiet)}
 }
 // every observation with its children tagged, from Kaymbu or kept in TREE, with a photo or a few words, is read for DRDP
 // evidence by itself, once, newest first, from the start of the school year. One being written is left until it has rested
 // two minutes. The suggestions wait on each child's page for an educator to accept, change or set aside. A post of several
 // photos is read once. Each is marked before it is read, so two devices do not read the same one.
 let drdpAutoBusy=false;
+// the readings TREE runs by itself happen only on the director's computer, never on an educator's phone (November 12, 2026)
+const bgReader=()=>!REM_PHONE&&isDirector();
 async function drdpAutoKaymbu(){
-  if(drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden)return;
+  if(drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden||!bgReader())return;
   const rm=myRoom(),dir=isDirector()||isOffice(),since=parseIso(schoolYearStart()).getTime(),seen=new Set(),now=Date.now();
   const when=n=>(n.kaymbu&&n.kaymbu.keptAt)||n.at||0;
   // a reading that did not finish is tried again after an hour, up to three times, so a failed one is never stuck
@@ -2653,7 +2655,7 @@ setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},30000);
 const PHOTO_NOTE_PROMPT=`This photo was taken by an educator at a Reggio-inspired, nature-based preschool as documentation of a moment with children. In two plain sentences, say what is visible, the actions, materials, places and interactions, and any marks, drawings, writing or constructions children made. Describe only what can be seen. Never guess feelings, intentions or ages, never rate or praise, and never name anyone. Never use em dashes or colons. Return only JSON {"photo":"the two sentences"}`;
 let photoNoteBusy=false;
 async function photoNoteAuto(){
-  if(photoNoteBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden)return;
+  if(photoNoteBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden||!bgReader())return;
   const rm=myRoom(),dir=isDirector()||isOffice(),since=Date.now()-60*864e5,now=Date.now(),seen=new Set();
   const next=[...notices.values()].filter(n=>{if(!n.photo||(n.at||0)<since||n.photoNoteAt||photoNoteOf(n))return false;
       if(now-(n.updatedAt||n.at||0)<180000)return false;if(!dir&&rm&&!momentIn(n,rm))return false;
@@ -2669,7 +2671,9 @@ setInterval(()=>{photoNoteAuto().catch(()=>{})},40000);
 // observations kept this year with no class chosen take the class their tagged children share, a few at a time
 setInterval(()=>{if(!db||VIEW_AS||!isDirector()||document.hidden)return;const since=parseIso(schoolYearStart()).getTime();let k=0;
   for(const n of notices.values()){if(k>=20)break;if((n.at||0)<since)continue;const r=noticeOwnRoom(n);if(r){patchNotice(n.id,{classroom:r});k++}}},45000);
-function drdpRefresh(){if(view==="slide")renderSlide();else if(view==="moments"||view==="child")renderMain()}
+// a reading TREE runs by itself never redraws the page while someone is writing an observation or typing in a box, so the
+// keyboard stays open and the words stay where they are. The result shows the next time the page is drawn (November 12, 2026)
+function drdpRefresh(quiet){if(quiet&&(noticeForm||document.activeElement?.closest?.("#main")))return;if(view==="slide")renderSlide();else if(view==="moments"||view==="child")renderMain()}
 // where each suggestion from this documentation stands now, read from the child's page
 function drdpStatusOf(kind,id,x){const c=children.get(x.childId);const it=c&&((c.drdp||{}).items||{})[x.id];
   if(!it)return {label:"Removed from the child's page",cls:"muted"};
@@ -4978,7 +4982,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="f782c0ea4d9e";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="1d731c565ec0";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
