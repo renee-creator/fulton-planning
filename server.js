@@ -3260,6 +3260,26 @@ async function handle(req, res) {
   if (path === '/api/drdp-levels') { await ensureDrdp(); const pick = v => Object.fromEntries(Object.entries((DRDP_DESC && DRDP_DESC[v]) || {}).map(([k, m]) => [k, { def: m.def || '', levels: m.levels || {} }])); json(req, res, 200, { levels: DRDP_DESC ? { ptk: pick('ptk'), it: pick('it') } : null }); return; }
   // a broken photo renews only the photo key, never the whole school's records
   if (path === '/api/file-key') { json(req, res, 200, { fileKey: makeFileKey() }); return; }
+  // Observe TREE, the small page only for taking an observation, asks for what its form needs and nothing more: the
+  // classes, the small groups, the children's first names with a last initial, and the educator's own drafts with an
+  // address for each draft's photos. A kitchen sign-in and a new hire are refused above. A sign-in used here that is
+  // more than a week old is handed a fresh one, so a phone in regular use stays signed in. A passcode that was
+  // changed or cleared, or an educator who has left, still ends the sign-in, since that is checked before this.
+  if (path === '/api/observe/boot') {
+    const { classrooms, groups } = oneLists(); const k = nameKey(me.name);
+    const ed = (Array.isArray(settingDoc('educators').names) ? settingDoc('educators').names : []).find(x => x && nameKey(x.name) === k);
+    const lead = groups.find(g => g.educator && nameKey(g.educator) === k); const acct = accountFor(me.name);
+    const mine = isDirector(me.name) ? '' : [lead && lead.room, ed && ed.room, acct && acct.room].map(x => String(x || '')).find(x => x && classrooms.includes(x)) || '';
+    const kids = []; for (const [id, r] of store.recs.children) { const c = r && !r.deleted && r.doc; if (!c || !c.first || (c.status || 'active') === 'withdrawn') continue; kids.push({ id, first: String(c.first), last: String(c.last || '').trim().slice(0, 1), classroom: String(c.classroom || ''), group: String(c.group || '') }); }
+    kids.sort((a, b) => a.first.localeCompare(b.first));
+    const drafts = [], photos = {};
+    for (const [id, r] of store.recs.drafts) { const d = r && !r.deleted && r.doc; if (!d || !d.form || nameKey(d.by) !== k) continue; drafts.push(Object.assign({}, d, { id }));
+      for (const x of [d.form, ...(Array.isArray(d.form.siblings) ? d.form.siblings : [])]) { const ph = x && x.photo; const pid = ph && (ph.thumb || ph.id); if (pid && ID_RE.test(String(pid))) photos[pid] = (ph.thumb ? '/original/' : '/photo/') + encodeURIComponent(pid) + '?' + (ph.thumb ? '' : 'w=1200&') + 't=' + encodeURIComponent(photoKey(pid)); } }
+    drafts.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    let token; { const h = String(req.headers.authorization || ''); let s0 = null; try { s0 = JSON.parse(Buffer.from(h.slice(7).trim().split('.')[0].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); } catch (e) {}
+      if (s0 && s0.e && s0.e - Date.now() < (SESSION_DAYS - 7) * 864e5) token = makeSession(me.name, s0.v != null ? s0.v : undefined); }
+    json(req, res, 200, { me: me.name, director: isDirector(me.name), classrooms, groups, room: mine, children: kids, drafts, photos, clips: !!settingDoc('program').videoClipsOn && photosDrive.on(), saveError: store.saveError || undefined, ...(token ? { token } : {}) }); return;
+  }
   if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, cycleHealth: isDirector(me.name) ? cycleHealthCached() : undefined, photoSizes: sharpLib ? [1200, 1920] : [], clips: isDirector(me.name) ? videoClips.status() : undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }

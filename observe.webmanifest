@@ -1,0 +1,14 @@
+{
+  "name": "Observe TREE, Fulton Community School",
+  "short_name": "Observe TREE",
+  "start_url": "./observe.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "tree-icons/observe-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "tree-icons/observe-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "tree-icons/observe-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

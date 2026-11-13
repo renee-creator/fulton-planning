@@ -973,3 +973,17 @@ Video clips. An educator records a clip of up to three minutes on the class phon
 - **Farm thank-you cards.** Two half-letter cards to a letter page turned sideways, with a dotted cut line and a ruled space for the children's marks. Choose thank-you cards ticks one, some or all. An order line for a whole bin thanks the farm for the weekly produce bins.
 - **Family Summary and portfolio.** A sheet of two pieces has no empty rule at its top, a shortened piece never ends on a child's initial alone, and a piece does not print its title again as its first words. Photo pieces from the same day that tell the same moment share one page of up to three photos, and long words on a centred sheet read left aligned.
 - **Stories.** A story's title and cover line print North class style, and a draft writes them that way.
+
+## Observe TREE
+
+Observe TREE is a small page only for taking an observation, at https://renee-creator.github.io/fulton-planning/observe.html. An educator adds it to the iPhone Home Screen from Safari with Share, then Add to Home Screen, and it opens from its own icon, named Observe TREE. TREE itself is unchanged.
+
+- It opens on a blank observation. The form holds a photo or a clip, What I noticed, What I wonder, the class, the children and the small group, then Keep this observation. The educator's own class is ticked and its children show first. Small group stays unticked.
+- It loads one small page, observe.html, and asks the server for one thing, /api/observe/boot, which answers with the classes, the small groups, the children's first names with a last initial, and the educator's own drafts. The whole school record is never downloaded.
+- An observation is kept through the same saves TREE uses, /api/original for the photo and its small copy and /api/write for the observation, so thread suggestions, the noticed and wonder sorting offer, the place reading, DRDP readings and the staff room display all follow as they do for an observation kept in TREE.
+- What is being written saves itself as a draft, on the phone and in the educator's TREE drafts. Drafts fold closed under the Keep button. A draft begun in TREE, or made from a clip, opens here too. A draft that holds several separate photos opens in TREE.
+- Without signal, a kept observation waits on the phone and sends itself once the signal returns. Each photo and each observation goes under an id of its own, so sending twice never makes a second copy. The page itself is kept on the phone by sw.js, so it opens without signal after its first visit.
+- A clip is sent in pieces through /api/clip-send, the way Send a clip does in TREE, and shows only when Video clips is on in Settings. Its draft appears under Drafts once TREE has read it.
+- The phone stays signed in. The sign-in is TREE's own name and four numbers. Each time Observe TREE opens with a sign-in more than a week old, the server hands it a fresh one, so a phone in regular use is not asked again. A changed or cleared passcode, or an educator who has left, still ends the sign-in. A kitchen sign-in and a new educator without full access are refused.
+- Left to TREE on purpose, so nothing here waits: proofreading, copying the writing from a photo of children's words, the day it happened, plan, project, thread, languages, the weekly bin, more than one photo in an observation, and changing an observation already kept.
+- observe.html is written by hand and is not made by tools/build.py. Its test is test/s72-observe.test.js.

@@ -1,0 +1,536 @@
+<!doctype html>
+<!-- Observe TREE. The small page only for taking an observation. It is written by hand, not made by tools/build.py.
+     It shares TREE's sign-in and TREE's records, and sends each observation through the same saves TREE uses, so
+     everything TREE does with an observation afterwards still happens. It loads nothing else. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="tree-icons/observe-32.png" type="image/png">
+<link rel="apple-touch-icon" href="tree-icons/observe-apple-touch.png">
+<link rel="manifest" href="observe.webmanifest">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Observe TREE">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Observe TREE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<style>
+:root{color-scheme:light;--paper:#fff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--moss:#2b5a40;--moss-soft:#dce9de;--clay:#984331;--focus:#c47a06;
+  --body:"Andika","Segoe UI",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 28px)}
+[hidden]{display:none!important}
+main{max-width:560px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+header h1{font-size:17px;margin:0;color:var(--moss);font-weight:700}
+header .who{font-size:13px;color:var(--muted);text-align:right}
+button,input,select,textarea{font:inherit;color:inherit}
+label.fld{display:block;font-weight:700;font-size:14px;margin:14px 0 0}
+textarea,input[type=text],input[type=password]{display:block;width:100%;margin-top:5px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:16px;font-weight:400}
+textarea{resize:none;overflow:hidden;min-height:92px}
+textarea#f-wonder{min-height:64px}
+textarea:focus,input:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.photobtns{display:flex;gap:8px}
+.pbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--moss);border-radius:12px;padding:14px 10px;background:#fff;color:var(--moss);font-weight:700;cursor:pointer;min-height:52px;text-align:center}
+.pbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;flex:none}
+.photo{position:relative;margin:0}
+.photo img{display:block;width:100%;max-height:34vh;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#fff}
+.strip{display:flex;gap:6px;overflow-x:auto;margin-top:6px}
+.strip img{height:64px;width:auto;border-radius:8px;border:1px solid var(--line)}
+.plinks{display:flex;gap:16px;margin-top:6px;flex-wrap:wrap}
+.link{background:none;border:0;padding:6px 0;color:var(--moss);text-decoration:underline;cursor:pointer;font-size:14px}
+.cnt{font-size:13.5px;color:var(--muted);font-weight:400}
+.grp{margin-top:14px}
+.grp>.t{font-weight:700;font-size:14px}
+.ticks{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.tick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px;background:#fff;font-size:15px}
+.tick input{position:absolute;opacity:0;pointer-events:none}
+.tick.on{border-color:var(--moss);background:var(--moss-soft);color:var(--moss);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer;font-size:15px}
+.chip.on{border-color:var(--moss);background:var(--moss-soft);color:var(--moss);font-weight:700}
+.sub{font-size:13px;color:var(--muted);margin-top:10px}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--muted);font-size:14px;padding:6px 0}
+.keep{display:block;width:100%;margin-top:20px;border:1px solid var(--moss);background:var(--moss);color:#fff;border-radius:12px;padding:15px;font-weight:700;font-size:17px;cursor:pointer;min-height:54px}
+.keep:disabled{opacity:.55}
+#status{min-height:22px;margin:0 0 8px;font-size:14px;color:var(--muted)}
+#status.good{color:var(--moss);font-weight:700}
+#status.bad{color:var(--clay);font-weight:700}
+.wait{border:1px solid var(--line);border-left:4px solid var(--moss);border-radius:10px;padding:8px 12px;font-size:14px;margin:0 0 10px;color:var(--muted)}
+.wait.bad{border-left-color:var(--clay);color:var(--ink)}
+.drafts{margin-top:22px;border-top:1px solid var(--line);padding-top:6px}
+.drow{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px;margin-top:8px;cursor:pointer;min-height:56px;text-decoration:none;color:inherit}
+.drow img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--line)}
+.drow b{display:block;font-size:14.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drow span{min-width:0;flex:1}
+.drow small{display:block;color:var(--muted);font-size:13px}
+footer{margin-top:26px;display:flex;gap:18px;flex-wrap:wrap;font-size:14px}
+footer a{color:var(--moss)}
+.bar{height:6px;border-radius:3px;background:var(--moss-soft);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--moss);width:0}
+#gate h2{font-size:20px;margin:18px 0 4px;color:var(--moss)}
+#gate .keep{margin-top:16px}
+#gate .msg{min-height:22px;margin-top:10px;font-size:14px;color:var(--clay);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Observe TREE</h1><div class="who" id="who"></div></header>
+  <section id="gate" hidden></section>
+  <section id="app" hidden>
+    <div id="waiting"></div>
+    <div id="status" role="status" aria-live="polite"></div>
+    <div id="form"></div>
+    <div id="drafts"></div>
+    <footer><a href="tree.html">Open TREE</a><button class="link" id="signout" type="button" style="padding:0">Sign out</button></footer>
+  </section>
+</main>
+<script>
+(function(){
+"use strict";
+/* ---------- the server, the same one TREE uses, or a local test server when the page itself is opened locally ---------- */
+const qs=new URLSearchParams(location.search);
+const want=(qs.get("server")||"").replace(/\/+$/,"");
+const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+const SERVER=local?want:"https://fulton-planning.onrender.com";
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+// the sign-in is TREE's own, kept under the same names, so a phone signed in to TREE in this browser is signed in here
+const Auth={token:LS.get("fp-token"),name:LS.get("fp-name")};
+const TAB=Math.random().toString(36).slice(2,12)+Date.now().toString(36);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const jclone=x=>JSON.parse(JSON.stringify(x));
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function mondayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return iso(x)}
+const key=n=>String(n||"").trim().toLowerCase();
+const SHARED=["staff","team","shared","classroom","educator","teacher","admin"];
+
+async function api(path,body,retried){
+  if(!Auth.token&&path!=="/login")throw {code:"session_expired",message:"Sign in to keep going."};
+  let r;const payload=JSON.stringify(body||{});
+  const keepalive=document.visibilityState==="hidden"&&payload.length<60000;
+  try{r=await fetch(SERVER+path,{method:"POST",keepalive,headers:{"Content-Type":"application/json",...(Auth.token&&path!=="/login"?{Authorization:"Bearer "+Auth.token}:{})},body:payload})}
+  catch(e){throw {code:"unavailable",message:"The TREE server could not be reached."}}
+  let j={};try{j=await r.json()}catch(e){}
+  // one refused request never signs anyone out. It is asked once more with the newest sign-in on this phone.
+  if(r.status===401&&path!=="/login"){
+    if(!retried){await new Promise(ok=>setTimeout(ok,1200));const t=LS.get("fp-token");if(t)Auth.token=t;return api(path,body,true)}
+    signedOut(j.error||"Your sign-in ended. Sign in again to keep going.");throw {code:"session_expired",message:j.error}}
+  if(r.status===429)throw {code:"rate_limited",status:429,message:j.error};
+  if(r.status===403)throw {code:"not_allowed",status:403,message:j.error};
+  if(r.status===413)throw {code:"too_big",status:413,message:j.error};
+  if(!r.ok)throw {code:r.status>=500?"server_error":"bad_request",status:r.status,message:j.error||("The server answered "+r.status+".")};
+  return j;
+}
+// a save that could not go through for a passing reason is kept on this phone and sent again
+const passing=e=>!!e&&(["unavailable","server_error","rate_limited","session_expired"].includes(e.code)||[502,503,504].includes(e.status));
+
+/* ---------- what waits on this phone. Words, photos and unsent observations are kept here until the server has them. ---------- */
+const mem=new Map();
+const idb=(()=>{let p;
+  const open=()=>p||(p=new Promise((ok,no)=>{try{const r=indexedDB.open("observe-tree",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}));
+  const tx=async(mode,fn)=>{const d=await open();return new Promise((ok,no)=>{const t=d.transaction("kv",mode);const rq=fn(t.objectStore("kv"));t.oncomplete=()=>ok(rq&&rq.result);t.onerror=t.onabort=()=>no(t.error)})};
+  return {
+    async get(k){try{const v=await tx("readonly",s=>s.get(k));return v===undefined?mem.get(k):v}catch(e){return mem.get(k)}},
+    async set(k,v){mem.set(k,v);try{await tx("readwrite",s=>s.put(v,k));mem.delete(k)}catch(e){}},
+    async del(k){mem.delete(k);try{await tx("readwrite",s=>s.delete(k))}catch(e){}},
+    async keys(){let a=[];try{a=await tx("readonly",s=>s.getAllKeys())}catch(e){}return [...new Set([...a,...mem.keys()])]}}})();
+
+/* ---------- state ---------- */
+let BOOT=null;            // the classes, small groups, children and this educator's drafts, from the server
+let F=null;               // the open form: {n, sibs, draftId, startedAt, extra, photoSeq}
+const previews=new Map(); // observation id to a picture address made on this phone
+let otherOpen=new Set(), draftsOpen=false, removeAsk=false, clip=null, saidT=null, draftT=null, lastDraftJson="";
+const me=()=>(BOOT&&BOOT.me)||Auth.name||"";
+const K=(kind,id)=>kind+"|"+key(me())+"|"+id;
+
+function say(t,cls,hold){const el=$("#status");if(!el)return;el.textContent=t||"";el.className=cls||"";clearTimeout(saidT);if(t&&!hold)saidT=setTimeout(()=>{el.textContent="";el.className=""},5000)}
+
+/* ---------- sign-in ---------- */
+function gate(msg,setup){
+  $("#app").hidden=true;const g=$("#gate");g.hidden=false;$("#who").textContent="";
+  const nm=esc((setup&&setup.name)||LS.get("fp-name")||"");
+  g.innerHTML=setup
+    ?`<h2>Choose your passcode</h2><div class="cnt">Choose four numbers for ${nm}. You will use them to sign in to TREE too.</div>
+      <label class="fld">Four numbers<input type="password" id="g-new" inputmode="numeric" autocomplete="new-password" maxlength="4"></label>
+      <label class="fld">The same four numbers again<input type="password" id="g-again" inputmode="numeric" autocomplete="new-password" maxlength="4"></label>
+      <button class="keep" id="g-set" type="button" data-name="${nm}">Save and sign in</button><div class="msg" id="g-msg">${esc(msg||"")}</div>`
+    :`<h2>Sign in</h2><div class="cnt">Use your TREE name and passcode. This phone stays signed in.</div>
+      <label class="fld">First name<input type="text" id="g-name" autocomplete="username" autocapitalize="words" value="${nm}"></label>
+      <label class="fld">Passcode<input type="password" id="g-code" autocomplete="current-password"></label>
+      <button class="keep" id="g-go" type="button">Sign in</button><div class="msg" id="g-msg">${esc(msg||"")}</div>`;
+  const first=g.querySelector(setup?"#g-new":nm?"#g-code":"#g-name");if(first)setTimeout(()=>first.focus(),50);
+}
+function took(j){Auth.token=j.token;Auth.name=j.name;LS.set("fp-token",j.token);LS.set("fp-name",j.name);LS.set("fp-director",j.director?"1":null);$("#gate").hidden=true;start()}
+async function signIn(){const name=$("#g-name").value.trim(),passcode=$("#g-code").value;const m=$("#g-msg");
+  if(!name||!passcode){m.textContent="Type your first name and your passcode.";return}
+  m.textContent="";$("#g-go").disabled=true;
+  try{const j=await api("/login",{name,passcode});if(j.setup){gate("",{name:j.name});return}took(j)}
+  catch(e){m.textContent=(e&&e.message)||"That did not work. Try again.";const b=$("#g-go");if(b)b.disabled=false}}
+async function setCode(){const b=$("#g-set"),m=$("#g-msg");b.disabled=true;m.textContent="";
+  try{took(await api("/login",{name:b.dataset.name,newCode:$("#g-new").value,again:$("#g-again").value}))}
+  catch(e){m.textContent=(e&&e.message)||"That did not work. Try again.";b.disabled=false}}
+function signedOut(why){Auth.token=null;LS.set("fp-token",null);BOOT=null;gate(why||"")}
+
+/* ---------- opening ---------- */
+async function start(){
+  if(!Auth.token){gate("");return}
+  // what the form needs from last time shows at once, and the server's newer answer replaces it when it arrives
+  const cached=(()=>{try{const c=JSON.parse(LS.get("ot-boot")||"null");return c&&key(c.me)===key(Auth.name)?c:null}catch(e){return null}})();
+  if(cached&&!BOOT){BOOT=cached;await opened()}
+  try{await refresh()}catch(e){if(e&&e.code==="session_expired")return;
+    if(e&&e.code==="not_allowed"){BOOT=null;LS.set("ot-boot",null);gate(e.message||"This sign-in cannot take observations.");return}
+    if(!BOOT){gate("");$("#g-msg").textContent="The TREE server could not be reached. Check the connection and open Observe TREE again.";return}}
+  if(!F)await opened();
+  pump();
+}
+async function refresh(){
+  const j=await api("/api/observe/boot",{});
+  if(j.token){Auth.token=j.token;LS.set("fp-token",j.token)}
+  const first=!BOOT;BOOT=j;Auth.name=j.me;LS.set("fp-name",j.me);
+  try{LS.set("ot-boot",JSON.stringify(Object.assign({},j,{token:undefined,photos:{}})))}catch(e){}
+  if(first)return;
+  renderDrafts();if(F&&!formTouched())renderForm();
+}
+async function opened(){
+  if(SHARED.includes(key(me()))){gate("Sign in with your own first name, so your observations carry your name.");return}
+  $("#gate").hidden=true;$("#app").hidden=false;$("#who").textContent=me();
+  // an observation left half written within the last twelve hours opens again where it was
+  const cur=LS.get("ot-cur|"+key(me()));let d=cur?await idb.get(K("draft",cur)):null;
+  if(d&&d.doc&&Date.now()-(d.doc.updatedAt||0)<12*36e5)await openDoc(d.doc,true);else newForm();
+  renderAll();
+}
+function newForm(){
+  const id="n"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  F={n:{id,noticed:"",wonder:"",classroom:(BOOT&&BOOT.room)||"",by:me(),at:Date.now(),week:mondayOf(new Date()),projectId:"",threadId:""},sibs:[],draftId:"",startedAt:0,extra:{},photoSeq:0};
+  otherOpen=new Set();removeAsk=false;lastDraftJson="";LS.set("ot-cur|"+key(me()),null);
+}
+const formTouched=()=>!!F&&(!!String(F.n.noticed||"").trim()||!!String(F.n.wonder||"").trim()||!!F.n.photo||(F.n.children||[]).length>0||!!F.draftId);
+
+/* ---------- the form ---------- */
+const all=()=>F?[F.n,...F.sibs]:[];
+const roomsChosen=n=>[...new Set([n.classroom,...(Array.isArray(n.classrooms)?n.classrooms:[])].filter(Boolean))].sort((a,b)=>BOOT.classrooms.indexOf(a)-BOOT.classrooms.indexOf(b));
+const groupsChosen=n=>[...new Set([n.smallGroup,...(Array.isArray(n.smallGroups)?n.smallGroups:[])].filter(Boolean))];
+const kid=id=>(BOOT.children||[]).find(c=>c.id===id);
+function momentRooms(n){const r=roomsChosen(n);for(const id of n.children||[]){const c=kid(id);if(c&&c.classroom&&!r.includes(c.classroom))r.push(c.classroom)}return r}
+function photoAddr(x){const ph=x&&x.photo;if(!ph)return"";if(previews.has(x.id))return previews.get(x.id);const pid=ph.thumb||ph.id;const a=pid&&BOOT.photos&&BOOT.photos[pid];return a?SERVER+a:""}
+
+function kidsHtml(){
+  const n=F.n,on=new Set(n.children||[]),rooms=roomsChosen(n),kids=BOOT.children||[];
+  const chip=c=>`<button class="chip ${on.has(c.id)?"on":""}" type="button" data-kid="${esc(c.id)}" aria-pressed="${on.has(c.id)}">${esc(c.first)}${c.last?" "+esc(c.last)+".":""}</button>`;
+  const mine=rooms.length?kids.filter(c=>rooms.includes(c.classroom)||on.has(c.id)):kids.filter(c=>on.has(c.id));
+  const others=kids.filter(c=>!mine.includes(c));
+  const sg=groupsChosen(n),first=sg.length?mine.filter(c=>sg.includes(c.group)):[];
+  let h="";
+  if(first.length){const rest=mine.filter(c=>!first.includes(c));
+    h+=`<div class="sub">${esc(sg.join(" and "))} group</div><div class="chips">${first.map(chip).join("")}</div>`;
+    if(rest.length)h+=`<div class="sub">${rooms.length===1?"The rest of "+esc(rooms[0])+" class":"Everyone else"}</div><div class="chips">${rest.map(chip).join("")}</div>`}
+  else if(mine.length)h+=`<div class="chips">${mine.map(chip).join("")}</div>`;
+  else if(rooms.length)h+=`<div class="cnt" style="margin-top:6px">No children on the list for this class yet.</div>`;
+  const byRoom=[...BOOT.classrooms,...new Set(others.map(c=>c.classroom||"").filter(r=>!BOOT.classrooms.includes(r)))];
+  if(rooms.length&&others.length)h+=`<details data-fold="others" ${otherOpen.has("others")?"open":""}><summary>Other classes, ${others.length} children</summary><div class="chips">${others.map(chip).join("")}</div></details>`;
+  else for(const r of byRoom){const ks=others.filter(c=>(c.classroom||"")===r);if(!ks.length)continue;
+    h+=`<details data-fold="${esc(r||"none")}" ${otherOpen.has(r||"none")?"open":""}><summary>${r?esc(r)+" class":"No class yet"}, ${ks.length} children</summary><div class="chips">${ks.map(chip).join("")}</div></details>`}
+  return h;
+}
+function groupsHtml(){
+  const n=F.n,rs=momentRooms(n),cur=groupsChosen(n);
+  const gs=(BOOT.groups||[]).filter(g=>!rs.length||!g.room||rs.includes(g.room));
+  const list=[...gs.map(g=>[g.name,g.educator]),...cur.filter(x=>!gs.some(g=>g.name===x)).map(x=>[x,""])];
+  if(!list.length)return"";
+  return `<div class="grp" role="group" aria-label="Small group"><div class="t">Small group</div><div class="ticks">${list.map(([name,ed])=>`<label class="tick ${cur.includes(name)?"on":""}"><input type="checkbox" data-sg="${esc(name)}" ${cur.includes(name)?"checked":""}><span>${esc(name)}${ed?", "+esc(ed):""}</span></label>`).join("")}</div></div>`;
+}
+function photoHtml(){
+  const n=F.n,src=photoAddr(n);
+  const cam=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+  const vid=`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="12.5" height="11" rx="2"/><path d="M15.5 10.5 21 7.5v9l-5.5-3z"/></svg>`;
+  if(clip)return `<div class="wait"><b>${esc(clip.msg)}</b><div class="bar"><i style="width:${clip.pct||0}%"></i></div></div>`;
+  if(n.photo){
+    const strip=F.sibs.filter(s=>s.photo).map(s=>photoAddr(s)).filter(Boolean);
+    return `<figure class="photo">${src?`<img src="${esc(src)}" alt="The photo kept with this observation">`:`<div class="cnt">The photo is kept with this observation.</div>`}</figure>
+      ${strip.length?`<div class="strip">${strip.map(u=>`<img src="${esc(u)}" alt="Another photo of the same moment">`).join("")}</div>`:""}
+      ${n.clip&&n.clip.name?`<div class="cnt" style="margin-top:6px">From the clip ${esc(n.clip.name)}</div>`:""}
+      <div class="plinks">${F.sibs.length?"":`<label class="link">Change the photo<input type="file" id="f-photo" accept="image/*" hidden></label><button class="link" type="button" id="f-nophoto">Remove the photo</button>`}</div>`}
+  return `<div class="photobtns"><label class="pbtn">${cam}<span>Take or add a photo</span><input type="file" id="f-photo" accept="image/*" hidden></label>
+    ${BOOT.clips?`<label class="pbtn">${vid}<span>Send a clip</span><input type="file" id="f-clip" accept="video/*" hidden></label>`:""}</div>`;
+}
+function renderForm(){
+  if(!F||!BOOT)return;const n=F.n,rooms=roomsChosen(n);
+  $("#form").innerHTML=`<div id="f-photoarea">${photoHtml()}</div>
+    <label class="fld">What I noticed<textarea id="f-noticed" rows="3" placeholder="What happened, and what children did or said">${esc(n.noticed)}</textarea></label>
+    <label class="fld">What I wonder<textarea id="f-wonder" rows="2" placeholder="I wonder, educator notes or relevant context">${esc(n.wonder)}</textarea></label>
+    <div class="grp" role="group" aria-label="Class"><div class="t">Class</div><div class="ticks">${BOOT.classrooms.map(r=>`<label class="tick ${rooms.includes(r)?"on":""}"><input type="checkbox" data-room="${esc(r)}" ${rooms.includes(r)?"checked":""}><span>${esc(r)}</span></label>`).join("")}</div></div>
+    <div class="grp"><div class="t">Children in this observation, optional</div><div id="f-kids">${kidsHtml()}</div></div>
+    <div id="f-groups">${groupsHtml()}</div>
+    <button class="keep" id="f-keep" type="button">Keep this observation</button>
+    <div id="f-remove" style="margin-top:8px">${removeHtml()}</div>`;
+  for(const t of document.querySelectorAll("#form textarea"))grow(t);
+}
+function removeHtml(){if(!formTouched())return"";
+  return removeAsk?`<span class="cnt">Remove this draft and its photo?</span> <button class="link" type="button" id="f-rmyes">Yes, remove it</button> <button class="link" type="button" id="f-rmno" style="margin-left:14px">No, keep it</button>`
+    :`<button class="link" type="button" id="f-rm">Start over without keeping</button>`}
+const grow=t=>{t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"};
+const part=(id,html)=>{const el=$(id);if(el)el.innerHTML=html};
+function renderAll(){renderForm();renderDrafts();renderWaiting()}
+
+/* ---------- photos ---------- */
+const canvasBlob=(c,q)=>new Promise(r=>c.toBlob(b=>r(b),"image/jpeg",q));
+async function shrink(file,max,q){const bmp=await createImageBitmap(file,{imageOrientation:"from-image"});const k=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas");c.width=Math.max(1,Math.round(bmp.width*k));c.height=Math.max(1,Math.round(bmp.height*k));
+  const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);if(bmp.close)bmp.close();
+  return {blob:await canvasBlob(c,q),w:c.width,h:c.height}}
+const b64=blob=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=()=>no(r.error);r.readAsDataURL(blob)});
+/* A photo's own caption, written on the phone in Photos, read from inside the file before it is made smaller, the way
+   TREE reads it. A photo with no caption gives nothing. */
+async function photoCaption(file){try{
+  const buf=new Uint8Array(await file.slice(0,524288).arrayBuffer());if(buf[0]!==0xFF||buf[1]!==0xD8)return "";
+  const u8=a=>new TextDecoder("utf-8").decode(a),l1=a=>new TextDecoder("latin1").decode(a);
+  const ent=t=>t.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;|&#39;/g,"'").replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d)).replace(/&amp;/g,"&");
+  let exif="",xmp="",iptc="",i=2;
+  while(i+4<buf.length&&buf[i]===0xFF){const m=buf[i+1];if(m===0xDA||m===0xD9)break;const len=(buf[i+2]<<8)|buf[i+3];if(len<2)break;const seg=buf.subarray(i+4,i+2+len);
+    if(m===0xE1){const head=l1(seg.subarray(0,32));
+      if(head.startsWith("Exif\0\0")){const t=seg.subarray(6);const le=t[0]===0x49;const r16=o=>le?t[o]|(t[o+1]<<8):(t[o]<<8)|t[o+1];const r32=o=>le?(t[o]|(t[o+1]<<8)|(t[o+2]<<16)|(t[o+3]<<24))>>>0:((t[o]<<24)|(t[o+1]<<16)|(t[o+2]<<8)|t[o+3])>>>0;
+        const ifd=r32(4),n=r16(ifd);for(let k=0;k<n;k++){const e=ifd+2+k*12;if(r16(e)===0x010E){const c=r32(e+4),off=c>4?r32(e+8):e+8;exif=u8(t.subarray(off,off+c)).replace(/\0+$/,"")}}}
+      else if(head.startsWith("http://ns.adobe.com/xap/1.0/")){const x=u8(seg);const mm=x.match(/<dc:description>[\s\S]*?<rdf:li[^>]*>([\s\S]*?)<\/rdf:li>/)||x.match(/dc:description="([^"]*)"/);if(mm)xmp=ent(mm[1])}}
+    if(m===0xED){for(let k=0;k+5<seg.length;k++)if(seg[k]===0x1C&&seg[k+1]===0x02&&seg[k+2]===0x78){const L=(seg[k+3]<<8)|seg[k+4];iptc=u8(seg.subarray(k+5,k+5+L));break}}
+    i+=2+len}
+  const t=(xmp||iptc||exif).replace(/\s+/g," ").trim();
+  return t.length>=2&&!/^(default|untitled|image|photo|picture|olympus digital camera|screenshot)$/i.test(t)?t.slice(0,2000):""}catch(e){return ""}}
+async function addPhoto(file){
+  if(!file)return;sync();const n=F.n;
+  let made;try{made=await shrink(file,2200,.9)}catch(e){say("That photo could not be opened here. Try another one.","bad");return}
+  const cap=await photoCaption(file);if(cap&&!String(n.noticed||"").trim())n.noticed=cap;
+  F.photoSeq=(F.photoSeq||0)+1;n.photo={id:"",w:made.w,h:made.h,pending:true,seq:F.photoSeq};
+  await idb.set(K("blob",n.id),made.blob);
+  if(previews.has(n.id))URL.revokeObjectURL(previews.get(n.id));previews.set(n.id,URL.createObjectURL(made.blob));
+  renderForm();draftSoon(200);storePhoto(n).then(ok=>{if(ok)draftSoon(200)});
+}
+async function noPhoto(){sync();const n=F.n;delete n.photo;await idb.del(K("blob",n.id));if(previews.has(n.id)){URL.revokeObjectURL(previews.get(n.id));previews.delete(n.id)}renderForm();draftSoon(200)}
+// the photo is sent as soon as it is chosen. Its id is made from the observation's, so a photo sent twice is kept once.
+const storing=new Map();
+function storePhoto(x){
+  if(!x.photo||x.photo.id)return Promise.resolve(true);
+  const seq=x.photo.seq||0,k=x.id+"."+seq;
+  if(!storing.has(k)){
+    const job=(async()=>{
+      if(navigator.onLine===false)return null;
+      const blob=await idb.get(K("blob",x.id));if(!blob)return null;
+      const tail=seq>1?seq:"";
+      try{const id=(await api("/api/original",{name:"moment-photo.jpg",data:await b64(blob),cid:x.id+".photo"+tail})).id;
+        let th="";try{const s=await shrink(blob,640,.82);th=(await api("/api/original",{name:"moment-thumb.jpg",data:await b64(s.blob),cid:x.id+".thumb"+tail})).id}catch(e){}
+        return {id,th}}
+      catch(e){return passing(e)?null:{error:(e&&e.message)||"The photo could not be kept."}}
+    })();
+    storing.set(k,job);job.finally(()=>storing.delete(k));
+  }
+  // the answer is laid on whichever copy asked, the open form or the kept observation waiting to send
+  return storing.get(k).then(r=>{if(!r)return false;if(r.error){x.photoError=r.error;return false}
+    if(!x.photo||(x.photo.seq||0)!==seq)return false;x.photo.id=r.id;if(r.th)x.photo.thumb=r.th;delete x.photo.pending;return true});
+}
+
+/* ---------- drafts. What is being written saves itself, on this phone first and then to the educator's drafts in TREE. ---------- */
+function sync(){if(!F)return;const a=$("#f-noticed"),b=$("#f-wonder");if(a)F.n.noticed=a.value;if(b)F.n.wonder=b.value}
+const cleanPhoto=ph=>ph?Object.assign({id:ph.id||"",w:ph.w,h:ph.h},ph.thumb?{thumb:ph.thumb}:{},ph.id?{}:{pending:true}):undefined;
+function cleanForm(x){const c=jclone(x);delete c.photoError;delete c.restored;delete c.pick;delete c.siblings;if(c.photo)c.photo=Object.assign(cleanPhoto(c.photo),x.photo.seq?{seq:x.photo.seq}:{});return c}
+function draftDoc(){
+  const n=F.n;const id=F.draftId||("d"+String(n.id).replace(/[^a-z0-9]/gi,""));F.draftId=id;F.startedAt=F.startedAt||Date.now();
+  const form=cleanForm(n);if(F.sibs.length)form.siblings=F.sibs.map(cleanForm);
+  return Object.assign({},F.extra||{},{id,by:me(),startedAt:F.startedAt,updatedAt:Date.now(),form,queue:[]});
+}
+function draftSoon(ms){clearTimeout(draftT);draftT=setTimeout(draftNow,ms==null?1200:ms)}
+async function draftNow(){
+  clearTimeout(draftT);draftT=null;if(!F||!BOOT)return;sync();
+  if(!formTouched())return;
+  const n=F.n;if(!String(n.noticed||"").trim()&&!String(n.wonder||"").trim()&&!n.photo&&!F.draftId)return;
+  const doc=draftDoc();const same=JSON.stringify(Object.assign({},doc,{updatedAt:0}));
+  if(same===lastDraftJson)return;lastDraftJson=same;
+  await idb.set(K("draft",doc.id),{doc});LS.set("ot-cur|"+key(me()),doc.id);
+  part("#f-remove",removeHtml());
+  // the copy in TREE's drafts leaves out the mark this page keeps for a changed photo
+  const send=jclone(doc);for(const x of [send.form,...(send.form.siblings||[])])if(x.photo)delete x.photo.seq;
+  try{await api("/api/write",{op:"set",kind:"drafts",id:doc.id,data:send,dev:TAB})}catch(e){}
+  renderDrafts();
+}
+async function dropDraft(id){if(!id)return;await idb.del(K("draft",id));if(BOOT)BOOT.drafts=(BOOT.drafts||[]).filter(d=>d.id!==id);
+  try{await api("/api/write",{op:"delete",kind:"drafts",id,dev:TAB})}catch(e){if(passing(e))await idb.set(K("gone",id),Date.now())}}
+// a draft opens into the form. One begun in TREE or made from a clip opens the same way.
+async function openDoc(doc,quiet){
+  const f=jclone(doc.form||{});const sibs=Array.isArray(f.siblings)?f.siblings:[];delete f.siblings;delete f.pick;
+  const extra={};for(const k of Object.keys(doc))if(!["id","by","startedAt","updatedAt","form","queue"].includes(k))extra[k]=doc[k];
+  F={n:f,sibs,draftId:doc.id,startedAt:doc.startedAt||Date.now(),extra,photoSeq:(f.photo&&f.photo.seq)||0};
+  // a photo that never left the phone it was taken on cannot be shown or kept from here
+  let lost=false;
+  for(const x of [f,...sibs]){if(!x.photo)continue;if(x.photo.id)continue;const blob=await idb.get(K("blob",x.id));
+    if(blob){if(!previews.has(x.id))previews.set(x.id,URL.createObjectURL(blob));storePhoto(x).then(ok=>{if(ok)draftSoon(200)})}else{delete x.photo;lost=true}}
+  F.sibs=sibs.filter(s=>s.photo||!f.photo);
+  otherOpen=new Set();removeAsk=false;lastDraftJson="";LS.set("ot-cur|"+key(me()),doc.id);
+  if(!quiet){renderAll();window.scrollTo(0,0)}
+  if(lost)say("This draft's photo is still on the phone it began on. Add the photo again, or finish it there.","bad",true);
+}
+async function draftList(){
+  const out=new Map();
+  for(const d of (BOOT&&BOOT.drafts)||[])if(d&&d.form&&!d.editOf)out.set(d.id,d);
+  for(const k of await idb.keys()){if(!String(k).startsWith(K("draft","")))continue;const v=await idb.get(k);const d=v&&v.doc;if(!d||!d.form)continue;
+    const s=out.get(d.id);if(!s||(d.updatedAt||0)>=(s.updatedAt||0))out.set(d.id,d)}
+  const gone=new Set();for(const k of await idb.keys())if(String(k).startsWith(K("gone","")))gone.add(String(k).slice(K("gone","").length));
+  for(const e of await waitingList())if(e.draftId)gone.add(e.draftId);
+  return [...out.values()].filter(d=>!gone.has(d.id)&&!(F&&F.draftId===d.id)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+}
+async function renderDrafts(){
+  if(!BOOT)return;const list=await draftList();const el=$("#drafts");if(!el)return;
+  if(!list.length){el.innerHTML="";return}
+  const row=d=>{const f=d.form,many=(d.queue||[]).length>0;const src=photoAddr(f);
+    const words=String(f.noticed||"").trim()||String(f.wonder||"").trim()||(f.photo?"A photo, no words yet":"No words yet");
+    const when=new Date(d.updatedAt||d.startedAt||Date.now()).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+    const inner=`${src?`<img src="${esc(src)}" alt="" loading="lazy">`:""}<span><b>${esc(words)}</b><small>${esc(when)}${d.fromClip?", from a clip":""}${many?", several photos, finish it in TREE":""}</small></span>`;
+    return many?`<a class="drow" href="tree.html">${inner}</a>`:`<button class="drow" type="button" data-draft="${esc(d.id)}">${inner}</button>`};
+  el.innerHTML=`<details class="drafts" id="draftfold" ${draftsOpen?"open":""}><summary>Drafts, ${list.length}</summary>${list.map(row).join("")}</details>`;
+}
+
+/* ---------- keeping ---------- */
+async function keep(){
+  sync();const n=F.n;n.noticed=String(n.noticed||"").trim();n.wonder=String(n.wonder||"").trim();
+  if(!n.noticed){say("Write what you noticed first.","bad");const t=$("#f-noticed");if(t)t.focus();return}
+  clearTimeout(draftT);draftT=null;
+  const today=iso(new Date());const day=n.day&&/^\d{4}-\d{2}-\d{2}$/.test(n.day)&&n.day<=today?n.day:"";
+  // a clip's observation keeps the time the clip was taken. Any other is kept now, or on the day set on its draft in TREE.
+  const when=day&&day!==today?new Date(day+"T12:00:00").getTime():(F.extra&&F.extra.fromClip&&n.at)?n.at:Date.now();
+  n.by=n.by||me();n.at=when;n.week=mondayOf(new Date(when));
+  const sibs=F.sibs;if(!sibs.length&&n.group)delete n.group;
+  const strip=x=>{for(const k of ["day","fromClaude","pick","siblings","draftId","restored","photoError"])delete x[k]};
+  sibs.forEach((s,i)=>{for(const k of ["noticed","wonder","classroom","projectId","threadId","group"])s[k]=n[k]||"";
+    if(n.classrooms)s.classrooms=[...n.classrooms];if(n.smallGroup){s.smallGroup=n.smallGroup;s.smallGroups=[...(n.smallGroups||[n.smallGroup])]}else{delete s.smallGroup;delete s.smallGroups}
+    if(!(s.children||[]).length&&(n.children||[]).length)s.children=[...n.children];
+    s.languages=[...(n.languages||[])];if(n.bin)s.bin=n.bin;else delete s.bin;s.by=n.by;s.at=n.at+i+1;s.week=n.week;strip(s)});
+  strip(n);
+  const docs=[n,...sibs].map(x=>Object.assign(jclone(x),{updatedAt:Date.now()}));
+  const entry={id:n.id,at:Date.now(),draftId:F.draftId||"",docs,sent:{},written:{},failed:""};
+  await idb.set(K("out",n.id),entry);
+  if(F.draftId)await idb.del(K("draft",F.draftId));
+  if(BOOT&&F.draftId)BOOT.drafts=(BOOT.drafts||[]).filter(d=>d.id!==F.draftId);
+  newForm();renderAll();window.scrollTo(0,0);
+  say(navigator.onLine===false?"Saved on this phone. It will send when you are connected.":"Kept.","good");
+  pump();
+}
+/* An observation kept here waits on this phone until the server says it is written to the records. Its photo goes
+   first, then its words, each under an id of its own, so sending twice never makes a second copy. */
+let pumping=false,pumpAgain=false;
+async function pump(){
+  if(pumping){pumpAgain=true;return}if(!Auth.token||!BOOT)return;pumping=true;
+  try{if(navigator.locks&&navigator.locks.request)await navigator.locks.request("observe-tree-saves",{ifAvailable:true},l=>l?pumpNow():null);else await pumpNow()}
+  catch(e){}finally{pumping=false;renderWaiting();if(pumpAgain){pumpAgain=false;setTimeout(pump,300)}}
+}
+const sidOf=d=>("d."+d.id+"."+d.updatedAt).replace(/[^A-Za-z0-9._:-]/g,"").slice(0,64);
+async function pumpNow(){
+  const keys=(await idb.keys()).filter(k=>String(k).startsWith(K("out","")));
+  for(const k of keys){
+    const e=await idb.get(k);if(!e||e.failed)continue;
+    if(navigator.onLine===false)break;
+    let stop=false;
+    for(const d of e.docs){
+      if(d.photo&&!d.photo.id){const ok=await storePhoto(d);
+        if(!ok){if(d.photoError){e.failed=d.photoError;await idb.set(k,e)}else if(!(await idb.get(K("blob",d.id)))){delete d.photo;await idb.set(k,e);continue}stop=true;break}
+        delete d.photo.seq;delete d.photoError;await idb.set(k,e)}
+      if(d.photo)delete d.photo.seq;
+      if(e.sent[d.id]||e.written[d.id])continue;
+      try{const r=await api("/api/write",{op:"set",kind:"notices",id:d.id,data:d,cid:d.id+"."+d.updatedAt,sid:sidOf(d),dev:TAB});
+        if(r.written)e.written[d.id]=1;else e.sent[d.id]=Date.now();await idb.set(k,e)}
+      catch(err){if(passing(err)){stop=true;break}e.failed=(err&&err.message)||"TREE would not take this observation.";await idb.set(k,e);stop=true;break}
+    }
+    if(stop){if(e.failed)continue;break}
+    // its draft leaves TREE once the observation is sent
+    if(e.draftId&&!e.draftGone){try{await api("/api/write",{op:"delete",kind:"drafts",id:e.draftId,dev:TAB});e.draftGone=1;await idb.set(k,e)}catch(err){if(!passing(err)){e.draftGone=1;await idb.set(k,e)}}}
+    const open=e.docs.filter(d=>!e.written[d.id]);
+    if(open.length){
+      try{const j=await api("/api/saved",{items:open.map(d=>({sid:sidOf(d),kind:"notices",id:d.id,at:e.at}))});
+        const done=new Set(j.written||[]),unk=new Set(j.unknown||[]);
+        for(const d of open){if(done.has(sidOf(d))){e.written[d.id]=1;delete e.sent[d.id]}else if(unk.has(sidOf(d))&&Date.now()-(e.sent[d.id]||0)>15000)delete e.sent[d.id]}
+        await idb.set(k,e)}catch(err){}
+    }
+    if(e.docs.every(d=>e.written[d.id])&&(!e.draftId||e.draftGone)){for(const d of e.docs){await idb.del(K("blob",d.id));if(previews.has(d.id)){URL.revokeObjectURL(previews.get(d.id));previews.delete(d.id)}}await idb.del(k)}
+  }
+  // a draft removed without signal is removed from TREE once there is signal
+  for(const k of (await idb.keys()).filter(k=>String(k).startsWith(K("gone","")))){try{await api("/api/write",{op:"delete",kind:"drafts",id:String(k).slice(K("gone","").length),dev:TAB});await idb.del(k)}catch(err){if(!passing(err))await idb.del(k)}}
+}
+async function waitingList(){const out=[];for(const k of (await idb.keys()).filter(k=>String(k).startsWith(K("out","")))){const e=await idb.get(k);if(e)out.push(e)}return out}
+async function renderWaiting(){
+  const el=$("#waiting");if(!el||!BOOT)return;const list=await waitingList();
+  const failed=list.filter(e=>e.failed),unsent=list.filter(e=>!e.failed&&e.docs.some(d=>!e.sent[d.id]&&!e.written[d.id]));
+  let h="";
+  if(BOOT.saveError)h+=`<div class="wait bad">${esc(BOOT.saveError)}</div>`;
+  if(unsent.length)h+=`<div class="wait">${unsent.length===1?"1 observation is":unsent.length+" observations are"} saved on this phone and will send when you are connected.</div>`;
+  for(const e of failed)h+=`<div class="wait bad"><b>An observation could not be sent.</b> ${esc(e.failed)} <button class="link" type="button" data-back="${esc(e.id)}">Open it again</button></div>`;
+  el.innerHTML=h;
+}
+// an observation TREE would not take comes back into the form, with its words and photo, to fix and keep again
+async function backToForm(id){const e=await idb.get(K("out",id));if(!e)return;await draftNow();
+  const [lead,...rest]=e.docs.map(d=>{const x=jclone(d);delete x.updatedAt;return x});const form=Object.assign(lead,rest.length?{siblings:rest}:{});
+  await idb.del(K("out",id));await openDoc({id:e.draftId||("d"+id),by:me(),startedAt:e.at,updatedAt:Date.now(),form,queue:[]});draftSoon(200)}
+
+/* ---------- a clip, sent in pieces the way TREE sends one. TREE reads it and a draft waits here a few minutes later. ---------- */
+const clipPiece=blob=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).replace(/^data:[^,]*,/,""));r.onerror=()=>no(r.error);r.readAsDataURL(blob)});
+let clipLook=0;
+async function sendClip(f){
+  if(!f||clip)return;sync();clip={msg:"Getting the clip ready to send",pct:0};part("#f-photoarea",photoHtml());
+  try{const st=await api("/api/clip-send",{step:"start",name:f.name||"clip.mov",type:f.type||"",size:f.size});
+    for(let k=0;k<st.pieces;k++){const data=await clipPiece(f.slice(k*st.piece,Math.min(f.size,(k+1)*st.piece)));
+      let sent=false,last=null;for(let t=0;t<3&&!sent;t++){try{await api("/api/clip-send",{step:"piece",id:st.id,k,data});sent=true}catch(e){last=e;if(e&&(e.code==="bad_request"||e.code==="not_allowed"))break;await new Promise(ok=>setTimeout(ok,1500*(t+1)))}}
+      if(!sent)throw last;clip={msg:"Sending the clip. Keep this page open.",pct:Math.round(100*(k+1)/st.pieces)};part("#f-photoarea",photoHtml())}
+    await api("/api/clip-send",{step:"done",id:st.id});clip=null;part("#f-photoarea",photoHtml());
+    say("Clip sent. Its draft will wait under Drafts in a few minutes.","good",true);clipLook=Date.now()+20*60e3}
+  catch(e){clip=null;part("#f-photoarea",photoHtml());say((e&&e.message)||"The clip could not be sent. Try again.","bad",true)}
+}
+
+/* ---------- taps and typing ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,[data-draft],[data-back]");if(!t)return;
+  if(t.id==="g-go"){signIn();return}
+  if(t.id==="g-set"){setCode();return}
+  if(t.id==="f-keep"){keep();return}
+  if(t.id==="f-nophoto"){noPhoto();return}
+  if(t.id==="f-rm"){removeAsk=true;part("#f-remove",removeHtml());return}
+  if(t.id==="f-rmno"){removeAsk=false;part("#f-remove",removeHtml());return}
+  if(t.id==="f-rmyes"){(async()=>{clearTimeout(draftT);const id=F.draftId,nid=F.n.id;for(const x of all()){await idb.del(K("blob",x.id))}newForm();renderAll();say("Removed.");if(id)await dropDraft(id);void nid;renderDrafts()})();return}
+  if(t.dataset.kid&&F){sync();const n=F.n,a=n.children||(n.children=[]);const i=a.indexOf(t.dataset.kid);i>=0?a.splice(i,1):a.push(t.dataset.kid);
+    t.classList.toggle("on",i<0);t.setAttribute("aria-pressed",String(i<0));part("#f-groups",groupsHtml());part("#f-remove",removeHtml());draftSoon();return}
+  if(t.dataset.draft){(async()=>{await draftNow();const list=await draftList();const d=list.find(x=>x.id===t.dataset.draft);if(d){draftsOpen=false;await openDoc(d)}})();return}
+  if(t.dataset.back){backToForm(t.dataset.back).then(renderWaiting);return}
+  if(t.id==="signout"){(async()=>{await draftNow();const w=(await waitingList()).length;
+    if(w&&!t.dataset.sure){t.dataset.sure="1";say((w===1?"1 observation has":w+" observations have")+" not been sent yet. They stay on this phone. Tap Sign out again to sign out.","bad",true);return}
+    Auth.token=null;Auth.name=null;LS.set("fp-token",null);LS.set("fp-name",null);LS.set("fp-director",null);LS.set("ot-boot",null);BOOT=null;F=null;gate("")})();return}
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="f-photo"){const f=t.files&&t.files[0];t.value="";addPhoto(f);return}
+  if(t.id==="f-clip"){const f=t.files&&t.files[0];t.value="";sendClip(f);return}
+  if(!F)return;
+  if(t.dataset.room){sync();const on=new Set(roomsChosen(F.n));t.checked?on.add(t.dataset.room):on.delete(t.dataset.room);const a=BOOT.classrooms.filter(r=>on.has(r));
+    for(const x of all()){x.classroom=a[0]||"";x.classrooms=a}t.closest(".tick").classList.toggle("on",t.checked);part("#f-kids",kidsHtml());part("#f-groups",groupsHtml());draftSoon();return}
+  if(t.dataset.sg){sync();const on=groupsChosen(F.n).filter(x=>x!==t.dataset.sg);if(t.checked)on.push(t.dataset.sg);
+    for(const x of all()){if(on.length){x.smallGroup=on[0];x.smallGroups=on}else{delete x.smallGroup;delete x.smallGroups}}t.closest(".tick").classList.toggle("on",t.checked);part("#f-kids",kidsHtml());draftSoon();return}
+});
+document.addEventListener("input",e=>{const t=e.target;if(t.tagName==="TEXTAREA"){grow(t);if(t.id==="f-noticed"||t.id==="f-wonder"){sync();draftSoon()}}});
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.dataset)return;if(d.dataset.fold){d.open?otherOpen.add(d.dataset.fold):otherOpen.delete(d.dataset.fold)}if(d.id==="draftfold")draftsOpen=d.open},true);
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&(e.target.id==="g-code"||e.target.id==="g-name")){e.preventDefault();signIn()}if(e.key==="Enter"&&e.target&&e.target.id==="g-again"){e.preventDefault();setCode()}});
+window.addEventListener("online",()=>{pump();if(BOOT)refresh().catch(()=>{})});
+window.addEventListener("offline",()=>renderWaiting());
+document.addEventListener("visibilitychange",()=>{if(document.hidden){if(draftT)draftNow()}else if(BOOT){pump();refresh().catch(()=>{})}});
+window.addEventListener("pagehide",()=>{if(draftT)draftNow()});
+let looked=0;
+setInterval(async()=>{if(!BOOT||document.hidden)return;if((await waitingList()).length)pump();if(clipLook>Date.now()&&Date.now()-looked>40000){looked=Date.now();refresh().catch(()=>{})}},10000);
+// the page itself is kept on the phone, so Observe TREE still opens without signal
+if("serviceWorker" in navigator&&!local)navigator.serviceWorker.register("sw.js").catch(()=>{});
+window.OBSERVE_TEST={pump,waitingList,draftList,state:()=>({F,BOOT})};
+start();
+})();
+</script>
+</body>
+</html>
