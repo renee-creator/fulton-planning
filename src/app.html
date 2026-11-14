@@ -2213,7 +2213,7 @@ Children in this documentation. ${cs.map(c=>`${c.first}${c.last?" "+c.last[0]+".
 How to read it.
 Read the documentation${nPhotos?" and the "+nPhotos+" photo"+(nPhotos>1?"s":""):""} against the definitions and the level descriptors above. Include a measure only when the documentation${nPhotos?" or a photo":""} clearly shows evidence for it for one named child.
 For each child, give every measure this documentation clearly shows, up to six, the clearest first, each with its own evidence. Our children do most things together, and our educators write narrations of what happened, so read past the obvious. Beside how children are together, look at what their hands and bodies are doing, the counting, sorting, comparing or measuring inside the play, the words and gestures they use with one another, the cause and effect they are testing, and the care routines in the moment. When the documentation only touches a measure, or shows too little to place it at a level, leave that measure out.
-${well.length?"Levels that already have their evidence. "+well.map(x=>x.c.first+" has "+x.w.map(w=>w.code+" at "+w.levels.join(" and ")).join("; ")).join(". ")+". When this documentation shows one of these measures at a level named here for that child, leave that measure out for that child and give the next clearest measure this documentation shows. Every other level of every measure is still wanted.\n":""}child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
+${well.length?"Levels to leave out. "+well.map(x=>"For "+x.c.first+", "+x.w.map(w=>w.code+" at "+[w.before?"every level before "+w.before:"",...w.levels].filter(Boolean).join(" and at ")).join("; ")).join(". ")+". These levels already have their evidence, or the child had moved past them by the date of this documentation. When this documentation shows one of these measures at a level named here for that child, leave that measure out for that child and give the next clearest measure this documentation shows. Every other level of every measure is still wanted.\n":""}child is the id of the one child the evidence is about. When the evidence is about the group and no single child, leave that measure out.
 level is the latest level whose descriptor this evidence is consistent with. Read only what this one piece of documentation shows. Give one level only, never a range. Leave the measure out when the evidence does not show a level clearly.
 emerging is true only when the evidence also shows the child beginning to show the descriptor of the next level.
 evidence quotes or closely paraphrases the documentation, or says what a photo shows, in one or two sentences.
@@ -2241,16 +2241,30 @@ const drdpSrcAt=x=>(x&&x.src&&x.src.at)||(x&&x.at)||0;
 function drdpLevelState(c,exceptKey,withWaiting){const from=drdpPeriodStart(),st={};
   for(const x of kidDrdpItems(c)){const done=drdpDone(x);if(!done&&!(withWaiting&&x.status==="suggested"&&x.level))continue;
     if(exceptKey&&x.src&&(x.src.kind||"")+"|"+x.src.id===exceptKey)continue;
-    const r=drdpLadder(x.code).indexOf(x.level);if(r<0)continue;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1});
-    m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=from)m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(done&&r>m.top)m.top=r}
+    const r=drdpLadder(x.code).indexOf(x.level);if(r<0)continue;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1,first:{}});
+    m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=from)m.fresh[x.level]=(m.fresh[x.level]||0)+1;
+    if(done){if(r>m.top)m.top=r;const t=drdpSrcAt(x);if(!(m.first[r]<=t))m.first[r]=t}}
   return st}
+/* A level behind the child takes no new evidence (November 14, 2026). Documentation dated after the child was already
+   accepted at a later level, and reading lower, is left out, and the next clearest measure is offered. Documentation
+   dated before the child reached that later level still fills its own level, which is how the earlier years show where
+   a child was at the time. So each level's evidence comes from its own time, and the progression reads in true order. */
+// how far the child had come in a measure before a date, as a place in the measure's levels, or -1
+const drdpReached=(m,at)=>{let b=-1;if(m)for(const k in m.first)if(m.first[k]<(at||0)&&+k>b)b=+k;return b};
+// why a level takes no more from documentation dated at. "behind", "level" for a level with its two pieces, or "" when open
+function drdpLevelWhy(st,code,level,at){const m=st[code];if(!m)return"";const r=drdpLadder(code).indexOf(level);
+  if(r>=0&&r<drdpReached(m,at))return"behind";
+  if((m.n[level]||0)<DRDP_PER_LEVEL)return"";
+  return r===m.top&&(at||0)>=drdpPeriodStart()&&(m.fresh[level]||0)<DRDP_PER_LEVEL?"":"level"}
 // whether a level can take one more piece, from documentation dated at
-function drdpLevelOpen(st,code,level,at){const m=st[code];if(!m||(m.n[level]||0)<DRDP_PER_LEVEL)return true;
-  return drdpLadder(code).indexOf(level)===m.top&&(at||0)>=drdpPeriodStart()&&(m.fresh[level]||0)<DRDP_PER_LEVEL}
-const drdpLevelAdd=(st,x)=>{const r=drdpLadder(x.code).indexOf(x.level);if(r<0)return;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1});
-  m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=drdpPeriodStart())m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(r>m.top)m.top=r};
-// the levels that take no more for a child, for the measures of one view, named for the reading
-function drdpLevelsFull(st,v,ms,at){const out=[];for(const k of ms){const ls=drdpLevels(v,k).filter(l=>!drdpLevelOpen(st,k,l,at));if(ls.length)out.push({code:k,levels:ls})}return out}
+const drdpLevelOpen=(st,code,level,at)=>!drdpLevelWhy(st,code,level,at);
+const drdpLevelAdd=(st,x)=>{const r=drdpLadder(x.code).indexOf(x.level);if(r<0)return;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1,first:{}});
+  m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=drdpPeriodStart())m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(r>m.top)m.top=r;const t=drdpSrcAt(x);if(!(m.first[r]<=t))m.first[r]=t};
+// the levels that take no more for a child, for the measures of one view, named for the reading. The levels behind the
+// child are named as one run, every level before the one reached, and a full level at or past it by its own name.
+function drdpLevelsFull(st,v,ms,at){const out=[];for(const k of ms){const L=drdpLadder(k),b=drdpReached(st[k],at),mine=drdpLevels(v,k);
+    const before=b>0&&mine.includes(L[b])?L[b]:"";const ls=mine.filter(l=>L.indexOf(l)>=(before?b:0)&&!drdpLevelOpen(st,k,l,at));
+    if(before||ls.length)out.push({code:k,before,levels:ls})}return out}
 async function drdpRead(v,cs,S,srcId,o){o=o||{};const at=o.at||Date.now(),key=(o.kind||"notices")+"|"+srcId;
   // the earlier years count the suggestions still waiting too, so a level never gathers more than it needs before review
   const states=new Map(cs.map(c=>[c.id,drdpLevelState(c,key,!!o.early)]));
@@ -2734,20 +2748,20 @@ function drdpKeepTwo(c,items){const out={};let held=0;const used=new Map();
    that has its evidence by then are set aside, where Review again brings one back. One an educator brings back is
    accepted as they choose. After any review, suggestions still waiting for a level that now has its evidence are set
    aside too, so nobody reviews evidence that is no longer needed (November 13, 2026). */
-const drdpAsideLevel=()=>({status:"aside",reviewedBy:"TREE",reviewedAt:Date.now(),asideWhy:"level"});
+const drdpAsideLevel=why=>({status:"aside",reviewedBy:"TREE",reviewedAt:Date.now(),asideWhy:why||"level"});
 function drdpLevelGate(c,items){const st=drdpLevelState(c),out={},aside={};
   for(const [id,v] of Object.entries(items)){const x=((c.drdp||{}).items||{})[id];if(!x)continue;
-    if(v.status==="accepted"&&x.level&&!x.back&&!drdpLevelOpen(st,x.code,x.level,drdpSrcAt(x))){aside[id]=drdpAsideLevel();continue}
+    const why=v.status==="accepted"&&x.level&&!x.back?drdpLevelWhy(st,x.code,x.level,drdpSrcAt(x)):"";if(why){aside[id]=drdpAsideLevel(why);continue}
     out[id]=v;if(v.status==="accepted"&&x.level)drdpLevelAdd(st,x)}
   return {items:out,aside}}
 function drdpLevelSweep(c){const st=drdpLevelState(c),patch={};
-  for(const x of kidDrdpItems(c))if(x.status==="suggested"&&x.level&&!x.back&&!drdpLevelOpen(st,x.code,x.level,drdpSrcAt(x)))patch[x.id]=drdpAsideLevel();
+  for(const x of kidDrdpItems(c))if(x.status==="suggested"&&x.level&&!x.back){const why=drdpLevelWhy(st,x.code,x.level,drdpSrcAt(x));if(why)patch[x.id]=drdpAsideLevel(why)}
   const n=Object.keys(patch).length;if(n)kidDrdpPatch(c,{drdp:{items:patch}});return n}
 // one save for any accept, two measures for an observation at most, then each level kept to its pieces
 function drdpAcceptSave(c,items){const two=drdpKeepTwo(c,items),g=drdpLevelGate(c,two.items);const n=Object.keys(g.items).length,a=Object.keys(g.aside).length;
   if(n||a)kidDrdpPatch(c,{drdp:{items:Object.assign({},g.items,g.aside)}});
   return {n,held:two.held,aside:a+drdpLevelSweep(c)}}
-const drdpAcceptText=(n,held,aside)=>(n===1?"1 accepted.":n+" accepted.")+(held?` ${held} kept waiting, since an observation counts for two measures at most.`:"")+(aside?` ${aside} set aside, since ${aside===1?"its level already has":"their levels already have"} two pieces.`:"");
+const drdpAcceptText=(n,held,aside)=>(n===1?"1 accepted.":n+" accepted.")+(held?` ${held} kept waiting, since an observation counts for two measures at most.`:"")+(aside?` ${aside} set aside, since ${aside===1?"its level is":"their levels are"} no longer needed.`:"");
 // what a child's DRDP tab and the DRDP review page show for a suggestion, with its level, what it means, what was seen,
 // where it came from, and Accept, Change and Set aside
 function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view||DRDP_M[v][x.code]);const done=all.filter(x=>x.status==="accepted"||x.status==="changed");
@@ -2756,7 +2770,9 @@ function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>
   // choosing a level shows every level with what it means, the current choice marked, and a tap chooses
   const levelSel=x=>{const vv=x.view||v;return `<div class="drpick" role="radiogroup" aria-label="Level">${drdpLevels(vv,x.code).map(l=>`<label class="drpk"><input type="radio" name="drl-${esc(x.id)}" data-drlevel="${esc(x.id)}" value="${esc(l)}" ${l===(x.level||"")?"checked":""}><span><b>${esc(l)}</b> ${esc(drdpLevelDesc(vv,x.code,l)||"")}</span></label>`).join("")}</div>`};
   const curHtml=x=>{const l=latest(x.code);if(!l||l.id===x.id)return "";const vv=x.view||v;const lower=x.level&&drdpRank(vv,x.code,x.level)+(x.emerging?.5:0)<drdpRank(l.view||vv,x.code,l.level)+(l.emerging?.5:0);
-    return `<div class="cnt">Currently <b>${esc(drdpLevelText(l.level,l.emerging))}</b>, from ${esc(shortDate(l.src?.at||l.at))}.${lower?` <span class="drlow">Lower than what is already accepted.</span>`:""}</div>`};
+    // a lower level from before the child reached the later one is the earlier years doing their work, said plainly
+    const behind=lower&&drdpLevelWhy(drdpLevelState(c),x.code,x.level,drdpSrcAt(x))==="behind";
+    return `<div class="cnt">Currently <b>${esc(drdpLevelText(l.level,l.emerging))}</b>, from ${esc(shortDate(l.src?.at||l.at))}.${behind?` <span class="drlow">Lower than what is already accepted.</span>`:lower?` An earlier level, from before ${esc(c.first)} reached ${esc(l.level)}.`:""}</div>`};
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
       <div class="drlvl"><button class="linkbtn" data-drdef="${esc([x.code,x.level,x.view||v,x.src?x.src.kind:"",x.src?x.src.id:""].join("|"))}">${esc(drdpLevelText(x.level,x.emerging))}</button></div>${curHtml(x)}
       <div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
@@ -2823,7 +2839,7 @@ function kidDrdpHtml(c){
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
         return `<details class="drset" data-drrow="__earlier" ${drdpOpen.has("__earlier")?"open":""}><summary class="cnt"><b>Levels in the ${DRDP_VIEW[ov]} View</b>, ${codes.length} measure${codes.length===1?"":"s"}, kept from before</summary>
           ${codes.map(k=>{const evs=ex.filter(x=>x.code===k).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));return `<div class="drrow" style="padding:8px 0"><div class="drcode"><b>${esc(k)}</b> ${esc(DRDP_M[ov][k].n)}</div><div class="drbody">${evs.map(evLine).join("")}</div></div>`}).join("")}</details>`})()}
-      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
+      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":x.asideWhy==="behind"?", since "+esc(c.first)+" was already past that level":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
     </section>`;
 }
 /* ---------- DRDP review ----------
@@ -2835,7 +2851,8 @@ let drpKid="",drpOff=new Set();
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drpkid]");if(t){drpKid=t.dataset.drpkid||"";drpOff=new Set();drdpEdit=""}},true);
 function drpKids(){const rm=myRoom(),dir=isDirector()&&!VIEW_AS;const one=drpKid&&children.get(drpKid);
   return (one?[one]:kidsAt().filter(c=>dir||!rm||c.classroom===rm)).map(c=>({c,wait:drQWaiting(c)})).filter(o=>o.wait.length)}
-const drpOn=o=>o.wait.filter(x=>x.level&&!drpOff.has(o.c.id+"|"+x.id));
+// one whose observation already counts for two measures cannot be accepted yet, so it is never ticked or counted
+const drpOn=o=>o.wait.filter(x=>x.level&&!drpOff.has(o.c.id+"|"+x.id)&&!drdpFull(o.c,x,x.id));
 function renderDrdpReview(){loadDrdpTxt();const ks=drpKids();const one=drpKid&&children.get(drpKid);
   const tot=ks.reduce((n,o)=>n+o.wait.length,0),on=ks.reduce((n,o)=>n+drpOn(o).length,0);
   const accBtn=on?`<button class="btn" data-drpacc="1">Accept the ${on} ticked</button>`:"";
@@ -2845,7 +2862,7 @@ function renderDrdpReview(){loadDrdpTxt();const ks=drpKids();const one=drpKid&&c
       return `<section class="card" data-drkid="${esc(c.id)}" data-keep="1"><div class="secthead"><h3 style="font-size:18px">${esc(c.first)} ${esc(c.last||"")}</h3><span class="cnt">${c.classroom?esc(c.classroom)+" class, ":""}${o.wait.length} waiting</span>
         <span class="actions">${n>1?`<button class="btn small" data-drpall="${esc(c.id)}">Accept all ${n} for ${esc(c.first)}</button>`:""}<button class="linkbtn" data-drpopen="${esc(c.id)}">Open ${esc(c.first)}'s DRDP</button></span></div>
         <div style="display:grid;gap:10px">${o.wait.map(x=>{const key=c.id+"|"+x.id;
-          return `<div class="drprow">${x.level?`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`:`<div class="cnt">No level yet. Choose one below.</div>`}${k.reviewRow(x)}</div>`}).join("")}</div></section>`}).join("")}
+          return `<div class="drprow">${!x.level?`<div class="cnt">No level yet. Choose one below.</div>`:drdpFull(c,x,x.id)?`<div class="cnt" data-drpheld="${esc(key)}">Not ticked.</div>`:`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`}${k.reviewRow(x)}</div>`}).join("")}</div></section>`}).join("")}
     ${on?`<section class="card" data-keep="1"><div class="actions">${accBtn}<button class="linkbtn" data-tview="today">Back to Today</button></div></section>`:""}`}
 function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0,held=0,aside=0;
   for(const o of list){const items={};for(const x of o.xs)if(x.level&&x.status==="suggested")items[x.id]={status:"accepted",reviewedBy:who,reviewedAt:now};
@@ -2853,7 +2870,7 @@ function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0,held=0,aside=
   if(n||held||aside)toast(drdpAcceptText(n,held,aside));drdpEdit="";renderMain();window.scrollTo(0,0)}
 document.addEventListener("click",e=>{if(view!=="drdpreview")return;const t=e.target.closest("[data-drpacc],[data-drpall],[data-drpopen]");if(!t)return;e.preventDefault();e.stopPropagation();
   if(t.dataset.drpopen){kidOpen=t.dataset.drpopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
-  if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);const xs=o?o.wait.filter(x=>!drpOff.has(o.c.id+"|"+x.id)):[];if(xs.length)drpAccept([{c:o.c,xs}]);else if(o)toast("Nothing is ticked for "+o.c.first+".");return}
+  if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);const xs=o?drpOn(o):[];if(xs.length)drpAccept([{c:o.c,xs}]);else if(o)toast("Nothing is ticked for "+o.c.first+".");return}
   drpAccept(drpKids().map(o=>({c:o.c,xs:drpOn(o)})))},true);
 document.addEventListener("change",e=>{const t=e.target;if(view!=="drdpreview"||t.dataset.drpoff===undefined)return;if(t.checked)drpOff.delete(t.dataset.drpoff);else drpOff.add(t.dataset.drpoff);renderMain()});
 /* ---------- DRDP open levels ----------
@@ -2930,7 +2947,7 @@ function drdpKid(){return children.get(kidOpen)}
 function drdpKidOf(el){if(view==="drdpreview"){const g=el&&el.closest("[data-drkid]");return g?children.get(g.dataset.drkid):null}return drdpKid()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||(view!=="child"&&view!=="drdpreview"))return;const c=drdpKidOf(t);if(!c)return;
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
-  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}const r=drdpAcceptSave(c,{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}});toast(r.n?`Accepted for ${x.code}.${r.aside?` ${r.aside} more set aside, since ${r.aside===1?"its level has":"their levels have"} two pieces now.`:""}`:"Set aside, since that level already has two pieces.");drQNext();return}
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}const r=drdpAcceptSave(c,{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}});toast(r.n?`Accepted for ${x.code}.${r.aside?` ${r.aside} more set aside, since ${r.aside===1?"its level is":"their levels are"} no longer needed.`:""}`:"Set aside, since that level is no longer needed.");drQNext();return}
   if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");drQNext();return}
   if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested",back:true}}}});renderMain();return}
   if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}

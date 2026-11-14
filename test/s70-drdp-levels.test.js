@@ -47,7 +47,7 @@ test('a level takes two pieces, and the current level two fresh ones each confer
   await new Promise(r => setTimeout(r, 2500));
   const pip = items(fx, 'pip'), ivy = items(fx, 'ivy');
   assert.deepStrictEqual([pip.w1.status, pip.w2.status, pip.w3.status], ['accepted', 'aside', 'aside']);
-  assert.deepStrictEqual([pip.w2.asideWhy, pip.w2.reviewedBy], ['level', 'TREE']);
+  assert.deepStrictEqual([pip.w2.asideWhy, pip.w2.reviewedBy, ivy.f3.asideWhy, ivy.g1.asideWhy], ['level', 'TREE', 'level', 'behind']);
   assert.strictEqual(pip.y1.status, 'suggested', 'the earlier years wait for the director');
   assert.deepStrictEqual([ivy.f1.status, ivy.f2.status, ivy.f3.status, ivy.g1.status], ['accepted', 'accepted', 'aside', 'aside']);
   // one set aside can be brought back and accepted, as the educator chooses
@@ -122,9 +122,9 @@ test('a reading leaves out a level that has its evidence and offers the next mea
     const early = await drdpRead('ptk', [c], S, 'km9', { kind: 'book', at: old, early: true });
     return { asked, now: now.items.map(x => x.code + ' ' + x.level), early: early.items.map(x => x.code + ' ' + x.level), view: [kidViewAt(c, Date.parse('2024-10-01')), kidViewAt(c, Date.parse('2025-06-01'))] }; });
   assert.deepStrictEqual(r.now, ['ATL 1 Building Middle', 'SED 4 Building Earlier']);
-  assert.match(r.asked, /Levels that already have their evidence\. Ivy has ATL 2 at Responding Earlier|Levels that already have their evidence\. Ivy has ATL 2 at Building Earlier/);
+  assert.match(r.asked, /Levels to leave out\. For Ivy, ATL 2 at every level before Building Middle\. These levels already have their evidence, or the child had moved past them/);
   assert.match(r.asked, /leave that measure out for that child and give the next clearest measure/);
-  assert.doesNotMatch(r.asked, /ATL 2 at [^.;]*Building Middle/, 'where she is now is still open to fresh evidence');
+  assert.doesNotMatch(r.asked, /and at Building Middle/, 'where she is now is still open to fresh evidence');
   assert.deepStrictEqual(r.early, ['ATL 3 Exploring Later']);
   assert.deepStrictEqual(r.view, ['it', 'ptk'], 'an earlier photo is read against the view the child was in that day');
   assert.deepStrictEqual(d.errors, []);
@@ -157,4 +157,49 @@ test('the earlier years choose a few photos for each child for each month, oldes
   pull.earlyPause(true); assert.deepStrictEqual(pull.earlyNext(), { status: 'paused' }); pull.earlyPause(false);
   pull.earlyMark('a4', true, 1); pull.earlyMark('a6', true, 0);
   assert.deepStrictEqual(pull.earlyNext(), { status: 'done' }); v = pull.earlyView(); assert.deepStrictEqual([v.status, v.left, v.done, v.found], ['done', 0, 4, 3]);
+});
+
+// A level behind the child takes no new evidence, an earlier photo still fills its own level, and one that cannot be
+// accepted yet is never ticked (November 14, 2026).
+const more2 = put => {
+  const ago = d => Date.now() - d * DAY;
+  put('children/max.json', { first: 'Max', last: 'Test', classroom: 'West', status: 'active', dob: '2022-03-01', drdp: { items: {
+    // accepted at Building Later a month ago
+    h1: it('SCI 1', 'Building Later', 'accepted', ago(30), 's1'),
+    // from six months ago, before he reached it, an earlier level. It stays.
+    lo1: it('SCI 1', 'Building Earlier', 'suggested', ago(180), 's2'),
+    // from last week and still lower. It is left out.
+    lo2: it('SCI 1', 'Building Earlier', 'suggested', ago(5), 's3'),
+    // an observation that already counts for two measures, with a third waiting
+    t1: it('ATL 1', 'Exploring Later', 'accepted', ago(3), 'q1'), t2: it('ATL 3', 'Exploring Later', 'accepted', ago(3), 'q1'), t3: it('SED 1', 'Exploring Later', 'suggested', ago(3), 'q1') } } });
+};
+test('a level behind the child takes no new evidence, and an earlier photo still fills its own level', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: more2 }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => goView('today')); await s.p.waitForFunction(() => children.get('max'), null, { timeout: 15000 });
+  const r = await s.p.evaluate(async () => { const c = children.get('max'), now = Date.now(), D = 864e5, st = drdpLevelState(c);
+    const why = [drdpLevelWhy(st, 'SCI 1', 'Building Earlier', now - 5 * D), drdpLevelWhy(st, 'SCI 1', 'Building Earlier', now - 180 * D), drdpLevelWhy(st, 'SCI 1', 'Building Later', now), drdpLevelWhy(st, 'SCI 1', 'Integrating Earlier', now)];
+    let asked = ''; askRead = async prompt => { asked = prompt; return { measures: [{ code: 'SCI 1', child: 'max', level: 'Building Middle', evidence: 'Lower than where he is.' }, { code: 'SCI 2', child: 'max', level: 'Building Earlier', evidence: 'Looked closely at the leaf.' }] }; };
+    const S = { text: 'Max looked at a leaf.', photos: [], kids: [c], title: 'Leaf' };
+    const read = await drdpRead('ptk', [c], S, 'nz', { kind: 'notices', at: now });
+    const swept = drdpLevelSweep(c);
+    return { why, asked, read: read.items.map(x => x.code + ' ' + x.level), swept, lo: [c.drdp.items.lo1.status, c.drdp.items.lo2.status, c.drdp.items.lo2.asideWhy] }; });
+  assert.deepStrictEqual(r.why, ['behind', '', '', ''], 'newer and lower is behind, older and lower fills its own level, the current and later levels are open');
+  assert.deepStrictEqual(r.read, ['SCI 2 Building Earlier'], 'the next clearest measure takes its place');
+  assert.match(r.asked, /For Max, [^.]*SCI 1 at every level before Building Later\./);
+  assert.deepStrictEqual([r.swept, r.lo], [1, ['suggested', 'aside', 'behind']]);
+  // on review, the earlier one reads plainly, with no warning
+  await s.p.evaluate(() => { drpKid = ''; goView('drdpreview'); }); await s.p.waitForSelector('#dr-lo1', { timeout: 15000 });
+  const row = await s.p.innerText('#dr-lo1'); assert.match(row, /An earlier level, from before Max reached Building Later\./); assert.doesNotMatch(row, /Lower than what is already accepted/);
+  // the one whose observation already counts for two measures is not ticked and not counted
+  assert.ok(await s.p.$('[data-drpheld="max|t3"]')); assert.strictEqual(await s.p.$('[data-drpoff="max|t3"]'), null);
+  assert.match(await s.p.innerText('[data-drpacc]'), /Accept the 1 ticked/);
+  await s.p.click('[data-drpacc] >> nth=0'); await s.p.waitForFunction(() => children.get('max').drdp.items.lo1.status === 'accepted');
+  assert.strictEqual(await s.p.evaluate(() => children.get('max').drdp.items.t3.status), 'suggested');
+  // the child's page says why the other one was set aside
+  await s.p.evaluate(() => { kidOpen = 'max'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('summary:has-text("Set aside")', { timeout: 15000 });
+  await s.p.click('summary:has-text("Set aside")'); assert.match(await s.p.innerText('#main'), /since Max was already past that level/);
+  assert.deepStrictEqual(s.errors, []);
 });
