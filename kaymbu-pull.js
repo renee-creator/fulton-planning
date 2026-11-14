@@ -205,8 +205,11 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const have = (d.children || []).filter(Boolean);
     const handled = !!(d.editedBy || k.checkedBy || k.byHand);
     if (!have.length && !handled && kids.ids.length) { d.children = kids.ids.slice(); if (!kids.unmatched.length) { k.check = false; delete k.suggest; delete k.maybe; delete k.unsure; } changed = true; }
-    else { const extra = kids.ids.filter(x => !have.includes(x)); const offer = [...new Set([...(k.suggest || []), ...extra])].filter(x => !have.includes(x));
-      if (extra.length && JSON.stringify(offer) !== JSON.stringify(k.suggest || [])) { k.suggest = offer; k.check = true; delete k.maybe; changed = true; } }
+    /* Kaymbu tagging more children than TREE has is no question for the Waiting list. A photo a person has checked stays
+       as that person left it, and Kaymbu's tags never reopen it. A photo nobody has checked keeps Kaymbu's other children
+       as names offered on its form, without waiting on Today (November 14, 2026). */
+    else if (!handled) { const extra = kids.ids.filter(x => !have.includes(x)); const offer = [...new Set([...(k.suggest || []), ...extra])].filter(x => !have.includes(x));
+      if (extra.length && JSON.stringify(offer) !== JSON.stringify(k.suggest || [])) { k.suggest = offer; changed = true; } }
     if (kids.unmatched.length && JSON.stringify(kids.unmatched) !== JSON.stringify(k.unmatched || [])) { k.unmatched = kids.unmatched; changed = true; }
     if (!changed) return false;
     d.kaymbu = k; noteChange('notices', id); scheduleSave('notices', id); return true;

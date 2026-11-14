@@ -1097,6 +1097,21 @@ function listDifferences() {
   if (onlyS.length) out.push(`The calendar's spaces had ${onlyS.join('; ')}, which Where it happens in Program settings did not. They stay as spaces.`);
   return out;
 }
+/* Kaymbu photos waiting to be checked, put right once (November 14, 2026). Matching a photo to its Kaymbu Moment had put
+   it back on the Waiting list whenever Kaymbu tagged a child TREE had not, even after a person had checked it. A photo a
+   person checked comes off the list as they left it. A photo with children tagged, waiting only on Kaymbu's other
+   children, comes off too and keeps those names offered on its form. What stays is a true question, no child tagged, two
+   children with one first name, or a name the note may mean. */
+ONCE.push(['kaymbuCheckKept', () => {
+  let n = 0;
+  for (const [id, r] of store.recs.notices) { const d = r && !r.deleted && r.doc; const k = d && d.kaymbu; if (!k || !k.check) continue;
+    const have = (d.children || []).filter(Boolean).length > 0;
+    if (k.checkedBy) { d.kaymbu = Object.assign({}, k, { check: false }); delete d.kaymbu.suggest; delete d.kaymbu.maybe; delete d.kaymbu.unsure; }
+    else if (have && !(k.unsure || []).length && !k.maybe) d.kaymbu = Object.assign({}, k, { check: false });
+    else continue;
+    noteChange('notices', id); scheduleSave('notices', id); n++; }
+  log('Kaymbu photos taken off the Waiting list,', n);
+}]);
 ONCE.push(['oneLists', () => {
   if (!calendar.ready || !calendar.classesKept()) return false;
   const pg = store.recs.settings.get('program'), mn = settingDoc('main'); if (!pg || pg.deleted || !pg.doc) return false;

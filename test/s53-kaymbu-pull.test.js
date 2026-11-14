@@ -78,15 +78,20 @@ test('one post comes in as one observation, and the screener sets aside without 
   assert.deepStrictEqual(r4.reasons, { before: 1 });
 });
 
-test('a photo already in TREE keeps what educators did, and is offered the children tagged in Kaymbu', async () => {
+test('a photo already in TREE keeps what educators did, and Kaymbu\'s other children never put it back on the Waiting list', async () => {
   const x = setup();
   x.store.recs.notices.set('n1', { doc: { id: 'n1', noticed: 'Sand', children: [], kaymbu: { v: 3, key: 'e1-aaaa_bbbb.jpg', check: true } } });
   x.store.recs.notices.set('n2', { doc: { id: 'n2', noticed: 'Water', children: ['c1'], editedBy: 'Dee', kaymbu: { v: 3, key: 'e2-aaaa_bbbb.jpg' } } });
-  const r = await x.pull.takePost([mom('e1', tag('Wren Alder')), mom('e2', tag('Wren Alder', 'Pip Cedar'))], {});
-  assert.deepStrictEqual([r.kept, r.merged], [0, 2]);
+  x.store.recs.notices.set('n3', { doc: { id: 'n3', noticed: 'Mud', children: ['c1'], kaymbu: { v: 3, key: 'e3-aaaa_bbbb.jpg', check: false } } });
+  x.store.recs.notices.set('n4', { doc: { id: 'n4', noticed: 'Clay', children: ['c1'], kaymbu: { v: 3, key: 'e4-aaaa_bbbb.jpg', check: false, checkedBy: 'Dee', checkedAt: 5 } } });
+  const r = await x.pull.takePost([mom('e1', tag('Wren Alder')), mom('e2', tag('Wren Alder', 'Pip Cedar')), mom('e3', tag('Wren Alder', 'Pip Cedar')), mom('e4', tag('Wren Alder', 'Pip Cedar'))], {});
+  assert.deepStrictEqual([r.kept, r.merged], [0, 4]);
   const n1 = x.store.recs.notices.get('n1').doc, n2 = x.store.recs.notices.get('n2').doc;
   assert.deepStrictEqual([n1.children, n1.kaymbu.check], [['c1'], false], 'nobody had tagged it, so Kaymbu\'s children are taken');
-  assert.deepStrictEqual([n2.children, n2.kaymbu.suggest, n2.kaymbu.check], [['c1'], ['c3'], true], 'an educator tagged it, so the other child is offered');
+  assert.deepStrictEqual([n2.children, n2.kaymbu.suggest, n2.kaymbu.check], [['c1'], undefined, undefined], 'an educator changed it, so it stays as they left it');
+  const n3 = x.store.recs.notices.get('n3').doc, n4 = x.store.recs.notices.get('n4').doc;
+  assert.deepStrictEqual([n3.children, n3.kaymbu.suggest, n3.kaymbu.check], [['c1'], ['c3'], false], 'nobody has checked it, so the other child is offered on its form without waiting on Today');
+  assert.deepStrictEqual([n4.children, n4.kaymbu.suggest, n4.kaymbu.check], [['c1'], undefined, false], 'a person checked it, so Kaymbu\'s tags do not reopen it');
 });
 
 test('the look back credits a Moment with no small group to its class team, and comes in quietly', async () => {
