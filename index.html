@@ -3251,7 +3251,10 @@ function kidDrdpHtml(c){
 let drpKid="",drpOff=new Set(),drpTick=new Set(),drpEyeOnly=false;
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drpkid]");if(t){drpKid=t.dataset.drpkid||"";drpOff=new Set();drpTick=new Set();drpEyeOnly=false;drdpEdit=""}},true);
 function drpKids(){const rm=myRoom(),dir=isDirector()&&!VIEW_AS;const one=drpKid&&children.get(drpKid);
-  return (one?[one]:kidsAt().filter(c=>dir||!rm||c.classroom===rm)).map(c=>({c,wait:drQWaiting(c)})).filter(o=>o.wait.length)}
+  // One whose observation already counts for two of the child's measures cannot be accepted, so it asks nothing of
+  // anyone. It is held in a closed fold under the child and left out of every count (November 14, 2026).
+  return (one?[one]:kidsAt().filter(c=>dir||!rm||c.classroom===rm)).map(c=>{const all=drQWaiting(c),held=all.filter(x=>drdpHeld(c,x));return {c,held,wait:all.filter(x=>!held.includes(x))}}).filter(o=>o.wait.length||(one&&o.held.length))}
+const drdpHeld=(c,x)=>!!(x&&x.level&&drdpFull(c,x,x.id));
 // one whose observation already counts for two measures cannot be accepted yet, so it is never ticked or counted
 // one that needs an eye is ticked only when someone ticks it
 const drpOn=o=>{const st=drdpLevelState(o.c);return o.wait.filter(x=>{const key=o.c.id+"|"+x.id;return x.level&&!drdpFull(o.c,x,x.id)&&(drdpEye(o.c,x,st)?drpTick.has(key):!drpOff.has(key))})};
@@ -3266,11 +3269,12 @@ function renderDrdpReview(){loadDrdpTxt();const ks=drpKids();const one=drpKid&&c
   const accBtn=on?`<button class="btn" data-drpacc="1">Accept the ${on} ticked</button>`:"";
   $("#main").innerHTML=`<div class="head"><h2>DRDP review</h2><div class="sub">${one?esc(one.first)+"'s":"Every"} DRDP suggestion waiting${tot?`, ${tot} in all`:""}. The ones that fit cleanly are ticked to start. Untick any you want to leave waiting, then accept the ticked ones. Change or Set aside works on any one here.</div></div>
     ${tot?`<section class="card" data-keep="1"><div class="actions">${accBtn}${roomBtns}<button class="linkbtn" data-tview="today">Back to Today</button></div>${eyeBar}</section>`:`<section class="card"><p class="muted" style="margin:0">Nothing is waiting for review.</p><div class="actions"><button class="btn small" data-tview="today">Back to Today</button></div></section>`}
-    ${ks.map(o=>{const c=o.c,k=drdpKit(c),n=drpOn(o).length,ey=eyes.get(c.id);const rows=drpEyeOnly?o.wait.filter(x=>ey.get(x.id)):o.wait;if(!rows.length)return"";
+    ${ks.map(o=>{const c=o.c,k=drdpKit(c),n=drpOn(o).length,ey=eyes.get(c.id);const rows=drpEyeOnly?o.wait.filter(x=>ey.get(x.id)):o.wait;if(!rows.length&&!(o.held.length&&!drpEyeOnly))return"";
       return `<section class="card" data-drkid="${esc(c.id)}" data-keep="1"><div class="secthead"><h3 style="font-size:18px">${esc(c.first)} ${esc(c.last||"")}</h3><span class="cnt">${c.classroom?esc(c.classroom)+" class, ":""}${o.wait.length} waiting</span>
         <span class="actions">${n>1?`<button class="btn small" data-drpall="${esc(c.id)}">Accept all ${n} for ${esc(c.first)}</button>`:""}<button class="linkbtn" data-drpopen="${esc(c.id)}">Open ${esc(c.first)}'s DRDP</button></span></div>
         <div style="display:grid;gap:10px">${rows.map(x=>{const key=c.id+"|"+x.id,eye=ey.get(x.id);
-          return `<div class="drprow">${!x.level?`<div class="cnt">No level yet. Choose one below.</div>`:drdpFull(c,x,x.id)?`<div class="cnt" data-drpheld="${esc(key)}">Not ticked.</div>`:eye?`<div class="cnt drlow" data-drpeyewhy="${esc(key)}"><b>Needs your eye.</b> ${esc(eye)}</div><label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" data-drpeyebox="1" ${drpTick.has(key)?"checked":""}><span>Tick to accept</span></label>`:`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`}${k.reviewRow(x)}</div>`}).join("")}</div></section>`}).join("")}
+          return `<div class="drprow">${!x.level?`<div class="cnt">No level yet. Choose one below.</div>`:drdpFull(c,x,x.id)?`<div class="cnt" data-drpheld="${esc(key)}">Not ticked.</div>`:eye?`<div class="cnt drlow" data-drpeyewhy="${esc(key)}"><b>Needs your eye.</b> ${esc(eye)}</div><label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" data-drpeyebox="1" ${drpTick.has(key)?"checked":""}><span>Tick to accept</span></label>`:`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`}${k.reviewRow(x)}</div>`}).join("")}</div>
+        ${o.held.length&&!drpEyeOnly?`<details class="drset" data-drpheldfold="${esc(c.id)}" style="margin-top:10px"><summary class="cnt" style="cursor:pointer"><b>Held, ${o.held.length}.</b> Nothing to do.</summary><div class="cnt" style="margin:6px 0">${o.held.length===1?"Its observation already counts":"Their observations already count"} for two of ${esc(c.first)}'s measures, so ${o.held.length===1?"it waits":"they wait"} here. Set aside clears one.</div><div style="display:grid;gap:10px">${o.held.map(x=>`<div class="drprow">${k.reviewRow(x)}</div>`).join("")}</div></details>`:""}</section>`}).join("")}
     ${on?`<section class="card" data-keep="1"><div class="actions">${accBtn}<button class="linkbtn" data-tview="today">Back to Today</button></div></section>`:""}`}
 function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0,held=0,aside=0;
   for(const o of list){const items={};for(const x of o.xs)if(x.level&&x.status==="suggested")items[x.id]={status:"accepted",reviewedBy:who,reviewedAt:now};
@@ -5221,7 +5225,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="858ff5f0e3c2";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="fe379e0ebaa5";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5470,7 +5474,7 @@ function todayWaiting(){
     out.push({dot:"sky",t:`Look again at the inquiry ${x.name||"Untitled"}`,s:`${inqScope(x)}, planned for ${fmtDate(x.lookAgain)}`,act:`data-iqopen="${x.id}"`,b:"Open"})}
   {const w=wrTodayItem();if(w)out.push(w)}
   // DRDP suggestions waiting for an educator, for the children in my class, or every classroom for the director
-  {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)).length]).filter(x=>x[1]);
+  {const rm=myRoom();const kw=kidsAt().filter(c=>dir||!rm||c.classroom===rm).map(c=>[c,kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)&&!drdpHeld(c,x)).length]).filter(x=>x[1]);
     if(kw.length){const tot=kw.reduce((n,x)=>n+x[1],0);kw.sort((a,b)=>b[1]-a[1]);
       out.push({dot:"sky",n:tot,t:`${tot} DRDP suggestion${tot===1?"":"s"} to review`,s:kw.slice(0,3).map(([c,n])=>`${c.first} ${n}`).join(", ")+(kw.length>3?`, and ${kw.length-3} more children`:""),act:`data-tview="drdpreview" data-drpkid=""`,b:"Review"})}}
   // order lines TREE is not sure were bought for meals, for the director to place
@@ -17220,7 +17224,7 @@ function renderChildren(){
   const today=iso(new Date());
   const card=c=>{const nx=kidNext(c);const n=mCount(c);
     const cf=[...conferences.values()].filter(x=>x.childId===c.id&&x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
-    const dw=kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)).length;
+    const dw=kidDrdpItems(c).filter(x=>x.status==="suggested"&&drdpMine(x)&&!drdpHeld(c,x)).length;
     // every card has the same lines in the same order, so children compare at a glance
     const line=(on,t)=>`<span class="kline ${on?"ksoon":""}">${esc(t)}</span>`;
     const rows=kidAt(c)?[line(!!cf,cf?`Conference ${parseIso(cf.confDate).toLocaleDateString("en-US",{month:"long",day:"numeric"})}`:"No conference yet"),line(!!dw,dw?`${dw} DRDP to review`:"No DRDP to review"),line(false,n?`${n} observation${n===1?"":"s"}`:"No observations yet"),line(false,nx==="k"?"Kindergarten next year":nx==="tk"?"TK next year":""),...(dietLine(c)?[`<span class="kline kdiet">${esc(dietLine(c))}</span>`]:[])]

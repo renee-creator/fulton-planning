@@ -199,7 +199,10 @@ test('a level behind the child takes no new evidence, and an earlier photo still
   await s.p.evaluate(() => { drpKid = ''; goView('drdpreview'); }); await s.p.waitForSelector('#dr-lo1', { timeout: 15000 });
   const row = await s.p.innerText('#dr-lo1'); assert.match(row, /An earlier level, from before Max reached Building Later\./); assert.doesNotMatch(row, /Lower than what is already accepted/);
   // the one whose observation already counts for two measures is not ticked and not counted
-  assert.ok(await s.p.$('[data-drpheld="max|t3"]')); assert.strictEqual(await s.p.$('[data-drpoff="max|t3"]'), null);
+  assert.strictEqual(await s.p.$('[data-drpoff="max|t3"]'), null);
+  // it is held in a closed fold under the child, with nothing to do, and left out of the waiting count
+  assert.match(await s.p.innerText('[data-drpheldfold="max"] > summary'), /Held, 1\. Nothing to do\./); assert.ok(await s.p.$('[data-drpheldfold="max"] #dr-t3'));
+  assert.match(await s.p.innerText('[data-drkid="max"] .secthead'), /2 waiting/);
   assert.match(await s.p.innerText('#dr-j2'), /Lower than Building Later, which has one piece so far\./);
   assert.match(await s.p.innerText('[data-drpacc]'), /Accept the 2 ticked/);
   await s.p.click('[data-drpacc] >> nth=0'); await s.p.waitForFunction(() => children.get('max').drdp.items.lo1.status === 'accepted');
