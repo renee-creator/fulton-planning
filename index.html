@@ -2643,12 +2643,12 @@ function drdpTidyCount(){let pieces=0,kids=0,before=0,after=0;const by={behind:0
 function drdpTidyRun(){const now=Date.now();let n=0;
   for(const c of kidsAt()){const plan=drdpTidyPlan(c);if(!plan.length)continue;const patch={};
     for(const {x,why} of plan)patch[x.id]={status:"aside",asideWhy:why,tidy:now,was:{status:x.status,by:x.reviewedBy||"",at:x.reviewedAt||0},reviewedBy:"TREE",reviewedAt:now};
-    kidDrdpPatch(c,{drdp:{items:patch}});n+=plan.length}
+    kidDrdpPatch(c,{drdp:{items:patch}});drdpLevelSweep(c);n+=plan.length}
   return n}
 const drdpTidied=()=>{let n=0,at=0;for(const c of kidsAt())for(const x of kidDrdpItems(c))if(x.tidy&&x.status==="aside"){n++;if(x.tidy>at)at=x.tidy}return {n,at}};
 function drdpTidyBack(){let n=0;for(const c of kidsAt()){const patch={};
     for(const x of kidDrdpItems(c))if(x.tidy&&x.status==="aside"){patch[x.id]={status:(x.was&&x.was.status)||"accepted",reviewedBy:(x.was&&x.was.by)||"",reviewedAt:(x.was&&x.was.at)||0,asideWhy:"",tidy:0,back:true};n++}
-    if(n&&Object.keys(patch).length)kidDrdpPatch(c,{drdp:{items:patch}})}
+    if(n&&Object.keys(patch).length){kidDrdpPatch(c,{drdp:{items:patch}});drdpLevelSweep(c)}}
   return n}
 /* Review by exception (November 14, 2026). A waiting suggestion that needs the director's or an educator's eye says why,
    and starts unticked. One that sits three or more levels above everything accepted for that child in that measure, or
@@ -3154,14 +3154,18 @@ function drdpLevelGate(c,items){const st=drdpLevelState(c),out={},aside={};
     const why=v.status==="accepted"&&x.level&&!x.back?drdpLevelWhy(st,x.code,x.level,drdpSrcAt(x)):"";if(why){aside[id]=drdpAsideLevel(why);continue}
     out[id]=v;if(v.status==="accepted"&&x.level)drdpLevelAdd(st,x)}
   return {items:out,aside}}
-function drdpLevelSweep(c){const st=drdpLevelState(c),patch={};
-  for(const x of kidDrdpItems(c))if(x.status==="suggested"&&x.level&&!x.back){const why=drdpLevelWhy(st,x.code,x.level,drdpSrcAt(x));if(why)patch[x.id]=drdpAsideLevel(why)}
-  const n=Object.keys(patch).length;if(n)kidDrdpPatch(c,{drdp:{items:patch}});return n}
+// a suggestion whose observation already counts for two measures is set aside too, with that reason, and it comes back
+// by itself when one of the two is set aside. One a person brought back with Review again is left alone (November 14, 2026)
+function drdpLevelSweep(c){const st=drdpLevelState(c),patch={};let n=0;
+  for(const x of kidDrdpItems(c)){let s=x.status;
+    if(s==="aside"&&x.asideWhy==="two"&&x.reviewedBy==="TREE"&&!drdpFull(c,x,x.id)){patch[x.id]={status:"suggested",asideWhy:"",reviewedBy:"",reviewedAt:0};s="suggested"}
+    if(s==="suggested"&&x.level&&!x.back){const why=drdpFull(c,x,x.id)?"two":drdpLevelWhy(st,x.code,x.level,drdpSrcAt(x));if(why){patch[x.id]=drdpAsideLevel(why);n++}}}
+  if(Object.keys(patch).length)kidDrdpPatch(c,{drdp:{items:patch}});return n}
 // one save for any accept, two measures for an observation at most, then each level kept to its pieces
 function drdpAcceptSave(c,items){const two=drdpKeepTwo(c,items),g=drdpLevelGate(c,two.items);const n=Object.keys(g.items).length,a=Object.keys(g.aside).length;
   if(n||a)kidDrdpPatch(c,{drdp:{items:Object.assign({},g.items,g.aside)}});
   return {n,held:two.held,aside:a+drdpLevelSweep(c)}}
-const drdpAcceptText=(n,held,aside)=>(n===1?"1 accepted.":n+" accepted.")+(held?` ${held} kept waiting, since an observation counts for two measures at most.`:"")+(aside?` ${aside} set aside, since ${aside===1?"its level is":"their levels are"} no longer needed.`:"");
+const drdpAcceptText=(n,held,aside)=>(n===1?"1 accepted.":n+" accepted.")+(aside?` ${aside} set aside, no longer needed.`:"");
 // what a child's DRDP tab and the DRDP review page show for a suggestion, with its level, what it means, what was seen,
 // where it came from, and Accept, Change and Set aside
 function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>x.view===v||!x.view||DRDP_M[v][x.code]);const done=all.filter(x=>x.status==="accepted"||x.status==="changed");
@@ -3243,7 +3247,7 @@ function kidDrdpHtml(c){
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
         return `<details class="drset" data-drrow="__earlier" ${drdpOpen.has("__earlier")?"open":""}><summary class="cnt"><b>Levels in the ${DRDP_VIEW[ov]} View</b>, ${codes.length} measure${codes.length===1?"":"s"}, kept from before</summary>
           ${codes.map(k=>{const evs=ex.filter(x=>x.code===k).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));return `<div class="drrow" style="padding:8px 0"><div class="drcode"><b>${esc(k)}</b> ${esc(DRDP_M[ov][k].n)}</div><div class="drbody">${evs.map(evLine).join("")}</div></div>`}).join("")}</details>`})()}
-      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":x.asideWhy==="behind"?", since "+esc(c.first)+" was already past that level":x.asideWhy==="twice"?", since the same observation already counts for this measure":x.asideWhy==="untagged"?", since "+esc(c.first)+" is not tagged in that observation":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">${x.tidy&&x.was?"Put back":"Review again"}</button></div>`).join("")}</details>`:""}
+      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":x.asideWhy==="behind"?", since "+esc(c.first)+" was already past that level":x.asideWhy==="two"?", since its observation already counts for two measures":x.asideWhy==="twice"?", since the same observation already counts for this measure":x.asideWhy==="untagged"?", since "+esc(c.first)+" is not tagged in that observation":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">${x.tidy&&x.was?"Put back":"Review again"}</button></div>`).join("")}</details>`:""}
     </section>`;
 }
 /* ---------- DRDP review ----------
@@ -3392,8 +3396,8 @@ function drdpKid(){return children.get(kidOpen)}
 function drdpKidOf(el){if(view==="drdpreview"){const g=el&&el.closest("[data-drkid]");return g?children.get(g.dataset.drkid):null}return drdpKid()}
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||(view!=="child"&&view!=="drdpreview"))return;const c=drdpKidOf(t);if(!c)return;
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
-  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}const r=drdpAcceptSave(c,{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}});toast(r.n?`Accepted for ${x.code}.${r.aside?` ${r.aside} more set aside, since ${r.aside===1?"its level is":"their levels are"} no longer needed.`:""}`:"Set aside, since that level is no longer needed.");drQNext();return}
-  if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");drQNext();return}
+  if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}const r=drdpAcceptSave(c,{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}});toast(r.n?`Accepted for ${x.code}.${r.aside?` ${r.aside} more set aside, no longer needed.`:""}`:"Set aside, since that level is no longer needed.");drQNext();return}
+  if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});drdpLevelSweep(c);toast("Set aside. It is kept below if you want to look again.");drQNext();return}
   if(t.dataset.drback){const bx=((c.drdp||{}).items||{})[t.dataset.drback];
       // a tidied piece goes straight back to accepted, as the educator who accepted it left it
       kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:bx&&bx.tidy&&bx.was?{status:bx.was.status||"accepted",reviewedBy:bx.was.by||"",reviewedAt:bx.was.at||0,asideWhy:"",tidy:0,back:true}:{status:"suggested",back:true}}}});renderMain();return}
@@ -4986,7 +4990,7 @@ const clipFolderUrl=()=>{const id=String(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId|
 /* Send a clip. The educator picks a clip from the phone's photo library and TREE sends it to the server in pieces, with
    no Google sign-in and no Drive sharing on the phone. A draft observation waits for the educator a few minutes later. */
 function sendClipHtml(kind){if(!clipsOn()||isKitchenUser()||!window.FP_API)return"";
-  return kind==="quick"?`<button data-sendclip="1"><b>Send a clip</b><span>Up to three minutes, from this phone's videos</span></button>`:`<button type="button" class="btn small ghost" data-sendclip="1">Send a clip</button>`}
+  return kind==="quick"?`<button data-sendclip="1"><b>Send a clip</b><span>Up to three minutes, from your videos</span></button>`:`<button type="button" class="btn small ghost" data-sendclip="1">Send a clip</button>`}
 let clipSending=false;
 const clipPiece=blob=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).replace(/^data:[^,]*,/,""));r.onerror=()=>no(r.error);r.readAsDataURL(blob)});
 async function sendClipFile(f){if(clipSending){toast("A clip is already being sent.");return}clipSending=true;
@@ -5239,7 +5243,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="7563df312f89";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="8216ed5c51ff";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5424,7 +5428,7 @@ function todayWaiting(){
     out.push({dot:"mari",t:`Finish your ${FORMS[p.type].short} plan`,s:planTitle(p),act:`data-open="${p.id}"`,b:"Open"});
   // observations started and not kept yet wait as drafts
   {const k=typeof draftsList==="function"?draftsList().filter(draftIsMine).length:0;
-   if(k&&!VIEW_AS)out.push({dot:"mari",t:k===1?"An observation to finish":`Observations to finish, ${k}`,s:"Saved as drafts while you wrote. Open Observations to finish and keep them.",act:`data-tview="moments"`,b:"Open"})}
+   if(k&&!VIEW_AS)out.push({dot:"mari",n:k,t:k===1?"An observation to finish":`Observations to finish, ${k}`,s:"Saved as drafts while you wrote. Open Observations to finish and keep them.",act:`data-tview="moments"`,b:"Open"})}
   const due=dueList();for(const p of due.list.slice(0,isDirector()?5:40))
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write",q:"rem|"+p.id});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
@@ -5432,6 +5436,7 @@ function todayWaiting(){
   // moments shared from Kaymbu where TREE could not tell the class or the children, for that class's educators and the director
   // the photos of one post wait as one row, with the number of photos, and Tag opens them together
   {const rm=myRoom();const waits=[...notices.values()].filter(n=>n.kaymbu&&n.kaymbu.check&&(dir||!rm||!momentRooms(n).length||momentIn(n,rm))).sort((a,b)=>(b.at||0)-(a.at||0));
+   if(!dir&&m){const own=n=>{const k=m.toLowerCase();return groupLeadOf(n).toLowerCase().split(/, | and /).includes(k)||String(n.by||"").toLowerCase()===k?0:1};waits.sort((a,b)=>own(a)-own(b))}
    const posts=new Map();for(const n of waits){const k=n.group?"g|"+n.group:"n|"+n.id;const e=posts.get(k);if(e)e.count++;else posts.set(k,{n,count:1})}
    for(const {n,count} of posts.values()){
     const sug=(n.kaymbu.suggest||[]).map(id=>(children.get(id)||{}).first).filter(Boolean),maybe=!!n.kaymbu.maybe&&sug.length;
@@ -5467,7 +5472,7 @@ function todayWaiting(){
    for(const [k,ns] of [...bs.entries()].sort((a,b)=>(b[1][0].kaymbu.keptAt||0)-(a[1][0].kaymbu.keptAt||0))){const n=ns[0];
     const unnamed=ns.some(x=>!String(x.by||"").trim()),early=ns.filter(x=>(x.week||"")<wk0);
     // only an email with no educator named needs anyone. Photos filed in earlier weeks are where they belong and ask nothing
-    if(!unnamed)continue;
+    if(!unnamed||!dir)continue;
     const subj=(n.kaymbu.subject||"").trim(),by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];
     const ats=early.map(x=>x.at||0).sort((a,b)=>a-b);const span=!ats.length?"":ats.length===1?shortDate(ats[0]):`from ${shortDate(ats[0]).replace(/, \d{4}$/,"")} to ${shortDate(ats[ats.length-1])}`;
     out.push({dot:"sky",t:unnamed?"Who shared this from Kaymbu?":"Just shared from Kaymbu",s:`${ns.length} photo${ns.length===1?"":"s"} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}${subj?`, subject ${subj}`:""}.${by.length?" Shared by "+by.join(" and ")+".":""}${early.length?` ${early.length===ns.length?(ns.length===1?"It was":"They were"):early.length+" were"} taken ${span}, so ${early.length===1?"it is":"each is"} under the week ${early.length===1?"it was":"they were"} taken.`:""}`,act:`data-nwedit="${n.id}"`,b:unnamed?"Choose":"Look",q:"kmail|"+n.id})}}
@@ -5514,7 +5519,7 @@ function todayWaiting(){
 function momentMini(n){const ls=String(n.noticed||"").split("\n").filter(x=>x.trim());const more=ls.length>4;
   return `<div class="titem two" style="align-items:start"><div class="mrow${n.photo?"":" nophoto"}">${n.photo?`<img class="mthumb" src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy">`:""}<div style="display:grid;gap:4px;min-width:0">
     <div class="cnt">${esc(n.by||"An educator")}${momentRooms(n).length?" \u00b7 "+esc(momentRooms(n).join(" and ")):""} \u00b7 ${shortDate(n.at)}${(n.children||[]).length?" \u00b7 "+n.children.map(id=>esc((children.get(id)||{}).first||"")).filter(Boolean).join(", "):""}</div>
-    <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}${view==="today"?sortLinesHtml(n):""}</div></div>
+    <div class="mclip" style="white-space:pre-line">${esc(ls.slice(0,4).join("\n"))}${more?"\u2026":""}</div>${has(n.wonder)?`<div class="muted">${esc(wonderLine(n.wonder))}</div>`:""}${view==="today"?sortLinesHtml(n,true):""}</div></div>
     <span class="actions" style="margin:0;flex:none"><button class="linkbtn" data-mopen="${esc(n.id)}">Open</button>${clipBtn(n)}</span></div>`}
 // Waiting for you. Alike items share one row that opens, and the five most pressing rows show first, with Show all.
 let todayAll=false;
@@ -5525,14 +5530,20 @@ function waitingHtml(list){
     // a row already read, such as this week's reading report, folds to one line and stays all week
     if(w.seen)return `<details class="tgroup tseen"><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist"><div class="titem"><span class="tdot ${w.dot}"></span><div class="cnt">Read. It stays here all week.</div><button class="btn small ghost" ${w.act}>${w.b}</button></div></div></details>`;
     return `<div class="titem${open?" tqon":""}"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${esc(w.t)}</b>${w.s?`<div class="cnt">${esc(w.s)}</div>`:""}</div>${w.q?`<button class="btn small ghost" data-tq="${esc(w.q)}" aria-expanded="${open}">${open?"Close":w.b}</button>`:`<button class="btn small ghost" ${w.act} data-wk="${esc(k)}" data-wt="${esc(w.t+"|"+w.s)}">${w.b}</button>`}</div>${open?`<div class="tq" id="tqbox">${tqHtml(w)}</div>`:""}`};
-  const rows=[],seen=new Map();
+  const rows=[],rk=[],seen=new Map();
   for(const w of list){const k=WAIT_KIND(w);const n=k?list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]).length:0;
-    if(k&&n>1){if(seen.has(k[0]))continue;const items=list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]);seen.set(k[0],1);
+    if(k&&n>1){if(seen.has(k[0]))continue;const items=list.filter(x=>(WAIT_KIND(x)||[])[0]===k[0]);seen.set(k[0],1);rk.push(k[0]);
       const why=items.every(x=>x.why&&x.why===items[0].why)?items[0].why:"";
       const ps=[...new Set(items.map(x=>firstLine(k[0]==="conf"||k[0]==="three"?x.t.replace(/^Conference with /,""):x.pv!=null?x.pv:(x.s||x.t),56).replace(/[.!?…]$/,"")).filter(Boolean))];
       const gist=ps.slice(0,2).join(". ")+(ps.length>2||items.length>2?", and more":"")+(why?". "+why:"");
       rows.push(`<details class="tgroup" data-tg="${esc(k[0])}" ${tgOpen.has(k[0])?"open":""}><summary class="titem"><span class="tdot ${w.dot}"></span><div style="min-width:0"><b>${items.length} ${esc(k[1])}</b><div class="cnt">${esc(gist)}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${(tgAll.has(k[0])?items:items.slice(0,3)).map(row).join("")}${items.length>3&&!tgAll.has(k[0])?`<button class="linkbtn" data-tgall="${esc(k[0])}" style="justify-self:start">Show all ${items.length}</button>`:""}</div></details>`)}
-    else rows.push(row(w))}
+    else{rows.push(row(w));rk.push(k?k[0]:"")}}
+  // the Kaymbu kinds sit in one row with a part for each, when more than one kind waits (November 14, 2026)
+  {const KAY=["kaymbu","kaymbuwho","kby","kmail"],SHORT={kaymbu:"to tag",kaymbuwho:"photos to check",kby:"emails with no educator named",kmail:"emails filed in earlier weeks"};
+   const kn=k=>list.filter(x=>(WAIT_KIND(x)||[])[0]===k).length,have=KAY.filter(k=>kn(k));
+   if(have.length>1){const at=rk.findIndex(k=>KAY.includes(k)),inner=rows.filter((h,i)=>KAY.includes(rk[i])),rest=rows.filter((h,i)=>!KAY.includes(rk[i])),tot=have.reduce((t,k)=>t+kn(k),0);
+     rows.length=0;rows.push(...rest);
+     rows.splice(Math.min(at,rows.length),0,`<details class="tgroup" data-tg="kayall" ${tgOpen.has("kayall")?"open":""}><summary class="titem"><span class="tdot sky"></span><div style="min-width:0"><b>${tot} from Kaymbu</b><div class="cnt">${esc(have.map(k=>kn(k)+" "+SHORT[k]).join(". "))}</div></div><span class="btn small ghost" aria-hidden="true">Show</span></summary><div class="tlist">${inner.join("")}</div></details>`)}}
   const shown=todayAll?rows:rows.slice(0,5);
   return `<div class="tlist">${shown.join("")}</div>${rows.length>5?`<button class="linkbtn" data-todayall="1" style="margin-top:8px">${todayAll?"Show fewer":"Show everything waiting"}</button>`:""}`;
 }
@@ -6199,7 +6210,7 @@ function renderToday(){
   ${wonderTodayHtml()}${sortTodayHtml()}${grewTodayHtml()}${cycleTodayHtml()}
   ${weeklyHtml()}${kitchenCardHtml(planWeekNow(),true)}
   <div class="tgrid2" style="margin-top:14px">
-    <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3>${waiting.length?`<span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)}</span>`:""}</div>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for you</h3>${waiting.length?`<span class="cnt">${waiting.reduce((t,w)=>t+(w.n||1),0)} in all</span>`:""}</div>
       ${waiting.length?waitingHtml(waiting):`<div class="empty">Nothing is waiting. Keep an observation when something matters.</div>`}</section>
     <section class="card"><div class="secthead"><h3 style="font-size:17px">Today</h3><button class="linkbtn" data-tview="calendar">Calendar</button></div>
       ${cal?(cal.length?`<div class="tlist">${cal.map(evRow).join("")}</div>`:`<div class="empty">Nothing on the calendar today.</div>`):todayCal.error?`<div class="empty">${esc(todayCal.error)}</div>`:`<div class="empty"><span class="spin"></span> Reading the calendar</div>`}</section>
@@ -11384,7 +11395,8 @@ function threadSuggestsOf(n){if(!n)return [];const grp=noteGroup(n),have=new Set
    director see the lines (November 5, 2026) */
 // an older why may name a sentence by its number, which means nothing to the reader
 const sortWhyPlain=(w,k)=>String(w||"").replace(/\b[Tt]he (?:last|first|final) sentence\b/g,k===1?"This sentence":"These sentences").replace(/\b[Ss]entences? \d+(?:(?:,\s*|\s+and\s+|,\s*and\s+)\d+)*/g,m=>/\d\D+\d/.test(m)||k>1?"These sentences":"This sentence");
-function sortLinesHtml(n){if(VIEW_AS||!n||!canRemoveObs(n))return "";
+function sortLinesHtml(n,short){if(VIEW_AS||!n||!canRemoveObs(n))return "";
+  if(n.sorted&&n.sorted.from&&short)return `<div class="whyline"><i>Sorted by TREE.</i> <button class="linkbtn" data-sortundo="${esc(n.id)}">Put it back</button></div>`;
   if(n.sorted&&n.sorted.from)return `<div class="whyline"><i>TREE sorted this into noticed and wondered.</i> ${esc(whyText(n.sorted.why))} <button class="linkbtn" data-sortundo="${esc(n.id)}">Put it back</button></div>`;
   const o=n.sortOffer;if(!o||!Array.isArray(o.wonderIdx)||!o.wonderIdx.length)return "";const k=o.wonderIdx.length;
   // the sentences themselves, quoted, so the educator sees exactly what would move, and a why that never names a sentence by number
@@ -17934,7 +17946,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest&&e.target.c
 let savesInfo=null;
 function hardSavesHtml(){if(!window.FP_HOSTED||!isDirector()||VIEW_AS||!savesInfo||!Array.isArray(savesInfo.hard))return"";
   const seen=LS.get("tree.hardseen",{})||{},day=iso(new Date());if(seen.day===day)return"";
-  const L=savesInfo.hard.filter(h=>h&&h.at>(seen.at||0)).slice(-12).reverse();if(!L.length)return"";
+  const L=savesInfo.hard.filter(h=>h&&h.at>(seen.at||0)&&h.at>Date.now()-864e5).slice(-12).reverse();if(!L.length)return"";
   // one closed line in plain words, with which saves and Seen inside
   return `<details class="card tfold" id="hardsaves" style="margin-top:14px"><summary><b>${L.length===1?"A save took more than one try":"A few saves took more than one try"}</b><span class="cnt">Each one is kept</span></summary>
     <div class="tlist" style="margin-top:6px">${L.map(h=>`<div class="prow"><b>${esc(h.label||h.path)}</b><span class="cnt">${esc(h.tries)} tries, ${esc(longDate(iso(new Date(h.at))))}, ${esc(clockTime(new Date(h.at).getHours()*60+new Date(h.at).getMinutes()))}</span></div>`).join("")}</div>

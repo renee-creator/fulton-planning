@@ -194,22 +194,30 @@ test('a level behind the child takes no new evidence, and an earlier photo still
   assert.deepStrictEqual([r.why[0], r.why[1], r.why[3], r.why[4]], ['behind', '', '', ''], 'newer and lower is behind, older and lower fills its own level, a later level is open, and one piece alone holds nothing back');
   assert.deepStrictEqual(r.read, ['SCI 2 Building Earlier'], 'the next clearest measure takes its place');
   assert.match(r.asked, /For Max, [^.]*SCI 1 at every level before Building Later/);
-  assert.deepStrictEqual([r.swept, r.lo], [1, ['suggested', 'aside', 'behind']]);
+  assert.deepStrictEqual([r.swept, r.lo], [2, ['suggested', 'aside', 'behind']]);
+  // the leftover of an observation that already counts for two measures is set aside by TREE, with its reason
+  assert.deepStrictEqual(await s.p.evaluate(() => { const x = children.get('max').drdp.items.t3; return [x.status, x.asideWhy, x.reviewedBy]; }), ['aside', 'two', 'TREE']);
   // on review, the earlier one reads plainly, with no warning
   await s.p.evaluate(() => { drpKid = ''; goView('drdpreview'); }); await s.p.waitForSelector('#dr-lo1', { timeout: 15000 });
   const row = await s.p.innerText('#dr-lo1'); assert.match(row, /An earlier level, from before Max reached Building Later\./); assert.doesNotMatch(row, /Lower than what is already accepted/);
-  // the one whose observation already counts for two measures is not ticked and not counted
-  assert.strictEqual(await s.p.$('[data-drpoff="max|t3"]'), null);
-  // it is held in a closed fold under the child, with nothing to do, and left out of the waiting count
-  assert.match(await s.p.innerText('[data-drpheldfold="max"] > summary'), /Held, 1\. Nothing to do\./); assert.ok(await s.p.$('[data-drpheldfold="max"] #dr-t3'));
+  // it is off the review page, and left out of the waiting count
+  assert.strictEqual(await s.p.$('#dr-t3'), null); assert.strictEqual(await s.p.$('[data-drpheldfold="max"]'), null);
   assert.match(await s.p.innerText('[data-drkid="max"] .secthead'), /2 waiting/);
   assert.match(await s.p.innerText('#dr-j2'), /Lower than Building Later, which has one piece so far\./);
   assert.match(await s.p.innerText('[data-drpacc]'), /Accept the 2 ticked/);
   await s.p.click('[data-drpacc] >> nth=0'); await s.p.waitForFunction(() => children.get('max').drdp.items.lo1.status === 'accepted');
-  assert.strictEqual(await s.p.evaluate(() => children.get('max').drdp.items.t3.status), 'suggested');
+  assert.strictEqual(await s.p.evaluate(() => children.get('max').drdp.items.t3.status), 'aside');
   // the child's page says why the other one was set aside
   await s.p.evaluate(() => { kidOpen = 'max'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('summary:has-text("Set aside")', { timeout: 15000 });
   await s.p.click('summary:has-text("Set aside")'); assert.match(await s.p.innerText('#main'), /since Max was already past that level/);
+  assert.match(await s.p.innerText('#main'), /since its observation already counts for two measures/);
+  // Review again brings it back as held, and TREE leaves it alone
+  const back = await s.p.evaluate(() => { const c = children.get('max'); kidDrdpPatch(c, { drdp: { items: { t3: { status: 'suggested', back: true } } } }); drdpLevelSweep(c); return [c.drdp.items.t3.status, drdpHeld(c, Object.assign({ id: 't3' }, c.drdp.items.t3))]; });
+  assert.deepStrictEqual(back, ['suggested', true]);
+  // when one of the two is set aside, a leftover TREE set aside comes back by itself
+  const ret = await s.p.evaluate(() => { const c = children.get('max'); kidDrdpPatch(c, { drdp: { items: { t3: { status: 'aside', asideWhy: 'two', reviewedBy: 'TREE', back: false } } } });
+    kidDrdpPatch(c, { drdp: { items: { t1: { status: 'aside', reviewedBy: 'Ann', reviewedAt: Date.now() } } } }); drdpLevelSweep(c); return c.drdp.items.t3.status; });
+  assert.strictEqual(ret, 'suggested');
   assert.deepStrictEqual(s.errors, []);
 });
 
