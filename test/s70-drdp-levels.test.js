@@ -67,10 +67,10 @@ test('a child\'s page shows each measure\'s levels in order, across both views',
   const steps = await s.p.evaluate(() => [...document.querySelectorAll('[data-drrow="ATL 1"] [data-drstep]')].map(x => [x.dataset.drstep, x.className.replace('drstep ', ''), x.querySelector('.drsteph .cnt').textContent]));
   assert.strictEqual(steps.length, 10, 'every level of the measure');
   assert.deepStrictEqual(steps[0], ['Responding Earlier', 'open', 'Open']);
-  assert.deepStrictEqual(steps[3].slice(0, 2), ['Exploring Later', 'part'], 'the level from the Infant and Toddler View sits in the same line');
-  assert.match(steps[3][2], /1 of 2 pieces/);
-  assert.deepStrictEqual(steps[4].slice(0, 2), ['Building Earlier', 'part now']); assert.match(steps[4][2], /1 of 2 pieces, 3 waiting, where Pip is now/);
-  assert.match(await s.p.innerText('[data-drrow="ATL 1"] summary'), /2 pieces of evidence · 0 of 10 levels have two/);
+  assert.deepStrictEqual(steps[3].slice(0, 2), ['Exploring Later', 'part now'], 'the level from the Infant and Toddler View sits in the same line, and two pieces at it or later make it where Pip is');
+  assert.match(steps[3][2], /1 of 2 pieces, where Pip is now/);
+  assert.deepStrictEqual(steps[4].slice(0, 2), ['Building Earlier', 'part']); assert.match(steps[4][2], /1 of 2 pieces, 3 waiting/);
+  assert.match(await s.p.innerText('[data-drrow="ATL 1"] summary'), /Solid at Exploring Later, beginning to show Building Earlier · 2 pieces of evidence/);
   // an educator never sees the earlier years waiting
   assert.doesNotMatch(await s.p.innerText('#main'), /Passing the watering can/);
   assert.deepStrictEqual(s.errors, []);
@@ -90,11 +90,12 @@ test('the director has a page of open levels for each child and class', async t 
   await d.p.evaluate(() => goView('children')); await d.p.waitForSelector('[data-tview="drdpopen"]', { timeout: 15000 });
   await d.p.click('[data-tview="drdpopen"]'); await d.p.waitForSelector('[data-drokid="ivy"]');
   const txt = await d.p.innerText('#main'); assert.match(txt, /DRDP open levels/); assert.match(txt, /West class/);
-  // Ivy has two levels filled, and the four earlier levels of that measure are open up to where she is now
-  assert.match(await d.p.innerText('[data-drokid="ivy"] summary'), /4 open up to now · \d+ of \d+ measures with no evidence · 2 levels filled/);
+  // Ivy has two levels filled, and her span starts at the first of them, so nothing earlier counts as open, and the one level past where she is now does
+  assert.match(await d.p.innerText('[data-drokid="ivy"] summary'), /1 open in Ivy's span · \d+ of \d+ measures with no evidence · 2 levels filled/);
   await d.p.click('[data-drokid="ivy"] summary'); await d.p.waitForSelector('[data-drokid="ivy"] .dol');
   const marks = await d.p.evaluate(() => { const r = [...document.querySelectorAll('[data-drokid="ivy"] .dol')].find(x => /ATL 2/.test(x.textContent)); return [...r.querySelectorAll('.dc')].map(x => x.textContent + (x.classList.contains('full') ? '*' : '') + (x.classList.contains('now') ? '!' : '')); });
   assert.deepStrictEqual(marks, ['RE', 'RL', 'EE', 'EL', 'BE*', 'BM*!', 'BL', 'IE', 'IM', 'IL']);
+  assert.match(await d.p.innerText('[data-drokid="ivy"] .dol:has-text("ATL 2")'), /Solid at Building Middle/);
   await d.p.click('[data-droopen="ivy"]'); await d.p.waitForSelector('[data-drrow="ATL 2"]', { state: 'attached' });
   assert.deepStrictEqual(d.errors, []);
   // an educator who reaches the page goes to Children
@@ -164,8 +165,10 @@ test('the earlier years choose a few photos for each child for each month, oldes
 const more2 = put => {
   const ago = d => Date.now() - d * DAY;
   put('children/max.json', { first: 'Max', last: 'Test', classroom: 'West', status: 'active', dob: '2022-03-01', drdp: { items: {
-    // accepted at Building Later a month ago
-    h1: it('SCI 1', 'Building Later', 'accepted', ago(30), 's1'),
+    // solid at Building Later, with two pieces a month ago
+    h1: it('SCI 1', 'Building Later', 'accepted', ago(30), 's1'), h2: it('SCI 1', 'Building Later', 'accepted', ago(40), 's0'),
+    // one piece alone at a later level holds nothing back
+    j1: it('ATL 3', 'Building Later', 'accepted', ago(30), 's5'), j2: it('ATL 3', 'Building Earlier', 'suggested', ago(5), 's6'),
     // from six months ago, before he reached it, an earlier level. It stays.
     lo1: it('SCI 1', 'Building Earlier', 'suggested', ago(180), 's2'),
     // from last week and still lower. It is left out.
@@ -185,21 +188,90 @@ test('a level behind the child takes no new evidence, and an earlier photo still
     const S = { text: 'Max looked at a leaf.', photos: [], kids: [c], title: 'Leaf' };
     const read = await drdpRead('ptk', [c], S, 'nz', { kind: 'notices', at: now });
     const swept = drdpLevelSweep(c);
+    why.push(drdpLevelWhy(st, 'ATL 3', 'Building Earlier', now - 5 * D));
     return { why, asked, read: read.items.map(x => x.code + ' ' + x.level), swept, lo: [c.drdp.items.lo1.status, c.drdp.items.lo2.status, c.drdp.items.lo2.asideWhy] }; });
-  assert.deepStrictEqual(r.why, ['behind', '', '', ''], 'newer and lower is behind, older and lower fills its own level, the current and later levels are open');
+  assert.strictEqual(r.why[2] === 'level' || r.why[2] === '', true, 'where he is now takes two fresh pieces a period');
+  assert.deepStrictEqual([r.why[0], r.why[1], r.why[3], r.why[4]], ['behind', '', '', ''], 'newer and lower is behind, older and lower fills its own level, a later level is open, and one piece alone holds nothing back');
   assert.deepStrictEqual(r.read, ['SCI 2 Building Earlier'], 'the next clearest measure takes its place');
-  assert.match(r.asked, /For Max, [^.]*SCI 1 at every level before Building Later\./);
+  assert.match(r.asked, /For Max, [^.]*SCI 1 at every level before Building Later/);
   assert.deepStrictEqual([r.swept, r.lo], [1, ['suggested', 'aside', 'behind']]);
   // on review, the earlier one reads plainly, with no warning
   await s.p.evaluate(() => { drpKid = ''; goView('drdpreview'); }); await s.p.waitForSelector('#dr-lo1', { timeout: 15000 });
   const row = await s.p.innerText('#dr-lo1'); assert.match(row, /An earlier level, from before Max reached Building Later\./); assert.doesNotMatch(row, /Lower than what is already accepted/);
   // the one whose observation already counts for two measures is not ticked and not counted
   assert.ok(await s.p.$('[data-drpheld="max|t3"]')); assert.strictEqual(await s.p.$('[data-drpoff="max|t3"]'), null);
-  assert.match(await s.p.innerText('[data-drpacc]'), /Accept the 1 ticked/);
+  assert.match(await s.p.innerText('#dr-j2'), /Lower than Building Later, which has one piece so far\./);
+  assert.match(await s.p.innerText('[data-drpacc]'), /Accept the 2 ticked/);
   await s.p.click('[data-drpacc] >> nth=0'); await s.p.waitForFunction(() => children.get('max').drdp.items.lo1.status === 'accepted');
   assert.strictEqual(await s.p.evaluate(() => children.get('max').drdp.items.t3.status), 'suggested');
   // the child's page says why the other one was set aside
   await s.p.evaluate(() => { kidOpen = 'max'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('summary:has-text("Set aside")', { timeout: 15000 });
   await s.p.click('summary:has-text("Set aside")'); assert.match(await s.p.innerText('#main'), /since Max was already past that level/);
   assert.deepStrictEqual(s.errors, []);
+});
+
+// One line for each measure, the one time tidy, review by exception and each child's own span (November 14, 2026).
+const more3 = put => {
+  const ago = d => Date.now() - d * DAY;
+  put('notices/big.json', { title: 'Everyone in the garden', kind: 'note', at: ago(4), children: ['kit', 'a1', 'a2', 'a3', 'a4', 'a5'], text: 'The whole class dug together.', author: 'Ann' });
+  put('notices/solo.json', { title: 'Kit and the ramp', kind: 'note', at: ago(4), children: ['kit'], text: 'Kit rolled the ball.', author: 'Ann' });
+  put('notices/solo2.json', { title: 'Kit and the leaf', kind: 'note', at: ago(4), children: ['kit'], text: 'Kit looked at a leaf.', author: 'Ann' });
+  put('notices/other.json', { title: 'Somebody else', kind: 'note', at: ago(4), children: ['a1'], text: 'Not Kit.', author: 'Ann' });
+  put('children/kit.json', { first: 'Kit', last: 'Test', classroom: 'West', status: 'active', dob: '2022-03-01', drdp: { items: {
+    // solid at Building Earlier, beginning to show Building Later
+    k1: it('SCI 1', 'Building Earlier', 'accepted', ago(200), 'o1'), k2: it('SCI 1', 'Building Earlier', 'accepted', ago(190), 'o2'), k3: it('SCI 1', 'Building Later', 'accepted', ago(60), 'o3'),
+    // dated after Building Later and reading lower, for the tidy
+    k4: it('SCI 1', 'Exploring Later', 'accepted', ago(10), 'o4'),
+    // one observation counted twice for one measure, and a piece from an observation that does not tag Kit
+    d1: it('ATL 1', 'Building Earlier', 'accepted', ago(20), 'solo'), d2: it('ATL 1', 'Exploring Later', 'accepted', ago(20), 'solo'), u1: it('PD 2', 'Building Earlier', 'accepted', ago(20), 'other'),
+    // waiting. One that fits cleanly, one three levels above what is accepted, one from an observation of six children.
+    w1: it('SCI 2', 'Building Earlier', 'suggested', ago(4), 'solo2'), w2: it('SCI 1', 'Integrating Later', 'suggested', ago(3), 'o9'), w3: it('SED 4', 'Building Earlier', 'suggested', ago(4), 'big') } } });
+};
+test('one line for each measure, the one time tidy, review by exception and a child\'s own span', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: more3 }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const d = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => d.close());
+  await d.p.evaluate(() => goView('children')); await d.p.waitForFunction(() => children.get('kit') && notices.get('big'), null, { timeout: 15000 });
+  const r = await d.p.evaluate(() => { const c = children.get('kit'), st = drdpLevelState(c);
+    return { stand: drdpStandText(drdpStand(st, 'SCI 1')), one: drdpStandText(drdpStand(st, 'PD 2')), none: drdpStandText(drdpStand(st, 'MATH 1')),
+      plan: drdpTidyPlan(c).map(o => o.x.id + ' ' + o.why).sort(), eye: ['w1', 'w2', 'w3'].map(id => drdpEye(c, c.drdp.items[id], st)) }; });
+  assert.deepStrictEqual([r.stand, r.one, r.none], ['Solid at Building Earlier, beginning to show Building Later', 'Beginning to show Building Earlier', '']);
+  assert.deepStrictEqual(r.plan, ['d2 twice', 'k4 behind', 'u1 untagged'], 'the lower copy of a double goes, and the higher one stays');
+  assert.deepStrictEqual(r.eye, ['', '3 levels above what is accepted for Kit in this measure.', 'From an observation of 6 children. Check that it shows Kit.']);
+  // review. The clean one is ticked and counted, the other two say why and start unticked.
+  await d.p.evaluate(() => { drpKid = ''; goView('drdpreview'); }); await d.p.waitForSelector('#dr-w2', { timeout: 15000 });
+  assert.match(await d.p.innerText('#main'), /2 need your eye\./); assert.match(await d.p.innerText('[data-drpacc]'), /Accept the 1 ticked/);
+  assert.match(await d.p.innerText('[data-drpeyewhy="kit|w3"]'), /Needs your eye\. From an observation of 6 children/);
+  await d.p.click('[data-drpeye]'); await d.p.waitForFunction(() => !document.querySelector('#dr-w1')); assert.ok(await d.p.$('#dr-w3'));
+  await d.p.click('[data-drpeye]'); await d.p.waitForSelector('#dr-w1');
+  // ticking one that needs an eye counts it
+  await d.p.check('[data-drpoff="kit|w3"]'); await d.p.waitForFunction(() => /Accept the 2 ticked/.test(document.querySelector('[data-drpacc]').textContent));
+  // the open levels page shows the tidy with its counts, and Kit's span
+  await d.p.evaluate(() => goView('drdpopen')); await d.p.waitForSelector('[data-drotidycard]');
+  const card = await d.p.innerText('[data-drotidycard]'); assert.match(card, /3 accepted pieces of 1 child would move to Set aside/); assert.match(card, /1 dated after a later level and reading lower/);
+  assert.match(card, /1 counting one observation twice for one measure/); assert.match(card, /1 for a child the observation does not tag/); assert.match(card, /Levels with two pieces now, 1\. After the tidy, 1\./);
+  await d.p.click('[data-drokid="kit"] summary'); await d.p.waitForSelector('[data-drokid="kit"] .dol');
+  const marks = await d.p.evaluate(() => { const row = [...document.querySelectorAll('[data-drokid="kit"] .dol')].find(x => /SCI 1/.test(x.textContent)); return [...row.querySelectorAll('.dc')].map(x => x.textContent + (x.classList.contains('out') ? '-' : '') + (x.classList.contains('full') ? '*' : '')); });
+  assert.deepStrictEqual(marks, ['RE-', 'RL-', 'EE-', 'EL', 'BE*', 'BM', 'BL', 'IE', 'IM-', 'IL-'], 'the span runs from the earliest level with evidence to one past where Kit is');
+  await d.p.click('[data-drotidy="run"]'); await d.p.waitForFunction(() => children.get('kit').drdp.items.k4.status === 'aside');
+  const after = await d.p.evaluate(() => { const i = children.get('kit').drdp.items; return [i.k4.asideWhy, i.k4.was.status, i.k4.was.by, i.d2.asideWhy, i.d1.status, i.u1.asideWhy, drdpTidyCount().pieces]; });
+  assert.deepStrictEqual(after, ['behind', 'accepted', 'Ann', 'twice', 'accepted', 'untagged', 0]);
+  // with the tidy done, the span starts at Building Earlier
+  await d.p.waitForSelector('[data-drotidy="back"]'); assert.match(await d.p.innerText('[data-drotidycard]'), /3 pieces were tidied on/);
+  // Put them back restores each as the educator left it
+  await d.p.click('[data-drotidy="back"]'); await d.p.waitForFunction(() => children.get('kit').drdp.items.k4.status === 'accepted');
+  assert.deepStrictEqual(await d.p.evaluate(() => { const x = children.get('kit').drdp.items.k4; return [x.reviewedBy, drdpTidyCount().pieces]; }), ['Ann', 0], 'one put back is left alone by the tidy');
+  // the child's page says where Kit is in one line
+  await d.p.evaluate(() => { kidOpen = 'kit'; kidTab = 'drdp'; goView('child'); }); await d.p.waitForSelector('[data-drrow="dom:SCI"] > summary', { timeout: 15000 });
+  await d.p.click('[data-drrow="dom:SCI"] > summary'); assert.match(await d.p.innerText('[data-drstand="SCI 1"]'), /Solid at Building Earlier, beginning to show Building Later/);
+  assert.deepStrictEqual(d.errors, []);
+});
+
+test('the DRDP links move to the state file of August 20, 2026, and the one line of wording carries its examples', async () => {
+  const LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 's71-drdp-august.json'), 'utf8'));
+  assert.strictEqual(LIST.changes.length, 2);
+  for (const c of LIST.changes) { assert.match(c.from, /04202026/); assert.match(c.to, /PTK%20View_08202026_ADA\.pdf/); assert.doesNotMatch(c.to, /04202026|April/); }
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'staff.js'), 'utf8'), /s71DrdpAugust: \['code:once\/s71-drdp-august\.json'/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8'), /Identifies some characters \(e\.g\., 山; 火\) by meaning/);
 });

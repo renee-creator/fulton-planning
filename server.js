@@ -811,6 +811,8 @@ ONCE.push(['s67LaoJeow', () => staff.once.edits('s67LaoJeow', recsEdit)]);
 ONCE.push(['s68LaoNori', () => staff.once.edits('s68LaoNori', recsEdit)]);
 // Photographing Documentation public rule becomes no recognizable faces, November 11, 2026
 ONCE.push(['s69RecognizableFaces', () => staff.once.edits('s69RecognizableFaces', recsEdit)]);
+// The links to the DRDP (2025) instrument point to the state's current file of August 20, 2026, November 14, 2026
+ONCE.push(['s71DrdpAugust', () => staff.once.edits('s71DrdpAugust', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
@@ -1476,10 +1478,13 @@ function kitchenWeeks() {
    a DRDP request here. */
 const DRDP_PATH = 'drdp/descriptors.json';
 let drdpSha = '', DRDP_DESC = null;
+// One line of the stored wording left out the example characters the state's instrument of August 20, 2026 carries. Every
+// other definition and level was compared with that instrument line by line on November 14, 2026 and matches.
+function drdpStateWording(d) { try { const m = d && d.ptk && d.ptk['FLD 5'] && d.ptk['FLD 5'].levels; if (m && typeof m.BM === 'string') m.BM = m.BM.replace('Identifies some characters by meaning', 'Identifies some characters (e.g., 山; 火) by meaning'); } catch (e) {} }
 const DRDP_LV = { RE: 'Responding Earlier', RL: 'Responding Later', EE: 'Exploring Earlier', EM: 'Exploring Middle', EL: 'Exploring Later', BE: 'Building Earlier', BM: 'Building Middle', BL: 'Building Later', IE: 'Integrating Earlier', IM: 'Integrating Middle', IL: 'Integrating Later' };
 async function loadDrdp() {
   if (!drdpSha) { DRDP_DESC = null; log('No DRDP descriptors in the records, so DRDP requests go without the official wording'); return; }
-  const take = (text, how) => { const d = JSON.parse(text); DRDP_DESC = d; drdpFails = 0; drdpRetryAt = 0; clearTimeout(drdpTimer); log('DRDP descriptors loaded' + how + ',', Object.keys(d.ptk || {}).length, 'preschool and', Object.keys(d.it || {}).length, 'infant and toddler measures'); };
+  const take = (text, how) => { const d = JSON.parse(text); drdpStateWording(d); DRDP_DESC = d; drdpFails = 0; drdpRetryAt = 0; clearTimeout(drdpTimer); log('DRDP descriptors loaded' + how + ',', Object.keys(d.ptk || {}).length, 'preschool and', Object.keys(d.it || {}).length, 'infant and toddler measures'); };
   let why = '', resetAt = 0;
   try {
     const b = await gh('GET', `/repos/${RECORDS_REPO}/git/blobs/${drdpSha}`);

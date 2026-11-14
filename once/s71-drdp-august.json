@@ -1,0 +1,16 @@
+{
+ "name": "s71DrdpAugust",
+ "note": "The links to the DRDP (2025) Preschool Transitional Kindergarten View point to the state's current file of August 20, 2026, November 14, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "California Department of Education, April 20, 2026](https://www.desiredresults.us/sites/default/files/docs/drdp%202025/DRDP%20%282025%29%20PTK%20View_04202026_ADA.pdf)",
+   "to": "California Department of Education, August 20, 2026](https://www.desiredresults.us/sites/default/files/docs/drdp%202025/DRDP%20%282025%29%20PTK%20View_08202026_ADA.pdf)"
+  },
+  {
+   "path": "staff/familypieces/together-drdp-foundations.md",
+   "from": "DRDP%20%282025%29%20PTK%20View_04202026_ADA.pdf",
+   "to": "DRDP%20%282025%29%20PTK%20View_08202026_ADA.pdf"
+  }
+ ]
+}

@@ -339,7 +339,7 @@ span.pfstate{cursor:default;border-style:dashed}
 .drsteph{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}.drstep.now>.drsteph b{color:var(--moss)}.drstep .drev:first-of-type{border-top:0}
 .dropen{display:grid;gap:6px}.dropen .dol{display:grid;grid-template-columns:minmax(120px,1.4fr) 3fr;gap:4px 10px;align-items:center;padding:3px 0;border-top:1px dashed var(--line)}
 .dropen .doc{display:flex;flex-wrap:wrap;gap:3px}.dropen .dc{font-size:11px;line-height:1;padding:4px 5px;border-radius:5px;border:1px solid var(--line);color:var(--muted);background:#fff}
-.dropen .dc.part{border-color:var(--sun);color:var(--ink)}.dropen .dc.full{background:var(--moss);border-color:var(--moss);color:#fff}.dropen .dc.now{outline:2px solid var(--moss);outline-offset:1px}
+.dropen .dc.part{border-color:var(--sun);color:var(--ink)}.dropen .dc.full{background:var(--moss);border-color:var(--moss);color:#fff}.dropen .dc.now{outline:2px solid var(--moss);outline-offset:1px}.dropen .dc.out{opacity:.35;border-style:dashed}
 .chip.sug{border-style:dashed}
 .kmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:420px;overflow:auto}.kmph{display:grid;gap:3px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:4px;cursor:pointer;font:inherit;font-size:12.5px;text-align:left;color:var(--ink)}.kmph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.kmnone{aspect-ratio:1;display:grid;place-items:center;color:var(--muted);background:var(--bg);border-radius:6px}
 .drpick{display:grid;gap:4px;margin:4px 0}.drpk{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14.5px;line-height:1.4;background:var(--paper)}.drpk input{margin-top:3px;flex:none}.drpk:has(input:checked){border-color:var(--moss);background:var(--moss-soft)}.drlow{color:var(--clay);font-weight:700}
@@ -2592,16 +2592,19 @@ const drdpSrcAt=x=>(x&&x.src&&x.src.at)||(x&&x.at)||0;
 function drdpLevelState(c,exceptKey,withWaiting){const from=drdpPeriodStart(),st={};
   for(const x of kidDrdpItems(c)){const done=drdpDone(x);if(!done&&!(withWaiting&&x.status==="suggested"&&x.level))continue;
     if(exceptKey&&x.src&&(x.src.kind||"")+"|"+x.src.id===exceptKey)continue;
-    const r=drdpLadder(x.code).indexOf(x.level);if(r<0)continue;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1,first:{}});
+    const r=drdpLadder(x.code).indexOf(x.level);if(r<0)continue;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1,got:[]});
     m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=from)m.fresh[x.level]=(m.fresh[x.level]||0)+1;
-    if(done){if(r>m.top)m.top=r;const t=drdpSrcAt(x);if(!(m.first[r]<=t))m.first[r]=t}}
+    if(done){if(r>m.top)m.top=r;m.got.push([r,drdpSrcAt(x)])}}
   return st}
-/* A level behind the child takes no new evidence (November 14, 2026). Documentation dated after the child was already
-   accepted at a later level, and reading lower, is left out, and the next clearest measure is offered. Documentation
-   dated before the child reached that later level still fills its own level, which is how the earlier years show where
-   a child was at the time. So each level's evidence comes from its own time, and the progression reads in true order. */
-// how far the child had come in a measure before a date, as a place in the measure's levels, or -1
-const drdpReached=(m,at)=>{let b=-1;if(m)for(const k in m.first)if(m.first[k]<(at||0)&&+k>b)b=+k;return b};
+/* A level behind the child takes no new evidence (November 14, 2026). The DRDP takes a child's level as the latest one
+   they show consistently, so a child is solid at a level once two accepted pieces sit at that level or a later one. One
+   piece alone at a later level is a beginning, and never holds anything back, so a single generous reading cannot push
+   aside the evidence of where the child steadily is. Documentation dated after the child was solid at a later level,
+   and reading lower, is left out, and the next clearest measure is offered. Documentation dated before that still
+   fills its own level, which is how the earlier years show where a child was at the time. */
+// the level a child was solid at in a measure before a date, as a place in the measure's levels, or -1. It is the second
+// latest level among the accepted pieces dated before then.
+const drdpReached=(m,at)=>{if(!m||!m.got)return -1;let a=-1,b=-1;for(const [r,t] of m.got)if(t<(at||0)){if(r>a){b=a;a=r}else if(r>b)b=r}return b};
 // why a level takes no more from documentation dated at. "behind", "level" for a level with its two pieces, or "" when open
 function drdpLevelWhy(st,code,level,at){const m=st[code];if(!m)return"";const r=drdpLadder(code).indexOf(level);
   if(r>=0&&r<drdpReached(m,at))return"behind";
@@ -2609,8 +2612,53 @@ function drdpLevelWhy(st,code,level,at){const m=st[code];if(!m)return"";const r=
   return r===m.top&&(at||0)>=drdpPeriodStart()&&(m.fresh[level]||0)<DRDP_PER_LEVEL?"":"level"}
 // whether a level can take one more piece, from documentation dated at
 const drdpLevelOpen=(st,code,level,at)=>!drdpLevelWhy(st,code,level,at);
-const drdpLevelAdd=(st,x)=>{const r=drdpLadder(x.code).indexOf(x.level);if(r<0)return;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1,first:{}});
-  m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=drdpPeriodStart())m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(r>m.top)m.top=r;const t=drdpSrcAt(x);if(!(m.first[r]<=t))m.first[r]=t};
+/* Where a child is on a measure, said in one line (November 14, 2026). Solid is the latest level with two accepted
+   pieces at that level or a later one, and Beginning to show is the one piece past it. A measure with a single piece
+   reads as beginning to show it. */
+function drdpStand(st,code){const m=st[code],L=drdpLadder(code);if(!m||!m.got||!m.got.length)return {solid:"",begin:"",so:-1,be:-1};
+  const so=drdpReached(m,Infinity),be=m.top;return {solid:so>=0?L[so]:"",begin:be>so?L[be]:"",so,be:be>so?be:-1}}
+// the place in a measure's levels where the child is now, solid if they are, or else the one piece they have
+const drdpNowRank=(st,code)=>{const o=drdpStand(st,code);return o.so>=0?o.so:o.be};
+const drdpStandText=o=>o.solid?`Solid at ${o.solid}${o.begin?`, beginning to show ${o.begin}`:""}`:o.begin?`Beginning to show ${o.begin}`:"";
+/* The one time tidy (November 14, 2026). Accepted pieces dated after the child was already accepted at a later level, and
+   reading lower, move to Set aside with the reason shown, so each level keeps evidence from its own time. A second copy
+   of one observation counted twice for one measure goes too, and a piece for a child the observation does not tag.
+   Nothing is deleted. Each piece keeps who accepted it, Review again brings one back, and Put them back restores all. */
+function drdpTidyPlan(c){const st=drdpLevelState(c),out=[],seen=new Map();
+  const items=kidDrdpItems(c).filter(drdpDone).sort((a,b)=>drdpLadder(b.code).indexOf(b.level)-drdpLadder(a.code).indexOf(a.level)||(b.reviewedAt||0)-(a.reviewedAt||0));
+  for(const x of items){let why="";if(x.back)continue;
+    if(drdpLevelWhy(st,x.code,x.level,drdpSrcAt(x))==="behind")why="behind";
+    else if(x.src&&x.src.kind==="notices"){const n=notices.get(x.src.id);if(n&&!(n.children||[]).includes(c.id))why="untagged"}
+    if(!why&&x.src){const k=(x.src.kind||"")+"|"+x.src.id+"|"+x.code;if(seen.has(k))why="twice";else seen.set(k,1)}
+    if(why)out.push({x,why})}
+  return out}
+// how many levels hold two pieces now, and how many would after the tidy
+function drdpTidyCount(){let pieces=0,kids=0,before=0,after=0;const by={behind:0,twice:0,untagged:0};
+  for(const c of kidsAt()){const plan=drdpTidyPlan(c);if(plan.length)kids++;pieces+=plan.length;for(const o of plan)by[o.why]++;
+    const gone=new Set(plan.map(o=>o.x.id)),n1={},n2={};
+    for(const x of kidDrdpItems(c).filter(drdpDone)){const k=x.code+"|"+x.level;n1[k]=(n1[k]||0)+1;if(!gone.has(x.id))n2[k]=(n2[k]||0)+1}
+    before+=Object.values(n1).filter(n=>n>=DRDP_PER_LEVEL).length;after+=Object.values(n2).filter(n=>n>=DRDP_PER_LEVEL).length}
+  return {pieces,kids,before,after,by}}
+function drdpTidyRun(){const now=Date.now();let n=0;
+  for(const c of kidsAt()){const plan=drdpTidyPlan(c);if(!plan.length)continue;const patch={};
+    for(const {x,why} of plan)patch[x.id]={status:"aside",asideWhy:why,tidy:now,was:{status:x.status,by:x.reviewedBy||"",at:x.reviewedAt||0},reviewedBy:"TREE",reviewedAt:now};
+    kidDrdpPatch(c,{drdp:{items:patch}});n+=plan.length}
+  return n}
+const drdpTidied=()=>{let n=0,at=0;for(const c of kidsAt())for(const x of kidDrdpItems(c))if(x.tidy&&x.status==="aside"){n++;if(x.tidy>at)at=x.tidy}return {n,at}};
+function drdpTidyBack(){let n=0;for(const c of kidsAt()){const patch={};
+    for(const x of kidDrdpItems(c))if(x.tidy&&x.status==="aside"){patch[x.id]={status:(x.was&&x.was.status)||"accepted",reviewedBy:(x.was&&x.was.by)||"",reviewedAt:(x.was&&x.was.at)||0,asideWhy:"",tidy:0,back:true};n++}
+    if(n&&Object.keys(patch).length)kidDrdpPatch(c,{drdp:{items:patch}})}
+  return n}
+/* Review by exception (November 14, 2026). A waiting suggestion that needs the director's or an educator's eye says why,
+   and starts unticked. One that sits three or more levels above everything accepted for that child in that measure, or
+   one read from an observation that tags six or more children. Everything else fits cleanly and is ticked to start. */
+const DRDP_EYE_JUMP=3,DRDP_EYE_GROUP=6;
+function drdpEye(c,x,st){if(!x||!x.level)return"";const m=(st||drdpLevelState(c))[x.code];const r=drdpLadder(x.code).indexOf(x.level);
+  if(m&&m.top>=0&&r-m.top>=DRDP_EYE_JUMP)return `${r-m.top} levels above what is accepted for ${c.first} in this measure.`;
+  if(x.src&&x.src.kind==="notices"){const n=notices.get(x.src.id);const k=n?(n.children||[]).length:0;if(k>=DRDP_EYE_GROUP)return `From an observation of ${k} children. Check that it shows ${c.first}.`}
+  return""}
+const drdpLevelAdd=(st,x)=>{const r=drdpLadder(x.code).indexOf(x.level);if(r<0)return;const m=st[x.code]||(st[x.code]={n:{},fresh:{},top:-1,got:[]});
+  m.n[x.level]=(m.n[x.level]||0)+1;if(drdpSrcAt(x)>=drdpPeriodStart())m.fresh[x.level]=(m.fresh[x.level]||0)+1;if(r>m.top)m.top=r;m.got.push([r,drdpSrcAt(x)])};
 // the levels that take no more for a child, for the measures of one view, named for the reading. The levels behind the
 // child are named as one run, every level before the one reached, and a full level at or past it by its own name.
 function drdpLevelsFull(st,v,ms,at){const out=[];for(const k of ms){const L=drdpLadder(k),b=drdpReached(st[k],at),mine=drdpLevels(v,k);
@@ -3123,7 +3171,7 @@ function drdpKit(c){const {v}=drdpViewOf(c);const all=kidDrdpItems(c).filter(x=>
   const curHtml=x=>{const l=latest(x.code);if(!l||l.id===x.id)return "";const vv=x.view||v;const lower=x.level&&drdpRank(vv,x.code,x.level)+(x.emerging?.5:0)<drdpRank(l.view||vv,x.code,l.level)+(l.emerging?.5:0);
     // a lower level from before the child reached the later one is the earlier years doing their work, said plainly
     const behind=lower&&drdpLevelWhy(drdpLevelState(c),x.code,x.level,drdpSrcAt(x))==="behind";
-    return `<div class="cnt">Currently <b>${esc(drdpLevelText(l.level,l.emerging))}</b>, from ${esc(shortDate(l.src?.at||l.at))}.${behind?` <span class="drlow">Lower than what is already accepted.</span>`:lower?` An earlier level, from before ${esc(c.first)} reached ${esc(l.level)}.`:""}</div>`};
+    return `<div class="cnt">Currently <b>${esc(drdpLevelText(l.level,l.emerging))}</b>, from ${esc(shortDate(l.src?.at||l.at))}.${behind?` <span class="drlow">Lower than what is already accepted.</span>`:!lower?"":drdpSrcAt(x)<drdpSrcAt(l)?` An earlier level, from before ${esc(c.first)} reached ${esc(l.level)}.`:` Lower than ${esc(l.level)}, which has one piece so far.`}</div>`};
   const reviewRow=x=>`<div class="dritem" id="dr-${x.id}"><div class="drtop"><b>${esc(x.code)}</b> <span>${esc(DRDP[x.code]||"")}</span></div>
       <div class="drlvl"><button class="linkbtn" data-drdef="${esc([x.code,x.level,x.view||v,x.src?x.src.kind:"",x.src?x.src.id:""].join("|"))}">${esc(drdpLevelText(x.level,x.emerging))}</button></div>${curHtml(x)}
       <div data-drmean="${esc(x.id)}">${drdpMeanHtml(x.view||v,x.code,x.level,x.emerging)}</div>
@@ -3155,13 +3203,14 @@ function kidDrdpHtml(c){
   const evLine=x=>x.status!=="suggested"&&x.level?accRow(x):`<div class="drev" ${x.status==="suggested"?"":`id="dr-${x.id}"`}>${thumbOf(x)}<div><div><b>${esc(drdpLevelText(x.level,x.emerging))}</b> <span class="cnt">${x.status==="suggested"?"waiting for review":(x.status==="changed"?"changed":"accepted")+" by "+esc(x.reviewedBy||"an educator")}</span></div>${has(x.evidence)?`<div>${esc(x.evidence)}</div>`:""}<div class="cnt">From ${srcBtn(x)}</div>${evEdit(x)}</div></div>`;
   // each measure shows its levels in order, earliest to latest, with the evidence for each and the ones still open, so the
   // child's progression reads as one line across both views (November 13, 2026)
+  const lst=drdpLevelState(c);
   const rowOf=code=>{const m=DRDP_M[v][code];const l=latest(code);const evs=done.filter(x=>x.code===code);const lg=legacy[code]||[];const n=evs.length+lg.length;const ws=wait.filter(x=>x.code===code);const wn=ws.length;
-    const L=drdpLadder(code);const got=L.filter(lv=>evs.filter(x=>x.level===lv).length>=DRDP_PER_LEVEL).length;
-    const steps=L.map(lv=>{const es=evs.filter(x=>x.level===lv).sort((a,b)=>drdpSrcAt(a)-drdpSrcAt(b)),w2=ws.filter(x=>x.level===lv);const k=es.length,now=l&&l.level===lv;
+    const L=drdpLadder(code);const nowR=drdpNowRank(lst,code);
+    const steps=L.map(lv=>{const es=evs.filter(x=>x.level===lv).sort((a,b)=>drdpSrcAt(a)-drdpSrcAt(b)),w2=ws.filter(x=>x.level===lv);const k=es.length,now=L.indexOf(lv)===nowR;
       return `<div class="drstep ${k>=DRDP_PER_LEVEL?"full":k?"part":"open"}${now?" now":""}" data-drstep="${esc(lv)}"><div class="drsteph"><b>${esc(lv)}</b><span class="cnt">${k>=DRDP_PER_LEVEL?`${k} pieces`:k?`${k} of ${DRDP_PER_LEVEL} pieces`:"Open"}${w2.length?`, ${w2.length} waiting`:""}${now?`, where ${esc(c.first)} is now`:""}</span></div>${es.map(evLine).join("")}${w2.map(evLine).join("")}</div>`}).join("");
     const loose=ws.filter(x=>!x.level||!L.includes(x.level));
     return `<details class="drrow" data-drrow="${code}" ${drdpOpen.has(code)||(n||wn)&&!drdpShut.has(code)?"open":""}><summary><span class="drcode"><button class="linkbtn" data-drdef="${esc([code,l?l.level:"",v,l&&l.src?l.src.kind:"",l&&l.src?l.src.id:""].join("|"))}" aria-label="What ${esc(code)} means"><b>${esc(code)}</b></button> ${esc(m.n)}${m.c==="iep"?`<span class="cnt"> · ${kidIep(c)?"required":"optional"}</span>`:""}</span>
-        <span class="drnow">${l?`<b>${esc(drdpLevelText(l.level,l.emerging))}</b>`:""}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence · ${got} of ${L.length} levels have two</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
+        <span class="drnow">${l?`<b data-drstand="${code}">${esc(drdpStandText(drdpStand(lst,code))||drdpLevelText(l.level,l.emerging))}</b>`:""}${n?`<span class="cnt"> · ${n} piece${n===1?"":"s"} of evidence</span>`:""}${wn?`<span class="drst wait"> · ${wn} waiting</span>`:""}</span></summary>
       <div class="drbody">${steps}${loose.map(evLine).join("")}
         ${lg.map(y=>`<div class="cnt">Linked without a level. <button class="linkbtn" ${y.kind==="slide"?`data-slide="${y.id}"`:`data-kmopen="${y.id}" data-ktab="docs"`}>${esc(y.title)}</button>, ${shortDate(y.at)}</div>`).join("")}
 
@@ -3179,7 +3228,8 @@ function kidDrdpHtml(c){
       ${wait.length?`<div style="display:grid;gap:10px">${wait.map(reviewRow).join("")}</div>`:`<div class="cnt">Nothing is waiting. On a slide or an observation that tags ${esc(c.first)}, open DRDP and read it to add suggestions here.</div>`}</section>`)+`
     <section class="card"><div class="secthead"><h3 style="font-size:17px">DRDP (2025), ${DRDP_VIEW[v]} View</h3><span class="cnt">${new Set(done.filter(x=>x.level).map(x=>x.code)).size} of ${ms.length} measures with documentation</span><span class="actions">${printBtns("drdp",c.id,"DRDP PDF")}</span></div>
       <div class="cnt">Each level is read from documentation and reviewed by an educator.</div>
-      <div class="cnt">Tap a measure to see its levels in order, with the moments behind each. Two pieces fill a level.</div>
+      <div class="cnt">Tap a measure to see its levels in order, with the moments behind each.</div>
+      <div class="cnt">Solid means two pieces at a level. Beginning to show means one.</div>
       <details class="drset" data-drrow="__set" ${drdpOpen.has("__set")?"open":""}><summary class="cnt">The view and the measures that apply to ${esc(c.first)}</summary>
         <div class="kfields"><label>View<select data-drview="${esc(c.id)}"><option value="">By age, ${esc(drdpViewOf(Object.assign({},c,{drdp:Object.assign({},c.drdp,{view:""})})).v==="it"?"Infant and Toddler":"Preschool Transitional Kindergarten")}</option><option value="ptk" ${(c.drdp||{}).view==="ptk"?"selected":""}>Preschool Transitional Kindergarten</option><option value="it" ${(c.drdp||{}).view==="it"?"selected":""}>Infant and Toddler</option></select></label></div>
         <div class="cnt">Now read against the ${DRDP_VIEW[v]} View, ${esc(why)}.</div>
@@ -3190,7 +3240,7 @@ function kidDrdpHtml(c){
         const codes=Object.keys(DRDP_M[ov]).filter(k=>ex.some(x=>x.code===k));
         return `<details class="drset" data-drrow="__earlier" ${drdpOpen.has("__earlier")?"open":""}><summary class="cnt"><b>Levels in the ${DRDP_VIEW[ov]} View</b>, ${codes.length} measure${codes.length===1?"":"s"}, kept from before</summary>
           ${codes.map(k=>{const evs=ex.filter(x=>x.code===k).sort((a,b)=>(b.src?.at||0)-(a.src?.at||0));return `<div class="drrow" style="padding:8px 0"><div class="drcode"><b>${esc(k)}</b> ${esc(DRDP_M[ov][k].n)}</div><div class="drbody">${evs.map(evLine).join("")}</div></div>`}).join("")}</details>`})()}
-      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":x.asideWhy==="behind"?", since "+esc(c.first)+" was already past that level":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
+      ${aside.length?`<details><summary class="cnt" style="cursor:pointer">Set aside, ${aside.length}</summary>${aside.map(x=>`<div class="cnt">${esc(x.code)}, ${esc(drdpLevelText(x.level,x.emerging))}, set aside by ${esc(x.reviewedBy||"an educator")} on ${shortDate(x.reviewedAt)}${x.asideWhy==="level"?", since its level already has two pieces":x.asideWhy==="behind"?", since "+esc(c.first)+" was already past that level":x.asideWhy==="twice"?", since the same observation already counts for this measure":x.asideWhy==="untagged"?", since "+esc(c.first)+" is not tagged in that observation":""}. ${srcBtn(x)} <button class="linkbtn" data-drback="${esc(x.id)}">Review again</button></div>`).join("")}</details>`:""}
     </section>`;
 }
 /* ---------- DRDP review ----------
@@ -3198,60 +3248,86 @@ function kidDrdpHtml(c){
    page, grouped by child and ticked to start. Accept the ticked accepts them together, Accept all accepts one child's, and
    Change or Set aside works on any one in place. An unticked one stays waiting. Tick and accept on a child's DRDP tab
    opens the page for that child alone. Nothing is accepted without a tap. */
-let drpKid="",drpOff=new Set();
-document.addEventListener("click",e=>{const t=e.target.closest("[data-drpkid]");if(t){drpKid=t.dataset.drpkid||"";drpOff=new Set();drdpEdit=""}},true);
+let drpKid="",drpOff=new Set(),drpTick=new Set(),drpEyeOnly=false;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-drpkid]");if(t){drpKid=t.dataset.drpkid||"";drpOff=new Set();drpTick=new Set();drpEyeOnly=false;drdpEdit=""}},true);
 function drpKids(){const rm=myRoom(),dir=isDirector()&&!VIEW_AS;const one=drpKid&&children.get(drpKid);
   return (one?[one]:kidsAt().filter(c=>dir||!rm||c.classroom===rm)).map(c=>({c,wait:drQWaiting(c)})).filter(o=>o.wait.length)}
 // one whose observation already counts for two measures cannot be accepted yet, so it is never ticked or counted
-const drpOn=o=>o.wait.filter(x=>x.level&&!drpOff.has(o.c.id+"|"+x.id)&&!drdpFull(o.c,x,x.id));
+// one that needs an eye is ticked only when someone ticks it
+const drpOn=o=>{const st=drdpLevelState(o.c);return o.wait.filter(x=>{const key=o.c.id+"|"+x.id;return x.level&&!drdpFull(o.c,x,x.id)&&(drdpEye(o.c,x,st)?drpTick.has(key):!drpOff.has(key))})};
 function renderDrdpReview(){loadDrdpTxt();const ks=drpKids();const one=drpKid&&children.get(drpKid);
   const tot=ks.reduce((n,o)=>n+o.wait.length,0),on=ks.reduce((n,o)=>n+drpOn(o).length,0);
+  const eyes=new Map(ks.map(o=>{const st=drdpLevelState(o.c);return [o.c.id,new Map(o.wait.map(x=>[x.id,drdpEye(o.c,x,st)]))]}));
+  const eyeN=ks.reduce((n,o)=>n+o.wait.filter(x=>eyes.get(o.c.id).get(x.id)).length,0);
+  // one Accept for each class, when more than one class has suggestions waiting
+  const rooms=[...new Set(ks.map(o=>o.c.classroom).filter(Boolean))];
+  const roomBtns=!one&&rooms.length>1?rooms.map(r=>{const n=ks.filter(o=>o.c.classroom===r).reduce((a,o)=>a+drpOn(o).length,0);return n?`<button class="btn small ghost" data-drproom="${esc(r)}">Accept ${n} for ${esc(r)} class</button>`:""}).join(""):"";
+  const eyeBar=eyeN?`<div class="cnt" style="margin-top:8px"><b>${eyeN} need${eyeN===1?"s":""} your eye.</b> ${eyeN===1?"It starts":"They start"} unticked, and each says why. <button class="linkbtn" data-drpeye="1">${drpEyeOnly?"Show every suggestion":"Show only these"}</button></div>`:"";
   const accBtn=on?`<button class="btn" data-drpacc="1">Accept the ${on} ticked</button>`:"";
-  $("#main").innerHTML=`<div class="head"><h2>DRDP review</h2><div class="sub">${one?esc(one.first)+"'s":"Every"} DRDP suggestion waiting${tot?`, ${tot} in all`:""}. Each is ticked to start. Untick any you want to leave waiting, then accept the ticked ones. Change or Set aside works on any one here.</div></div>
-    ${tot?`<section class="card" data-keep="1"><div class="actions">${accBtn}<button class="linkbtn" data-tview="today">Back to Today</button></div></section>`:`<section class="card"><p class="muted" style="margin:0">Nothing is waiting for review.</p><div class="actions"><button class="btn small" data-tview="today">Back to Today</button></div></section>`}
-    ${ks.map(o=>{const c=o.c,k=drdpKit(c),n=drpOn(o).length;
+  $("#main").innerHTML=`<div class="head"><h2>DRDP review</h2><div class="sub">${one?esc(one.first)+"'s":"Every"} DRDP suggestion waiting${tot?`, ${tot} in all`:""}. The ones that fit cleanly are ticked to start. Untick any you want to leave waiting, then accept the ticked ones. Change or Set aside works on any one here.</div></div>
+    ${tot?`<section class="card" data-keep="1"><div class="actions">${accBtn}${roomBtns}<button class="linkbtn" data-tview="today">Back to Today</button></div>${eyeBar}</section>`:`<section class="card"><p class="muted" style="margin:0">Nothing is waiting for review.</p><div class="actions"><button class="btn small" data-tview="today">Back to Today</button></div></section>`}
+    ${ks.map(o=>{const c=o.c,k=drdpKit(c),n=drpOn(o).length,ey=eyes.get(c.id);const rows=drpEyeOnly?o.wait.filter(x=>ey.get(x.id)):o.wait;if(!rows.length)return"";
       return `<section class="card" data-drkid="${esc(c.id)}" data-keep="1"><div class="secthead"><h3 style="font-size:18px">${esc(c.first)} ${esc(c.last||"")}</h3><span class="cnt">${c.classroom?esc(c.classroom)+" class, ":""}${o.wait.length} waiting</span>
         <span class="actions">${n>1?`<button class="btn small" data-drpall="${esc(c.id)}">Accept all ${n} for ${esc(c.first)}</button>`:""}<button class="linkbtn" data-drpopen="${esc(c.id)}">Open ${esc(c.first)}'s DRDP</button></span></div>
-        <div style="display:grid;gap:10px">${o.wait.map(x=>{const key=c.id+"|"+x.id;
-          return `<div class="drprow">${!x.level?`<div class="cnt">No level yet. Choose one below.</div>`:drdpFull(c,x,x.id)?`<div class="cnt" data-drpheld="${esc(key)}">Not ticked.</div>`:`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`}${k.reviewRow(x)}</div>`}).join("")}</div></section>`}).join("")}
+        <div style="display:grid;gap:10px">${rows.map(x=>{const key=c.id+"|"+x.id,eye=ey.get(x.id);
+          return `<div class="drprow">${!x.level?`<div class="cnt">No level yet. Choose one below.</div>`:drdpFull(c,x,x.id)?`<div class="cnt" data-drpheld="${esc(key)}">Not ticked.</div>`:eye?`<div class="cnt drlow" data-drpeyewhy="${esc(key)}"><b>Needs your eye.</b> ${esc(eye)}</div><label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" data-drpeyebox="1" ${drpTick.has(key)?"checked":""}><span>Tick to accept</span></label>`:`<label class="radio" style="margin:0 0 4px"><input type="checkbox" data-drpoff="${esc(key)}" ${drpOff.has(key)?"":"checked"}><span>Ticked to accept</span></label>`}${k.reviewRow(x)}</div>`}).join("")}</div></section>`}).join("")}
     ${on?`<section class="card" data-keep="1"><div class="actions">${accBtn}<button class="linkbtn" data-tview="today">Back to Today</button></div></section>`:""}`}
 function drpAccept(list){const who=whoAmI(),now=Date.now();let n=0,held=0,aside=0;
   for(const o of list){const items={};for(const x of o.xs)if(x.level&&x.status==="suggested")items[x.id]={status:"accepted",reviewedBy:who,reviewedAt:now};
     const r=drdpAcceptSave(o.c,items);held+=r.held;aside+=r.aside;n+=r.n}
   if(n||held||aside)toast(drdpAcceptText(n,held,aside));drdpEdit="";renderMain();window.scrollTo(0,0)}
-document.addEventListener("click",e=>{if(view!=="drdpreview")return;const t=e.target.closest("[data-drpacc],[data-drpall],[data-drpopen]");if(!t)return;e.preventDefault();e.stopPropagation();
+document.addEventListener("click",e=>{if(view!=="drdpreview")return;const t=e.target.closest("[data-drpacc],[data-drpall],[data-drpopen],[data-drproom],[data-drpeye]");if(!t)return;e.preventDefault();e.stopPropagation();
+  if(t.dataset.drpeye){drpEyeOnly=!drpEyeOnly;renderMain();window.scrollTo(0,0);return}
+  if(t.dataset.drproom){drpAccept(drpKids().filter(o=>o.c.classroom===t.dataset.drproom).map(o=>({c:o.c,xs:drpOn(o)})));return}
   if(t.dataset.drpopen){kidOpen=t.dataset.drpopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
   if(t.dataset.drpall){const o=drpKids().find(o=>o.c.id===t.dataset.drpall);const xs=o?drpOn(o):[];if(xs.length)drpAccept([{c:o.c,xs}]);else if(o)toast("Nothing is ticked for "+o.c.first+".");return}
   drpAccept(drpKids().map(o=>({c:o.c,xs:drpOn(o)})))},true);
-document.addEventListener("change",e=>{const t=e.target;if(view!=="drdpreview"||t.dataset.drpoff===undefined)return;if(t.checked)drpOff.delete(t.dataset.drpoff);else drpOff.add(t.dataset.drpoff);renderMain()});
+document.addEventListener("change",e=>{const t=e.target;if(view!=="drdpreview"||t.dataset.drpoff===undefined)return;
+  if(t.dataset.drpeyebox){if(t.checked)drpTick.add(t.dataset.drpoff);else drpTick.delete(t.dataset.drpoff)}
+  else if(t.checked)drpOff.delete(t.dataset.drpoff);else drpOff.add(t.dataset.drpoff);renderMain()});
 /* ---------- DRDP open levels ----------
    The director's page of what is still open, for each child and each class. Every measure shows its levels as small
    marks, filled once a level has its two pieces, outlined with one, plain while open, and ringed where the child is now.
    A level counts as open for a child from the earliest level up to where they are now (November 13, 2026). */
 let droRoom="All";const droKids=new Set();
 const droShort=l=>LV_KEY[l]||String(l).split(" ").map(w=>w[0]).join("");
+// A child's span in a measure runs from the earliest level with evidence to one level past where they are now. The
+// instrument reaches from young infants to first grade skills, so the levels outside a child's span are drawn faint and
+// never counted as open (November 14, 2026).
 function droOf(c){const ms=drdpMeasuresFor(c),st=drdpLevelState(c);let full=0,part=0,gaps=0,none=0;
   const rows=ms.map(code=>{const L=drdpLadder(code),m=st[code]||{n:{},top:-1};if(m.top<0)none++;
-    const cells=L.map((lv,i)=>{const k=m.n[lv]||0;if(k>=DRDP_PER_LEVEL)full++;else{if(k)part++;if(i<=m.top)gaps++}return {lv,k,now:i===m.top}});return {code,cells}});
+    const nowR=drdpNowRank(st,code);let lo=-1;L.forEach((lv,i)=>{if(lo<0&&(m.n[lv]||0))lo=i});const hi=m.top<0?-1:Math.min(m.top+1,L.length-1);
+    const cells=L.map((lv,i)=>{const k=m.n[lv]||0,inn=lo>=0&&i>=lo&&i<=hi;if(k>=DRDP_PER_LEVEL)full++;else{if(k)part++;if(inn)gaps++}return {lv,k,now:i===nowR,out:!inn}});
+    return {code,cells,stand:drdpStandText(drdpStand(st,code))}});
   return {rows,full,part,gaps,none,measures:ms.length}}
 function droKidBody(c,o){const v=drdpViewOf(c).v;
-  return `<div class="dropen">${o.rows.map(r=>`<div class="dol"><div class="cnt"><b>${esc(r.code)}</b> ${esc((DRDP_M[v][r.code]||{}).n||DRDP[r.code]||"")}</div><div class="doc">${r.cells.map(x=>`<span class="dc ${x.k>=DRDP_PER_LEVEL?"full":x.k?"part":""}${x.now?" now":""}" title="${esc(x.lv)}, ${x.k?x.k+(x.k===1?" piece":" pieces"):"open"}">${esc(droShort(x.lv))}</span>`).join("")}</div></div>`).join("")}</div>
+  return `<div class="dropen">${o.rows.map(r=>`<div class="dol"><div class="cnt"><b>${esc(r.code)}</b> ${esc((DRDP_M[v][r.code]||{}).n||DRDP[r.code]||"")}${r.stand?`<div>${esc(r.stand)}</div>`:""}</div><div class="doc">${r.cells.map(x=>`<span class="dc ${x.k>=DRDP_PER_LEVEL?"full":x.k?"part":""}${x.now?" now":""}${x.out?" out":""}" title="${esc(x.lv)}, ${x.k?x.k+(x.k===1?" piece":" pieces"):"open"}">${esc(droShort(x.lv))}</span>`).join("")}</div></div>`).join("")}</div>
     <div class="actions"><button class="btn small ghost" data-droopen="${esc(c.id)}">Open ${esc(c.first)}'s DRDP</button></div>`}
 function renderDrdpOpen(){const rooms=droRoom==="All"?CLASSROOMS:[droRoom];const all=kidsAt();
   const sect=r=>{const ks=all.filter(c=>c.classroom===r).sort((a,b)=>a.first.localeCompare(b.first));if(!ks.length)return"";const os=new Map(ks.map(c=>[c.id,droOf(c)]));
     const gaps=ks.reduce((n,c)=>n+os.get(c.id).gaps,0),none=ks.reduce((n,c)=>n+os.get(c.id).none,0);
     return `<section class="card"><div class="secthead"><h3 style="font-size:18px">${esc(r)} class</h3><span class="cnt">${ks.length} ${ks.length===1?"child":"children"}</span></div>
-      <div class="cnt">${gaps} ${gaps===1?"level":"levels"} still open up to where each child is now.</div><div class="cnt">${none} ${none===1?"measure":"measures"} with no evidence yet.</div>
+      <div class="cnt">${gaps} ${gaps===1?"level":"levels"} still open within the children's own spans.</div><div class="cnt">${none} ${none===1?"measure":"measures"} with no evidence yet.</div>
       ${ks.map(c=>{const o=os.get(c.id),open=droKids.has(c.id);
-        return `<details class="drrow" data-drokid="${esc(c.id)}" ${open?"open":""}><summary><span class="drcode"><b>${esc(kidName(c))}</b></span><span class="drnow"><span class="cnt">${o.gaps} open up to now · ${o.none} of ${o.measures} measures with no evidence · ${o.full} ${o.full===1?"level":"levels"} filled</span></span></summary>${open?`<div class="drbody">${droKidBody(c,o)}</div>`:""}</details>`}).join("")}</section>`};
+        return `<details class="drrow" data-drokid="${esc(c.id)}" ${open?"open":""}><summary><span class="drcode"><b>${esc(kidName(c))}</b></span><span class="drnow"><span class="cnt">${o.gaps} open in ${esc(c.first)}'s span · ${o.none} of ${o.measures} measures with no evidence · ${o.full} ${o.full===1?"level":"levels"} filled</span></span></summary>${open?`<div class="drbody">${droKidBody(c,o)}</div>`:""}</details>`}).join("")}</section>`};
   const body=rooms.map(sect).join("");
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">DRDP open levels</h2>
     <div class="sub">What is still open for each child and each class. Two pieces fill a level.</div></div>
+    ${(()=>{const tc=drdpTidyCount(),td=drdpTidied();if(!tc.pieces&&!td.n)return"";
+      return `<section class="card" data-drotidycard="1"><div class="lbl">One time tidy</div>
+        ${tc.pieces?`<div class="cnt"><b>${tc.pieces} accepted ${tc.pieces===1?"piece":"pieces"}</b> of ${tc.kids} ${tc.kids===1?"child":"children"} would move to Set aside.</div>
+          ${tc.by.behind?`<div class="cnt">${tc.by.behind} dated after a later level and reading lower.</div>`:""}${tc.by.twice?`<div class="cnt">${tc.by.twice} counting one observation twice for one measure.</div>`:""}${tc.by.untagged?`<div class="cnt">${tc.by.untagged} for a child the observation does not tag.</div>`:""}
+          <div class="cnt">Levels with two pieces now, ${tc.before}. After the tidy, ${tc.after}.</div>
+          <div class="cnt">Nothing is deleted. Review again on a child's DRDP brings one back.</div>
+          <div class="actions"><button class="btn small" data-drotidy="run">Move ${tc.pieces} to Set aside</button></div>`:""}
+        ${td.n?`<div class="cnt">${td.n} ${td.n===1?"piece was":"pieces were"} tidied on ${shortDate(td.at)}.</div><div class="actions"><button class="linkbtn" data-drotidy="back">Put them back</button></div>`:""}</section>`})()}
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Class">${["All",...CLASSROOMS].map(r=>`<button data-droroom="${esc(r)}" aria-pressed="${droRoom===r}">${esc(r)}</button>`).join("")}</div><button class="linkbtn" data-tview="children">Back to Children</button></div>
     <section class="card dropen"><div class="cnt">How to read the marks. Tap a child to see every measure.</div>
-      <div class="doc" style="gap:6px 8px;align-items:center"><span class="dc full">BE</span><span class="cnt" style="margin-right:10px">two pieces</span><span class="dc part">BE</span><span class="cnt" style="margin-right:10px">one piece</span><span class="dc">BE</span><span class="cnt" style="margin-right:10px">open</span><span class="dc full now">BE</span><span class="cnt">where the child is now</span></div></section>
+      <div class="doc" style="gap:6px 8px;align-items:center"><span class="dc full">BE</span><span class="cnt" style="margin-right:10px">two pieces</span><span class="dc part">BE</span><span class="cnt" style="margin-right:10px">one piece</span><span class="dc">BE</span><span class="cnt" style="margin-right:10px">open</span><span class="dc full now">BE</span><span class="cnt" style="margin-right:10px">where the child is now</span><span class="dc out">BE</span><span class="cnt">outside the child's span</span></div>
+      <div class="cnt">A child's span runs from their earliest level with evidence to one level past where they are now.</div></section>
     ${body||`<div class="empty">No children in this class yet.</div>`}`}
-document.addEventListener("click",e=>{if(view!=="drdpopen")return;const t=e.target.closest("[data-droroom],[data-droopen]");if(!t)return;e.preventDefault();e.stopPropagation();
+document.addEventListener("click",e=>{if(view!=="drdpopen")return;const t=e.target.closest("[data-droroom],[data-droopen],[data-drotidy]");if(!t)return;e.preventDefault();e.stopPropagation();
+  if(t.dataset.drotidy){const n=t.dataset.drotidy==="run"?drdpTidyRun():drdpTidyBack();toast(t.dataset.drotidy==="run"?`${n} moved to Set aside.`:`${n} put back.`);renderMain();return}
   if(t.dataset.droopen){kidOpen=t.dataset.droopen;LS.set("tree.kid",kidOpen);kidTab="drdp";LS.set("tree.kidtab",kidTab);goView("child");return}
   droRoom=t.dataset.droroom;renderMain()},true);
 document.addEventListener("toggle",e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.dataset.drokid||view!=="drdpopen")return;const k=d.dataset.drokid;
@@ -3300,7 +3376,9 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||
   const it=id=>((c.drdp||{}).items||{})[id];const who=whoAmI(),now=Date.now();
   if(t.dataset.draccept){const x=it(t.dataset.draccept);if(!x)return;if(drdpFull(c,x,t.dataset.draccept)){toast(drdpFullText(c));return}const r=drdpAcceptSave(c,{[t.dataset.draccept]:{status:"accepted",reviewedBy:who,reviewedAt:now}});toast(r.n?`Accepted for ${x.code}.${r.aside?` ${r.aside} more set aside, since ${r.aside===1?"its level is":"their levels are"} no longer needed.`:""}`:"Set aside, since that level is no longer needed.");drQNext();return}
   if(t.dataset.draside){kidDrdpPatch(c,{drdp:{items:{[t.dataset.draside]:{status:"aside",reviewedBy:who,reviewedAt:now}}}});toast("Set aside. It is kept below if you want to look again.");drQNext();return}
-  if(t.dataset.drback){kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:{status:"suggested",back:true}}}});renderMain();return}
+  if(t.dataset.drback){const bx=((c.drdp||{}).items||{})[t.dataset.drback];
+      // a tidied piece goes straight back to accepted, as the educator who accepted it left it
+      kidDrdpPatch(c,{drdp:{items:{[t.dataset.drback]:bx&&bx.tidy&&bx.was?{status:bx.was.status||"accepted",reviewedBy:bx.was.by||"",reviewedAt:bx.was.at||0,asideWhy:"",tidy:0,back:true}:{status:"suggested",back:true}}}});renderMain();return}
   if(t.dataset.drchange){drdpEdit=t.dataset.drchange;renderMain();const el=document.getElementById("dr-"+drdpEdit);if(el)el.scrollIntoView({block:"center"});return}
   if(t.dataset.drcancel){drdpEdit="";renderMain();return}
   if(t.dataset.drqskip){if(drQ){drQ.skip.add(t.dataset.drqskip);drdpEdit="";drQGo()}return}
@@ -5143,7 +5221,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="0f17f1c52cd8";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="858ff5f0e3c2";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");

@@ -346,11 +346,31 @@ Two accepted pieces fill a level of a measure for a child. The count runs across
 - **A full level takes no more.** A reading that lands on a full level leaves that measure out and offers the next clearest measure the documentation shows. The reading is told which levels are full, and TREE checks its answer too, so one never slips through. Up to four are still offered for each child, and an observation still counts for two measures at most.
 - **An open level always comes through**, on any measure, however many pieces the measure has at other levels.
 - **Where the child is now stays current.** The latest level with evidence takes up to two fresh pieces each conference period, fall from August 1 and spring from January 1, so every conference has evidence from that season.
-- **A level behind the child takes no new evidence** (November 14, 2026). Documentation dated after the child was already accepted at a later level, and reading lower, is left out, and the next clearest measure is offered. Documentation dated before the child reached that later level still fills its own level, which is how the earlier years show where a child was at the time. On review such a piece reads "An earlier level, from before" the child reached the later one. One still waiting that is behind the child is set aside by TREE with that reason, and Review again brings it back.
+- **A level behind the child takes no new evidence** (November 14, 2026). A child is solid at a level once two accepted pieces sit at that level or a later one. Documentation dated after the child was solid at a later level, and reading lower, is left out, and the next clearest measure is offered. One piece alone at a later level holds nothing back, so a single generous reading cannot push aside the evidence of where the child steadily is. Documentation dated before the child was solid there still fills its own level, which is how the earlier years show where a child was at the time. On review such a piece reads "An earlier level, from before" the child reached the later one. One still waiting that is behind the child is set aside by TREE with that reason, and Review again brings it back.
 - **A suggestion that cannot be accepted yet is never ticked.** On DRDP review, one whose observation already counts for two of the child's measures shows Not ticked and is left out of the counts on the Accept buttons.
 - **Nothing starts over.** Every accepted piece stays. When a level fills, suggestions still waiting for it are set aside by TREE, shown under Set aside with the reason, and Review again brings one back to accept. In Accept all, the first ones listed are accepted and the rest for the same level are set aside. Each time TREE opens on the director's computer, waiting suggestions for levels already full are set aside.
 - **The child's DRDP tab shows each measure's levels in order**, earliest to latest, each with its evidence and how many pieces it has, or Open. The level where the child is now is marked. The Infant and Toddler View and the Preschool Transitional Kindergarten View share their codes, names and early levels for 24 measures, so a measure reads as one line across a child's third birthday. COG 1 Imitation is only in the Infant and Toddler View and stays in its own fold.
 - **DRDP open levels**, the director's page, opens from Children. Each class shows how many levels are still open up to where each child is now and how many measures have no evidence. A child opens to every measure as a row of small marks, filled with two pieces, outlined with one, plain while open, ringed where the child is now. Educators who reach the page go to Children.
+
+### Where a child is, in one line
+
+The DRDP takes a child's level on a measure as the latest one they show consistently. So each measure on a child's DRDP tab reads in one line, **Solid at** the latest level with two accepted pieces at that level or a later one, and **beginning to show** the one piece past it (November 14, 2026). A measure with a single piece reads as beginning to show it.
+
+### Review by exception
+
+On DRDP review, a suggestion that fits cleanly is ticked to start. One that **needs your eye** says why and starts unticked. It is either three or more levels above everything accepted for that child in that measure, or read from an observation that tags six or more children. Show only these narrows the page to them. With more than one class waiting, the top of the page has one Accept for each class.
+
+### The one time tidy
+
+DRDP open levels shows a One time tidy card while there is anything to tidy. It counts the accepted pieces that would move to Set aside, and how many levels hold two pieces before and after. Three kinds move. A piece dated after the child was solid at a later level and reading lower, the lower copy of one observation counted twice for one measure, and a piece for a child the observation does not tag. Nothing is deleted. Each piece keeps who accepted it, Review again on the child's DRDP tab puts one back as it was, Put them back restores all of them, and one put back is left alone by the tidy afterward.
+
+### A child's own span
+
+The instrument runs from young infants to first grade skills, so on DRDP open levels a child's span in a measure runs from their earliest level with evidence to one level past where they are now. Levels outside the span are drawn faint and are never counted as open.
+
+### The wording is the state's
+
+On November 14, 2026 every measure definition and level in TREE's stored wording, 60 definitions and 449 levels, was compared line by line with the state's DRDP (2025) Preschool, Transitional Kindergarten, Kindergarten View and Infant and Toddler View of August 20, 2026, from desiredresults.us. All match, each under its own measure and in order. One line, FLD 5 at Building Middle, had left out the state's two example characters, and the server now adds them when the wording loads. The two links to the instrument in the PD readings point to the August 20, 2026 file, through the one time step s71DrdpAugust.
 
 ### The earlier years, read for DRDP evidence
 
