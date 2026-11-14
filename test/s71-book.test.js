@@ -40,7 +40,7 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const fx = await start({ more }); t.after(() => fx.stop());
   const br = await b.launch(); t.after(() => br.close());
-  const s = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => s.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.evaluate(() => window.TREE_OPEN_KID('pip', 'book'));
   await s.p.waitForSelector('[data-bkyear]', { timeout: 15000 });
   await s.p.waitForFunction(() => BK.mom.has('pip'));
@@ -70,7 +70,7 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   // read, then a change asks for the reading again and is flagged
   assert.ok(await s.p.isDisabled('[data-bkpdf="print"]'));
   await s.p.click('[data-bkread]'); await s.p.waitForSelector('[data-bkpdf="print"]:not([disabled])');
-  assert.strictEqual(await s.p.evaluate(() => books.get('pip').readBy.name), 'Ann');
+  assert.strictEqual(await s.p.evaluate(() => books.get('pip').readBy.name), 'Dee');
   await s.p.fill(`textarea[data-bkp="${pg.id}"]`, 'Pip always waters the beans.');
   assert.match(await s.p.innerText(`[data-bkflags="${pg.id}"]`), /says "always"/);
   await s.p.fill(`input[data-bkf="quote"][data-bkp="${pg.id}"]`, 'I can fly');
@@ -97,6 +97,26 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   // the Books page, with the signing names for the director alone
   await s.p.evaluate(() => goView('books')); await s.p.waitForSelector('[data-bkkid="pip"]');
   assert.match(await s.p.innerText('#main'), /Pip Test\s*2 pages, not read yet/); assert.match(await s.p.innerText('#main'), /Ivy Test\s*Not started/);
-  assert.strictEqual(await s.p.locator('[data-bksign]').count(), 0);
-  assert.deepStrictEqual(s.errors, []);
+  assert.ok(await s.p.locator('[data-bksign]').count() > 0);
+  // an educator reads, cannot change a page, and leaves a note for the director
+  const ann = await fx.login('Ann', '1357');
+  assert.strictEqual((await fx.as(ann.token, '/api/write', { kind: 'books', id: 'pip', op: 'update', patch: { letter: 'Changed' } })).status, 403);
+  assert.strictEqual((await fx.as(ann.token, '/api/write', { kind: 'books', id: 'pip', op: 'set', data: { id: 'pip', child: 'pip', pages: [] } })).status, 403);
+  assert.strictEqual((await fx.as(ann.token, '/api/write', { kind: 'books', id: 'ivy', op: 'update', patch: { notes: {} } })).status, 403, 'no book is begun by an educator');
+  const a = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => a.close());
+  await a.p.evaluate(() => window.TREE_OPEN_KID('pip', 'book')); await a.p.waitForSelector('[data-bkpage]', { timeout: 15000 });
+  assert.strictEqual(await a.p.locator('[data-bkf],[data-bkyear],[data-bkpick],[data-bkhide],[data-bkletter],[data-bkpdf="print"],[data-bkword]').count(), 0);
+  assert.match(await a.p.innerText('#main'), /Pip always waters the beans\./); assert.ok(await a.p.locator('[data-bkpdf="proof"]').count());
+  const pid = await a.p.evaluate(() => books.get('pip').pages[1].id);
+  await a.p.fill(`textarea[data-bknotetext="${pid}"]`, 'Pip does not always water the beans.'); await a.p.click(`[data-bknote="${pid}"]`);
+  await a.p.waitForFunction(() => Object.keys(books.get('pip').notes || {}).length === 1); await a.p.waitForTimeout(2500);
+  const noted = rec(fx, 'books/pip.json'); assert.strictEqual(Object.values(noted.notes)[0].by, 'Ann'); assert.strictEqual(noted.pages.length, 2);
+  assert.strictEqual(await a.p.locator('[data-bkread]').count(), 0, 'the reading waits while a note is open');
+  // the director sees the note, marks it done, and then the book can be read
+  await s.p.waitForFunction(() => Object.keys((books.get('pip') || {}).notes || {}).length === 1, null, { timeout: 30000 });
+  await s.p.evaluate(() => goView('books')); await s.p.waitForSelector('[data-bkkid="pip"]'); assert.match(await s.p.innerText('#main'), /1 note from educators/);
+  await s.p.click('[data-bkkid="pip"]'); await s.p.waitForSelector('[data-bknotedone]'); await s.p.click('[data-bknotedone]'); await s.p.waitForSelector('[data-bkread]');
+  await a.p.waitForSelector('[data-bkread]', { timeout: 30000 }); await a.p.click('[data-bkread]'); await a.p.waitForTimeout(2500);
+  assert.strictEqual(rec(fx, 'books/pip.json').readBy.name, 'Ann');
+  assert.deepStrictEqual(s.errors, []); assert.deepStrictEqual(a.errors, []);
 });

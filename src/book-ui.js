@@ -8,7 +8,9 @@
    character, and keeps a quote only when it is in the source letter for letter. Every page can be changed, left out,
    given other photos or told from another story. Someone who knows the child reads the whole book before the print
    file is made, and any change after that asks for the reading again. Everyone who signs in to the classroom side
-   sees the Book. Only the director keeps the list of who signs each class year (settings/book). */
+   sees the Book. The director drafts and changes it. An educator reads it, leaves a note on a page for the director
+   and marks it read, and the server holds an educator's save to those two things. Only the director keeps the list
+   of who signs each class year (settings/book). */
 let books=new Map(),bookBase=new Map(),bookSet={signs:{}};
 const BK={mom:new Map(),momP:new Map(),busy:"",pick:"",add:"",timers:new Map(),bmp:new Map(),making:false};
 const BK_BLEED=9,BK_W=810,BK_H=630,BK_SAFE=45,BK_MIN=24;
@@ -19,6 +21,10 @@ const bkYearOf=ym=>{const y=+ym.slice(0,4),m=+ym.slice(5,7);const a=m>=8?y:y-1;r
 const bkClean=s=>String(s||"").replace(/\s*[—–]\s*/g,", ").replace(/\s*;\s*/g,". ").replace(/:\s+/g,". ").replace(/[ \t]+/g," ").replace(/\n{3,}/g,"\n\n").trim();
 const bkNorm=s=>String(s||"").toLowerCase().replace(/[‘’]/g,"'").replace(/[“”"]/g,"").replace(/\s+/g," ").replace(/[.!?,]+$/,"").trim();
 function bkBook(c){return books.get(c.id)||{id:c.id,child:c.id,pages:[],across:[],letter:"",opening:null,cover:"",last:"",readBy:null,draftedAt:{}}}
+const bkCan=()=>isDirector();
+// notes educators left for the director, each on a page, an across page or the letter
+const bkNotes=(b,on)=>Object.entries((b&&b.notes)||{}).filter(([,n])=>n&&has(n.text)&&(on===undefined||n.on===on)).map(([id,n])=>Object.assign({id},n)).sort((a,z)=>(a.at||0)-(z.at||0));
+function bkNotesHtml(b,on,first){const ns=bkNotes(b,on);return `<div class="bknotes">${ns.map(n=>`<div class="bkflag"><b>${esc(n.by||"An educator")}</b>, ${esc(shortDate(n.at))}. ${esc(n.text)}${bkCan()?` <button class="linkbtn" data-bknotedone="${n.id}">Done</button>`:""}</div>`).join("")}${bkCan()?"":`<label class="cnt">Is something here not true, or missing? Tell the director.<textarea data-bknotetext="${esc(on)}" rows="2" placeholder="What you know about ${esc(first)} that this page gets wrong"></textarea></label><div class="actions"><button class="btn small ghost" data-bknote="${esc(on)}">Send the note</button></div>`}</div>`}
 function bkSave(b){b.updatedAt=Date.now();books.set(b.id,b);if(db)savePart("books",bookBase,b,"book")}
 function bkSaveSoon(b){books.set(b.id,b);clearTimeout(BK.timers.get(b.id));BK.timers.set(b.id,setTimeout(()=>{BK.timers.delete(b.id);bkSave(b)},700))}
 // a change to the words or the pictures asks for the reading again
@@ -193,7 +199,7 @@ function bkSheets(c,b){const out=[{t:"cover"}];if(b.opening&&has(b.opening.quote
 
 /* ----- the Book on the child's page ----- */
 function bkThumb(c,k,cls){const u=bkUrl(c,k);return u?`<img class="${cls||"bkth"}" src="${esc(u)}" alt="" loading="lazy" onerror="this.style.visibility=&#39;hidden&#39;">`:`<span class="${cls||"bkth"} bkno">No photo</span>`}
-function bkPageHtml(c,b,p,ents){const busy=!!BK.busy;const src=p.sources.map(k=>ents.find(e=>e.k===k)).filter(Boolean);const flags=p.hidden?[]:bkFlags(c,p);
+function bkPageHtml(c,b,p,ents){if(!bkCan())return bkPageRead(c,b,p,ents);const busy=!!BK.busy;const src=p.sources.map(k=>ents.find(e=>e.k===k)).filter(Boolean);const flags=p.hidden?[]:bkFlags(c,p);
   const cand=[...new Set([...p.photos,...src.flatMap(e=>e.photos.map(x=>x.k)),...ents.filter(e=>e.ym===p.ym).flatMap(e=>e.photos.map(x=>x.k))])].slice(0,36);
   const others=[...new Set([...(p.others||[]),...ents.filter(e=>e.ym===p.ym&&!p.sources.includes(e.k)).map(e=>e.k)])].map(k=>ents.find(e=>e.k===k)).filter(Boolean).slice(0,12);
   return `<section class="card bkpage${p.hidden?" bkout":""}" id="bk-${p.id}" data-bkpage="${p.id}">
@@ -205,35 +211,45 @@ function bkPageHtml(c,b,p,ents){const busy=!!BK.busy;const src=p.sources.map(k=>
         <label class="cnt">${esc(c.first)}'s own words, exactly as an educator wrote them<input data-bkf="quote" data-bkp="${p.id}" value="${esc(p.quote)}" placeholder="Leave empty when no words were written down"></label>
         <label class="cnt">What we saw in these days<input data-bkf="see" data-bkp="${p.id}" value="${esc(p.see)}"></label>
         ${has(p.quote)?`<div class="actions"><button class="linkbtn" data-bkopen="${p.id}">${b.opening&&b.opening.page===p.id?"These words open the book":"Open the book with these words"}</button></div>`:""}
-        <div data-bkflags="${p.id}">${flags.map(f=>`<div class="bkflag">${esc(f)}</div>`).join("")}</div></div></div>
+        <div data-bkflags="${p.id}">${flags.map(f=>`<div class="bkflag">${esc(f)}</div>`).join("")}</div>${bkNotesHtml(b,p.id,c.first)}</div></div>
     ${BK.pick===p.id?`<div class="bkpick"><div class="cnt">Choose the large photo and up to two more. A photo can also go on the cover or the last page.</div><div class="bkgrid">${cand.map(k=>{const i=p.photos.indexOf(k);return `<figure>${bkThumb(c,k,"bkcand")}<figcaption><button class="pill" aria-pressed="${i===0}" data-bkmain="${p.id}" data-k="${esc(k)}">Large</button><button class="pill" aria-pressed="${i>0}" data-bksup="${p.id}" data-k="${esc(k)}">${i>0?"Remove":"Add"}</button><button class="pill" aria-pressed="${b.cover===k}" data-bkcover="${esc(k)}">Cover</button><button class="pill" aria-pressed="${b.last===k}" data-bklast="${esc(k)}">Last page</button></figcaption></figure>`}).join("")||`<div class="empty">No photos are kept for this month.</div>`}</div></div>`:""}
     ${BK.add===p.id?`<div class="bkpick"><div class="cnt">Other days in ${esc(bkYmLabel(p.ym))}. TREE writes a page from the one you choose, only from these words.</div>${others.map(e=>`<div class="bkother"><div><b>${esc(longDate(e.day))}</b> ${esc(firstLine(e.words,160))}</div><span class="actions"><button class="btn small ghost" data-bkuse="${esc(e.k)}" data-bkfor="${p.id}" ${busy?"disabled":""}>Tell this one here</button><button class="btn small ghost" data-bkuse="${esc(e.k)}" ${busy?"disabled":""}>Add as another page</button></span></div>`).join("")||`<div class="empty">Nothing else is written for this month.</div>`}</div>`:""}
     <details class="bksrc"><summary>What educators wrote</summary>${src.map(e=>`<p><b>${esc(longDate(e.day))}${e.room?", "+esc(e.room)+" class":""}</b><br>${esc(e.words)}${e.wonder?`<br><i>${esc(e.wonder)}</i>`:""}</p>`).join("")||`<p class="empty">The observations for this page are no longer here.</p>`}</details>
   </section>`}
+function bkSrcHtml(src){return `<details class="bksrc"><summary>What educators wrote</summary>${src.map(e=>`<p><b>${esc(longDate(e.day))}${e.room?", "+esc(e.room)+" class":""}</b><br>${esc(e.words)}${e.wonder?`<br><i>${esc(e.wonder)}</i>`:""}</p>`).join("")||`<p class="empty">The observations for this page are no longer here.</p>`}</details>`}
+function bkPageRead(c,b,p,ents){if(p.hidden)return"";const src=p.sources.map(k=>ents.find(e=>e.k===k)).filter(Boolean);
+  return `<section class="card bkpage" id="bk-${p.id}" data-bkpage="${p.id}"><div class="secthead"><span class="eyebrow">${esc(bkYmLabel(p.ym))}</span></div>
+    <div class="bkrow"><div class="bkphotos">${bkThumb(c,p.photos[0],"bkmain")}<div class="bksup">${p.photos.slice(1,3).map(k=>bkThumb(c,k)).join("")}</div></div>
+      <div class="bkwords"><h3 style="font-size:17px;margin:0">${esc(p.title)}</h3>${String(p.body||"").split(/\n+/).filter(has).map(t=>`<p style="margin:0">${esc(t)}</p>`).join("")}
+        ${has(p.quote)?`<p style="margin:0;font-weight:700;color:var(--moss)">“${esc(p.quote)}”</p>`:""}${has(p.see)?`<p class="cnt" style="margin:0">${esc(p.see)}</p>`:""}${bkNotesHtml(b,p.id,c.first)}</div></div>
+    ${bkSrcHtml(src)}</section>`}
 function bookHtml(c){bkLoad(c);const b=bkBook(c),ents=bkEntries(c),years=bkYears(c),busy=!!BK.busy;const loading=BK.momP.has(c.id);
-  const shown=b.pages.filter(p=>!p.hidden),n=bkSheets(c,b).length,signs=bkSigns(b);
+  const shown=b.pages.filter(p=>!p.hidden),n=bkSheets(c,b).length,signs=bkSigns(b),open=bkNotes(b),can=bkCan();
   const head=`<section class="card"><div class="secthead"><h3 style="font-size:17px">${esc(c.first)}'s book</h3>${shown.length?`<span class="cnt">${n} pages${n<BK_MIN?`, and a printed hardcover needs at least ${BK_MIN}`:""}</span>`:""}</div>
     <div class="cnt">The story of ${esc(c.first)}'s time at our school, for ${esc(c.first)} and the family. TREE drafts each page only from what educators wrote, with ${esc(c.first)}'s own words where they were written down. A page tells about the days. TREE does not know ${esc(c.first)}, so read every page as someone who does and change what is not true.</div>
     ${loading?`<div class="empty">Getting the earlier years.</div>`:""}
-    ${years.length?`<div class="actions">${years.map(y=>{const has1=b.pages.some(p=>p.year===y.year);return `<button class="btn small${has1?" ghost":""}" data-bkyear="${y.year}" ${busy?"disabled":""}>${BK.busy==="y:"+y.year?"Reading "+esc(yearLabel(y.year)):(has1?"Draft again, ":"Draft ")+esc(yearLabel(y.year))+(y.room?", "+esc(y.room)+" class":"")}</button>`}).join("")}</div>
+    ${!bkCan()?(b.pages.length?"":`<div class="empty">The director has not drafted ${esc(c.first)}'s book yet.</div>`):years.length?`<div class="actions">${years.map(y=>{const has1=b.pages.some(p=>p.year===y.year);return `<button class="btn small${has1?" ghost":""}" data-bkyear="${y.year}" ${busy?"disabled":""}>${BK.busy==="y:"+y.year?"Reading "+esc(yearLabel(y.year)):(has1?"Draft again, ":"Draft ")+esc(yearLabel(y.year))+(y.room?", "+esc(y.room)+" class":"")}</button>`}).join("")}</div>
       <div class="cnt">Drafting a year reads everything written that year and takes a few minutes. Pages an educator changed are kept when a year is drafted again.</div>`:(loading?"":`<div class="empty">Nothing is written about ${esc(c.first)} yet. The book begins with observations.</div>`)}
-    ${shown.length?`<div class="actions">${b.readBy?`<span class="cnt">Read by ${esc(b.readBy.name)} on ${esc(shortDate(b.readBy.at))}.</span>`:`<button class="btn small" data-bkread="1">I know ${esc(c.first)} and I have read every page</button>`}
-      <button class="btn small ghost" data-bkpdf="proof" ${BK.making?"disabled":""}>Proof PDF</button><button class="btn small ghost" data-bkpdf="print" ${BK.making||!b.readBy?"disabled":""}>Print file</button><button class="btn small ghost" data-bkword="1" ${BK.making?"disabled":""}>Word file</button></div>
+    ${shown.length?`<div class="actions">${b.readBy?`<span class="cnt">Read by ${esc(b.readBy.name)} on ${esc(shortDate(b.readBy.at))}.</span>`:`${open.length?`<span class="cnt">${open.length} note${open.length===1?"":"s"} from educators ${open.length===1?"is":"are"} open. The reading comes after ${bkCan()?"you have looked at them":"the director has looked at them"}.</span>`:`<button class="btn small" data-bkread="1">I know ${esc(c.first)} and I have read every page</button>`}`}
+      <button class="btn small ghost" data-bkpdf="proof" ${BK.making?"disabled":""}>Proof PDF</button>${can?`<button class="btn small ghost" data-bkpdf="print" ${BK.making||!b.readBy?"disabled":""}>Print file</button><button class="btn small ghost" data-bkword="1" ${BK.making?"disabled":""}>Word file</button>`:""}</div>
       ${b.readBy?"":`<div class="cnt">The print file opens once someone who knows ${esc(c.first)} has read the book. Any change after that asks for the reading again.</div>`}`:""}</section>`;
   if(!b.pages.length)return head;
   const multi=new Set(b.pages.map(p=>p.year)).size>1;
   const body=[...new Set(b.pages.map(p=>p.year))].map(y=>{const ps=b.pages.filter(p=>p.year===y);const yr=years.find(v=>v.year===y);const have=new Set(ps.map(p=>p.ym));
     const gaps=yr?[...new Set(yr.entries.map(e=>e.ym))].filter(m=>!have.has(m)):[];
     return `<div class="sethead">${esc((ps[0].room?ps[0].room+" class, ":"")+yearLabel(y))}</div>${ps.map(p=>bkPageHtml(c,b,p,ents)).join("")}
-      ${gaps.length?`<div class="cnt bkgaps">No page yet for ${gaps.map(m=>{const e=yr.entries.find(x=>x.ym===m);return `<button class="linkbtn" data-bkuse="${esc(e.k)}" ${busy?"disabled":""}>${esc(bkYmLabel(m))}</button>`}).join(", ")}. Choosing a month writes a page from its first day, and Another story on that page offers the rest.</div>`:""}`}).join("");
+      ${can&&gaps.length?`<div class="cnt bkgaps">No page yet for ${gaps.map(m=>{const e=yr.entries.find(x=>x.ym===m);return `<button class="linkbtn" data-bkuse="${esc(e.k)}" ${busy?"disabled":""}>${esc(bkYmLabel(m))}</button>`}).join(", ")}. Choosing a month writes a page from its first day, and Another story on that page offers the rest.</div>`:""}`}).join("");
+  if(!can){const ac=(b.across||[]).filter(a=>!a.hidden);
+    return head+body+(ac.length?`<div class="sethead">Across the ${multi?"years":"year"}</div>${ac.map(a=>`<section class="card bkpage"><div class="bksup wide">${a.photos.map(k=>bkThumb(c,k)).join("")}</div><h3 style="font-size:17px;margin:0">${esc(a.title)}</h3><p class="cnt" style="margin:0">${esc(a.see)}</p>${bkNotesHtml(b,a.id,c.first)}</section>`).join("")}`:"")
+      +(has(b.letter)?`<div class="sethead">The last page</div><section class="card">${String(b.letter).split(/\n+/).filter(has).map(t=>`<p style="margin:0">${esc(t)}</p>`).join("")}<p style="margin:0">With love,${signs.length?" "+esc(signs.join(" and ")):""}</p>${bkNotesHtml(b,"letter",c.first)}</section>`:"")}
   const across=`<div class="sethead">Across the ${multi?"years":"year"}</div>
     ${(b.across||[]).map(a=>`<section class="card bkpage${a.hidden?" bkout":""}" data-bkacross="${a.id}"><div class="secthead"><span class="eyebrow">A page across the ${multi?"years":"year"}${a.hidden?" · left out of the book":""}</span><button class="linkbtn" data-bkahide="${a.id}">${a.hidden?"Put back":"Leave out"}</button></div>
-      <div class="bksup wide">${a.photos.map(k=>bkThumb(c,k)).join("")}</div><input data-bkaf="title" data-bka="${a.id}" value="${esc(a.title)}" aria-label="Title"><input data-bkaf="see" data-bka="${a.id}" value="${esc(a.see)}" aria-label="What we saw"></section>`).join("")}
+      <div class="bksup wide">${a.photos.map(k=>bkThumb(c,k)).join("")}</div><input data-bkaf="title" data-bka="${a.id}" value="${esc(a.title)}" aria-label="Title"><input data-bkaf="see" data-bka="${a.id}" value="${esc(a.see)}" aria-label="What we saw">${bkNotesHtml(b,a.id,c.first)}</section>`).join("")}
     <div class="actions"><button class="btn small ghost" data-bkacrossgo="1" ${busy?"disabled":""}>${BK.busy==="across"?"Looking across the years":(b.across||[]).length?"Look again":"Find what came back across the "+(multi?"years":"year")}</button></div>`;
   const letter=`<div class="sethead">The last page</div><section class="card"><div class="cnt">A letter to ${esc(c.first)} from the educators, beside the photo chosen for the last page. It ends with the school's name.</div>
     <textarea data-bkletter="1" rows="10" aria-label="The letter" placeholder="Dear ${esc(c.first)},">${esc(b.letter||"")}</textarea>
     <div class="actions"><button class="btn small ghost" data-bkletgo="1" ${busy?"disabled":""}>${BK.busy==="letter"?"Writing a start":has(b.letter)?"Draft the letter again":"Draft a start from the pages"}</button></div>
-    <div class="cnt">${signs.length?"Signed with love by "+esc(signs.join(" and "))+".":"Signed With love. "+(isDirector()?"Add the educators' first names for each class year on the Books page.":"The director can add the educators' first names for each class year.")}</div></section>`;
+    ${bkNotesHtml(b,"letter",c.first)}<div class="cnt">${signs.length?"Signed with love by "+esc(signs.join(" and "))+".":"Signed With love. "+(isDirector()?"Add the educators' first names for each class year on the Books page.":"The director can add the educators' first names for each class year.")}</div></section>`;
   return head+body+across+letter}
 
 /* ----- the Books page, every child's book in one list ----- */
@@ -243,7 +259,7 @@ function renderBooks(){const dir=isDirector();const kids=kidsAt().sort((a,b)=>(a
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Books</h2>
     <div class="sub">One book for each child, the story of their time at our school. Open a child to draft, read and print the book.</div></div>
     ${rooms.map(r=>`<div class="sethead">${esc(r)} class</div><section class="card">${kids.filter(c=>c.classroom===r).map(c=>{const b=books.get(c.id);const n=b?b.pages.filter(p=>!p.hidden).length:0;
-      return `<div class="bkline"><button class="linkbtn" data-bkkid="${c.id}">${esc(kidName(c))}</button><span class="cnt">${n?`${n} page${n===1?"":"s"}${b.readBy?", read by "+esc(b.readBy.name):", not read yet"}`:"Not started"}</span></div>`}).join("")}</section>`).join("")||`<div class="empty">No children are on the roster yet.</div>`}
+      return `<div class="bkline"><button class="linkbtn" data-bkkid="${c.id}">${esc(kidName(c))}</button><span class="cnt">${n?`${n} page${n===1?"":"s"}${b.readBy?", read by "+esc(b.readBy.name):", not read yet"}${bkNotes(b).length?`, ${bkNotes(b).length} note${bkNotes(b).length===1?"":"s"} from educators`:""}`:"Not started"}</span></div>`}).join("")}</section>`).join("")||`<div class="empty">No children are on the roster yet.</div>`}
     ${dir?`<div class="sethead">Who signs each class year</div><section class="card"><div class="cnt">First names of the educators of each class, as they sign the letter on the last page, such as Ana, Bo and Cy. Leave one empty and that year signs With love only.</div>
       <div class="bksigns"><span></span>${CLASSROOMS.map(r=>`<b>${esc(r)}</b>`).join("")}${ys.map(y=>`<span>${esc(yearLabel(y))}</span>${CLASSROOMS.map(r=>`<input data-bksign="${esc(y+" "+r)}" value="${esc((bookSet.signs||{})[y+" "+r]||"")}" aria-label="${esc(r+" class, "+yearLabel(y))}">`).join("")}`).join("")}</div></section>`:""}`;
   const g=$("#main .bksigns");if(g)g.style.gridTemplateColumns=`8em repeat(${CLASSROOMS.length},minmax(0,1fr))`}
@@ -256,7 +272,7 @@ async function bkBmp(c,k){if(!k)return null;if(BK.bmp.has(k))return BK.bmp.get(k
 function bkCut(bmp,w,h){const ratio=w/h;let sw=bmp.width,sh=sw/ratio;if(sh>bmp.height){sh=bmp.height;sw=sh*ratio}
   const sx=(bmp.width-sw)/2,sy=(bmp.height-sh)*.35;const sc=Math.min(1,(w/72*300)/sw);const cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(sw*sc));cv.height=Math.max(1,Math.round(sh*sc));
   const g=cv.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);g.drawImage(bmp,sx,sy,sw,sh,0,0,cv.width,cv.height);return cv.toDataURL("image/jpeg",.9)}
-async function bkPdf(c,proof){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))return;
+async function bkPdf(c,proof){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))return;if(!proof&&!bkCan())return;
   if(!proof&&!b.readBy){toast(`Someone who knows ${c.first} reads the book before the print file is made.`);return}
   BK.making=true;renderMain();progress("Getting photos");
   try{await loadPrintFonts();const sheets=bkSheets(c,b);const doc=TREE_KIT.pdf({unit:"pt",format:[BK_W,BK_H],orientation:"landscape"});
@@ -327,6 +343,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(view==="books"&&t.dataset.bkkid){kidOpen=t.dataset.bkkid;LS.set("tree.kid",kidOpen);kidTab="book";LS.set("tree.kidtab","book");goView("child");return}
   if(view!=="child"||kidTab!=="book")return;const c=children.get(kidOpen);if(!c)return;const d=t.dataset;
   const b=bkBook(c),page=id=>b.pages.find(p=>p.id===id);
+  if(d.bkpdf==="proof"){if(!BK.making)bkPdf(c,true);return}
+  if(d.bkread){if(!bkNotes(b).length&&b.pages.length){b.readBy={name:whoAmI(),at:Date.now()};bkSave(b);renderMain()}return}
+  if(d.bknote){const ta=document.querySelector(`textarea[data-bknotetext="${d.bknote}"]`),text=ta?ta.value.trim():"";if(!text||!books.has(c.id))return;
+    b.notes=Object.assign({},b.notes,{["n"+Date.now().toString(36)+Math.random().toString(36).slice(2,5)]:{on:d.bknote,by:whoAmI(),at:Date.now(),text:text.slice(0,1200)}});b.readBy=null;bkSave(b);toast("The director will see your note.");renderMain();return}
+  if(!bkCan())return;
+  if(d.bknotedone){if(b.notes&&b.notes[d.bknotedone]){b.notes=Object.assign({},b.notes);delete b.notes[d.bknotedone];bkSave(b);renderMain()}return}
   if(d.bkyear){if(!BK.busy)bkDraftYear(c,d.bkyear);return}
   if(d.bkuse){if(!BK.busy)bkDraftOne(c,d.bkuse,d.bkfor||"");return}
   if(d.bkacrossgo){if(!BK.busy)bkDraftAcross(c);return}
@@ -335,7 +357,6 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(d.bkword){if(!BK.making)bkWord(c);return}
   if(d.bkpick){BK.pick=BK.pick===d.bkpick?"":d.bkpick;BK.add="";renderMain();return}
   if(d.bkadd){BK.add=BK.add===d.bkadd?"":d.bkadd;BK.pick="";renderMain();return}
-  if(d.bkread){b.readBy={name:whoAmI(),at:Date.now()};bkSave(b);renderMain();return}
   if(d.bkhide){const p=page(d.bkhide);if(p){p.hidden=!p.hidden;bkTouched(b);bkSave(b);renderMain()}return}
   if(d.bkahide){const a=(b.across||[]).find(x=>x.id===d.bkahide);if(a){a.hidden=!a.hidden;bkTouched(b);bkSave(b);renderMain()}return}
   if(d.bkopen){const p=page(d.bkopen);if(p&&has(p.quote)){b.opening=b.opening&&b.opening.page===p.id?null:{page:p.id,quote:p.quote,who:[c.first,bkAgeWords(c,p.qat)].filter(Boolean).join(", ")};bkTouched(b);bkSave(b);renderMain()}return}
@@ -346,7 +367,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
 });
 document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset)return;
   if(view==="books"&&t.dataset.bksign&&isDirector()){bookSet=Object.assign({id:"book"},bookSet,{signs:Object.assign({},bookSet.signs,{[t.dataset.bksign]:t.value.trim()})});clearTimeout(BK.timers.get("set"));BK.timers.set("set",setTimeout(()=>{BK.timers.delete("set");if(db)db.doc("settings/book").set(JSON.parse(JSON.stringify(bookSet))).catch(()=>toast("Could not save the names. Check your connection."))},700));return}
-  if(view!=="child"||kidTab!=="book")return;const c=children.get(kidOpen);if(!c)return;const b=bkBook(c);
+  if(view!=="child"||kidTab!=="book"||!bkCan())return;const c=children.get(kidOpen);if(!c)return;const b=bkBook(c);
   if(t.dataset.bkf){const p=b.pages.find(x=>x.id===t.dataset.bkp);if(!p)return;p[t.dataset.bkf]=t.value;p.edited=true;
     if(t.dataset.bkf==="quote"){const q=bkNorm(t.value),ents=bkEntries(c).filter(x=>p.sources.includes(x.k));const from=q.length>1&&ents.find(x=>bkNorm(x.words).includes(q));p.quoteOk=!!from;p.qat=from?from.at:(p.qat||0);if(b.opening&&b.opening.page===p.id)b.opening=has(t.value)?Object.assign({},b.opening,{quote:t.value.trim()}):null}
     const fl=document.querySelector(`[data-bkflags="${p.id}"]`);if(fl)fl.innerHTML=bkFlags(c,p).map(f=>`<div class="bkflag">${esc(f)}</div>`).join("");
@@ -355,6 +376,6 @@ document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset)return;
   if(t.dataset.bkletter){b.letter=t.value;bkTouched(b);bkSaveSoon(b);return}
 });
 // leaving a field shows the page as it now stands, with the reading asked for again
-document.addEventListener("focusout",e=>{const t=e.target;if(view!=="child"||kidTab!=="book"||!t||!t.dataset||!(t.dataset.bkf||t.dataset.bkaf||t.dataset.bkletter))return;
+document.addEventListener("focusout",e=>{const t=e.target;if(view!=="child"||kidTab!=="book"||!bkCan()||!t||!t.dataset||!(t.dataset.bkf||t.dataset.bkaf||t.dataset.bkletter))return;
   const c=children.get(kidOpen);if(!c)return;const b=bkBook(c);clearTimeout(BK.timers.get(b.id));BK.timers.delete(b.id);bkSave(b);
   setTimeout(()=>{if(view==="child"&&kidTab==="book"&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},150)});

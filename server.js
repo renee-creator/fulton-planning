@@ -3311,6 +3311,13 @@ async function handle(req, res) {
       if (kitchenOnly || (wd && !screenSeen(wd, me.name)) || !next || !(nameKey(kidRoom(next.child)) === nameKey(edRoom(me.name)) || (wd && nameKey(wd.createdBy) === nameKey(me.name) && String(wd.child) === String(next.child)))) { log('Screening change refused for', me.name, id); err(req, res, 403, 'A screening is kept by the director and the educators of the child\'s class.'); return; }
       if (wd && (wd.createdBy !== next.createdBy || wd.child !== next.child)) { err(req, res, 403, 'A screening stays with the child and the educator who started it.'); return; }
     }
+    /* a child's book is drafted and changed by the director. An educator reads it, leaves a note on a page for the
+       director, and marks the book read, so an educator's save may touch only the notes and the reading (November 14, 2026) */
+    if (kind === 'books' && !isDirector(me.name)) {
+      const was = store.recs.books.get(id); const p = body.patch;
+      if (op !== 'update' || !was || was.deleted || !p || typeof p !== 'object' || Array.isArray(p) || !Object.keys(p).every(k => k === 'notes' || k === 'readBy' || k === 'updatedAt')) { log('Book change refused for', me.name, id); err(req, res, 403, 'The director drafts and changes a book. An educator can leave a note on a page.'); return; }
+      if (p.readBy && typeof p.readBy === 'object' && !p.readBy.__delete__) p.readBy = { name: me.name, at: Date.now() };
+    }
     // a save sent again from a phone, after its answer was lost on the way back, is the same save. It is not made twice.
     const cidKey = typeof body.cid === 'string' && CID_RE.test(body.cid) ? `${nameKey(me.name)}|${kind}/${id}|${body.cid}` : '';
     // every save from a device carries a save id. A save already here is never made twice, and its answer says whether
