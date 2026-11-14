@@ -34,7 +34,7 @@ const READS_AT_ONCE = 6;
 const RECORDS_REPO = (process.env.RECORDS_REPO || 'renee-creator/fulton-planning-records').trim();
 const GITHUB_API = (process.env.GITHUB_API || 'https://api.github.com').replace(/\/+$/, '');
 const ANTHROPIC_BASE = new URL(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com');
-const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips', 'screenings', 'kaymbu'];
+const KINDS = ['plans', 'threads', 'scans', 'settings', 'projects', 'notices', 'drafts', 'children', 'conferences', 'slides', 'inquiries', 'newsletters', 'bins', 'menus', 'grant', 'stories', 'posts', 'participation', 'reports', 'lens', 'clips', 'screenings', 'kaymbu', 'books'];
 // a clip record, clips/<id>.json, is written by the server alone as a video clip arrives and is read. The educator it is for and the director receive it.
 const OWN_KINDS = ['drafts', 'clips', 'screenings'];
 /* an ASQ-3 or ASQ:SE-2 screening, screenings/<id>.json, is for the director and the educators of the child's class, and
@@ -500,7 +500,7 @@ function conferenceEvents(from, to, me) {
   if (me && typeof staff !== 'undefined') for (const e of staff.calendarExtra(from, to, me)) events.push(e);
   return { events, status: { tconf: { connected: true, ok: true }, tbday: { connected: true, ok: true }, tmenu: { connected: true, ok: true }, tgrow: { connected: true, ok: true }, tfam: { connected: true, ok: true }, tgarden: { connected: true, ok: true } } };
 }
-const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map(), screenings: new Map(), kaymbu: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
+const store = { ready: false, partial: false, error: '', branch: 'main', recs: { plans: new Map(), threads: new Map(), scans: new Map(), settings: new Map(), projects: new Map(), notices: new Map(), drafts: new Map(), children: new Map(), conferences: new Map(), slides: new Map(), stories: new Map(), inquiries: new Map(), newsletters: new Map(), bins: new Map(), menus: new Map(), grant: new Map(), posts: new Map(), participation: new Map(), reports: new Map(), lens: new Map(), clips: new Map(), screenings: new Map(), kaymbu: new Map(), books: new Map() }, originals: new Map(), loadedAt: 0, saveError: '' };
 // Moments shared from Kaymbu by email arrive here through the school's Google Workspace mailbox
 // photos kept in the school's Google Drive, through the TREE mailbox's Apps Script, when DRIVE_PHOTOS_URL is set on Render
 const photosDrive = require('./photos-drive.js')({ store, log, gh, repo: RECORDS_REPO, readPhoto: sha => readPhoto(sha), cacheFile: (id, b) => cacheFile(id, b) });
@@ -1571,7 +1571,7 @@ function sidWritten(sid) { sidsWaiting.delete(sid); sidsWritten.set(sid, Date.no
 const HARD_TRIES = 3;
 function recordLabel(kind, id, doc) {
   doc = doc || {};
-  const one = { children: 'Child', notices: 'Observation', plans: 'Plan', threads: 'Thread', projects: 'Project', conferences: 'Conference', participation: 'Participation', settings: 'Settings', slides: 'Slide', stories: 'Story', inquiries: 'Team inquiry', screenings: 'Screening', menus: 'Menu', grant: 'Grant record', bins: 'Weekly bin', family: 'Family', scans: 'Scan', newsletters: 'Newsletter', posts: 'Post' }[kind] || kind;
+  const one = { children: 'Child', notices: 'Observation', plans: 'Plan', threads: 'Thread', projects: 'Project', conferences: 'Conference', participation: 'Participation', settings: 'Settings', slides: 'Slide', stories: 'Story', inquiries: 'Team inquiry', screenings: 'Screening', books: 'Book', menus: 'Menu', grant: 'Grant record', bins: 'Weekly bin', family: 'Family', scans: 'Scan', newsletters: 'Newsletter', posts: 'Post' }[kind] || kind;
   const kidName = c => c ? [c.first || c.firstName || c.name || '', c.last || c.lastName || ''].join(' ').trim() : '';
   let name = '';
   if (kind === 'children') name = kidName(doc);
@@ -3244,6 +3244,15 @@ async function handle(req, res) {
       else if (step !== '') { err(req, res, 404, 'Not found'); return; }
     } catch (e) { err(req, res, 400, e.message || 'That did not work. Try again.'); return; }
     json(req, res, 200, kaymbuPull.view()); return;
+  }
+  /* a child's book. The earlier years' Moments kept for it stay with the director's Kaymbu records, so the page asks here
+     for one child's, and gets only what a book page needs, the words, the day, the class, the children and the photo. A
+     kitchen sign-in and a new educator never reach this (November 14, 2026). */
+  if (path === '/api/book/moments') {
+    const kid = typeof body.child === 'string' ? body.child : ''; const cr = ID_RE.test(kid) ? store.recs.children.get(kid) : null;
+    if (!cr || cr.deleted) { err(req, res, 404, 'That child is not on the roster.'); return; }
+    const items = (kaymbuPull.bookDoc(kid).items || []).filter(x => x && x.m && x.at).map(x => ({ m: String(x.m), at: x.at, day: String(x.day || ''), words: String(x.words || '').slice(0, 4000), kids: Array.isArray(x.kids) ? x.kids.slice(0, 40) : [], room: String(x.room || ''), photo: String(x.photo || ''), w: Number(x.w) || 0, h: Number(x.h) || 0, batch: String(x.batch || ''), notice: String(x.notice || '') }));
+    json(req, res, 200, { items }); return;
   }
   // the earlier years' photos, read for DRDP evidence on the director's computer, one at a time (November 13, 2026)
   if (path === '/api/drdp/early/next' || path === '/api/drdp/early/done') {

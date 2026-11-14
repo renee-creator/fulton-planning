@@ -189,6 +189,30 @@ Before them, Could this fit this child's age and stage (developmental stage)? is
 
 It takes in its own observations, every observation and plan of a connected thread, and connected projects. It gives back on each of them. Observations show the inquiry they are kept for, threads open one, projects list the inquiries alongside them, the Lens lists the inquiries read through it, Today shows an inquiry on its look-again date, and a plan started from an inquiry keeps it in The evidence panel, with the things to try that belong in the curriculum. Observations kept for an inquiry stay out of portfolios and walls. Prints come as a summary and a full PDF, each with Word.
 
+## The Book
+
+Children, a child, then Book. Children, then Books, lists every child's book. The Book is the story of a child's time at our school, made cover to cover in TREE for the child and the family. It takes the place of the Shutterfly keepsake. Everyone who signs in to the classroom side sees it. A kitchen sign-in and a new educator do not.
+
+A book has a cover with the child's full name, an opening page with the child's own words when a page has some, one page for a month, a page that opens each class year when the book holds more than one, pages across the years, and a last page with a letter to the child beside a photo and the school's name. A month's page has a title, the story, the child's words, one line of what we saw in those days, one large photo and up to two more.
+
+Draft reads one school year at a time and writes a page for each month from what educators wrote that month, the observations in TREE and, for the years before TREE, the Moments kept for the book (kaymbu/book-<child>.json, sent for one child by /api/book/moments). Moments that share a day and the same words count once, with all their photos. A story is chosen when it came back over more than one day, when the child's words were written down, when the child is at the center, when an educator wondered, and when it has a photo.
+
+Truth comes first, and these rules are in the code.
+
+1. A page is written only from the educators' words. The words it was written from sit under the page as What educators wrote.
+2. A page describes the days and never the child's character. The draft is told not to write always, never, loves or a kind of child, and not to say a child taught or led others unless an educator wrote that. A page that says such a thing shows a note asking the reader to change it unless they know it is true.
+3. A quote is kept only when it is in the source letter for letter. Words typed into the quote that are not in the source show a note.
+4. Something hard for a child is left out, and another story is chosen.
+5. Someone who knows the child reads the whole book. Until then only a proof can be made, marked Proof on every page. Any change after the reading asks for it again.
+
+Every page can be changed in place. Photos chooses the large photo and two more from the month, and the photos for the cover and the last page. Another story lists the other days of the month, and TREE writes a page from the one chosen, in place of the page or as another page for the month, which is how a book grows longer. Leave out keeps a page but drops it from the book. A page an educator changed is kept when its year is drafted again.
+
+The letter on the last page is written to the child. Draft a start writes one from the pages, for an educator to make true. It is signed With love and the first names the director enters on the Books page for each class and year (settings/book). A year with no names signs With love only.
+
+The print is 11 by 8.5 inches with an eighth of an inch of bleed on every side, the size a hardcover printer asks for. Photos print at the size TREE holds them. A printed hardcover needs at least 24 pages, and the Book shows its count. The words also come as a Word file. The wrap for a printer's cover is not made yet.
+
+A book is kept as books/<child>.json. The code is src/book-ui.js, set into the page by tools/build.py, and test/s71-book.test.js checks it.
+
 ## Stories
 
 Documentation, then Stories. A story is a social story the team reads aloud with children, made from observations. Make a story on an observation brings in its photos, and on a project page starts one for that project. More photos can be added from the same project, or the same class when the story has no project. Each page has a heading, one photo and a few short sentences written to the children. The cover has the title, a photo and a line naming the children or group, and the footer names the school, the class and the group, which TREE guesses from the children in the photos.

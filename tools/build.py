@@ -10,6 +10,8 @@ app = app.replace("/*__GARDEN_UI__*/", (root / "src/garden-ui.js").read_text(), 
 app = app.replace("/*__IDEABANK_UI__*/", (root / "src/ideabank-ui.js").read_text(), 1)
 # the ASQ-3 and ASQ:SE-2 screenings are kept in their own file too
 app = app.replace("/*__SCREENING_UI__*/", (root / "src/screening-ui.js").read_text(), 1)
+# the Book, the story of a child's time at our school, is kept in its own file too
+app = app.replace("/*__BOOK_UI__*/", (root / "src/book-ui.js").read_text(), 1)
 # the demonstration recipe sheets are kept in their own file too
 app = app.replace("/*__DEMO_SHEETS__*/", (root / "src/demo-sheets.js").read_text(), 1)
 shim = (root / "src/shim.html").read_text()

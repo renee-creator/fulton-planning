@@ -142,6 +142,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .soask{top:50%;bottom:auto;transform:translate(-50%,-50%);z-index:72}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
+.bkrow{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px}.bkmain{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}.bksup{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.bksup.wide{grid-template-columns:repeat(3,1fr);margin:0}.bkth{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block}.bkno{display:grid;place-items:center;background:var(--line);color:var(--muted);font-size:12px}.bkwords{display:grid;gap:8px;align-content:start}.bkwords input,.bkwords textarea,.bkpage>input,textarea[data-bkletter]{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.bkwords input[data-bkf="title"]{font-weight:700;font-size:17px}.bkwords label{display:grid;gap:3px}.bkflag{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:8px;padding:6px 10px;font-size:13px}.bkout{opacity:.55}.bkpick{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}.bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.bkgrid figure{margin:0;display:grid;gap:4px}.bkcand{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px}.bkgrid figcaption{display:flex;flex-wrap:wrap;gap:4px}.bkother{display:grid;gap:6px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.bksrc{font-size:13.5px;color:var(--muted)}.bksrc p{margin:8px 0}.bkline{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}.bkline:last-child{border-bottom:none}.bksigns{display:grid;gap:6px;align-items:center;font-size:13.5px}.bksigns input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;min-width:0}@media (max-width:640px){.bkrow{grid-template-columns:1fr}}
 .nav{flex-wrap:wrap;border-radius:20px}
 @media (max-width:520px){.navx{display:none}div.nav button{padding:6px 9px;font-size:13.5px}}
 .pcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px;align-items:start}
@@ -1167,6 +1168,9 @@ async function boot(){
     db.collection("reports").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});reports=m;if(view==="wreport"&&!document.activeElement?.closest?.("#main select"))renderMain()},()=>{});
     // a screening reaches the director and the educators of the child's class only
     db.collection("screenings").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v)return;const mine=screenings.get(d.id);if(mine&&scrKeepLocal(d.id)){m.set(d.id,mine);return}v.id=v.id||d.id;m.set(d.id,v);scrBase.set(d.id,jclone(v))});for(const [id,x] of screenings)if(!m.has(id)&&scrKeepLocal(id))m.set(id,x);screenings=m;if(view==="child"&&kidTab==="screen"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
+    // a child's book, and the names that sign each class year
+    db.collection("books").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||!Array.isArray(v.pages))return;const mine=books.get(d.id);if(mine&&bkKeepLocal(d.id)){m.set(d.id,mine);return}v.id=v.id||d.id;m.set(d.id,v);bookBase.set(d.id,jclone(v))});for(const [id,x] of books)if(!m.has(id)&&bkKeepLocal(id))m.set(id,x);books=m;if(((view==="child"&&kidTab==="book")||view==="books")&&!BK.busy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
+    db.doc("settings/book").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&!BK.timers.has("set")){bookSet=Object.assign({signs:{}},v);if(view==="books"&&!document.activeElement?.closest?.("#main input"))renderMain()}},()=>{});
     db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);inqBase.set(d.id,jclone(v))}});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();famSumFresh()},()=>{});
@@ -1434,6 +1438,7 @@ function renderMain(){
   if(view==="drdpopen"){if(!isDirector()){view="children";renderMain();return}renderDrdpOpen();return}
   if(view==="wreport"){renderWeeklyReport();return}
   if(view==="drdpreport"){if(!isDirector()){view="children";renderMain();return}renderDrdpReport();return}
+  if(view==="books"){renderBooks();return}
   if(view==="children"){renderChildren();return}
   if(view==="child"){renderChild();return}
   if(view==="today"){renderToday();return}
@@ -1890,6 +1895,7 @@ function navLabel(s){
   if(s.view==="search")return "Search";
   if(s.view==="drdpreview")return "DRDP review";
   if(s.view==="drdpopen")return "DRDP open levels";
+  if(s.view==="books")return "Books";
   if(s.view==="wreport")return "Weekly reading report";
   if(s.view==="child"){const c=children.get(s.kidOpen);return c?c.first+(s.kidTab&&s.kidTab!=="overview"?", "+({docs:"documentation",drdp:"DRDP",confs:"conferences",details:"details",transition:"transition summary",screen:"screening"})[s.kidTab]||"their page":""):"the child"}
   if(s.view==="slide"){const x=slides.get(s.slideOpen);return x&&x.title?x.title:"the slide"}
@@ -4762,7 +4768,7 @@ const SUBS={staff:[["stteam","Educators"],["strec","My records"],["stnew","New E
 // educators see the planning resources once the director turns them on. The director and the kitchen always do.
 const planResOk=()=>isDirector()||isKitchenUser()||!!(PROGRAM_DOC&&PROGRAM_DOC.planResOn);
 const PLAN_RES=[["ideabank","Idea bank"],["garden","Garden"],["artists","Artists"],["recipes","Recipes"],["songs","Songs and stories"]];
-const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",drdpreview:"today",drdpopen:"children",wreport:"today",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
+const SECTION_OF={stpres:"staff",stgrow:"staff",stplan:"staff",stjour:"staff",stci:"staff",stmom:"staff",stpdd:"staff",stteam:"staff",strec:"staff",stnew:"staff",stpd:"staff",sthb:"staff",stnotices:"staff",stfh:"staff",st27:"staff",stdrill:"staff",stfiles:"staff",stformer:"staff",drdpreport:"children",drdpreview:"today",drdpopen:"children",books:"children",wreport:"today",search:"search",today:"today",walks:"today",plans:"plans",all:"plans",threads:"plans",projects:"plans",inquiries:"plans",lens:"plans",import:"plans",bin:"plans",
   moments:"obs",proofobs:"obs",slides:"docs",slide:"docs",walls:"docs",stories:"docs",story:"docs",newsletter:"docs",share:"docs",grant:"docs",garden:"plans",gatherings:"docs",recipes:"plans",songs:"plans",artists:"plans",museums:"staff",ideabank:"plans",guide:"plans",kitchen:"docs",children:"children",child:"children",conferences:"children",participation:"children",volunteer:"children",calendar:"calendar",settings:"settings",connect:"plans",school:"plans"};
 const TICON={staff:'<circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.5h5M15.5 9h5M17 12.5h3.5"/>',connect:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8.5 6h7M7.2 8.2l3.6 7.6M16.8 8.2l-3.6 7.6"/>',kitchen:'<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20"/><path d="M9 7c0-1 1-1 1-2s-1-1-1-2M14 7c0-1 1-1 1-2s-1-1-1-2"/>',obs:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',today:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',plans:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',docs:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-5-8 8"/>',children:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 20c0-2.4 1.2-4.6 4-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'};
 const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
@@ -5742,6 +5748,7 @@ function renderToday(){
 /*__GARDEN_UI__*/
 /*__IDEABANK_UI__*/
 /*__SCREENING_UI__*/
+/*__BOOK_UI__*/
 /* ---------- Walk safety ----------
    Fulton's walks, such as creek walks and walks to the garden or the farm. On a day a walk is on the calendar or in a plan,
    Today offers Before we walk, a checklist educators open and print. The children's walk agreements print as one card with
@@ -15636,7 +15643,7 @@ function renderChildren(){
       <label>Small group<select id="ka-group"><option value="">None</option>${GROUPS.map(g=>`<option>${esc(g.name)}</option>`).join("")}</select></label>
       <label>Birthday<input type="date" id="ka-dob"></label><label>First day<input type="date" id="ka-date" value="${iso(new Date())}"></label></div>
       <div class="actions"><button class="btn small" id="ka-save">Add</button><button class="linkbtn" id="ka-cancel">Cancel</button></div><div class="cnt">Family details, the schedule and the program are added on the child's conference record.</div></section>`
-    :kMove?kMoveHtml():`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button><button class="btn small ghost" data-kmvopen="1">Move children</button><button class="btn small ghost" data-tview="drdpopen">DRDP open levels</button></div>`):"";
+    :kMove?kMoveHtml():`<div class="actions"><button class="btn small ghost" id="ka-open">Add a child</button><button class="btn small ghost" data-kmvopen="1">Move children</button><button class="btn small ghost" data-tview="drdpopen">DRDP open levels</button><button class="btn small ghost" data-tview="books">Books</button></div>`):`<div class="actions"><button class="btn small ghost" data-tview="books">Books</button></div>`;
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children, ${esc(yearLabel(yearFromTime(Date.now())))}</h2>
     <div class="sub">Each child's documentation, conferences and years at our school in one place.${dir?" Changes made here are the roster.":""}</div></div>
     <div class="kbar" style="margin:10px 0 14px"><div class="tseg" role="group" aria-label="Which children"><button data-kshow="at" aria-pressed="${kShow==="at"}">At our school ${nAt}</button><button data-kshow="former" aria-pressed="${kShow==="former"}">Former children ${nFormer}</button><button data-kshow="pf" aria-pressed="${kShow==="pf"}">Portfolios</button></div>
@@ -15683,7 +15690,7 @@ function renderChild(){
   const nx=kidNext(c);const {v}=drdpViewOf(c);const its=kidDrdpItems(c).filter(x=>x.view===v||!x.view);
   const wait=its.filter(x=>x.status==="suggested").length,levelled=new Set(its.filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>x.code)).size,nMs=drdpMeasuresFor(c).length;
   const today=iso(new Date());const nextConf=cs.filter(x=>x.confDate&&x.confDate>=today).sort((a,b)=>a.confDate.localeCompare(b.confDate))[0];
-  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],...(tsFor(c)?[["transition","Transition summary"]]:[]),...kidScreenTab(c),["details","Details"]];
+  const tabs=[["overview","Overview"],["docs",`Documentation ${ms.length+ss.length+kidStories(c).length}`],["drdp",`DRDP${wait?` · ${wait} to review`:""}`],["confs",`Conferences ${cs.length}`],...(tsFor(c)?[["transition","Transition summary"]]:[]),...kidScreenTab(c),["book","Book"],["details","Details"]];
   if(!tabs.some(t=>t[0]===kidTab))kidTab="overview";
   let body="";
   if(kidTab==="overview"){
@@ -15708,6 +15715,7 @@ function renderChild(){
   }else if(kidTab==="drdp"){body=kidDrdpHtml(c)}
   else if(kidTab==="transition"){body=tsHtml(c)}
   else if(kidTab==="screen"){body=kidScreenHtml(c);setTimeout(scrHydrate,0)}
+  else if(kidTab==="book"){body=bookHtml(c)}
   else if(kidTab==="confs"){
     body=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Conferences over time</h3><button class="btn small ghost" data-tconfchild="${esc(c.id)}">Open the conference record</button></div>
       ${cs.length?`<div class="tlist">${cs.map(x=>`<button class="titem two press" data-tconf="${esc(x.id)}"><div><b>${esc(x.term==="Historical"?"An earlier conference":[x.term,x.schoolYear&&x.schoolYear.replace("-"," to ")].filter(Boolean).join(" "))}</b><div class="cnt">${x.confDate?esc(longDate(x.confDate))+(x.confTime?" at "+tlabel(x.confTime):""):"Not scheduled"}${x.teacher?" · "+esc(x.teacher):""}${confIsReady(x)?" · <b>Ready</b>":""}</div></div></button>`).join("")}</div>`:`<div class="empty">No conferences yet.</div>`}</section>`;
