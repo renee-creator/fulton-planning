@@ -319,6 +319,8 @@ window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];i
     const b64u=a=>btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
     return (fileKey,id)=>{const i=String(fileKey||"").indexOf(".");if(i<0)return "";return fileKey.slice(0,i)+"."+b64u(hmac(fileKey.slice(i+1),String(id))).slice(0,32)};})();
   window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(PK(Store.fileKey,id));
+  // a clip plays from the server with a key for that clip alone
+  window.FP_CLIP_URL=id=>SERVER+"/clip/"+encodeURIComponent(id)+"?t="+encodeURIComponent(PK(Store.fileKey,"clip-"+id));
   /* a resized copy, /photo/<id>?w=1200 or ?w=1920, when the server offers that route. Empty when it does not, so the page falls back to the original */
   window.FP_PHOTO_URL=(id,w)=>{const ws=window.FP_PHOTO_SIZES||[];if(!ws.includes(w))return "";return SERVER+"/photo/"+encodeURIComponent(id)+"?w="+w+"&t="+encodeURIComponent(PK(Store.fileKey,id))};
   // a fresh key for photos, taken at once when one is refused

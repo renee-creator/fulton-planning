@@ -26,13 +26,14 @@ const more = put => {
   put('plans/fol1.json', { id: 'fol1', type: 'individual', weekOf: prev, classroom: 'West', educator: 'Ann', status: 'reviewed', threadId: 't1', focus: 'area', groups: [], fields: { area: 'Water', observation: 'Pooling.', intent: 'Follow it.', questions: 'Where?', remarks: 'The water went under the fence and the children followed it.', dates: 'x', activities: 'x' }, createdAt: Date.now() - 10 * day, updatedAt: Date.now() - 10 * day });
 };
 
-test('an observation starts a thread or a plan, remarks never expire, a draft with remarks carries forward, and a plan lists its week', async t => {
+test('an observation starts a thread or a plan, remarks wait three weeks, a draft with remarks carries forward, and a plan lists its week', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const fx = await start({ more }); t.after(() => fx.stop());
   const br = await b.launch(); t.after(() => br.close());
   const a = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => a.close());
-  // Final remarks six weeks old still wait on Today
-  await a.p.evaluate(() => goView('today')); await a.p.waitForSelector('text=Final remarks still to write', { timeout: 15000 });
+  // Final remarks six weeks old have dropped from Today, and the plan still says its remarks are unwritten (November 14, 2026)
+  await a.p.evaluate(() => goView('today')); await a.p.waitForFunction(() => plans.get('due1'), null, { timeout: 15000 });
+  assert.deepStrictEqual(await a.p.evaluate(() => [todayWaiting().some(w => w.t === 'Final remarks still to write'), needsRemarks(plans.get('due1'))]), [false, true]);
   // one Wonder for today's Kaymbu photo, folded, opens the observation with the Wonder box focused
   await a.p.waitForSelector('#wondertoday', { state: 'attached' });
   assert.strictEqual(await a.p.$eval('#wondertoday', d => d.open), false, 'folded to start');
@@ -85,8 +86,8 @@ test('the director sees what grew, Before Monday, the readings all week, the pro
   await s.p.click('[data-grewplan="t1"]'); await s.p.waitForSelector('#f-observation');
   const gp = await s.p.evaluate(() => { const p = plans.get(currentId); return { thread: p.threadId, n: (p.noticeAdded || []).length, obs: p.fields.observation }; });
   assert.strictEqual(gp.thread, 't1'); assert.strictEqual(gp.n, 3); assert.match(gp.obs, /Poured water down the hill/);
-  // Before Monday, from cycleHealth in the data head, folded, each name a link
-  await s.p.evaluate(() => { window.FP_CYCLE = { noWonder: ['Ann'], noPlan: ['t2'], remarksUnwritten: ['old1'], draftsNotSent: [{ id: 'old1' }] }; goView('today'); });
+  // Before Monday, from cycleHealth in the data head, folded, each name a link. Remarks six weeks old are left out, so 4 and not 5
+  await s.p.evaluate(() => { window.FP_CYCLE = { noWonder: ['Ann'], noPlan: ['t2'], remarksUnwritten: ['fol1', 'old1'], draftsNotSent: [{ id: 'old1' }] }; goView('today'); });
   await s.p.waitForSelector('#beforemonday', { state: 'attached' });
   const bm = await s.p.$eval('#beforemonday', d => ({ open: d.open, text: d.innerText, links: [...d.querySelectorAll('button')].map(b => b.textContent) }));
   assert.strictEqual(bm.open, false); assert.match(bm.text, /Before Monday[\s\S]*4 things to look at/);

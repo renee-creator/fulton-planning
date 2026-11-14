@@ -84,7 +84,7 @@ test('the smaller review items', async t => {
     assert.strictEqual(read('kept1').noticed, 'Wren stacked three stones.', 'everyone else still sees the kept words');
     await s.close();
     const s2 = await signedIn(fx, b, 'Ann', '1357', 390);
-    await s2.p.evaluate(() => goView('moments')); await s2.p.waitForSelector('[data-draftopen]', { timeout: 15000 });
+    await s2.p.evaluate(() => goView('moments')); await s2.p.waitForSelector('[data-fold="mydrafts"]', { state: 'attached', timeout: 15000 }); await s2.p.evaluate(() => { document.querySelector('[data-fold="mydrafts"]').open = true; }); await s2.p.waitForSelector('[data-draftopen]', { timeout: 15000 });
     assert.match(await s2.p.evaluate(() => document.querySelector('#main').innerText), /Changes to a kept observation/);
     await s2.p.click('[data-draftopen]'); await s2.p.waitForSelector('#nf-noticed');
     assert.match(await s2.p.inputValue('#nf-noticed'), /a fourth/);

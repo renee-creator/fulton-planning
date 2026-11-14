@@ -1204,6 +1204,8 @@ window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];i
     const b64u=a=>btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
     return (fileKey,id)=>{const i=String(fileKey||"").indexOf(".");if(i<0)return "";return fileKey.slice(0,i)+"."+b64u(hmac(fileKey.slice(i+1),String(id))).slice(0,32)};})();
   window.FP_ORIGINAL_URL=id=>SERVER+"/original/"+encodeURIComponent(id)+"?t="+encodeURIComponent(PK(Store.fileKey,id));
+  // a clip plays from the server with a key for that clip alone
+  window.FP_CLIP_URL=id=>SERVER+"/clip/"+encodeURIComponent(id)+"?t="+encodeURIComponent(PK(Store.fileKey,"clip-"+id));
   /* a resized copy, /photo/<id>?w=1200 or ?w=1920, when the server offers that route. Empty when it does not, so the page falls back to the original */
   window.FP_PHOTO_URL=(id,w)=>{const ws=window.FP_PHOTO_SIZES||[];if(!ws.includes(w))return "";return SERVER+"/photo/"+encodeURIComponent(id)+"?w="+w+"&t="+encodeURIComponent(PK(Store.fileKey,id))};
   // a fresh key for photos, taken at once when one is refused
@@ -1653,8 +1655,10 @@ const sendable=p=>!!(p&&SEND_NEED[p.type]&&p.id!=="example"&&!p.blank);
 function planMissing(p){if(!sendable(p))return [];const F=FORMS[p.type];return SEND_NEED[p.type].filter(k=>!String((p.fields||{})[k]||"").trim()).map(k=>({k,label:(F.fields.find(f=>f.k===k)||{}).label||k}))}
 const AFTER_KEY={individual:"remarks",smallgroup:"reflection"};
 function needsRemarks(p){const k=AFTER_KEY[p.type];return !!k&&p.id!=="example"&&!p.blank&&p.weekOf<mondayOf(new Date())&&!String(p.fields?.[k]||"").trim()&&!isEmptyPlan(p)}
-// Final remarks never expire. Every plan still waiting for them waits on Today, however old (November 4, 2026).
-function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(p=>needsRemarks(p));const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
+// Final remarks wait on Today for the last three weeks, and older ones drop from the lists. The plan itself still says
+// its remarks are unwritten, and All plans still finds it (November 14, 2026, the director's choice, as on October 31).
+const remarksWait=p=>needsRemarks(p)&&p.weekOf>=addDays(mondayOf(new Date()),-21);
+function dueList(){const m=me().toLowerCase();const all=[...plans.values()].filter(p=>remarksWait(p));const mine=m?all.filter(p=>(p.educator||"").toLowerCase().includes(m)||[p.group,...(p.groups||[])].some(n=>(GROUPS.find(g=>g.name===n)?.educator||"").toLowerCase()===m)):[];return {list:(isDirector()?(mine.length?mine:all):mine).sort((a,b)=>b.weekOf.localeCompare(a.weekOf)),mineOnly:!!(m&&mine.length),total:all.length}}
 /* Director feedback. Only the director writes it, the educator is told when a note is waiting, and can reply under it. */
 const myName=()=>{const s=window.FP_HOSTED&&window.FP_NAME?window.FP_NAME():"";return (isShared(s)?"":s)||me()||""};
 const fbNew=p=>!!(String(p.feedback||"").trim()&&(p.feedbackAt||0)>(p.feedbackSeenAt||0));
@@ -5010,14 +5014,20 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-sendclip]"
 const CLIP_FILE=/^[A-Za-z0-9_-]{10,}$/;
 // a Drive file id, or a Drive link with the id inside it
 function clipFileId(v){v=String(v||"").trim();if(CLIP_FILE.test(v))return v;const m=v.match(/(?:\/d\/|[?&]id=)([A-Za-z0-9_-]{10,})/);return m?m[1]:""}
-const clipBtn=(n,cls)=>n&&n.clip&&n.clip.fileId&&clipsOn()?`<button class="${cls||"linkbtn"}" type="button" data-clipwatch="${esc(n.clip.fileId)}" data-clipname="${esc(n.clip.name||"")}">Watch the clip</button>`:"";
-function clipSheet(fileId,name){const id=clipFileId(fileId);if(!id)return;clipClose();
+// a clip TREE holds a record for plays from TREE itself, with no Google sign-in. A Drive link on an agenda block plays from Drive.
+const clipPlayId=n=>n&&n.clip&&n.clip.id&&/^[a-z0-9]{6,40}$/i.test(String(n.clip.id))&&window.FP_CLIP_URL?String(n.clip.id):"";
+const clipBtn=(n,cls)=>n&&n.clip&&n.clip.fileId&&clipsOn()?`<button class="${cls||"linkbtn"}" type="button" data-clipwatch="${esc(n.clip.fileId)}" data-clipplay="${esc(clipPlayId(n))}" data-clipname="${esc(n.clip.name||"")}">Watch the clip</button>`:"";
+// the player on an observation's card, with the frame from the middle of the clip as its cover until it plays
+function clipPlayerHtml(n){const id=clipPlayId(n);if(!id||!clipsOn())return"";const cv=n.clip.cover&&n.clip.cover.id;
+  const poster=cv?((window.FP_PHOTO_URL&&window.FP_PHOTO_URL(cv,1200))||(window.FP_ORIGINAL_URL?window.FP_ORIGINAL_URL(cv):"")):"";
+  return `<video class="clipplay" controls playsinline preload="none" ${poster?`poster="${esc(poster)}"`:""} src="${esc(window.FP_CLIP_URL(id))}" aria-label="The clip kept with this observation" style="width:100%;max-height:60vh;background:#000;border-radius:10px"></video>`}
+function clipSheet(fileId,name,playId){const id=clipFileId(fileId);if(!id&&!playId)return;clipClose();
   const sh=document.createElement("div");sh.className="combshade";sh.id="clipshade";sh.addEventListener("click",clipClose);document.body.appendChild(sh);
   const d=document.createElement("div");d.id="clipsheet";d.setAttribute("role","dialog");d.setAttribute("aria-label","Watch the clip");
-  d.innerHTML=`<div class="cliptop"><b>${esc(name||"The clip")}</b><button class="btn small ghost" type="button" id="clipclose">Close</button></div><iframe src="https://drive.google.com/file/d/${esc(id)}/preview" allow="autoplay; fullscreen" allowfullscreen title="${esc(name||"The clip")}"></iframe><div class="cnt" style="margin-top:6px">Plays from the school's Drive for signed-in school accounts.</div>`;
+  d.innerHTML=`<div class="cliptop"><b>${esc(name||"The clip")}</b><button class="btn small ghost" type="button" id="clipclose">Close</button></div>${playId&&window.FP_CLIP_URL?`<video controls autoplay playsinline src="${esc(window.FP_CLIP_URL(playId))}" style="width:100%;max-height:70vh;background:#000"></video>`:`<iframe src="https://drive.google.com/file/d/${esc(id)}/preview" allow="autoplay; fullscreen" allowfullscreen title="${esc(name||"The clip")}"></iframe><div class="cnt" style="margin-top:6px">Plays from the school's Drive for signed-in school accounts.</div>`}`;
   document.body.appendChild(d);d.querySelector("#clipclose").addEventListener("click",clipClose)}
 function clipClose(){for(const id of ["clipshade","clipsheet"]){const el=document.getElementById(id);if(el)el.remove()}}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-clipwatch]");if(!t)return;e.preventDefault();e.stopPropagation();clipSheet(t.dataset.clipwatch,t.dataset.clipname)},true);
+document.addEventListener("click",e=>{const t=e.target.closest("[data-clipwatch]");if(!t)return;e.preventDefault();e.stopPropagation();clipSheet(t.dataset.clipwatch,t.dataset.clipname,t.dataset.clipplay||"")},true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.getElementById("clipsheet"))clipClose()});
 // the line under an observation form or card that came from a clip, with anything TREE wants the educator to know about it
 function clipLineHtml(n){if(!n||!n.clip||!n.clip.fileId)return"";const c=n.clip;
@@ -5089,8 +5099,9 @@ function awRestore(){if(VIEW_AS)return;awLoad();if(!AW.size)return;let ch=false;
 function draftsList(){const open=view==="moments"&&noticeForm&&noticeForm.draftId;return [...drafts.values()].filter(d=>d&&d.form&&d.id!==open).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))}
 function draftsHtml(){if(VIEW_AS)return"";const dir=isDirector(),all=draftsList(),mine=all.filter(draftIsMine),others=dir?all.filter(d=>!draftIsMine(d)):[];
   let h="";
-  if(mine.length)h+=`<section class="card"><div class="secthead"><h3 style="font-size:17px">Your drafts</h3><span class="cnt">${mine.length} still to finish</span></div>
-    <div class="hint muted" style="margin:0 0 8px">Saved as you wrote. Only you${dir?"":" and the director"} can see a draft until you keep it.</div><div style="display:grid;gap:10px">${mine.map(d=>draftCardHtml(d,dir)).join("")}</div></section>`;
+  // closed to start, with its count, so the observations begin near the top (November 14, 2026)
+  if(mine.length)h+=`<section class="card"><details data-fold="mydrafts" ${foldOpen.has("mydrafts")?"open":""}><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px">Your drafts</h3><span class="cnt">${mine.length} still to finish</span></summary>
+    <div class="hint muted" style="margin:8px 0">Saved as you wrote. Only you${dir?"":" and the director"} can see a draft until you keep it.</div><div style="display:grid;gap:10px">${mine.map(d=>draftCardHtml(d,dir)).join("")}</div></details></section>`;
   if(others.length)h+=`<section class="card"><details data-fold="drafts" ${foldOpen.has("drafts")?"open":""}><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px">Drafts educators are still writing</h3><span class="cnt">${others.length}</span></summary>
     <div style="display:grid;gap:10px;margin-top:8px">${others.map(d=>draftCardHtml(d,dir)).join("")}</div></details></section>`;
   return h}
@@ -5243,7 +5254,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8216ed5c51ff";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="03ea67e121b0";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5429,7 +5440,7 @@ function todayWaiting(){
   // observations started and not kept yet wait as drafts
   {const k=typeof draftsList==="function"?draftsList().filter(draftIsMine).length:0;
    if(k&&!VIEW_AS)out.push({dot:"mari",n:k,t:k===1?"An observation to finish":`Observations to finish, ${k}`,s:"Saved as drafts while you wrote. Open Observations to finish and keep them.",act:`data-tview="moments"`,b:"Open"})}
-  const due=dueList();for(const p of due.list.slice(0,isDirector()?5:40))
+  const due=dueList();for(const p of due.list.slice(0,40))
     out.push({dot:"clay",t:"Final remarks still to write",s:`${planTitle(p)}, week of ${fmtDate(p.weekOf)}`,act:`data-open="${p.id}" data-jump="${AFTER_KEY[p.type]}"`,b:"Write",q:"rem|"+p.id});
   for(const n of [...notices.values()].filter(n=>m&&(n.by||"").toLowerCase()===m.toLowerCase()&&unsureCount(n.noticed)).slice(0,3))
     out.push({dot:"clay",t:"Check a copied photo",s:"Some words are marked [?] or [unclear].",act:`data-nwedit="${n.id}"`,b:"Check",q:"photo|"+n.id});
@@ -6177,8 +6188,10 @@ function cycleTodayHtml(){if(!isDirector()||VIEW_AS)return "";const c=window.FP_
   const arr=k=>{const v=c[KEYS[k]]!==undefined?c[KEYS[k]]:c[k];if(Array.isArray(v))return v;if(v&&typeof v==="object"){const l=v.names||v.threads||v.plans||v.list;return Array.isArray(l)?l:[]}return []};const nm=x=>typeof x==="string"?x:(x&&(x.name||x.title||x.id))||"";
   const edu=arr("noWonder").map(x=>{const n=nm(x);return n?`<button class="linkbtn" data-tview="moments" data-cyedu="${esc(n)}">${esc(n)}</button>`:""}).filter(Boolean);
   const ths=arr("noPlan").map(x=>{const id=typeof x==="string"?x:x&&x.id;const t=id&&threads.get(id);const n=t?t.name:nm(x);return n?`<button class="linkbtn" ${t?`data-tsee="${esc(t.id)}"`:`data-tview="threads"`}>${esc(n)}</button>`:""}).filter(Boolean);
-  const pl=k=>arr(k).map(x=>{const id=typeof x==="string"?x:x&&x.id;const p=id&&plans.get(id);const n=p?planTitle(p)+", week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""):nm(x);return n?`<button class="linkbtn" ${p?`data-open="${esc(p.id)}"`:`data-tview="all"`}>${esc(n)}</button>`:""}).filter(Boolean);
-  const rem=pl("remarksUnwritten"),dr=pl("draftsNotSent");
+  const pl=(k,ok)=>arr(k).filter(x=>!ok||ok(x)).map(x=>{const id=typeof x==="string"?x:x&&x.id;const p=id&&plans.get(id);const n=p?planTitle(p)+", week of "+fmtDate(p.weekOf).replace(/, \d{4}$/,""):nm(x);return n?`<button class="linkbtn" ${p?`data-open="${esc(p.id)}"`:`data-tview="all"`}>${esc(n)}</button>`:""}).filter(Boolean);
+  // final remarks older than three weeks are left out, as on Today, even before the server sends the shorter list
+  const c0=addDays(mondayOf(new Date()),-21),inWin=x=>{const id=typeof x==="string"?x:x&&x.id;const p=id&&plans.get(id);return !p||p.weekOf>=c0};
+  const rem=pl("remarksUnwritten",inWin),dr=pl("draftsNotSent");
   const rows=[["No Wonder this week",edu],["No plan this week",ths],["Final remarks still to write",rem],["Drafts not sent",dr]].filter(([,l])=>l.length);
   if(!rows.length)return "";const total=rows.reduce((n,[,l])=>n+l.length,0);
   return `<details class="card tfold" id="beforemonday" style="margin-top:14px"><summary><b>Before Monday</b><span class="cnt">${total} thing${total===1?"":"s"} to look at</span></summary>
@@ -10886,6 +10899,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-whyedit],[
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
   return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${obsGroups(n).length?" \u00b7 "+esc(obsAnd(obsGroups(n)))+(obsGroups(n).length>1?" groups":" group"):""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
+    ${clipPlayerHtml(n)?`<div style="margin:6px 0">${clipPlayerHtml(n)}</div>`:""}
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
     ${has(n.wonder)?`<div class="muted" style="margin-top:4px">${esc(wonderLine(n.wonder))}</div>`:""}
@@ -10904,7 +10918,7 @@ function noticeCard(n){
     ${(n.children||[]).length?`<div class="cnt">${n.children.map(id=>{const c=children.get(id);return c?`<button class="linkbtn" data-kid="${esc(id)}">${esc(c.first)}</button>`:""}).filter(Boolean).join(", ")}</div>`:""}
     ${momentDrdpHtml(n)}${noticeAttachHtml(n)}
     ${waitingToSend(n.id)?`<div class="cnt draftline">${DRAFT_NOTE}</div>`:""}
-    <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${clipBtn(n)}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
+    <div class="actions"><button class="linkbtn" data-nwedit="${esc(n.id)}">Change</button>${clipPlayerHtml(n)?"":clipBtn(n)}${n.photo?`<button class="linkbtn" data-slidefrom="${esc(n.id)}">Make a slide</button>`:""}<button class="linkbtn" data-nwdrdp="${esc(n.id)}">DRDP</button>
       ${moreMenu(`${VIEW_AS?"":`<button class="linkbtn" data-nwplan="${esc(n.id)}">Start a plan</button>`}${planResOk()?`<button class="linkbtn" data-nattopen="${esc(n.id)}">Attach from our libraries</button>`:""}${printBtns("moment",n.id,"Print PDF")}${n.photo?`<button class="linkbtn" data-storyfrom="${esc(n.id)}">Make a story</button>`:""}<span id="nwi-${n.id}"><button class="linkbtn" data-nwinq="${esc(n.id)}">Team inquiry</button></span><button class="linkbtn" data-nwcomb="${esc(n.id)}">Combine with another</button>${canRemoveObs(n)?`<span id="nwd-${n.id}"><button class="linkbtn" data-nwdel="${esc(n.id)}">Remove</button></span>`:""}`)}</div></article>`;
 }
 /* --- The Moments page. The same moments, read four ways, printed, and summarized.
@@ -11105,6 +11119,16 @@ function renderMoments(){
         <div style="display:grid;gap:12px;margin-top:10px">${mGOpen.has(g.key)?noticeCards(items):""}</div>
         ${mGOpen.has(g.key)&&items.length<g.items.length?`<div class="actions" style="margin-top:8px"><button class="btn small ghost" data-mgmore="${esc(g.key)}">Show more</button><span class="cnt">Showing ${items.length} of ${g.items.length}</span></div>`:""}</details>`}
     $("#main").innerHTML=h;return}
+  // an educator looking at her own class sees her own observations first, then the rest of the class. The same
+  // observations show as before, thirty at a time, only in two parts (November 14, 2026)
+  {const meK=String(me()||"").toLowerCase(),myR=myRoom();
+   if(!isDirector()&&meK&&myR&&nRoom===myR&&!nWonder&&all.length){
+    const own=n=>String(n.by||"").toLowerCase()===meK||groupLeadOf(n).toLowerCase().split(/, | and /).includes(meK);
+    const vis=all.slice(0,mShow),mine=vis.filter(own),rest=vis.filter(n=>!own(n)),nMine=all.filter(own).length;
+    const part=(id,label,items,total)=>items.length?`<section class="card" id="${id}"><div class="secthead"><h3 style="font-size:17px">${esc(label)}</h3><span class="cnt">${total} observation${total===1?"":"s"}</span></div><div style="display:grid;gap:12px">${noticeCards(items)}</div></section>`:"";
+    if(mine.length){h+=part("obs-mine","Your observations",mine,nMine)+part("obs-class",`The rest of ${myR} class`,rest,all.length-nMine);
+      if(vis.length<all.length)h+=`<div class="actions" style="margin-top:4px"><button class="btn small ghost" data-mmore="1">Show more</button><span class="cnt">Showing ${vis.length} of ${all.length}</span></div>`;
+      $("#main").innerHTML=h;return}}}
   // thirty at a time, so the page opens quickly, and Show more carries on in the same view
   for(const g of gs){
     if(shown>=mShow)break;
@@ -18141,12 +18165,18 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-keepsave],
 function videoClipsHtml(){if(!isDirector())return"";const on=clipsOn(),st=(window.FP_CLIPS&&window.FP_CLIPS())||null;const all=[...clips.values()];
   const waiting=all.filter(x=>x.status==="waiting"||x.status==="reading").length,done=all.filter(x=>x.status==="done").length,failed=all.filter(x=>x.status==="failed").length;
   const recent=all.sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,5);
-  const word={waiting:"waiting",reading:"being read",done:"read",failed:"could not be read"};
-  return `<section class="card" id="clips-card"><div class="lbl">Video clips</div><div class="hint">An educator records a clip of up to three minutes on the class phone and drops it in the Video folder of the TREE Drive, or emails it to the TREE address, with the class and their first name in the file name or the subject, such as North Ann. TREE reads the clip once with Google's Gemini API and leaves the educator a draft observation with the children's exact words, what they did, two or three stills and Watch the clip. The clip stays in Drive. Clips never reach prints, slides, newsletters, the display or the family page.</div>
+  const word={waiting:"waiting",reading:"being read",done:"read",failed:"could not be read",short:"left out, too short",preparing:"being made ready"};
+  const minS=PROGRAM_DOC&&(PROGRAM_DOC.videoMinSeconds===0||PROGRAM_DOC.videoMinSeconds)?Number(PROGRAM_DOC.videoMinSeconds):10,snd=!!(PROGRAM_DOC&&PROGRAM_DOC.videoDisplaySound);
+  return `<section class="card" id="clips-card"><div class="lbl">Video clips</div><div class="hint">An educator records a clip of up to three minutes on the class phone and drops it in the Video folder of the TREE Drive, or emails it to the TREE address, with the class and their first name in the file name or the subject, such as North Ann. A video from Kaymbu comes in the same way.</div>
+    <div class="hint">TREE reads the clip once with Google's Gemini API. The clip joins the observations, kept, and plays on its card with the children's words beneath.</div>
+    <div class="hint">The clip stays in Drive. Clips take turns on the staff room display. They never reach prints, slides, newsletters or the family page.</div>
     <div class="prow"><div><b>Video clips</b><div class="cnt">${on?"On. Clips are read as they arrive.":"Off. Clips that arrive wait here until it is on."}${st&&on&&!st.key?" GEMINI_API_KEY is not set on Render, so clips wait.":""}${st&&on&&!st.drive?" DRIVE_PHOTOS_URL is not set on Render, so clips cannot be fetched.":""}${st&&on&&st.key&&st.drive?` Read with ${esc(st.model||"")}${st.ffmpeg?"":", without ffmpeg, so stills come from the Drive thumbnail"}.`:""}</div></div>
       <div class="seg" role="group" aria-label="Video clips"><button data-videoclips="1" aria-pressed="${on}">On</button><button data-videoclips="0" aria-pressed="${!on}">Off</button></div></div>
+    <div class="prow" style="margin-top:8px"><div><b>Sound on the staff room display</b><div class="cnt">${snd?"On. Clips play with their sound.":"Off. Clips play silent, with the words beneath."}</div></div>
+      <div class="seg" role="group" aria-label="Sound on the staff room display"><button data-videosound="1" aria-pressed="${snd}">On</button><button data-videosound="0" aria-pressed="${!snd}">Off</button></div></div>
+    <label class="cnt" style="display:block;margin-top:8px">Leave out clips shorter than this many seconds. 0 keeps every clip.<input id="videomin" type="number" min="0" max="180" step="1" value="${minS}" style="margin-top:4px;max-width:110px"></label>
     <label class="cnt" style="display:block;margin-top:8px">Video folder link, for clips added from the Drive app<input id="videofolder" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${esc(PROGRAM_DOC&&PROGRAM_DOC.videoFolderId?"https://drive.google.com/drive/folders/"+PROGRAM_DOC.videoFolderId:"")}" style="margin-top:4px"></label>
-    ${all.length?`<div class="cnt">${waiting} waiting, ${done} read, ${failed} could not be read.</div><div style="display:grid;gap:4px;margin-top:6px">${recent.map(x=>`<div class="cnt">${esc(x.name||x.fileId)}, ${esc(word[x.status]||x.status)}${x.educator?", for "+esc(x.educator):""}${x.seconds?", "+Math.round(x.seconds)+" seconds":""}${x.error?". "+esc(x.error):""} ${clipsOn()?`<button class="linkbtn" data-clipwatch="${esc(x.fileId)}" data-clipname="${esc(x.name||"")}">Watch</button>`:""}</div>`).join("")}</div>`:`<div class="cnt">No clips have arrived yet.</div>`}</section>`}
+    ${all.length?`<div class="cnt">${waiting} waiting, ${done} read, ${failed} could not be read${all.some(x=>x.status==="short")?`, ${all.filter(x=>x.status==="short").length} left out as too short`:""}.</div><div style="display:grid;gap:4px;margin-top:6px">${recent.map(x=>`<div class="cnt">${esc(x.name||x.fileId)}, ${esc(word[x.status]||x.status)}${x.educator?", for "+esc(x.educator):""}${x.seconds?", "+Math.round(x.seconds)+" seconds":""}${x.error?". "+esc(x.error):""} ${clipsOn()?`<button class="linkbtn" data-clipwatch="${esc(x.fileId)}" data-clipname="${esc(x.name||"")}">Watch</button>`:""}</div>`).join("")}</div>`:`<div class="cnt">No clips have arrived yet.</div>`}</section>`}
 /* Kaymbu Moments, the director's card. TREE reads Kaymbu every hour, the look back reaches to the start of the school
    year once she says yes to its count, and what the screener set aside waits here with Put it back. */
 let kpInfo=null,kpBusy=false,kpMore=0,kpPoll=null;
@@ -18244,6 +18274,9 @@ document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest
   if(d.kpbring!=null){t.disabled=true;t.textContent="Bringing them in";kpLoad("/api/kaymbu/pull/bringall",{room:d.kpbring},"They are coming into TREE now. This takes a minute or two.");return}
   if(d.kpaccept!=null){kpLoad("/api/kaymbu/pull/accept",{room:d.kpaccept},"Left out. Those Moments stay out of TREE.");return}});
 document.addEventListener("change",e=>{const t=e.target.closest("#videofolder");if(!t||!isDirector()||VIEW_AS)return;const m=String(t.value||"").match(/[-\w]{20,}/);PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoFolderId:m?m[0]:""});saveProgram();toast(m?"The folder link is saved.":"The folder link is cleared.")});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-videosound]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const on=t.dataset.videosound==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoDisplaySound:on});saveProgram();renderSettings();toast(on?"Clips play with sound on the staff room display.":"Clips play silent on the staff room display.")});
+document.addEventListener("change",e=>{const t=e.target.closest("#videomin");if(!t||!isDirector()||VIEW_AS)return;const v=Math.max(0,Math.min(180,Math.round(Number(t.value)||0)));PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoMinSeconds:v});saveProgram();toast(v?`Clips under ${v} seconds are left out from now on.`:"Every clip is kept from now on.")});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-videoclips]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
   const on=t.dataset.videoclips==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{videoClipsOn:on,videoClipsAt:Date.now()});saveProgram();renderSettings();toast(on?"Video clips are on. Clips that waited are read now.":"Video clips are off. Clips that arrive wait.")});
 let progTimer=null;

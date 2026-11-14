@@ -29,10 +29,11 @@ test('educators on a phone', async t => {
   t.after(async () => { await b.close(); await fx.stop(); });
   const wait = async (fn, ms) => { for (let i = 0; i < (ms || 8000) / 200; i++) { if (fn()) return true; await new Promise(r => setTimeout(r, 200)); } return false; };
 
-  await t.test('Final remarks never expire. Every plan still waiting for them waits (November 4, 2026)', async () => {
+  await t.test('Final remarks wait for the last three weeks, and older ones drop from the list (November 14, 2026)', async () => {
     const s = await signedIn(fx, b, 'Bea', '1357', 390);
     await s.p.waitForFunction(() => plans.get('w5'), null, { timeout: 15000 });
-    assert.deepStrictEqual(await s.p.evaluate(() => dueList().list.map(p => p.id)), ['w1', 'w2', 'w3', 'w5']);
+    assert.deepStrictEqual(await s.p.evaluate(() => dueList().list.map(p => p.id)), ['w1', 'w2', 'w3']);
+    assert.strictEqual(await s.p.evaluate(() => needsRemarks(plans.get('w5'))), true, 'the plan itself still says its remarks are unwritten');
     await s.close();
   });
 
@@ -51,7 +52,7 @@ test('educators on a phone', async t => {
 
   await t.test('she deletes her own draft after a question', async () => {
     const s = await signedIn(fx, b, 'Bea', '1357', 390);
-    await s.p.evaluate(() => goView('moments')); await s.p.waitForSelector('[data-draftdel="dmine"]', { timeout: 15000 });
+    await s.p.evaluate(() => goView('moments')); await s.p.waitForSelector('[data-fold="mydrafts"]', { state: 'attached', timeout: 15000 }); await s.p.evaluate(() => { document.querySelector('[data-fold="mydrafts"]').open = true; }); await s.p.waitForSelector('[data-draftdel="dmine"]', { timeout: 15000 });
     let asked = 0; s.p.once('dialog', d => { asked++; d.accept(); });
     await s.p.evaluate(() => document.querySelector('[data-draftdel="dmine"]').click());
     assert.ok(await wait(() => !fs.existsSync(path.join(fx.dir, 'drafts/dmine.json')) || JSON.parse(fs.readFileSync(path.join(fx.dir, 'drafts/dmine.json'), 'utf8')).deleted), 'the draft leaves the records');

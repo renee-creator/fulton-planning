@@ -1,5 +1,7 @@
 'use strict';
-/* Video clips into draft observations. A clip the mailbox script finds is posted to /inbound/video with the key. While
+/* Video clips into observations. Since November 14, 2026 a read clip joins the observations, kept, with a cover and
+   no draft, and plays from TREE's own server. The notes below describe the path, which is otherwise as before.
+   Video clips into draft observations. A clip the mailbox script finds is posted to /inbound/video with the key. While
    the director's Video clips switch is off it waits. Turning the switch on fetches the clip from the mock Drive in
    pieces, uploads it to a fake Gemini Files API, waits for ACTIVE, asks generateContent, deletes the file and leaves
    the named educator a draft with the words as lines, [unclear] kept, What I wonder empty, the clip on it and stills as
@@ -61,7 +63,7 @@ async function setup(t, opt) {
   return { drive, gem, fx, read, inbound, dee, program };
 }
 
-test('a clip waits while the switch is off, is read when it turns on, and leaves the named educator a draft', async t => {
+test('a clip waits while the switch is off, is read when it turns on, and joins the named educator\'s observations, where it plays', async t => {
   const h = await setup(t); const clip = makeClip();
   const fileId = h.drive.addVideo('North Ann water.mp4', clip.bytes, 'video/mp4');
   // the key is checked, and a file that is not a video is refused for good
@@ -84,7 +86,7 @@ test('a clip waits while the switch is off, is read when it turns on, and leaves
   assert.strictEqual((await h.fx.as(h.dee, '/api/write', { op: 'set', kind: 'clips', id: 'vx', data: { id: 'vx' } })).status, 403);
 
   // the director turns Video clips on
-  assert.strictEqual((await h.program({ videoClipsOn: true })).status, 200);
+  assert.strictEqual((await h.program({ videoClipsOn: true, videoMinSeconds: 0 })).status, 200);
   const done = await until(() => { const d = h.read('clips/' + rec.id + '.json'); return d && d.status !== 'waiting' && d.status !== 'reading' && d; }, 60000);
   assert.ok(done, 'the clip was read'); assert.strictEqual(done.status, 'done', done.error || '');
   assert.strictEqual(done.educator, 'Ann');
@@ -93,29 +95,40 @@ test('a clip waits while the switch is off, is read when it turns on, and leaves
   assert.ok(h.gem.seen.polls >= 1, 'the file was polled'); assert.strictEqual(h.gem.seen.gens.length, 1); assert.strictEqual(h.gem.seen.gens[0].model, 'gemini-test-flash');
   assert.match(h.gem.seen.gens[0].prompt, /\[unclear\]/); assert.strictEqual(h.gem.seen.gens[0].meta, null, 'a short clip is not clipped');
   assert.deepStrictEqual(h.gem.seen.deletes, ['f1'], 'the upload is deleted from Gemini');
-  // the draft
-  const d = h.read('drafts/' + done.draftId + '.json'); assert.ok(d, 'the draft is in the records');
-  assert.strictEqual(d.by, 'Ann'); assert.strictEqual(d.form.by, 'Ann'); assert.strictEqual(d.form.classroom, 'North');
-  assert.strictEqual(d.form.wonder, '');
-  const lines = d.form.noticed.split('\n');
-  assert.deepStrictEqual(lines, ['A child pushes the long block under the water. "Look, it is [unclear] sinking." The educator says, "What do you notice?"', '', 'Another child holds a cup over the tub.'], 'a narration with the children\'s words');
-  assert.deepStrictEqual(d.form.clip.timeline.split('\n'), ['At 0:01 a child pushes the long block under the water.', 'At 0:01 a child says, "Look, it is [unclear] sinking"', 'At 0:02 the educator says, "What do you notice?"', 'At 0:02 another child holds a cup over the tub.'], 'the timed list stays with the clip');
-  assert.deepStrictEqual({ fileId: d.form.clip.fileId, name: d.form.clip.name, id: d.form.clip.id }, { fileId, name: 'North Ann water.mp4', id: rec.id });
-  assert.ok(!d.form.clip.error, 'no error on a read clip');
-  // the stills, frames from ffmpeg when it is here, else the Drive thumbnail
-  assert.ok(d.form.photo && d.form.photo.id, 'the draft has a photo');
-  const stills = [d.form.photo, ...(d.form.siblings || []).map(s => s.photo)];
-  if (clip.real && ffmpegBin()) { assert.strictEqual(stills.length, 2, 'two stills at the moments Gemini chose'); assert.ok(stills.every(p => /-clip-still-\d\.jpg$/.test(p.id) && p.w > 0), 'stills are kept as photos with their size'); assert.ok(!d.form.clip.note, 'no note when frames were taken'); }
-  else { assert.strictEqual(stills.length, 1); assert.match(d.form.clip.note || '', /Drive thumbnail/); }
-  assert.ok(h.drive.tree().some(p => /-clip-still-1\.jpg$/.test(p)), 'the still is kept in the TREE photos folder');
+  // the observation, kept, with no draft
+  assert.ok(!done.draftId, 'no draft is made'); const n = h.read('notices/' + done.noticeId + '.json'); assert.ok(n, 'the observation is in the records');
+  assert.strictEqual(n.by, 'Ann'); assert.strictEqual(n.classroom, 'North'); assert.strictEqual(n.wonder, '');
+  assert.deepStrictEqual(n.noticed.split('\n'), ['A child pushes the long block under the water. "Look, it is [unclear] sinking." The educator says, "What do you notice?"', '', 'Another child holds a cup over the tub.'], 'a narration with the children\'s words');
+  assert.deepStrictEqual(n.clip.timeline.split('\n'), ['At 0:01 a child pushes the long block under the water.', 'At 0:01 a child says, "Look, it is [unclear] sinking"', 'At 0:02 the educator says, "What do you notice?"', 'At 0:02 another child holds a cup over the tub.'], 'the timed list stays with the clip');
+  assert.deepStrictEqual({ fileId: n.clip.fileId, name: n.clip.name, id: n.clip.id }, { fileId, name: 'North Ann water.mp4', id: rec.id });
+  // one cover, a frame from the middle or the Drive thumbnail, kept with the clip and never as the observation's photo
+  assert.ok(!n.photo && !n.group, 'the cover is not the observation\'s photo'); assert.ok(n.clip.cover && /-clip-still-1\.jpg$/.test(n.clip.cover.id), 'the clip has its cover');
+  assert.ok(h.drive.tree().some(p => /-clip-still-1\.jpg$/.test(p)), 'the cover is kept in the TREE photos folder'); assert.ok(!h.drive.tree().some(p => /-clip-still-2\.jpg$/.test(p)), 'one cover only');
   assert.ok(!h.drive.tree().some(p => /\.bin$|clip-copy/.test(p)), 'no copy of the video is kept');
   assert.strictEqual(h.drive.node(fileId).bytes.length, clip.bytes.length, 'the clip stays in Drive as it was');
-  if (stills.length > 1) assert.strictEqual(d.form.group, 'v' + rec.id, 'the stills share one group');
+  // it plays from TREE's server with a key for that clip alone, whole and in ranges
+  const crypto = require('crypto'); const fk = (await h.fx.as(ann, '/api/file-key', {})).body.fileKey; const [e36, secret] = fk.split('.');
+  const mac = id => crypto.createHmac('sha256', Buffer.from(secret, 'utf8')).update(String(id), 'utf8').digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').slice(0, 32);
+  const playUrl = h.fx.api + '/clip/' + rec.id + '?t=' + encodeURIComponent(e36 + '.' + mac('clip-' + rec.id));
+  const whole = await fetch(playUrl); assert.strictEqual(whole.status, 200); assert.strictEqual(Buffer.compare(Buffer.from(await whole.arrayBuffer()), clip.bytes), 0, 'the same bytes as in Drive');
+  const part = await fetch(playUrl, { headers: { Range: 'bytes=10-19' } }); assert.strictEqual(part.status, 206); assert.strictEqual(part.headers.get('content-range'), `bytes 10-19/${clip.bytes.length}`); assert.strictEqual((await part.arrayBuffer()).byteLength, 10);
+  assert.strictEqual((await fetch(h.fx.api + '/clip/' + rec.id + '?t=' + encodeURIComponent(e36 + '.' + mac(rec.id)))).status, 403, 'a photo key does not open a clip');
+  // the staff room display takes it in turn, silent until the director turns sound on
+  await h.fx.as(h.dee, '/api/display', { action: 'new' }); const dkey = (await h.fx.as(h.dee, '/api/display', {})).body.key;
+  let feed = (await h.fx.as('', '/display/feed', { key: dkey })).body;
+  assert.strictEqual(feed.clips.length, 1); assert.strictEqual(feed.clips[0].sound, false); assert.match(feed.clips[0].noticed, /pushes the long block/); assert.ok(!feed.words.some(w => w.id === n.id), 'never as words alone');
+  assert.strictEqual((await fetch(h.fx.api + feed.clips[0].src, { method: 'HEAD' })).status, 200, 'the display\'s address plays');
+  await h.program({ videoDisplaySound: true }); feed = (await h.fx.as('', '/display/feed', { key: dkey })).body; assert.strictEqual(feed.clips[0].sound, true);
+  // a clip under the least length is left out before anything is sent to be read
+  await h.program({ videoMinSeconds: 10 }); const f2 = h.drive.addVideo('North Ann short.mp4', clip.bytes, 'video/mp4');
+  const r2 = await h.inbound({ fileId: f2, name: 'North Ann short.mp4', mimeType: 'video/mp4', size: clip.bytes.length, subject: 'North Ann', createdAt: new Date().toISOString() });
+  if (clip.real && ffmpegBin()) { const sh = await until(() => { const d = h.read('clips/' + r2.body.id + '.json'); return d && d.status === 'short' && d; }, 60000);
+    assert.ok(sh, 'left out as too short'); assert.ok(!sh.noticeId && !sh.draftId); assert.strictEqual(h.gem.seen.uploads.length, 1, 'nothing more was sent to Gemini'); }
 });
 
 test('a clip over three minutes is clipped to the first three minutes, and a failed reading still leaves a draft with the clip', async t => {
   const h = await setup(t, { failFor: 'South Bea fall' }); const clip = makeClip();
-  await h.program({ videoClipsOn: true });
+  await h.program({ videoClipsOn: true, videoMinSeconds: 0 });
   // a clip longer than three minutes, by the length the fake ffmpeg reports. ffmpeg is real, so the clip is two seconds and
   // the limit is tested on the reading's own helper instead
   const v = require('../video.js')({ store: { recs: { settings: new Map(), clips: new Map(), drafts: new Map() }, ready: true }, log: () => {}, drive: { on: () => false, ask: async () => ({}) }, keepOriginal: async () => {}, noteChange: () => {}, scheduleSave: () => {}, accountFor: () => null, readSubject: null, directors: () => [], photoSize: null });
@@ -134,32 +147,56 @@ test('a clip over three minutes is clipped to the first three minutes, and a fai
   assert.strictEqual(d.form.noticed, ''); assert.strictEqual(d.form.wonder, '');
   assert.match(d.form.clip.error, /could not be read/); assert.strictEqual(d.form.clip.fileId, fileId);
   assert.ok(d.form.photo && d.form.photo.id, 'stills still come, from the clip or the Drive thumbnail');
-  // a clip nobody can be told for waits with the director
+  // a clip nobody can be told for is kept under the director
   const fileId2 = h.drive.addVideo('IMG_0042.mp4', clip.bytes, 'video/mp4');
   const r2 = await h.inbound({ fileId: fileId2, name: 'IMG_0042.mp4', mimeType: 'video/mp4', size: clip.bytes.length, by: '', subject: '', createdAt: new Date().toISOString() });
   const rec2 = await until(() => { const d = h.read('clips/' + r2.body.id + '.json'); return d && d.status === 'done' && d; }, 60000);
-  assert.ok(rec2, 'read'); const d2 = h.read('drafts/' + rec2.draftId + '.json'); assert.strictEqual(d2.by, 'Dee'); assert.match(d2.form.clip.note, /could not tell which educator/);
+  assert.ok(rec2, 'read'); const n2 = h.read('notices/' + rec2.noticeId + '.json'); assert.strictEqual(n2.by, 'Dee'); assert.match(n2.clip.note, /could not tell which educator/);
 });
 
-test('without ffmpeg the still is the Drive thumbnail, and the draft says so', async t => {
+test('without ffmpeg the cover is the Drive thumbnail', async t => {
   const h = await setup(t, { env: { TREE_NO_FFMPEG: '1' } }); const clip = makeClip();
-  await h.program({ videoClipsOn: true });
+  await h.program({ videoClipsOn: true, videoMinSeconds: 0 });
   const fileId = h.drive.addVideo('West Ann blocks.mp4', clip.bytes, 'video/mp4');
   const r = await h.inbound({ fileId, name: 'West Ann blocks.mp4', mimeType: 'video/mp4', size: clip.bytes.length, createdAt: new Date().toISOString() });
   const rec = await until(() => { const d = h.read('clips/' + r.body.id + '.json'); return d && d.status === 'done' && d; }, 60000);
-  assert.ok(rec, 'read'); const d = h.read('drafts/' + rec.draftId + '.json');
-  assert.ok(d.form.photo && /-clip-still-1\.jpg$/.test(d.form.photo.id), 'one still, the thumbnail'); assert.ok(!d.form.siblings, 'no second still');
-  assert.match(d.form.clip.note, /Drive thumbnail, since ffmpeg is not installed/);
-  assert.strictEqual(d.form.classroom, 'West'); assert.strictEqual(d.by, 'Ann');
-  assert.strictEqual(Buffer.compare(h.drive.file('TREE photos/' + d.form.photo.id), THUMB), 0, 'the thumbnail bytes are kept as the photo');
+  assert.ok(rec, 'read'); const n = h.read('notices/' + rec.noticeId + '.json');
+  assert.ok(n.clip.cover && /-clip-still-1\.jpg$/.test(n.clip.cover.id), 'one cover, the thumbnail');
+  assert.strictEqual(n.classroom, 'West'); assert.strictEqual(n.by, 'Ann');
+  assert.strictEqual(Buffer.compare(h.drive.file('TREE photos/' + n.clip.cover.id), THUMB), 0, 'the thumbnail bytes are kept as the cover');
 });
 
-test('the page shows Watch the clip on the draft, the card and a Presenting agenda block, and the sheet plays from Drive', async t => {
+test('clip drafts that waited join the observations once, with a Kaymbu video credited to its class team', async t => {
+  const fileId = 'abcdefghij0123456789';
+  const more = put => {
+    put('settings/program.json', { id: 'program', videoClipsOn: true });
+    const clip = (id, x) => put(`clips/${id}.json`, Object.assign({ id, fileId, name: 'West Kaymbu video.mp4', mimeType: 'video/mp4', status: 'done', sent: 'kaymbu', at: Date.now(), draftId: 'dv' + id, seconds: 40 }, x));
+    const draft = (id, by, form) => put(`drafts/dv${id}.json`, { id: 'dv' + id, by, startedAt: Date.now(), updatedAt: Date.now(), queue: [], fromClip: id, form: Object.assign({ id: 'nq' + id, wonder: '', classroom: 'West', by, at: Date.now() - 30 * 864e5, week: '2026-10-12', projectId: '', threadId: '' }, form) });
+    clip('va1'); draft('va1', 'Dee', { noticed: 'At 0:00 a child pours water.\nAt 0:04 a child says, "A mixer!"', children: ['max'], kaymbu: { v: 3, key: 'kv1' }, photo: { id: 'aaaaaaaaaaaa-clip-still-1.jpg' }, siblings: [{ id: 's1', photo: { id: 'bbbbbbbbbbbb-clip-still-2.jpg', w: 4, h: 3 } }, { id: 's2', photo: { id: 'cccccccccccc-clip-still-3.jpg' } }], clip: { id: 'va1', fileId, name: 'West Kaymbu video.mp4', note: 'Kaymbu does not say which educator took this clip, so it waits with the director. Choose the educator in Kept by.' } });
+    clip('va2', { seconds: 4 }); draft('va2', 'Ann', { noticed: 'At 0:01 a child runs.', clip: { id: 'va2', fileId, name: 'x.mp4' } });
+    clip('va3', { status: 'failed' }); draft('va3', 'Ann', { noticed: '', clip: { id: 'va3', fileId, name: 'y.mp4', error: 'The clip could not be read, so this draft is empty.' } });
+    clip('va4'); draft('va4', 'Ann', { noticed: 'Ann wrote this herself.', wonder: 'Why the mixer?', clip: { id: 'va4', fileId, name: 'z.mp4' } });
+  };
+  const fx = await start({ more, env: { KAYMBU_INBOX_KEY: KEY } }); t.after(() => fx.stop());
+  const read = p => { const f = path.join(fx.dir, p); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : null; };
+  const n1 = await until(() => read('notices/nqva1.json'), 60000); assert.ok(n1, 'the draft joined the observations');
+  assert.strictEqual(n1.noticed, 'A child pours water. "A mixer!"'); assert.strictEqual(n1.clip.timeline, 'At 0:00 a child pours water.\nAt 0:04 a child says, "A mixer!"');
+  assert.deepStrictEqual([n1.by, n1.creditWas, n1.classroom, n1.children, n1.kaymbu.key, n1.week], ['West class team', 'Dee', 'West', ['max'], 'kv1', '2026-10-12']);
+  assert.deepStrictEqual(n1.clip.cover, { id: 'bbbbbbbbbbbb-clip-still-2.jpg', w: 4, h: 3 }, 'the middle still is the cover'); assert.ok(!n1.photo && !n1.clip.note);
+  assert.ok(await until(() => !read('drafts/dvva1.json'), 30000), 'the draft is gone'); assert.ok(await until(() => (read('clips/va1.json') || {}).noticeId === 'nqva1', 30000), 'the clip record points at its observation');
+  // one under ten seconds is left out, one that could not be read stays a draft, and one an educator rewrote keeps her words
+  assert.ok(await until(() => !read('drafts/dvva2.json'), 30000)); assert.strictEqual(read('notices/nqva2.json'), null); assert.ok(await until(() => (read('clips/va2.json') || {}).status === 'short', 30000));
+  assert.ok(read('drafts/dvva3.json'), 'a failed one stays a draft');
+  const n4 = await until(() => read('notices/nqva4.json'), 30000); assert.deepStrictEqual([n4.noticed, n4.wonder, n4.by], ['Ann wrote this herself.', 'Why the mixer?', 'Ann']);
+});
+
+test('the page plays a clip on its card and from Watch the clip, and a Presenting agenda block plays from Drive', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const fileId = 'abcdefghij0123456789';
   const more = put => {
-    put('drafts/dv1.json', { id: 'dv1', by: 'Ann', startedAt: Date.now(), updatedAt: Date.now(), queue: [], fromClip: 'v1', form: { id: 'nv1', noticed: 'At 0:01 a child says, "Look, it is [unclear] sinking"', wonder: '', classroom: 'North', by: 'Ann', at: Date.now(), week: '2026-11-02', projectId: '', threadId: '', clip: { id: 'v1', fileId, name: 'North Ann water.mp4', at: Date.now() } } });
-    put('notices/nk1.json', { id: 'nk1', noticed: 'At 0:02 the educator says, "What do you notice?"', wonder: '', classroom: 'West', by: 'Ann', at: Date.now() - 36e5, week: '2026-11-02', clip: { id: 'v0', fileId, name: 'North Ann sand.mp4', at: Date.now() - 36e5 } });
+    put('drafts/dv1.json', { id: 'dv1', by: 'Ann', startedAt: Date.now(), updatedAt: Date.now(), queue: [], fromClip: 'v1abcde', form: { id: 'nv1', noticed: '', wonder: '', classroom: 'North', by: 'Ann', at: Date.now(), week: '2026-11-02', projectId: '', threadId: '', clip: { id: 'v1abcde', fileId, name: 'North Ann water.mp4', at: Date.now(), error: 'The clip could not be read, so this draft is empty.' } } });
+    put('clips/v0abcde.json', { id: 'v0abcde', fileId, name: 'North Ann sand.mp4', mimeType: 'video/mp4', status: 'done', at: Date.now() });
+    put('notices/nk1.json', { id: 'nk1', noticed: 'At 0:02 the educator says, "What do you notice?"', wonder: '', classroom: 'West', by: 'Ann', at: Date.now() - 36e5, week: '2026-11-02', clip: { id: 'v0abcde', fileId, name: 'North Ann sand.mp4', at: Date.now() - 36e5 } });
   };
   const fx = await start({ more, env: { KAYMBU_INBOX_KEY: KEY } }); t.after(() => fx.stop());
   const dee = (await fx.login('Dee', 'director-pass-1')).token;
@@ -170,19 +207,21 @@ test('the page shows Watch the clip on the draft, the card and a Presenting agen
   // the director turns it on
   assert.strictEqual((await fx.as(dee, '/api/write', { op: 'update', kind: 'settings', id: 'program', patch: { videoClipsOn: true } })).status, 200);
   await s.p.waitForFunction(() => clipsOn(), null, { timeout: 20000 }); await s.p.evaluate(() => renderMain());
-  await s.p.waitForFunction(() => document.querySelectorAll('[data-clipwatch]').length >= 2, null, { timeout: 15000 });
+  await s.p.waitForFunction(() => document.querySelectorAll('[data-clipwatch]').length >= 1, null, { timeout: 15000 });
   const n = await s.p.$$eval('[data-clipwatch]', xs => xs.map(x => x.textContent.trim()));
-  assert.ok(n.length >= 2 && n.every(x => x === 'Watch the clip'), 'the draft card and the kept observation card show Watch the clip, ' + JSON.stringify(n));
+  assert.ok(n.length >= 1 && n.every(x => x === 'Watch the clip'), 'the draft card shows Watch the clip, ' + JSON.stringify(n));
   // the draft opens with the button and the line about the clip, and the kept notice card has it too
-  await s.p.click('[data-draftopen="dv1"]'); await s.p.waitForSelector('#nf-card', { timeout: 15000 });
+  await s.p.waitForSelector('[data-fold="mydrafts"]', { state: 'attached', timeout: 15000 }); await s.p.evaluate(() => { document.querySelector('[data-fold="mydrafts"]').open = true; }); await s.p.click('[data-draftopen="dv1"]'); await s.p.waitForSelector('#nf-card', { timeout: 15000 });
   assert.match(await s.p.$eval('#nf-card', el => el.innerText), /From the clip North Ann water\.mp4/);
   assert.strictEqual(await s.p.inputValue('#nf-wonder'), '');
-  await s.p.click('#nf-card [data-clipwatch]'); await s.p.waitForSelector('#clipsheet iframe', { timeout: 10000 });
-  assert.strictEqual(await s.p.$eval('#clipsheet iframe', f => f.getAttribute('src')), 'https://drive.google.com/file/d/' + fileId + '/preview');
-  assert.match(await s.p.$eval('#clipsheet', el => el.innerText), /Plays from the school's Drive for signed-in school accounts/);
+  await s.p.click('#nf-card [data-clipwatch]'); await s.p.waitForSelector('#clipsheet video', { timeout: 10000 });
+  assert.match(await s.p.$eval('#clipsheet video', f => f.getAttribute('src')), /\/clip\/v1abcde\?t=/, 'the sheet plays from TREE, with no Google sign-in');
   await s.p.click('#clipclose'); assert.ok(!(await s.p.$('#clipsheet')), 'the sheet closes');
+  // the kept observation plays on its own card, with no second button beside it
+  await s.p.evaluate(() => { noticeForm = null; mRange = 'all'; goView('moments'); }); await s.p.waitForSelector('#nw-nk1 video.clipplay', { timeout: 15000 });
+  assert.match(await s.p.$eval('#nw-nk1 video.clipplay', f => f.getAttribute('src')), /\/clip\/v0abcde\?t=/); assert.strictEqual(await s.p.$('#nw-nk1 [data-clipwatch]'), null);
   // Today carries it on the kept observation
-  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('.todayobs [data-clipwatch]', { timeout: 15000 });
+  await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('.todayobs [data-clipwatch][data-clipplay="v0abcde"]', { timeout: 15000 });
   // an agenda block, here the class team meeting's, with a Drive link that is kept as the file id, shown with Watch. The prints build their text from each block's title and words, so the clip never reaches them
   const list = (await fx.as(dee, '/api/staff/g/pd/list')).body; const tm = (list.team || []).filter(x => x.room === 'West').sort((x, y) => x.date.localeCompare(y.date))[0];
   assert.ok(tm, 'a West team meeting is listed');
@@ -196,13 +235,13 @@ test('the page shows Watch the clip on the draft, the card and a Presenting agen
   assert.deepStrictEqual(s.errors, []);
 });
 
-test('Send a clip from inside TREE comes in pieces, is kept in Drive as a smaller copy and leaves the educator a draft', async t => {
+test('Send a clip from inside TREE comes in pieces, is kept in Drive as a smaller copy and joins the educator\'s observations', async t => {
   const h = await setup(t); const clip = makeClip();
   const ann = (await h.fx.login('Ann', '1357')).token;
   const send = b => h.fx.as(ann, '/api/clip-send', b);
   // while the switch is off nothing is taken
   assert.strictEqual((await send({ step: 'start', name: 'IMG_1.MOV', type: 'video/quicktime', size: clip.bytes.length })).status, 400);
-  await h.program({ videoClipsOn: true });
+  await h.program({ videoClipsOn: true, videoMinSeconds: 0 });
   assert.strictEqual((await send({ step: 'start', name: 'notes.pdf', type: 'application/pdf', size: 10 })).status, 400, 'only a video is taken');
   const st = (await send({ step: 'start', name: 'IMG_1.MOV', type: 'video/quicktime', size: clip.bytes.length })).body;
   assert.ok(st.id && st.piece > 0);
@@ -219,8 +258,8 @@ test('Send a clip from inside TREE comes in pieces, is kept in Drive as a smalle
   assert.ok(rec, 'the clip was read');
   assert.ok(rec.fileId, 'the copy is kept in Drive');
   assert.match(rec.name, /Ann clip/);
-  const d = h.read('drafts/' + rec.draftId + '.json'); assert.ok(d, 'a draft is left');
-  assert.strictEqual(d.by, 'Ann');
+  const n = h.read('notices/' + rec.noticeId + '.json'); assert.ok(n, 'an observation is kept');
+  assert.strictEqual(n.by, 'Ann');
 });
 
 test('What I noticed reads as a narration with the children\'s words, and the timed list stays with the clip', () => {

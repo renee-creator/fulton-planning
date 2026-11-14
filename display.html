@@ -239,6 +239,12 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
       ${meals.length?`<div class="meals">${meals.map(([k,v])=>`<div class="meal"><h2>${esc(k)}</h2><p>${esc(v)}</p></div>`).join("")}</div>`:""}
       ${b&&b.items.length?`<div class="bin"><h2>${meals.length?"In this week's FEED bin":esc(b.label||"FEED bin")}</h2><ul>${b.items.map(i=>`<li>${esc(i.name)}${i.farm?`<span>${esc(i.farm)}</span>`:""}</li>`).join("")}</ul></div>`:""}</div>`}
 
+  // a clip plays through once, silent unless the director turned sound on, with what was noticed beneath
+  function clipHtml(c){return `<div class="ph" style="width:64%;background:#000"><video ${c.sound?"":"muted"} playsinline preload="auto" ${c.cover?`poster="${esc(big(c.cover))}"`:""} src="${esc(SERVER+c.src)}" style="width:100%;height:100%;object-fit:contain"></video></div>
+    <div class="tx"><div class="where">${esc(roomsText(c.rooms))}</div><div class="when">${esc(whenOf(c.at))}</div>
+      ${c.noticed?`<div class="noticed" style="white-space:pre-line">${esc(c.noticed)}</div>`:""}
+      ${c.children&&c.children.length?`<div class="kids">With ${esc(names(c.children))}</div>`:""}</div>`}
+
   /* the order. Moments carry the screen, and every third one the program's thinking takes a turn. */
   function build(){
     const M=(feed.moments||[]).map(m=>({k:"moment",cls:"m",id:"m"+m.id,html:()=>momentHtml(m),src:m.photo&&m.photo.src}));
@@ -267,10 +273,12 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     if(feed.foodMoment)O.push({k:"food",id:"fm"+feed.foodMoment.id,cls:"m",html:()=>momentHtml(feed.foodMoment).replace('<div class="where">','<div class="where">Food education, '),src:feed.foodMoment.photo&&feed.foodMoment.photo.src});
     // observations in words alone, one after every third photo at most, so the photos keep carrying the screen
     const W=(feed.words||[]).map(m=>({k:"words",cls:"t",id:"w"+m.id,html:()=>wordsHtml(m)}));
-    if(!M.length)return W.concat(O);
-    const out=[];let o=0,w=0;M.forEach((m,i)=>{out.push(m);if(i%3===0&&i>0&&w<W.length)out.push(W[w++]);if(i%3===2&&O.length)out.push(O[o++%O.length])});
+    const C=(feed.clips||[]).map(c=>({k:"clip",cls:"m",id:"c"+c.id,html:()=>clipHtml(c),secs:c.seconds||0}));
+    if(!M.length)return C.concat(W,O);
+    const out=[];let o=0,w=0,cn=0;M.forEach((m,i)=>{out.push(m);if(i%4===1&&cn<C.length)out.push(C[cn++]);if(i%3===0&&i>0&&w<W.length)out.push(W[w++]);if(i%3===2&&O.length)out.push(O[o++%O.length])});
     // anything not reached in one turn through the moments still comes round
     while(O.length&&o<O.length){out.splice(Math.min(out.length,(o+1)*4),0,O[o]);o++}
+    while(cn<C.length)out.push(C[cn++]);
     return out}
 
   /* fit, so a long reading shrinks rather than runs off the screen */
@@ -284,7 +292,12 @@ ul.qs li::before{content:"";position:absolute;left:0;top:.62em;width:calc(var(--
     el.innerHTML=item.html();stage.appendChild(el);bar.style.background=ACC[item.k]||"var(--moss)";
     const go=()=>{fit(el);requestAnimationFrame(()=>{el.classList.add("on");const old=[...stage.children].filter(c=>c!==el);old.forEach(c=>c.classList.remove("on"));setTimeout(()=>old.forEach(c=>c.remove()),1600)})};
     const im=el.querySelector("img");if(im&&!im.complete){let done=false;const once=()=>{if(!done){done=true;go()}};im.onload=once;im.onerror=()=>{if(fall(im))return;const ph=el.querySelector(".ph,.side");if(ph)ph.innerHTML="";once()};setTimeout(once,4000)}else go();
-    const ms=item.k==="moment"||item.k==="words"?MOMENT_MS:CARD_MS;
+    // a clip holds the screen until it ends, and a clip that will not play gives way after a short wait
+    const vid=item.k==="clip"?el.querySelector("video"):null;
+    if(vid){const here=()=>list[pos]===item&&el.isConnected;let moved=false;const on=()=>{if(!moved&&here()){moved=true;next()}};
+      vid.addEventListener("ended",on);vid.addEventListener("error",()=>setTimeout(on,3000));
+      const p=vid.play();if(p&&p.catch)p.catch(()=>{vid.muted=true;const q=vid.play();if(q&&q.catch)q.catch(()=>setTimeout(on,6000))})}
+    const ms=vid?Math.min(200,(item.secs||60)+20)*1000:item.k==="moment"||item.k==="words"?MOMENT_MS:CARD_MS;
     bar.style.transition="none";bar.style.width="0";requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition=`width ${ms}ms linear`;bar.style.width="100%"}));
     // the next picture is fetched now, so it arrives already loaded
     const nx=list[(pos+1)%list.length];if(nx&&nx.src){const p=new Image();p.src=big(nx.src)}

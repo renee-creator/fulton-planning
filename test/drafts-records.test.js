@@ -59,7 +59,7 @@ test('Observations kept as drafts in the records', async t => {
     await s.close();
     // another phone, the same educator
     const s2 = await signedIn(fx, b, 'Ann', '1357', 390);
-    await s2.p.evaluate(() => goView('moments')); await s2.p.waitForSelector('[data-draftopen]');
+    await s2.p.evaluate(() => goView('moments')); await s2.p.waitForSelector('[data-fold="mydrafts"]', { state: 'attached', timeout: 15000 }); await s2.p.evaluate(() => { document.querySelector('[data-fold="mydrafts"]').open = true; }); await s2.p.waitForSelector('[data-draftopen]');
     const text = await s2.p.evaluate(() => document.querySelector('#main').innerText);
     assert.match(text, /Your drafts/); assert.match(text, /twelve acorns/);
     await s2.p.click('[data-draftopen]'); await s2.p.waitForSelector('#nf-noticed');

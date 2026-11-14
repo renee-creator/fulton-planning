@@ -39,6 +39,8 @@ module.exports = function video({ store, log, drive, keepOriginal, noteChange, s
   // the director's switch in Settings, Video clips. Off until she turns it on.
   const on = () => { const r = store.recs.settings.get('program'); const d = r && !r.deleted && r.doc; return !!(d && d.videoClipsOn); };
   const ready = () => !!(KEY() && drive.on());
+  // a clip shorter than this many seconds is left out. The director sets it in Settings, Video clips. Ten until she does.
+  const minSeconds = () => { const r = store.recs.settings.get('program'); const d = r && !r.deleted && r.doc; const v = d && d.videoMinSeconds; return v === 0 || v === '0' ? 0 : Math.max(0, Math.min(180, Number(v) || 10)); };
 
   // ffmpeg, from the ffmpeg-static package when npm installed it, or on the path, or nowhere
   let ffmpegBin = null;
@@ -66,9 +68,9 @@ module.exports = function video({ store, log, drive, keepOriginal, noteChange, s
   }
 
   /* ---------- the clip's bytes, from the mailbox script in pieces of 4 MB, to a file on disk ---------- */
-  async function fetchClip(rec) {
+  async function fetchClip(rec, dest) {
     fs.mkdirSync(TMP, { recursive: true });
-    const file = path.join(TMP, rec.id + '.bin');
+    const file = dest || path.join(TMP, rec.id + '.bin');
     const info = await drive.ask({ op: 'video-info', id: rec.fileId }, 60000);
     const size = Number(info.size) || 0; if (!size) throw new Error('Drive says the clip is empty');
     if (size > MAX_BYTES) throw new Error('The clip is ' + Math.round(size / 1048576) + ' MB, more than TREE reads');
@@ -234,6 +236,50 @@ Rules
     if (!out.length) note = 'No still frames could be taken from this clip, so the draft has no photos. Add one if you have it.';
     return { stills: out, note };
   }
+  /* A clip joins the observations as a clip (November 14, 2026). It arrives kept, the way a Kaymbu photo does, with the
+     children Kaymbu tagged, its narration as What I noticed, and one frame from its middle as the cover the player
+     shows before it plays. The cover is kept with the clip and is never the observation's photo, so prints, slides,
+     newsletters and the family page still build from words and photos alone. A Kaymbu video with no educator named
+     is credited to its class team. */
+  const teamOf = (who, rec) => who.fallback && rec && rec.sent === 'kaymbu' && who.room ? who.room + ' class team' : '';
+  function makeObs(rec, who, noticed, cover, clipNote, use) {
+    use = use || {};
+    const at = use.at || Date.parse(rec.createdAt) || rec.at || Date.now(); const day = laDay(at);
+    const id = use.id || ('n' + at.toString(36) + crypto.randomBytes(3).toString('hex'));
+    const team = use.team != null ? use.team : teamOf(who, rec); const by = team || who.by;
+    const kids = Array.isArray(use.children) ? use.children.filter(Boolean) : Array.isArray(rec.children) ? rec.children.filter(Boolean) : [];
+    const clip = { id: rec.id, fileId: rec.fileId, name: String(rec.name || ''), at, ...(rec.seconds ? { seconds: Math.round(rec.seconds) } : {}), ...(rec.timeline ? { timeline: rec.timeline } : {}), ...(cover ? { cover } : {}), ...(clipNote ? { note: clipNote } : {}) };
+    const doc = { id, noticed: String(noticed || ''), wonder: String(use.wonder || ''), classroom: who.room, ...(who.rooms && who.rooms.length > 1 ? { classrooms: who.rooms } : {}), ...(who.smallGroup ? { smallGroup: who.smallGroup } : {}), by, at, week: mondayOf(day), projectId: who.projectId || '', threadId: who.threadId || '', children: kids, ...(use.kaymbu || rec.kaymbu ? { kaymbu: use.kaymbu || rec.kaymbu } : {}), clip, ...(team && who.by ? { creditWas: who.by } : {}), updatedByName: by };
+    store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true }); noteChange('notices', id); scheduleSave('notices', id);
+    return id;
+  }
+  // one frame from the middle of the clip, else the Drive thumbnail, else none
+  async function coverFor(rec, clip, secs) {
+    const span = secs ? Math.min(secs, LIMIT_S) : 0;
+    if (clip && ffmpegBin) { try { return await keepStill(rec, await frameAt(clip.file, span ? span / 2 : 0), 0); } catch (e) { log('A cover could not be taken from the clip', rec.id, e.message); } }
+    try { const j = await drive.ask({ op: 'video-thumb', id: rec.fileId }, 60000); if (j.data) return await keepStill(rec, Buffer.from(j.data, 'base64'), 0); } catch (e) { log('The Drive thumbnail could not be fetched for the clip', rec.id, e.message); }
+    return null;
+  }
+  /* Clip drafts that waited join the observations once, each under its own date. A draft's timed list becomes the
+     narration, the middle one of its stills becomes the cover, and the draft leaves the drafts list. A clip shorter
+     than the director's least length is left out, and a draft from a clip that could not be read stays a draft. */
+  function joinDrafts() {
+    let n = 0, short = 0; const min = minSeconds();
+    for (const [id, r] of store.recs.drafts) { const d = r && !r.deleted && r.doc; const f = d && d.form; if (!f || !d.fromClip || !f.clip || f.clip.error) continue;
+      const cr = store.recs.clips.get(d.fromClip); const rec = cr && !cr.deleted && cr.doc; if (!rec) continue;
+      const drop = () => { r.deleted = true; r.local = true; noteChange('drafts', id); scheduleSave('drafts', id); };
+      if (rec.seconds != null && rec.seconds < min) { drop(); Object.assign(rec, { status: 'short' }); delete rec.draftId; saveRec(rec); short++; continue; }
+      const read = f.clip.timeline ? null : readLines(f.noticed);
+      const noticed = read ? narrate(read, /first three minutes/.test(f.noticed)) : String(f.noticed || '');
+      if (read) rec.timeline = f.noticed; else if (f.clip.timeline) rec.timeline = f.clip.timeline;
+      const stills = [f.photo, ...(Array.isArray(f.siblings) ? f.siblings.map(x => x && x.photo) : [])].filter(p => p && p.id);
+      const cover = stills.length ? stills[Math.floor(stills.length / 2)] : null;
+      const waits = /which educator/.test(String(f.clip.note || ''));
+      const who = { by: f.by || d.by || '', room: f.classroom || '', rooms: Array.isArray(f.classrooms) ? f.classrooms : [], smallGroup: f.smallGroup || '', projectId: f.projectId || '', threadId: f.threadId || '', fallback: waits };
+      const nid = makeObs(rec, who, noticed, cover ? { id: cover.id, ...(cover.w ? { w: cover.w, h: cover.h } : {}) } : null, '', { id: f.id, at: f.at, children: f.children, wonder: f.wonder, kaymbu: f.kaymbu, team: waits && rec.sent === 'kaymbu' && who.room ? who.room + ' class team' : '' });
+      drop(); delete rec.draftId; rec.noticeId = nid; saveRec(rec); n++; }
+    if (n || short) log(`${n} clip drafts joined the observations${short ? `, ${short} under ${min} seconds left out` : ''}`);
+  }
   function makeDraft(rec, who, noticed, stills, clipNote, read, error) {
     const at = Date.parse(rec.createdAt) || rec.at || Date.now(); const day = laDay(at);
     const nid = 'n' + at.toString(36) + crypto.randomBytes(3).toString('hex');
@@ -259,13 +305,17 @@ Rules
       clip = await fetchClip(rec);
       secs = await duration(clip.file);
       const over = secs > LIMIT_S + 1;
+      // a clip shorter than the least length is left out before anything is sent to be read
+      if (secs && secs < minSeconds()) { Object.assign(rec, { status: 'short', seconds: Math.round(secs), doneAt: Date.now() }); delete rec.error; saveRec(rec); log(`Clip ${rec.name || rec.id} left out, ${Math.round(secs)} seconds is under ${minSeconds()}`); return; }
       up = await uploadToGemini(clip.file, clip.size, clip.type, clip.name);
       read = await readWithGemini(up, over, secs);
-      const st = await stillsFor(rec, clip, read, secs);
+      const cover = await coverFor(rec, clip, secs);
       const noticed = narrate(read, over);
-      rec.timeline = noticedLines(read, over);
-      draftId = makeDraft(rec, who, noticed, st.stills, [st.note, who.fallback ? (rec.sent === 'kaymbu' ? 'Kaymbu does not say which educator took this clip, so it waits with the director. Choose the educator in Kept by.' : 'TREE could not tell which educator this clip is for, so it waits with the director. Name the class and the educator in the file name or the email subject next time, such as North Ann.') : ''].filter(Boolean).join(' '), read, '');
-      Object.assign(rec, { status: 'done', draftId, doneAt: Date.now(), seconds: Math.round(secs), over, counts: { words: read.transcript.length, actions: read.actions.length, stills: st.stills.length }, tokens: read.tokens }); delete rec.error; saveRec(rec);
+      rec.timeline = noticedLines(read, over); rec.seconds = Math.round(secs);
+      const team = teamOf(who, rec);
+      const noticeId = makeObs(rec, who, noticed, cover, !team && who.fallback ? 'TREE could not tell which educator this clip is for, so it is kept under the director. Name the class and the educator in the file name or the email subject next time, such as North Ann.' : '');
+      const st = { stills: cover ? [cover] : [] };
+      Object.assign(rec, { status: 'done', noticeId, doneAt: Date.now(), seconds: Math.round(secs), over, counts: { words: read.transcript.length, actions: read.actions.length, stills: st.stills.length }, tokens: read.tokens }); delete rec.error; delete rec.draftId; saveRec(rec);
       log(`Clip ${rec.name || rec.id} read for ${who.by}: ${read.transcript.length} things said, ${read.actions.length} actions, ${st.stills.length} stills, ${Math.round(secs)} seconds${over ? ', first three minutes only' : ''}, ${read.tokens.in} tokens in and ${read.tokens.out} out, ${Math.round((Date.now() - t0) / 1000)} s`);
     } catch (e) {
       const why = String(e && e.message || e).slice(0, 300);
@@ -285,7 +335,7 @@ Rules
   let busy = false, timer = null;
   const waiting = () => [...store.recs.clips.values()].filter(r => !r.deleted && r.doc && (r.doc.status === 'waiting' || (r.doc.status === 'reading' && Date.now() - (r.doc.readAt || 0) > 30 * 60e3))).map(r => r.doc).sort((a, b) => (a.at || 0) - (b.at || 0));
   async function run() {
-    if (store.ready && !renarrated) { renarrated = true; try { renarrateDrafts(); } catch (e) { log('Video drafts could not be read as a narration', e.message); } }
+    if (store.ready && !renarrated) { renarrated = true; try { joinDrafts(); } catch (e) { log('Clip drafts could not join the observations', e.message); } }
     if (busy || !store.ready || !on()) return;
     if (!ready()) { if (waiting().length) log('Clips wait,', !KEY() ? 'GEMINI_API_KEY is not set on Render' : 'DRIVE_PHOTOS_URL is not set on Render'); return; }
     busy = true;
@@ -295,6 +345,26 @@ Rules
   let renarrated = false;
   function kick() { clearTimeout(timer); timer = setTimeout(() => run().catch(e => log('The clip reading stopped', e.message)), 800); timer.unref(); }
   setInterval(() => { if (waiting().length) kick(); }, 10 * 60e3).unref();
+  // once the records are read, drafts that waited join the observations, whether or not a new clip ever arrives
+  { const boot = setInterval(() => { if (store.ready) { clearInterval(boot); kick(); } }, 15000); boot.unref(); }
+
+  /* ---------- playing a clip inside TREE ----------
+     The video stays in the TREE Drive. When a page asks to play one, the server fetches it once through the mailbox
+     script, keeps it on its own disk for a while, and sends it from there, so a clip plays in TREE and on the staff
+     room display with no Google sign-in. The newest forty stay on disk. */
+  const PLAY_DIR = path.join(TMP, 'play'); const fetching = new Map();
+  async function fileFor(id) {
+    const cr = store.recs.clips.get(id); const rec = cr && !cr.deleted && cr.doc; if (!rec || !rec.fileId) return null;
+    const file = path.join(PLAY_DIR, id + '.mp4');
+    if (fs.existsSync(file)) { try { const now = new Date(); fs.utimesSync(file, now, now); } catch (e) {} return { file, type: /quicktime/.test(rec.mimeType || '') ? 'video/quicktime' : /webm/.test(rec.mimeType || '') ? 'video/webm' : 'video/mp4' }; }
+    if (!fetching.has(id)) fetching.set(id, (async () => {
+      fs.mkdirSync(PLAY_DIR, { recursive: true }); const part = file + '.part';
+      try { await fetchClip(rec, part); fs.renameSync(part, file); } catch (e) { try { fs.unlinkSync(part); } catch (x) {} throw e; }
+      try { const all = fs.readdirSync(PLAY_DIR).filter(x => /\.mp4$/.test(x)).map(x => ({ x, t: fs.statSync(path.join(PLAY_DIR, x)).mtimeMs })).sort((a, b) => b.t - a.t); for (const o of all.slice(40)) fs.unlinkSync(path.join(PLAY_DIR, o.x)); } catch (e) {}
+    })().finally(() => fetching.delete(id)));
+    await fetching.get(id);
+    return { file, type: /quicktime/.test(rec.mimeType || '') ? 'video/quicktime' : /webm/.test(rec.mimeType || '') ? 'video/webm' : 'video/mp4' };
+  }
 
   /* ---------- the inbox, called by the mailbox script with the key ---------- */
   function handle(body, reply) {
@@ -443,5 +513,5 @@ Rules
   }
   const statusLine = () => { const s = status(); return [s.on && s.key, !s.on ? 'Video clips are off. The director turns them on in Settings.' : !s.key ? 'Video clips are on, but GEMINI_API_KEY is not set on Render, so clips wait.' : `Video clips are on, read with ${s.model}${s.ffmpeg ? '' : ', without ffmpeg for stills'}.`]; };
 
-  return { handle, upload, fromKaymbu, run, kick, on, status, statusLine, parseAnswer, noticedLines, narrate, readLines, LIMIT_S };
+  return { handle, upload, fromKaymbu, run, kick, on, status, statusLine, parseAnswer, noticedLines, narrate, readLines, joinDrafts, fileFor, minSeconds, LIMIT_S };
 };

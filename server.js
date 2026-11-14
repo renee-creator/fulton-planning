@@ -2469,7 +2469,7 @@ function cycleHealth() {
     if (!has) noPlan.push({ id: tid, name: String(t.name || '').slice(0, 80), room: t.classroom || '' }); }
   const label = p => `${p.classroom ? p.classroom + ' ' : ''}${p.type === 'classroom' ? 'Classroom plan' : p.type === 'smallgroup' ? 'Small Group plan' : 'Individual plan'}, week of ${p.weekOf}`;
   const hasWords = p => Object.values(p.fields || {}).some(v => String(v || '').trim());
-  const remarks = plans.filter(p => AFTER_KEY[p.type] && p.weekOf < mon && p.weekOf >= since && hasWords(p) && !String((p.fields || {})[AFTER_KEY[p.type][0]] || '').trim()).map(p => ({ id: p.id, label: label(p), by: p.educator || '', week: p.weekOf }));
+  const remarks = plans.filter(p => AFTER_KEY[p.type] && p.weekOf < mon && p.weekOf >= addDay(mon, -21) && hasWords(p) && !String((p.fields || {})[AFTER_KEY[p.type][0]] || '').trim()).map(p => ({ id: p.id, label: label(p), by: p.educator || '', week: p.weekOf }));
   const drafts = plans.filter(p => (p.status || 'draft') === 'draft' && !p.byDirector && p.weekOf <= mon && p.weekOf >= since && hasWords(p)).map(p => ({ id: p.id, label: label(p), by: p.educator || '', week: p.weekOf }));
   return { week: mon, noWonder: { count: noWonder.length, names: noWonder }, threadsNoPlan: { count: noPlan.length, threads: noPlan }, remarksDue: { count: remarks.length, plans: remarks }, draftsNotSent: { count: drafts.length, plans: drafts } };
 }
@@ -2742,7 +2742,15 @@ async function displayFeed() {
   const latestPhoto = test => { const n = shown.find(test); return n ? photoOf(n) : null; };
   const firstName = s => String(s || '').trim().split(/\s+/)[0] || '';
   // observations kept in words alone, over the same recent stretch as the photos. One still waiting for its photo stays off.
-  const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && !(n.kaymbu && n.kaymbu.internal) && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
+  // clips take turns with the photos, the last four weeks or else the newest six, each playing through once
+  const clipOk = n => n.clip && n.clip.id && /^[a-z0-9]{6,40}$/i.test(String(n.clip.id)) && store.recs.clips.has(n.clip.id) && !held.has(n.id) && !(n.kaymbu && n.kaymbu.internal);
+  const vprog = settingDoc('program');
+  const clipsAll = vprog.videoClipsOn ? notices.filter(clipOk).sort((a, b) => (b.at || 0) - (a.at || 0)) : [];
+  let clipsRecent = clipsAll.filter(n => now - (n.at || 0) < 28 * 864e5); if (clipsRecent.length < 6) clipsRecent = clipsAll.slice(0, 6);
+  const clipList = byRoom(clipsRecent.slice(0, 8)).map(n => ({ id: n.id, at: n.at || 0, src: '/clip/' + encodeURIComponent(n.clip.id) + '?t=' + encodeURIComponent(photoKey('clip-' + n.clip.id)),
+    cover: n.clip.cover && typeof n.clip.cover.id === 'string' && ID_RE.test(n.clip.cover.id) ? photoSrc(n.clip.cover.id) : '', seconds: Number(n.clip.seconds) || 0, noticed: trim(n.noticed, 300), rooms: roomsOf(n), sound: !!vprog.videoDisplaySound,
+    children: (n.children || []).map(id => kids.get(id)).filter(Boolean).map(c => String(c.first || '').trim()).filter(Boolean).slice(0, 6) }));
+  const wordsAll = notices.filter(n => !held.has(n.id) && !n.photo && !n.clip && !(n.kaymbu && n.kaymbu.internal) && String(n.noticed || '').trim()).sort((a, b) => (b.at || 0) - (a.at || 0));
   let wordsRecent = wordsAll.filter(n => now - (n.at || 0) < 28 * 864e5);
   if (wordsRecent.length < 4) wordsRecent = wordsAll.slice(0, 4);
   const words = byRoom(wordsRecent.slice(0, 12)).map(n => ({ id: n.id, at: n.at || 0, noticed: trim(n.noticed, 420), wonder: trim(n.wonder, 240), rooms: roomsOf(n), by: firstName(n.kaymbu && n.kaymbu.sentBy ? '' : n.by),
@@ -2867,7 +2875,7 @@ async function displayFeed() {
   // three quotes a day from the director's list, the same all day
   const QT = require('./quotes-text.js'); let quotes = [];
   try { quotes = QT.forDay(QT.list(staff.wordingDoc('display-quotes')), today, 3).map(([words, by], i) => ({ id: today + '-' + i, words: trim(words, 300), by: trim(by, 80) })); } catch (e) {}
-  return { at: now, today, moments, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant, gatherings, quotes };
+  return { at: now, today, moments, clips: clipList, words, reflections, lensMoments, threads, projects, lenses, inquiries: inq, week, menu, bin, foodMoment, drdp: drdpShown, stories, slides: docSlides, proud, birthdays, notes, plant, gatherings, quotes };
 }
 // children's names on display documentation, the same rule TREE's slides print with. First names, first name and last
 // initial, initials, or no names at all. The educators' words never change otherwise.
@@ -2893,6 +2901,24 @@ async function handle(req, res) {
   if ((req.method === 'GET' || req.method === 'HEAD') && path === '/ready') { const ok = store.ready && calendar.ready && staff.isReady(); send(req, res, ok ? 200 : 503, { 'Content-Type': 'text/plain; charset=utf-8' }, req.method === 'HEAD' ? undefined : ok ? 'ready' : 'loading'); return; }
   if (req.method === 'GET' && path === '/health') { json(req, res, 200, { ok: true, ready: store.ready, error: store.error || undefined, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, bootId: BOOT_ID }); return; }
 
+  // a clip plays in a video element, which cannot send a header, so its address carries a key for that clip alone, made
+  // the way a photo's key is. The video is fetched from the TREE Drive once and sent from this server's disk, in ranges.
+  if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/clip/')) {
+    const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Accept-Ranges': 'bytes' };
+    let id = ''; try { id = decodeURIComponent(path.slice(6)); } catch (e) {}
+    if (!/^[a-z0-9]{6,40}$/i.test(id) || !checkPhotoKey(url.searchParams.get('t') || '', 'clip-' + id)) { send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
+    if (!store.ready) { send(req, res, 503, Object.assign({ 'Content-Type': 'text/plain' }, open), 'TREE is still starting.'); return; }
+    let f = null; try { f = await videoClips.fileFor(id); } catch (e) { log('A clip could not be fetched to play', id, e.message); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the clip from Google Drive.'); return; }
+    if (!f) { send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
+    const fs = require('fs'); let size = 0; try { size = fs.statSync(f.file).size; } catch (e) {}
+    if (!size) { send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }
+    const m = String(req.headers.range || '').match(/^bytes=(\d*)-(\d*)$/); let a = 0, b = size - 1, code = 200;
+    if (m && (m[1] || m[2])) { if (m[1]) { a = Number(m[1]); if (m[2]) b = Math.min(size - 1, Number(m[2])); } else { a = Math.max(0, size - Number(m[2])); }
+      if (!(a <= b) || a >= size) { send(req, res, 416, Object.assign({ 'Content-Range': 'bytes */' + size }, open), ''); return; } code = 206; }
+    const head = Object.assign({ 'Content-Type': f.type, 'Content-Length': b - a + 1, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }, code === 206 ? { 'Content-Range': `bytes ${a}-${b}/${size}` } : {}, open);
+    try { res.writeHead(code, head); if (req.method === 'HEAD') { res.end(); return; } const rs = fs.createReadStream(f.file, { start: a, end: b }); rs.on('error', () => { try { res.destroy(); } catch (e) {} }); rs.pipe(res); } catch (e) { log('Could not send a clip', e.message); }
+    return;
+  }
   // original form files are opened in an img or a new tab, which cannot send a header, so the session rides in the address
   // a photo at a display size, /photo/<id>?w=1920 or ?w=1200, is the same photo made smaller once and kept on disk
   const sized = req.method === 'GET' && path.startsWith('/photo/') ? PHOTO_WIDTHS.includes(Number(url.searchParams.get('w'))) ? Number(url.searchParams.get('w')) : 1920 : 0;

@@ -44,5 +44,11 @@ test('Today, tidied', async t => {
   await a.p.waitForFunction(() => notices.get('u2'), null, { timeout: 15000 });
   const kinds = await a.p.evaluate(() => todayWaiting().map(w => (WAIT_KIND(w) || [''])[0]));
   assert.ok(!kinds.includes('kby')); assert.strictEqual(kinds.filter(x => x === 'kaymbu').length, 2);
+  // Observations opens on her own class in two parts, her own first, and the director's list is as it was
+  await a.p.evaluate(() => { nRoom = myRoom(); mRange = 'all'; mGroup = 'recent'; goView('moments'); }); await a.p.waitForSelector('#obs-mine', { timeout: 15000 });
+  const parts = await a.p.evaluate(() => ({ room: myRoom(), mine: [...document.querySelectorAll('#obs-mine article')].map(x => x.id), rest: [...document.querySelectorAll('#obs-class article')].map(x => x.id), first: document.querySelector('#main section.card article').closest('section').id, heads: [...document.querySelectorAll('#obs-mine h3, #obs-class h3')].map(x => x.textContent) }));
+  assert.strictEqual(parts.first, 'obs-mine'); assert.ok(parts.mine.includes('nw-c1') && parts.mine.includes('nw-c2'), JSON.stringify(parts)); assert.ok(parts.rest.includes('nw-s1') && !parts.mine.includes('nw-s1'));
+  assert.deepStrictEqual(parts.heads, ['Your observations', 'The rest of ' + parts.room + ' class']);
+  await d.p.evaluate(() => { nRoom = 'West'; mRange = 'all'; mGroup = 'recent'; goView('moments'); }); await d.p.waitForSelector('#main article', { timeout: 15000 }); assert.strictEqual(await d.p.$('#obs-mine'), null);
   assert.deepStrictEqual(d.errors, []); assert.deepStrictEqual(a.errors, []);
 });
