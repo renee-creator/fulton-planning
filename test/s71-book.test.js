@@ -85,10 +85,21 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   await s.p.click(`[data-bkyear="${yOld}"]`); await s.p.waitForFunction(() => books.get('pip').pages.length === 2);
   const early = await s.p.evaluate(() => books.get('pip').pages[0]); assert.strictEqual(early.room, 'North'); assert.deepStrictEqual(early.photos, ['m:k1', 'm:k2']);
   assert.match(await s.p.innerText('#main'), /North class, /i);
+  // a year closes with a thread from more than one month, and the culminating page takes days from more than one year
+  await s.p.evaluate(() => { sample.json = async text => { window.bkLast = text; return { threads: [{ title: 'The Watering Can', words: 'Pip held a slug in an open hand — and a year later carried the watering can.', entries: ['E2', 'E1'] }] }; }; });
+  await s.p.click(`[data-bkacrossgo="${yNow}"]`); await s.p.waitForFunction(() => !BK.busy && window.bkLast);
+  assert.strictEqual(await s.p.evaluate(() => (books.get('pip').across || []).length), 0, 'two days in one month are not a thread through the year');
+  assert.ok(!(await s.p.evaluate(() => window.bkLast)).includes('slug'), 'a year closing reads that year alone');
+  await s.p.click('[data-bkacrossgo="all"]'); await s.p.waitForFunction(() => (books.get('pip').across || []).length === 1);
+  const ac = await s.p.evaluate(() => books.get('pip').across[0]);
+  assert.strictEqual(ac.year, ''); assert.deepStrictEqual(ac.photos, ['m:k1', 'n:a1'], 'in the order the days happened'); assert.deepStrictEqual(ac.whens, [`${Y - 1}-10`, `${Y}-09`]); assert.ok(!ac.see.includes('—'));
+  await s.p.fill('input[data-bkthread="all"]', 'the slug'); await s.p.click('[data-bkthreadgo="all"]'); await s.p.waitForFunction(() => (books.get('pip').across || []).length === 2);
+  assert.match(await s.p.evaluate(() => window.bkLast), /Follow this one thread through time\. the slug\./);
+  await s.p.click(`[data-bkahide="${ac.id}"]`); await s.p.waitForFunction(id => books.get('pip').across.find(a => a.id === id).hidden, ac.id);
   // the pages in print order, and the files
   const made = await s.p.evaluate(async () => { const c = children.get('pip'), b = books.get('pip'); const out = []; const keep = saveFile; saveFile = async (blob, name) => { out.push([name, blob.size]); };
     b.letter = 'Dear Pip,\nYou learned how to water the beans.'; await bkPdf(c, true); await bkPdf(c, false); await bkWord(c); saveFile = keep; return { sheets: bkSheets(c, b).map(x => x.t), out }; });
-  assert.deepStrictEqual(made.sheets, ['cover', 'year', 'page', 'year', 'page', 'last']);
+  assert.deepStrictEqual(made.sheets, ['cover', 'year', 'page', 'year', 'page', 'across', 'last']);
   assert.strictEqual(made.out.length, 2, 'the proof and the Word file are made, and the print file waits for the reading');
   assert.match(made.out[0][0], /^Pip Test book proof .*\.pdf$/); assert.ok(made.out[0][1] > 3000); assert.match(made.out[1][0], /\.docx$/);
   // kept in the records

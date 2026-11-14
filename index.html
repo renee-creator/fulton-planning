@@ -160,7 +160,7 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
 .soask{top:50%;bottom:auto;transform:translate(-50%,-50%);z-index:72}
 .status.reviewed{border-color:var(--moss);color:var(--moss)}
 .empty{color:var(--muted);font-size:13.5px;padding:6px 2px}
-.bkrow{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px}.bkmain{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}.bksup{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.bksup.wide{grid-template-columns:repeat(3,1fr);margin:0}.bkth{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block}.bkno{display:grid;place-items:center;background:var(--line);color:var(--muted);font-size:12px}.bkwords{display:grid;gap:8px;align-content:start}.bkwords input,.bkwords textarea,.bkpage>input,textarea[data-bkletter]{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.bkwords input[data-bkf="title"]{font-weight:700;font-size:17px}.bkwords label{display:grid;gap:3px}.bkflag{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:8px;padding:6px 10px;font-size:13px}.bkout{opacity:.55}.bkpick{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}.bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.bkgrid figure{margin:0;display:grid;gap:4px}.bkcand{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px}.bkgrid figcaption{display:flex;flex-wrap:wrap;gap:4px}.bkother{display:grid;gap:6px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.bksrc{font-size:13.5px;color:var(--muted)}.bksrc p{margin:8px 0}.bkline{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}.bkline:last-child{border-bottom:none}.bksigns{display:grid;gap:6px;align-items:center;font-size:13.5px}.bksigns input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;min-width:0}@media (max-width:640px){.bkrow{grid-template-columns:1fr}}
+.bkrow{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px}.bkmain{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}.bksup{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.bksup.wide{grid-template-columns:repeat(3,1fr);margin:0}.bkth{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block}.bkno{display:grid;place-items:center;background:var(--line);color:var(--muted);font-size:12px}.bkwords{display:grid;gap:8px;align-content:start}.bkwords input,.bkwords textarea,.bkpage>input,.bkpage>textarea,.bkthread,textarea[data-bkletter]{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:var(--paper);color:var(--ink)}.bkwords input[data-bkf="title"]{font-weight:700;font-size:17px}.bkwords label{display:grid;gap:3px}.bkflag{background:var(--marigold-soft);border:1px solid var(--marigold);border-radius:8px;padding:6px 10px;font-size:13px}.bkout{opacity:.55}.actions>.bkthread{width:auto;flex:1;min-width:14em}.bkpick{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}.bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.bkgrid figure{margin:0;display:grid;gap:4px}.bkcand{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px}.bkgrid figcaption{display:flex;flex-wrap:wrap;gap:4px}.bkother{display:grid;gap:6px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}.bksrc{font-size:13.5px;color:var(--muted)}.bksrc p{margin:8px 0}.bkline{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}.bkline:last-child{border-bottom:none}.bksigns{display:grid;gap:6px;align-items:center;font-size:13.5px}.bksigns input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;min-width:0}@media (max-width:640px){.bkrow{grid-template-columns:1fr}}
 .nav{flex-wrap:wrap;border-radius:20px}
 @media (max-width:520px){.navx{display:none}div.nav button{padding:6px 9px;font-size:13.5px}}
 .pcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px;align-items:start}
@@ -5126,7 +5126,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="dba639b61773";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="0f48fb941fae";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -7682,28 +7682,34 @@ async function bkDraftOne(c,key,pid){
   }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   finally{BK.busy="";if(view==="child"&&kidTab==="book")renderMain()}
 }
-// pages that run across the years, each from days in at least three different months
-async function bkDraftAcross(c){
+/* closing pages. Each follows one thread through time, an early, a middle and a late day in order, with the month under
+   each photo and words that tell what happened at each. A class year closes with its own, read from that year alone. A
+   book of more than one year may have a culminating page before the letter, whose days come from more than one year.
+   year is a school year like 2025-26, or "" for all the years. thread is a thread the director names, or "". */
+const bkAcYear=a=>a.year||"";
+async function bkDraftAcross(c,year,thread){
   if(!sample){toast("Drafting is not available here. Open TREE and sign in.");return}
-  const ents=bkEntries(c).filter(e=>e.photos.length);if(ents.length<6){toast("There is not enough written yet to look across the years.");return}
-  BK.busy="across";renderMain();
-  try{const E=new Map();const list=ents.map((e,i)=>{E.set("E"+(i+1),e);return `E${i+1}, ${longDate(e.day)}. ${e.words.replace(/\s+/g," ").slice(0,260)}`}).join("\n");
-    const out=await sample.json(`You are helping the educators of Fulton Community School & Farm make a keepsake book for ${c.first} and the family. Below is a short form of what educators wrote about ${c.first} over the years, each with a label and a date.
+  const all=!year;const ents=bkEntries(c).filter(e=>e.photos.length&&(all||bkYearOf(e.ym)===year));
+  if(ents.length<3||(all&&new Set(ents.map(e=>bkYearOf(e.ym))).size<2)){toast(all?"A culminating page needs days from more than one year.":"There is not enough written that year for a closing page.");return}
+  BK.busy="across:"+(year||"all");renderMain();
+  try{const E=new Map();const list=ents.map((e,i)=>{E.set("E"+(i+1),e);return `E${i+1}, ${longDate(e.day)}${e.room?", "+e.room+" class":""}. ${e.words.replace(/\s+/g," ").slice(0,all?260:420)}`}).join("\n");
+    const span=all?"over all the years at our school":`in the school year ${yearLabel(year)}`,apart=all?"from at least two different school years":"from at least two different months";
+    const out=await sample.json(`You are helping the educators of Fulton Community School & Farm make a keepsake book for ${c.first} and the family. Below is a short form of what educators wrote about ${c.first} ${span}, each with a label and a date.
 
-Find up to four things that came back across the years, such as a material, a place, a kind of work, an animal or a friendship. Each must appear in entries from at least three different months. For each, give a title of one to three words, three entries from different times that show it, and one sentence called see, in the educators' voice, as we.
+${has(thread)?`Follow this one thread through time. ${String(thread).slice(0,120)}. If the entries do not show it at more than one time, answer with no threads.`:`Find ${all?"one or two threads":"up to two threads"} that ${c.first} came back to ${span}, such as a material, a place, a kind of work, an animal or a friendship.`} For each thread choose three entries in the order they happened, an early one, a middle one and a late one, ${apart}. Give a title of one to three words, and words of 40 to 70 words that tell in order what happened at each of the three times, naming the month${all?" and year":""} of each.
 
-Truth rules. Use only what the educators wrote. The sentence tells what happened on those days and never says who ${c.first} is. Do not write always, never, loves or every. Do not write that ${c.first} taught or led others. Leave out anything hard. No dashes, no colons, no figures of speech. Say educator, never teacher.
+Truth rules. Use only what the educators wrote. Tell what happened on those days and never say who ${c.first} is. Do not write always, never, loves or every. Do not write that ${c.first} taught, led or reminded others unless an entry says so. Do not say ${c.first} grew, improved or changed unless the entries themselves show a difference you can name plainly, such as what ${c.first} did the first time and what ${c.first} did the last time. Leave out anything hard. Third person, warm, composed and plain. No dashes, no colons, no semicolons, no figures of speech, no comparisons. Say educator, never teacher. Name a class as a class, like the South class.
 
-Answer with JSON only, in this shape. {"across":[{"title":"","see":"","entries":["E4","E31","E80"]}]}
+Answer with JSON only, in this shape. {"threads":[{"title":"","words":"","entries":["E4","E31","E80"]}]}
 
 The entries.
 
 ${list}`,{modelTier:"complex",cache:false,purpose:"book"});
-    const made=(Array.isArray(out?.across)?out.across:[]).map(a=>{const src=[...new Set((Array.isArray(a?.entries)?a.entries:[]).map(l=>E.get(String(l).trim())).filter(Boolean))].slice(0,3);
-      if(src.length<2||new Set(src.map(e=>e.ym)).size<2||!has(a.title))return null;
-      return {id:"a"+Math.random().toString(36).slice(2,8),title:classCase(bkClean(String(a.title||"").replace(/\s*:\s+/g,", ")).replace(/[:.]+$/,"")),see:bkClean(a.see).replace(/\n+/g," "),photos:src.map(e=>e.photos[0].k),sources:src.map(e=>e.k),edited:false,hidden:false}}).filter(Boolean).slice(0,4);
-    if(!made.length){toast("Nothing came back across the years. Try again in a moment.");return}
-    const cur=bkBook(c);cur.across=[...(cur.across||[]).filter(a=>a.edited),...made];bkTouched(cur);bkSave(cur);
+    const made=(Array.isArray(out?.threads)?out.threads:[]).map(a=>{const src=[...new Set((Array.isArray(a?.entries)?a.entries:[]).map(l=>E.get(String(l).trim())).filter(Boolean))].sort((x,y)=>x.at-y.at).slice(0,3);
+      if(src.length<2||!has(a.title)||!has(a.words)||new Set(src.map(e=>all?bkYearOf(e.ym):e.ym)).size<2)return null;
+      return {id:"a"+Math.random().toString(36).slice(2,8),year:year||"",title:classCase(bkClean(String(a.title||"").replace(/\s*:\s+/g,", ")).replace(/[:.]+$/,"")),see:bkClean(a.words).replace(/\n+/g," "),photos:src.map(e=>e.photos[0].k),whens:src.map(e=>e.ym),sources:src.map(e=>e.k),edited:false,hidden:false}}).filter(Boolean).slice(0,has(thread)?1:2);
+    if(!made.length){toast(has(thread)?"The entries do not show that thread at more than one time.":"No closing page came back. Try again in a moment.");return}
+    const cur=bkBook(c);cur.across=[...(cur.across||[]).filter(a=>bkAcYear(a)!==(year||"")||a.edited||has(thread)),...made];bkTouched(cur);bkSave(cur);
   }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   finally{BK.busy="";if(view==="child"&&kidTab==="book")renderMain()}
 }
@@ -7737,8 +7743,9 @@ function bkLastKey(b){if(b.last)return b.last;const ps=(b.pages||[]).filter(p=>!
 function bkSheets(c,b){const out=[{t:"cover"}];if(b.opening&&has(b.opening.quote))out.push({t:"open"});
   const pages=(b.pages||[]).filter(p=>!p.hidden);const years=[...new Set(pages.map(p=>p.year))];let side=0;
   for(const y of years){const ps=pages.filter(p=>p.year===y);if(years.length>1)out.push({t:"year",year:y,room:ps[0].room,photo:(ps.find(p=>p.photos[1])||ps[0]).photos.slice(-1)[0]||""});
-    for(const p of ps)out.push({t:"page",p,side:side++%2})}
-  for(const a of (b.across||[]).filter(a=>!a.hidden))out.push({t:"across",a});
+    for(const p of ps)out.push({t:"page",p,side:side++%2});
+    for(const a of (b.across||[]).filter(a=>!a.hidden&&bkAcYear(a)===y))out.push({t:"across",a})}
+  for(const a of (b.across||[]).filter(a=>!a.hidden&&(!bkAcYear(a)||!years.includes(bkAcYear(a)))))out.push({t:"across",a});
   out.push({t:"last"});return out}
 
 /* ----- the Book on the child's page ----- */
@@ -7767,6 +7774,14 @@ function bkPageRead(c,b,p,ents){if(p.hidden)return"";const src=p.sources.map(k=>
       <div class="bkwords"><h3 style="font-size:17px;margin:0">${esc(p.title)}</h3>${String(p.body||"").split(/\n+/).filter(has).map(t=>`<p style="margin:0">${esc(t)}</p>`).join("")}
         ${has(p.quote)?`<p style="margin:0;font-weight:700;color:var(--moss)">“${esc(p.quote)}”</p>`:""}${has(p.see)?`<p class="cnt" style="margin:0">${esc(p.see)}</p>`:""}${bkNotesHtml(b,p.id,c.first)}</div></div>
     ${bkSrcHtml(src)}</section>`}
+function bkClosingHtml(c,b,year,multi){const can=bkCan(),busy=!!BK.busy,all=!year;if(all&&!multi)return"";
+  const known=new Set((b.pages||[]).map(p=>p.year));const list=(b.across||[]).filter(a=>all?(!bkAcYear(a)||!known.has(bkAcYear(a))):bkAcYear(a)===year).filter(a=>can||!a.hidden);
+  if(!can&&!list.length)return"";const what=all?"The culminating page, all the years":"How "+yearLabel(year)+" closes";
+  return `<div class="sethead">${esc(what)}</div>${list.map(a=>`<section class="card bkpage${a.hidden?" bkout":""}" data-bkacross="${a.id}">${can?`<div class="secthead"><span class="eyebrow">One thread through ${all?"the years":"the year"}${a.hidden?" · left out of the book":""}</span><button class="linkbtn" data-bkahide="${a.id}">${a.hidden?"Put back":"Leave out"}</button></div>`:""}
+      <div class="bksup wide">${a.photos.map((k,i)=>`<figure style="margin:0">${bkThumb(c,k)}<figcaption class="cnt">${esc(a.whens&&a.whens[i]?bkYmLabel(a.whens[i]):"")}</figcaption></figure>`).join("")}</div>
+      ${can?`<input data-bkaf="title" data-bka="${a.id}" value="${esc(a.title)}" aria-label="Title"><textarea data-bkaf="see" data-bka="${a.id}" rows="4" aria-label="What happened at each time">${esc(a.see)}</textarea>`:`<h3 style="font-size:17px;margin:0">${esc(a.title)}</h3><p style="margin:0">${esc(a.see)}</p>`}${bkNotesHtml(b,a.id,c.first)}</section>`).join("")}
+    ${can?`<div class="actions"><button class="btn small ghost" data-bkacrossgo="${year||"all"}" ${busy?"disabled":""}>${BK.busy==="across:"+(year||"all")?"Reading":list.length?"Draft again":all?"Draft the culminating page":"Draft this year's closing pages"}</button><input class="bkthread" data-bkthread="${year||"all"}" placeholder="Or name a thread, such as a friend or a material" aria-label="A thread to follow"><button class="btn small ghost" data-bkthreadgo="${year||"all"}" ${busy?"disabled":""}>Follow it</button></div>
+    <div class="cnt">${all?"One thread followed across more than one year, with an early, a middle and a late day. It prints just before the letter.":"One or two threads followed through this year, each with an early, a middle and a late day. They print after the year's last month."}</div>`:""}`}
 function bookHtml(c){bkLoad(c);const b=bkBook(c),ents=bkEntries(c),years=bkYears(c),busy=!!BK.busy;const loading=BK.momP.has(c.id);
   const shown=b.pages.filter(p=>!p.hidden),n=bkSheets(c,b).length,signs=bkSigns(b),open=bkNotes(b),can=bkCan();
   const head=`<section class="card"><div class="secthead"><h3 style="font-size:17px">${esc(c.first)}'s book</h3>${shown.length?`<span class="cnt">${n} pages${n<BK_MIN?`, and a printed hardcover needs at least ${BK_MIN}`:""}</span>`:""}</div>
@@ -7782,19 +7797,14 @@ function bookHtml(c){bkLoad(c);const b=bkBook(c),ents=bkEntries(c),years=bkYears
   const body=[...new Set(b.pages.map(p=>p.year))].map(y=>{const ps=b.pages.filter(p=>p.year===y);const yr=years.find(v=>v.year===y);const have=new Set(ps.map(p=>p.ym));
     const gaps=yr?[...new Set(yr.entries.map(e=>e.ym))].filter(m=>!have.has(m)):[];
     return `<div class="sethead">${esc((ps[0].room?ps[0].room+" class, ":"")+yearLabel(y))}</div>${ps.map(p=>bkPageHtml(c,b,p,ents)).join("")}
-      ${can&&gaps.length?`<div class="cnt bkgaps">No page yet for ${gaps.map(m=>{const e=yr.entries.find(x=>x.ym===m);return `<button class="linkbtn" data-bkuse="${esc(e.k)}" ${busy?"disabled":""}>${esc(bkYmLabel(m))}</button>`}).join(", ")}. Choosing a month writes a page from its first day, and Another story on that page offers the rest.</div>`:""}`}).join("");
-  if(!can){const ac=(b.across||[]).filter(a=>!a.hidden);
-    return head+body+(ac.length?`<div class="sethead">Across the ${multi?"years":"year"}</div>${ac.map(a=>`<section class="card bkpage"><div class="bksup wide">${a.photos.map(k=>bkThumb(c,k)).join("")}</div><h3 style="font-size:17px;margin:0">${esc(a.title)}</h3><p class="cnt" style="margin:0">${esc(a.see)}</p>${bkNotesHtml(b,a.id,c.first)}</section>`).join("")}`:"")
-      +(has(b.letter)?`<div class="sethead">The last page</div><section class="card">${String(b.letter).split(/\n+/).filter(has).map(t=>`<p style="margin:0">${esc(t)}</p>`).join("")}<p style="margin:0">With love,${signs.length?" "+esc(signs.join(" and ")):""}</p>${bkNotesHtml(b,"letter",c.first)}</section>`:"")}
-  const across=`<div class="sethead">Across the ${multi?"years":"year"}</div>
-    ${(b.across||[]).map(a=>`<section class="card bkpage${a.hidden?" bkout":""}" data-bkacross="${a.id}"><div class="secthead"><span class="eyebrow">A page across the ${multi?"years":"year"}${a.hidden?" · left out of the book":""}</span><button class="linkbtn" data-bkahide="${a.id}">${a.hidden?"Put back":"Leave out"}</button></div>
-      <div class="bksup wide">${a.photos.map(k=>bkThumb(c,k)).join("")}</div><input data-bkaf="title" data-bka="${a.id}" value="${esc(a.title)}" aria-label="Title"><input data-bkaf="see" data-bka="${a.id}" value="${esc(a.see)}" aria-label="What we saw">${bkNotesHtml(b,a.id,c.first)}</section>`).join("")}
-    <div class="actions"><button class="btn small ghost" data-bkacrossgo="1" ${busy?"disabled":""}>${BK.busy==="across"?"Looking across the years":(b.across||[]).length?"Look again":"Find what came back across the "+(multi?"years":"year")}</button></div>`;
+      ${can&&gaps.length?`<div class="cnt bkgaps">No page yet for ${gaps.map(m=>{const e=yr.entries.find(x=>x.ym===m);return `<button class="linkbtn" data-bkuse="${esc(e.k)}" ${busy?"disabled":""}>${esc(bkYmLabel(m))}</button>`}).join(", ")}. Choosing a month writes a page from its first day, and Another story on that page offers the rest.</div>`:""}${bkClosingHtml(c,b,y,multi)}`}).join("");
+  const closing=bkClosingHtml(c,b,"",multi);
+  if(!can)return head+body+closing+(has(b.letter)?`<div class="sethead">The last page</div><section class="card">${String(b.letter).split(/\n+/).filter(has).map(t=>`<p style="margin:0">${esc(t)}</p>`).join("")}<p style="margin:0">With love,${signs.length?" "+esc(signs.join(" and ")):""}</p>${bkNotesHtml(b,"letter",c.first)}</section>`:"");
   const letter=`<div class="sethead">The last page</div><section class="card"><div class="cnt">A letter to ${esc(c.first)} from the educators, beside the photo chosen for the last page. It ends with the school's name.</div>
     <textarea data-bkletter="1" rows="10" aria-label="The letter" placeholder="Dear ${esc(c.first)},">${esc(b.letter||"")}</textarea>
     <div class="actions"><button class="btn small ghost" data-bkletgo="1" ${busy?"disabled":""}>${BK.busy==="letter"?"Writing a start":has(b.letter)?"Draft the letter again":"Draft a start from the pages"}</button></div>
     ${bkNotesHtml(b,"letter",c.first)}<div class="cnt">${signs.length?"Signed with love by "+esc(signs.join(" and "))+".":"Signed With love. "+(isDirector()?"Add the educators' first names for each class year on the Books page.":"The director can add the educators' first names for each class year.")}</div></section>`;
-  return head+body+across+letter}
+  return head+body+closing+letter}
 
 /* ----- the Books page, every child's book in one list ----- */
 function renderBooks(){const dir=isDirector();const kids=kidsAt().sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||a.first.localeCompare(b.first));
@@ -7849,10 +7859,10 @@ async function bkPdf(c,proof){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))r
         if(parts.quote.length){y=put(parts.quote,tx,y+8,size+3,1.35,0,MOSS,true);if(who){font(false);doc.setFontSize(9.5);col(MUTED);doc.text(who,tx,y);y+=18}}
         if(parts.see.length)put(parts.see,tx,y+6,size-1.5,1.4,0,MUTED,false);
         if(sup.length){const gw=10,w=(tw-gw)/2;for(let j=0;j<sup.length;j++)await photo(sup[j],tx+j*(w+gw),BK_H-S-sh,w,sh)}}
-      else if(s.t==="across"){const a=s.a;font(true);doc.setFontSize(26);col(INK);doc.text(a.title,BK_W/2,S+50,{align:"center"});
-        const n=Math.max(1,a.photos.length),gw=14,w=Math.min(250,(BK_W-2*S-(n-1)*gw)/n),h=w*1.4,x0=(BK_W-(n*w+(n-1)*gw))/2,y0=S+84;
-        for(let j=0;j<a.photos.length;j++)await photo(a.photos[j],x0+j*(w+gw),y0,w,h);
-        if(has(a.see))put(wrap(a.see,BK_W-2*S-140,12.5,false),BK_W/2,y0+h+34,12.5,1.45,0,MUTED,false,"center")}
+      else if(s.t==="across"){const a=s.a;font(true);doc.setFontSize(26);col(INK);doc.text(a.title,BK_W/2,S+46,{align:"center"});
+        const n=Math.max(1,a.photos.length),gw=14,w=Math.min(230,(BK_W-2*S-(n-1)*gw)/n),h=w*1.3,x0=(BK_W-(n*w+(n-1)*gw))/2,y0=S+72;
+        for(let j=0;j<a.photos.length;j++){await photo(a.photos[j],x0+j*(w+gw),y0,w,h);if(a.whens&&a.whens[j]){font(true);doc.setFontSize(8.5);col(MOSS);doc.setCharSpace(.5);doc.text(bkYmLabel(a.whens[j]).toUpperCase(),x0+j*(w+gw)+w/2,y0+h+15,{align:"center"});doc.setCharSpace(0)}}
+        if(has(a.see)){const tw=BK_W-2*S-150;let size=12.5,ps;for(;;){ps=wrap(a.see,tw,size,false);if(y0+h+44+tall(ps,size,1.45,0)<=BK_H-S||size<=9)break;size-=.5}put(ps,BK_W/2,y0+h+44,size,1.45,0,INK,false,"center")}}
       else if(s.t==="last"){const ok=await photo(bkLastKey(b),0,0,half,BK_H);const tx=ok?half+32:S+90,tw=ok?half-32-S:BK_W-2*S-180;const signs=bkSigns(b);
         let size=12,paras;for(;;){paras=wrap(b.letter||"",tw,size,false);if(S+30+tall(paras,size,1.5,size*.6)+(signs.length+1)*size*1.5<=BK_H-S-30||size<=9)break;size-=.5}
         let y=put(paras,tx,S+30,size,1.5,size*.6,INK,false);if(has(b.letter)){y=put([["With love,"]],tx,y+4,size,1.5,0,INK,false);for(const g of signs)y=put(wrap(g,tw,size,false),tx,y,size,1.5,0,INK,false)}
@@ -7895,7 +7905,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(d.bknotedone){if(b.notes&&b.notes[d.bknotedone]){b.notes=Object.assign({},b.notes);delete b.notes[d.bknotedone];bkSave(b);renderMain()}return}
   if(d.bkyear){if(!BK.busy)bkDraftYear(c,d.bkyear);return}
   if(d.bkuse){if(!BK.busy)bkDraftOne(c,d.bkuse,d.bkfor||"");return}
-  if(d.bkacrossgo){if(!BK.busy)bkDraftAcross(c);return}
+  if(d.bkacrossgo){if(!BK.busy)bkDraftAcross(c,d.bkacrossgo==="all"?"":d.bkacrossgo,"");return}
+  if(d.bkthreadgo){const inp=document.querySelector(`input[data-bkthread="${d.bkthreadgo}"]`),th=inp?inp.value.trim():"";if(!th){toast("Name the thread to follow first.");return}if(!BK.busy)bkDraftAcross(c,d.bkthreadgo==="all"?"":d.bkthreadgo,th);return}
   if(d.bkletgo){if(!BK.busy)bkDraftLetter(c);return}
   if(d.bkpdf){if(!BK.making)bkPdf(c,d.bkpdf==="proof");return}
   if(d.bkword){if(!BK.making)bkWord(c);return}
