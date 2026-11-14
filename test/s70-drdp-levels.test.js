@@ -63,7 +63,7 @@ test('a child\'s page shows each measure\'s levels in order, across both views',
   const fx = await start({ more }); t.after(() => fx.stop());
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => s.close());
-  await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('[data-drrow="dom:ATL"] summary', { timeout: 15000 }); await s.p.click('[data-drrow="dom:ATL"] > summary'); await s.p.waitForSelector('[data-drrow="ATL 1"] [data-drstep]');
+  await s.p.evaluate(() => { kidOpen = 'pip'; kidTab = 'drdp'; goView('child'); }); await s.p.waitForSelector('[data-drrow="dom:ATL"] summary', { timeout: 15000 }); await s.p.evaluate(() => { const d = document.querySelector('[data-drrow="dom:ATL"]'); if (!d.open) d.querySelector('summary').click(); }); await s.p.waitForSelector('[data-drrow="ATL 1"] [data-drstep]');
   const steps = await s.p.evaluate(() => [...document.querySelectorAll('[data-drrow="ATL 1"] [data-drstep]')].map(x => [x.dataset.drstep, x.className.replace('drstep ', ''), x.querySelector('.drsteph .cnt').textContent]));
   assert.strictEqual(steps.length, 10, 'every level of the measure');
   assert.deepStrictEqual(steps[0], ['Responding Earlier', 'open', 'Open']);
@@ -248,12 +248,20 @@ test('one line for each measure, the one time tidy, review by exception and a ch
   assert.match(await d.p.innerText('[data-drpeyewhy="kit|w3"]'), /Needs your eye\. From an observation of 6 children/);
   await d.p.click('[data-drpeye]'); await d.p.waitForFunction(() => !document.querySelector('#dr-w1')); assert.ok(await d.p.$('#dr-w3'));
   await d.p.click('[data-drpeye]'); await d.p.waitForSelector('#dr-w1');
+  // review cards say where Kit is in the same words as the DRDP tab
+  assert.match(await d.p.innerText('[data-drcur="w2"]'), /Solid at Building Earlier, beginning to show Building Later\./);
   // ticking one that needs an eye counts it
   await d.p.check('[data-drpoff="kit|w3"]'); await d.p.waitForFunction(() => /Accept the 2 ticked/.test(document.querySelector('[data-drpacc]').textContent));
+  // Show only these never ends on an empty list. With the last one set aside, every suggestion shows again.
+  await d.p.click('[data-drpeye]'); await d.p.waitForFunction(() => !document.querySelector('#dr-w1'));
+  await d.p.click('#dr-w2 [data-draside="w2"]'); await d.p.waitForFunction(() => !document.querySelector('#dr-w2'));
+  await d.p.click('#dr-w3 [data-draside="w3"]'); await d.p.waitForSelector('#dr-w1');
+  assert.strictEqual(await d.p.evaluate(() => drpEyeOnly), false);
   // the open levels page shows the tidy with its counts, and Kit's span
   await d.p.evaluate(() => goView('drdpopen')); await d.p.waitForSelector('[data-drotidycard]');
   const card = await d.p.innerText('[data-drotidycard]'); assert.match(card, /3 accepted pieces of 1 child would move to Set aside/); assert.match(card, /1 dated after a later level and reading lower/);
   assert.match(card, /1 counting one observation twice for one measure/); assert.match(card, /1 for a child the observation does not tag/); assert.match(card, /Levels with two pieces now, 1\. After the tidy, 1\./);
+  assert.match(card, /A tidied piece also leaves the DRDP lines in the child's portfolio and is no longer offered as conference evidence\./);
   await d.p.click('[data-drokid="kit"] summary'); await d.p.waitForSelector('[data-drokid="kit"] .dol');
   const marks = await d.p.evaluate(() => { const row = [...document.querySelectorAll('[data-drokid="kit"] .dol')].find(x => /SCI 1/.test(x.textContent)); return [...row.querySelectorAll('.dc')].map(x => x.textContent + (x.classList.contains('out') ? '-' : '') + (x.classList.contains('full') ? '*' : '')); });
   assert.deepStrictEqual(marks, ['RE-', 'RL-', 'EE-', 'EL', 'BE*', 'BM', 'BL', 'IE', 'IM-', 'IL-'], 'the span runs from the earliest level with evidence to one past where Kit is');
@@ -267,7 +275,7 @@ test('one line for each measure, the one time tidy, review by exception and a ch
   assert.deepStrictEqual(await d.p.evaluate(() => { const x = children.get('kit').drdp.items.k4; return [x.reviewedBy, drdpTidyCount().pieces]; }), ['Ann', 0], 'one put back is left alone by the tidy');
   // the child's page says where Kit is in one line
   await d.p.evaluate(() => { kidOpen = 'kit'; kidTab = 'drdp'; goView('child'); }); await d.p.waitForSelector('[data-drrow="dom:SCI"] > summary', { timeout: 15000 });
-  await d.p.click('[data-drrow="dom:SCI"] > summary'); assert.match(await d.p.innerText('[data-drstand="SCI 1"]'), /Solid at Building Earlier, beginning to show Building Later/);
+  await d.p.evaluate(() => { const d = document.querySelector('[data-drrow="dom:SCI"]'); if (!d.open) d.querySelector('summary').click(); }); assert.match(await d.p.innerText('[data-drstand="SCI 1"]'), /Solid at Building Earlier, beginning to show Building Later/);
   assert.deepStrictEqual(d.errors, []);
 });
 
@@ -277,4 +285,17 @@ test('the DRDP links move to the state file of August 20, 2026, and the one line
   for (const c of LIST.changes) { assert.match(c.from, /04202026/); assert.match(c.to, /PTK%20View_08202026_ADA\.pdf/); assert.doesNotMatch(c.to, /04202026|April/); }
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'staff.js'), 'utf8'), /s71DrdpAugust: \['code:once\/s71-drdp-august\.json'/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8'), /Identifies some characters \(e\.g\., 山; 火\) by meaning/);
+});
+
+test('each earlier photo is handed to one computer at a time', () => {
+  const store = { ready: true, recs: recs() };
+  store.recs.children.set('c1', { doc: { first: 'Wren', last: 'Alder', classroom: 'North' } });
+  const pull = require('../kaymbu-pull.js')({ store, log: () => {}, kaymbu: {}, noteChange: () => {}, scheduleSave: () => {}, askClaude: async () => ({}), video: {}, onPost: () => {} });
+  const item = (m, day) => ({ m, at: Date.parse(day + 'T18:00:00Z'), day, words: 'Wren carried the watering can across the garden.', kids: ['c1'], room: 'North', photo: 'ph-' + m });
+  store.recs.kaymbu.set('book-c1', { doc: { id: 'book-c1', child: 'c1', items: [item('p1', '2025-01-05'), item('p2', '2025-02-05')] } });
+  pull.earlyStart('Dee');
+  assert.strictEqual(pull.earlyNext().pick.m, 'p1'); assert.strictEqual(pull.earlyNext().pick.m, 'p2', 'a second computer gets the next photo');
+  assert.deepStrictEqual(pull.earlyNext(), { status: 'reading' }, 'with every photo out, a computer waits and nothing is called done');
+  pull.earlyMark('p1', false); assert.strictEqual(pull.earlyNext().pick.m, 'p1', 'one that could not be read is handed out again');
+  pull.earlyMark('p1', true, 1); pull.earlyMark('p2', true, 0); assert.deepStrictEqual(pull.earlyNext(), { status: 'done' });
 });

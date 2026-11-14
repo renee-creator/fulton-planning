@@ -666,14 +666,19 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
   function earlyStart(who) { const d = earlyDoc(); if (!earlyPlan().length) throw new Error('No earlier photos are kept yet. Keep them in Drive first.'); saveEarly(Object.assign(d, { status: 'reading', startedAt: d.startedAt || Date.now(), by: who || '' })); }
   function earlyPause(on) { const d = earlyDoc(); if (d.status === 'reading' || d.status === 'paused') saveEarly(Object.assign(d, { status: on ? 'paused' : 'reading' })); }
   // the next photo to read, or none once every chosen photo is read
+  // Each photo is handed to one computer at a time, for five minutes, so two computers open as the director never read
+  // and pay for the same photo (November 14, 2026).
+  const earlyOut = new Map();
   function earlyNext() {
     const d = earlyDoc(); if (d.status !== 'reading') return { status: d.status || 'none' };
-    const read = d.read || {}; const p = earlyPlan().find(x => !read[x.m]);
-    if (!p) { saveEarly(Object.assign(d, { status: 'done', finishedAt: Date.now() })); return { status: 'done' }; }
-    return { status: 'reading', pick: p };
+    const read = d.read || {}; const left = earlyPlan().filter(x => !read[x.m]); const now = Date.now();
+    if (!left.length) { saveEarly(Object.assign(d, { status: 'done', finishedAt: now })); return { status: 'done' }; }
+    const p = left.find(x => !(earlyOut.get(x.m) > now)); if (!p) return { status: 'reading' };
+    earlyOut.set(p.m, now + 5 * 60000); return { status: 'reading', pick: p };
   }
   // a photo is marked once it is read, or after it could not be read three times, so the reading never stops on one photo
   function earlyMark(m, ok, found) {
+    earlyOut.delete(m);
     const d = earlyDoc(); const read = Object.assign({}, d.read); const tries = Object.assign({}, d.tries);
     if (ok) { read[m] = 1; delete tries[m]; } else { tries[m] = (tries[m] || 0) + 1; if (tries[m] >= 3) { read[m] = 2; delete tries[m]; } }
     saveEarly(Object.assign(d, { read, tries, found: (d.found || 0) + (ok ? Math.max(0, Number(found) || 0) : 0) }));

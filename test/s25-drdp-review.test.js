@@ -49,7 +49,9 @@ test('Accept all for one child, and Tick and accept on a child\'s page opens the
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   await s.p.evaluate(() => goView('today')); await s.p.waitForSelector('text=6 DRDP suggestions to review', { timeout: 15000 });
-  await s.p.click('button:has-text("Review")[data-tview="drdpreview"]'); await s.p.waitForSelector('[data-drpall="ivy"]');
+  await s.p.click('button:has-text("Review")[data-tview="drdpreview"]'); await s.p.waitForSelector('[data-drpall="ivy"]', { state: 'attached' });
+  // with more than one class waiting, each class is a fold with its Accept on it
+  await s.p.evaluate(() => document.querySelectorAll('details.drpclass').forEach(d => { if (!d.open) d.querySelector('summary').click(); })); await s.p.waitForSelector('[data-drpall="ivy"]');
   assert.match(await s.p.innerText('#main'), /Oak Test/, 'every class for the director');
   await s.p.click('[data-drpall="ivy"]'); await s.p.waitForSelector('text=Accept the 4 ticked');
   assert.doesNotMatch(await s.p.innerText('#main'), /Ivy Test/);

@@ -358,11 +358,11 @@ The DRDP takes a child's level on a measure as the latest one they show consiste
 
 ### Review by exception
 
-On DRDP review, a suggestion that fits cleanly is ticked to start. One that **needs your eye** says why and starts unticked. It is either three or more levels above everything accepted for that child in that measure, or read from an observation that tags six or more children. Show only these narrows the page to them. With more than one class waiting, the top of the page has one Accept for each class.
+On DRDP review, a suggestion that fits cleanly is ticked to start. One that **needs your eye** says why and starts unticked. It is either three or more levels above everything accepted for that child in that measure, or read from an observation that tags six or more children. Show only these narrows the page to them. With more than one class waiting, each class is a fold with its count and its own Accept on it, closed to start. When the last one that needs an eye is handled, the page shows every suggestion again. A review card says where the child is in the same words as the DRDP tab.
 
 ### The one time tidy
 
-DRDP open levels shows a One time tidy card while there is anything to tidy. It counts the accepted pieces that would move to Set aside, and how many levels hold two pieces before and after. Three kinds move. A piece dated after the child was solid at a later level and reading lower, the lower copy of one observation counted twice for one measure, and a piece for a child the observation does not tag. Nothing is deleted. Each piece keeps who accepted it, Review again on the child's DRDP tab puts one back as it was, Put them back restores all of them, and one put back is left alone by the tidy afterward.
+DRDP open levels shows a One time tidy card while there is anything to tidy. It counts the accepted pieces that would move to Set aside, and how many levels hold two pieces before and after. Three kinds move. A piece dated after the child was solid at a later level and reading lower, the lower copy of one observation counted twice for one measure, and a piece for a child the observation does not tag. Nothing is deleted. Each piece keeps who accepted it, Review again on the child's DRDP tab puts one back as it was, Put them back restores all of them, and one put back is left alone by the tidy afterward. The card says that a tidied piece also leaves the DRDP lines in the child's portfolio and is no longer offered as conference evidence. Its note about a finished tidy stays for two weeks.
 
 ### A child's own span
 
@@ -377,7 +377,7 @@ On November 14, 2026 every measure definition and level in TREE's stored wording
 The earlier photos kept in Google Drive for the books can also be read for DRDP evidence, so a child's levels show from their first year with us. In Settings, under Kaymbu Moments, Earlier years, for DRDP evidence shows how many photos TREE would read, of how many children and from when. Nothing is read until the director chooses Read the earlier years, and Pause stops it.
 
 - Up to three photos for each child for each month are chosen, the ones with words first, one photo of a post, oldest first. A photo that tags several children is read once for all of them. A photo already an observation in TREE is left out.
-- TREE reads one photo at a time while it is open on the director's computer, about ninety an hour, against the view each child was in on that day. A level that already holds two pieces, accepted or waiting, takes no more. A photo that cannot be read is tried three times and then passed.
+- TREE reads one photo at a time while it is the tab in front on the director's computer, about ninety an hour, and the server hands each photo to one computer at a time, for five minutes, so two computers never read the same one, against the view each child was in on that day. A level that already holds two pieces, accepted or waiting, takes no more. A photo that cannot be read is tried three times and then passed.
 - The suggestions wait for the director alone, on DRDP review and each child's DRDP tab, with Accept all. Educators never see them waiting. Once accepted they show in the child's levels like any other piece, with the photo, its words and its date.
 - The photos stay in the book collection. They never become observations and never reach threads, readings, the displays or prints. The server keeps the plan and what is read in kaymbu/drdpearly.json, and answers /api/drdp/early/next and /api/drdp/early/done for the director only.
 
