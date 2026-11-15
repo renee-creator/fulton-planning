@@ -11,7 +11,7 @@
    sees the Book. The director drafts and changes it. An educator reads it, leaves a note on a page for the director
    and marks it read, and the server holds an educator's save to those two things. Only the director keeps the list
    of who signs each class year (settings/book). */
-let books=new Map(),bookBase=new Map(),bookSet={signs:{}};
+let books=new Map(),bookBase=new Map(),bookSet={signs:{}},luluSet={};
 const BK={mom:new Map(),momP:new Map(),busy:"",pick:"",add:"",timers:new Map(),bmp:new Map(),making:false};
 const BK_BLEED=9,BK_W=810,BK_H=630,BK_SAFE=45,BK_MIN=24;
 const BK_MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -259,19 +259,19 @@ function bookHtml(c){bkLoad(c);const b=bkBook(c),ents=bkEntries(c),years=bkYears
   const letter=`<div class="sethead">The last page</div><section class="card"><div class="cnt">A letter to ${esc(c.first)} from the educators, beside the photo chosen for the last page. It ends with the school's name.</div>
     <textarea data-bkletter="1" rows="10" aria-label="The letter" placeholder="Dear ${esc(c.first)},">${esc(b.letter||"")}</textarea>
     <div class="actions"><button class="btn small ghost" data-bkletgo="1" ${busy?"disabled":""}>${BK.busy==="letter"?"Writing a start":has(b.letter)?"Draft the letter again":"Draft a start from the pages"}</button></div>
-    ${bkNotesHtml(b,"letter",c.first)}<div class="cnt">${signs.length?"Signed with love by "+esc(signs.join(" and "))+".":"Signed With love. "+(isDirector()?"Add the educators' first names for each class year on the Books page.":"The director can add the educators' first names for each class year.")}</div></section>`;
-  return head+body+closing+letter}
+    ${bkNotesHtml(b,"letter",c.first)}<div class="cnt">${signs.length?"Signed with love by "+esc(signs.join(" and "))+".":"Signed With love. "+(isDirector()?"Add the educators' first names for each class year on the Children's books page.":"The director can add the educators' first names for each class year.")}</div></section>`;
+  return head+body+closing+letter+bkLuluHtml(c,b)}
 
-/* ----- the Books page, every child's book in one list ----- */
+/* ----- the Children's books page, every child's book in one list ----- */
 function renderBooks(){const dir=isDirector();const kids=kidsAt().sort((a,b)=>(a.classroom||"").localeCompare(b.classroom||"")||a.first.localeCompare(b.first));
   const rooms=[...new Set(kids.map(c=>c.classroom).filter(Boolean))];const yNow=yearFromTime(Date.now()),y0=+yNow.slice(0,4);
   const ys=[0,1,2,3].map(i=>(y0-i)+"-"+String(y0-i+1).slice(2));
-  $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Books</h2>
+  $("#main").innerHTML=`<div class="head"><span class="eyebrow">Children</span><h2 style="margin-top:4px">Children's books</h2>
     <div class="sub">One book for each child, the story of their time at our school. Open a child to draft, read and print the book.</div></div>
     ${rooms.map(r=>`<div class="sethead">${esc(r)} class</div><section class="card">${kids.filter(c=>c.classroom===r).map(c=>{const b=books.get(c.id);const n=b?b.pages.filter(p=>!p.hidden).length:0;
       return `<div class="bkline"><button class="linkbtn" data-bkkid="${c.id}">${esc(kidName(c))}</button><span class="cnt">${n?`${n} page${n===1?"":"s"}${b.readBy?", read by "+esc(b.readBy.name):", not read yet"}${bkNotes(b).length?`, ${bkNotes(b).length} note${bkNotes(b).length===1?"":"s"} from educators`:""}`:"Not started"}</span></div>`}).join("")}</section>`).join("")||`<div class="empty">No children are on the roster yet.</div>`}
     ${dir?`<div class="sethead">Who signs each class year</div><section class="card"><div class="cnt">First names of the educators of each class, as they sign the letter on the last page, such as Ana, Bo and Cy. Leave one empty and that year signs With love only.</div>
-      <div class="bksigns"><span></span>${CLASSROOMS.map(r=>`<b>${esc(r)}</b>`).join("")}${ys.map(y=>`<span>${esc(yearLabel(y))}</span>${CLASSROOMS.map(r=>`<input data-bksign="${esc(y+" "+r)}" value="${esc((bookSet.signs||{})[y+" "+r]||"")}" aria-label="${esc(r+" class, "+yearLabel(y))}">`).join("")}`).join("")}</div></section>`:""}`;
+      <div class="bksigns"><span></span>${CLASSROOMS.map(r=>`<b>${esc(r)}</b>`).join("")}${ys.map(y=>`<span>${esc(yearLabel(y))}</span>${CLASSROOMS.map(r=>`<input data-bksign="${esc(y+" "+r)}" value="${esc((bookSet.signs||{})[y+" "+r]||"")}" aria-label="${esc(r+" class, "+yearLabel(y))}">`).join("")}`).join("")}</div></section>`:""}${bkLuluSetHtml()}`;
   const g=$("#main .bksigns");if(g)g.style.gridTemplateColumns=`8em repeat(${CLASSROOMS.length},minmax(0,1fr))`}
 
 /* ----- the print, 11 by 8.5 inches with an eighth of an inch of bleed on every side ----- */
@@ -282,11 +282,15 @@ async function bkBmp(c,k){if(!k)return null;if(BK.bmp.has(k))return BK.bmp.get(k
 function bkCut(bmp,w,h){const ratio=w/h;let sw=bmp.width,sh=sw/ratio;if(sh>bmp.height){sh=bmp.height;sw=sh*ratio}
   const sx=(bmp.width-sw)/2,sy=(bmp.height-sh)*.35;const sc=Math.min(1,(w/72*300)/sw);const cv=document.createElement("canvas");cv.width=Math.max(1,Math.round(sw*sc));cv.height=Math.max(1,Math.round(sh*sc));
   const g=cv.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);g.drawImage(bmp,sx,sy,sw,sh,0,0,cv.width,cv.height);return cv.toDataURL("image/jpeg",.9)}
-async function bkPdf(c,proof){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))return;if(!proof&&!bkCan())return;
+/* the book's pages as a PDF. A proof is marked as one on every page. The print file and the file for Lulu are padded with
+   white pages to an even count of at least 24, the least a hardcover takes, and a book over 60 pages keeps its words a
+   little further from the edges, as Lulu asks. keep hands the file back in place of saving it. */
+async function bkPdf(c,proof,keep){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))return;if(!proof&&!bkCan())return;
   if(!proof&&!b.readBy){toast(`Someone who knows ${c.first} reads the book before the print file is made.`);return}
-  BK.making=true;renderMain();progress("Getting photos");
-  try{await loadPrintFonts();const sheets=bkSheets(c,b);const doc=TREE_KIT.pdf({unit:"pt",format:[BK_W,BK_H],orientation:"landscape"});
-    const INK=[27,41,32],MUTED=[95,105,98],MOSS=[43,90,64];const S=BK_SAFE,half=BK_W/2;let missed=0;
+  if(!keep){BK.making=true;renderMain()}progress("Getting photos");
+  try{await loadPrintFonts();const sheets=bkSheets(c,b);if(!proof){const want=Math.max(BK_MIN,sheets.length+sheets.length%2);while(sheets.length<want)sheets.push({t:"blank"})}
+    const doc=TREE_KIT.pdf({unit:"pt",format:[BK_W,BK_H],orientation:"landscape"});
+    const INK=[27,41,32],MUTED=[95,105,98],MOSS=[43,90,64];const S=BK_SAFE+(sheets.length>60?9:0),half=BK_W/2;let missed=0;
     const font=bold=>{if(PF.b64)doc.setFont(bold?"pfB":"pfR","normal");else doc.setFont("helvetica",bold?"bold":"normal")};
     const col=v=>doc.setTextColor(v[0],v[1],v[2]);
     const wrap=(t,w,size,bold)=>{font(bold);doc.setFontSize(size);return String(t||"").split(/\n+/).map(s=>s.trim()).filter(Boolean).map(s=>doc.splitTextToSize(s,w))};
@@ -325,10 +329,100 @@ async function bkPdf(c,proof){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))r
         school(tx,BK_H-S)}
       if(proof){font(false);doc.setFontSize(8);col(MUTED);doc.text("Proof, not yet read for printing",BK_W-BK_BLEED-8,BK_BLEED+12,{align:"right"})}}
     if(missed)toast(`${missed} photo${missed>1?"s":""} could not be loaded, so the book leaves ${missed>1?"them":"it"} out.`);
+    if(keep)return {blob:doc.output("blob"),pages:sheets.length};
     await saveFile(doc.output("blob"),safeFile(`${kidName(c)} book${proof?" proof":" for print"} ${iso(new Date())}`)+".pdf");
-  }catch(e){toast("The book could not be made just now. Try again in a moment.")}
-  finally{for(const v of BK.bmp.values())try{v&&v.close&&v.close()}catch(e){}BK.bmp.clear();BK.making=false;if(view==="child"&&kidTab==="book")renderMain()}
+  }catch(e){if(keep)throw e;toast("The book could not be made just now. Try again in a moment.")}
+  finally{if(!keep){for(const v of BK.bmp.values())try{v&&v.close&&v.close()}catch(e){}BK.bmp.clear();BK.making=false;if(view==="child"&&kidTab==="book")renderMain()}}
 }
+/* ----- printing with Lulu (November 15, 2026). The director makes the two files, Lulu checks them, she sees the price,
+   and she orders one copy. Lulu keeps the order unpaid until it is paid in her Lulu account. ----- */
+const LULU_POD=fin=>"1100X0850.FC.PRE.CW.080CW444."+(fin==="M"?"M":"G")+"XX";
+const LULU_LEVELS=[["MAIL","Mail, slowest"],["PRIORITY_MAIL","Priority mail"],["GROUND","Ground"],["EXPEDITED","Expedited, about two days"],["EXPRESS","Express, overnight"]];
+const LULU_WORDS={CREATED:"Lulu is checking the files",UNPAID:"Waiting to be paid in your Lulu account",PAYMENT_IN_PROGRESS:"Payment is going through",PRODUCTION_DELAYED:"Paid, and goes to the printer shortly",PRODUCTION_READY:"Paid, and goes to the printer shortly",IN_PRODUCTION:"Being printed",SHIPPED:"Shipped",DELIVERED:"Delivered",REJECTED:"Lulu turned it down",CANCELED:"Cancelled",ERROR:"Lulu found a problem"};
+const LULU_SCHOOL={name:"Fulton Community School & Farm",street1:"1225 Fulton Road",city:"Santa Rosa",state_code:"CA",postcode:"95401",country_code:"US",phone_number:""};
+// kept as settings/lulu, which reaches the director alone
+const bkLuluSet=()=>Object.assign({finish:"G",email:"",address:Object.assign({},LULU_SCHOOL)},luluSet||{});
+const BKL=new Map();   // where each child's Lulu steps stand, while the page is open
+const bkL=id=>{if(!BKL.has(id))BKL.set(id,{step:"",msg:"",level:"GROUND",addr:null});return BKL.get(id)};
+const bkBackKey=b=>{if(b.back)return b.back;const skip=new Set([bkCoverKey(b),bkLastKey(b)]);const ks=(b.pages||[]).filter(p=>!p.hidden).flatMap(p=>p.photos).filter(k=>k&&!skip.has(k));return ks[Math.floor(ks.length/2)]||""};
+// the one-piece cover, back, spine and front, at the size Lulu gives for the page count
+async function bkCoverPdf(c,b,W,H){await loadPrintFonts();const doc=TREE_KIT.pdf({unit:"pt",format:[W,H],orientation:"landscape"});
+  const TRIM=792,ext=(H-612)/2,spine=Math.max(0,W-2*TRIM-2*ext),fl=W/2+spine/2,br=W/2-spine/2,bl=br-TRIM;
+  const INK=[27,41,32],MUTED=[95,105,98],MOSS=[43,90,64];
+  const font=bold=>{if(PF.b64)doc.setFont(bold?"pfB":"pfR","normal");else doc.setFont("helvetica",bold?"bold":"normal")};
+  const col=v=>doc.setTextColor(v[0],v[1],v[2]);
+  const photo=async(k,x,y,w,h)=>{const bmp=await bkBmp(c,k);if(!bmp)return false;try{doc.addImage(bkCut(bmp,w,h),"JPEG",x,y,w,h,undefined,"FAST");return true}catch(e){return false}};
+  // the front, a photo to the outer edge and through the wrap, with the name beside it, clear of the fold and the edge
+  const px=fl+TRIM*.46;const ok=await photo(bkCoverKey(b),px,0,W-px,H);
+  const tx0=fl+18+36,tx1=(ok?px:W-ext)-30,mid=(tx0+tx1)/2,cy=H/2;
+  const years=[...new Set((b.pages||[]).filter(p=>!p.hidden).map(p=>p.year))].sort();const span=years.length?years[0].slice(0,4)+" to "+(+years[years.length-1].slice(0,4)+1):"";
+  font(true);col(INK);let size=40;doc.setFontSize(size);let lines=doc.splitTextToSize(kidName(c),tx1-tx0);while(lines.length>2&&size>24){size-=2;doc.setFontSize(size);lines=doc.splitTextToSize(kidName(c),tx1-tx0)}
+  let y=cy-(lines.length-1)*size*.6;for(const l of lines){doc.text(l,mid,y,{align:"center"});y+=size*1.15}
+  font(false);doc.setFontSize(13);col(MUTED);if(span){doc.text(span,mid,y+6,{align:"center"});y+=22}
+  font(true);doc.setFontSize(9);col(MOSS);doc.setCharSpace(.6);doc.text("FULTON COMMUNITY SCHOOL & FARM",mid,y+16,{align:"center"});doc.setCharSpace(0);
+  // the back, one photo and the school's name, centered on the panel
+  const bm=(bl+br)/2,bh=300,bw=bh*1.33;await photo(bkBackKey(b),bm-bw/2,cy-bh/2-20,bw,bh);
+  font(false);doc.setFontSize(14);col(INK);doc.text("Fulton Community School & Farm",bm,cy+bh/2+8,{align:"center"});
+  doc.setFontSize(10.5);col(MUTED);doc.text("Santa Rosa, California",bm,cy+bh/2+26,{align:"center"});
+  // the spine carries the name when it is wide enough to hold it clear of its folds
+  if(spine>=40){font(true);doc.setFontSize(Math.min(14,spine-24));col(INK);doc.text(kidName(c),W/2+4,cy,{angle:-90,align:"center"})}
+  return doc.output("blob")}
+// a file sent to the server in parts, each small enough for one request
+async function bkSendFile(blob,label){const id=(Date.now().toString(36)+Math.random().toString(36).slice(2,10)).slice(0,20);const N=8*1024*1024,total=Math.max(1,Math.ceil(blob.size/N));
+  const b64=part=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]||"");r.onerror=no;r.readAsDataURL(part)});
+  for(let n=0;n<total;n++){progress(`Sending the ${label}, part ${n+1} of ${total}`);await window.FP_API("/api/lulu/part",{id,n,total,data:await b64(blob.slice(n*N,(n+1)*N))})}
+  return id}
+let bkWait=ms=>new Promise(r=>setTimeout(r,ms));
+async function bkLuluFiles(c){const b=bkBook(c),L=bkL(c.id),set=bkLuluSet();if(BK.making)return;BK.making=true;L.step="making";L.msg="";L.files=null;renderMain();
+  try{const st=await window.FP_API("/api/lulu/status",{});if(!st.connected)throw new Error("Lulu is not connected yet. The Lulu keys go into Render first.");
+    const pod=LULU_POD(set.finish);const inner=await bkPdf(c,false,true);if(!inner)throw new Error("The book has no pages to print.");
+    const dim=await window.FP_API("/api/lulu/cover-size",{pod,pages:inner.pages});progress("Making the cover");
+    const cover=await bkCoverPdf(c,b,dim.width,dim.height);
+    const interior=await bkSendFile(inner.blob,"inside pages"),cid=await bkSendFile(cover,"cover");
+    progress("Lulu is checking the files");L.step="checking";renderMain();
+    const v=await window.FP_API("/api/lulu/check",{interior,cover:cid,pod,pages:inner.pages});
+    let r=null;for(let i=0;i<90;i++){await bkWait(i<6?5000:10000);r=await window.FP_API("/api/lulu/checked",v);
+      const done=x=>["VALIDATED","NORMALIZED","ERROR"].includes(x.status);if(done(r.interior)&&done(r.cover))break}
+    const bad=[r.interior,r.cover].some(x=>x.status==="ERROR");const errs=[].concat(r.interior.errors||[],r.cover.errors||[]).map(x=>typeof x==="string"?x:JSON.stringify(x));
+    if(bad){L.step="";L.msg="Lulu found a problem with the files. "+errs.join(" ").slice(0,400);return}
+    if(![r.interior,r.cover].every(x=>["VALIDATED","NORMALIZED"].includes(x.status))){L.step="";L.msg="Lulu is still checking the files. Try again in a few minutes.";return}
+    L.files={interior,cover:cid,pod,pages:inner.pages,mode:st.mode,at:Date.now()};L.step="ready";L.price=null;L.addr=L.addr||Object.assign({},set.address);
+  }catch(e){L.step="";L.msg=String(e&&e.message||"Lulu could not be reached. Try again in a moment.")}
+  finally{for(const v of BK.bmp.values())try{v&&v.close&&v.close()}catch(e){}BK.bmp.clear();BK.making=false;progress("");if(view==="child"&&kidTab==="book")renderMain()}}
+async function bkLuluPrice(c){const L=bkL(c.id);if(!L.files||BK.making)return;BK.making=true;L.msg="";renderMain();
+  try{L.price=await window.FP_API("/api/lulu/price",{pod:L.files.pod,pages:L.files.pages,address:L.addr,level:L.level})}catch(e){L.price=null;L.msg=String(e&&e.message||"")}
+  finally{BK.making=false;renderMain()}}
+async function bkLuluOrder(c){const b=bkBook(c),L=bkL(c.id),set=bkLuluSet();if(!L.files||!L.price||BK.making)return;BK.making=true;L.msg="";renderMain();
+  try{const r=await window.FP_API("/api/lulu/order",{interior:L.files.interior,cover:L.files.cover,pod:L.files.pod,pages:L.files.pages,address:L.addr,level:L.level,email:set.email,title:kidName(c)+", book",ref:"tree-"+c.id});
+    const cur=bkBook(c);cur.lulu=[...(cur.lulu||[]),{id:r.id,mode:r.mode,at:Date.now(),status:r.status||"CREATED",total:L.price.total,ship:L.addr.name,level:L.level,by:whoAmI()}];bkSave(cur);
+    BKL.delete(c.id);toast(r.mode==="live"?"Ordered. It waits to be paid in your Lulu account.":"Ordered in the Lulu sandbox. Nothing is printed or charged.")}
+  catch(e){L.msg=String(e&&e.message||"")}finally{BK.making=false;renderMain()}}
+async function bkLuluJob(c,id,cancel){const b=bkBook(c);if(BK.making)return;BK.making=true;renderMain();
+  try{const r=cancel?await window.FP_API("/api/lulu/cancel",{id}):await window.FP_API("/api/lulu/job",{id});const cur=bkBook(c);
+    cur.lulu=(cur.lulu||[]).map(o=>o.id===id?Object.assign({},o,{status:r.status||o.status,checked:Date.now()},r.track?{track:r.track}:{},r.arrival?{arrival:r.arrival}:{}):o);bkSave(cur)}
+  catch(e){toast(String(e&&e.message||"Lulu could not be reached."))}finally{BK.making=false;renderMain()}}
+function bkLuluHtml(c,b){if(!bkCan()||!b.pages.some(p=>!p.hidden))return"";const L=bkL(c.id),busy=BK.making,set=bkLuluSet();
+  const orders=(b.lulu||[]).slice().reverse().map(o=>`<div class="bkline"><span>${esc(shortDate(o.at))}${o.mode==="sandbox"?", sandbox":""}. ${esc(LULU_WORDS[o.status]||o.status||"")}${o.total?`, $${esc(o.total)}`:""}${o.arrival?`, arriving by ${esc(shortDate(new Date(o.arrival+"T12:00").getTime()))}`:""}${(o.track||[]).map(u=>` <a href="${esc(u)}" target="_blank" rel="noopener">Tracking</a>`).join("")}</span>
+    <span class="actions"><button class="linkbtn" data-bkljob="${o.id}" ${busy?"disabled":""}>Check on it</button>${["CREATED","UNPAID"].includes(o.status)?`<button class="linkbtn" data-bklcancel="${o.id}" ${busy?"disabled":""}>Cancel</button>`:""}</span></div>`).join("");
+  const a=L.addr||set.address;const f=(k,lab,w)=>`<label class="cnt" style="flex:${w||1}">${lab}<input data-bkladdr="${k}" value="${esc(a[k]||"")}"></label>`;
+  let body="";
+  if(!b.readBy)body=`<div class="cnt">The print files open once the book has been read.</div>`;
+  else if(!set.email)body=`<div class="cnt">Add an email for Lulu's questions about an order on the Children's books page, under Printing with Lulu.</div>`;
+  else if(L.step==="making"||L.step==="checking")body=`<div class="cnt">${L.step==="making"?"Making the inside pages and the cover and sending them to Lulu.":"Lulu is checking the files. This takes a few minutes."} Keep this page open.</div>`;
+  else if(L.step==="ready")body=`<div class="cnt">Lulu checked both files. ${L.files.pages} pages, ${set.finish==="M"?"matte":"gloss"} cover, 11 by 8.5 inch hardcover.${L.files.mode==="sandbox"?" This is the Lulu sandbox, so nothing is printed or charged.":""}</div>
+    <div class="bkaddr">${f("name","Ship to",2)}${f("street1","Street",2)}${f("street2","Street, line two",1)}${f("city","City",1)}${f("state_code","State",.5)}${f("postcode","ZIP",.6)}${f("phone_number","Phone",1)}</div>
+    <div class="actions"><select data-bkllevel="1" aria-label="Shipping">${LULU_LEVELS.map(([v,t])=>`<option value="${v}" ${L.level===v?"selected":""}>${t}</option>`).join("")}</select><button class="btn small ghost" data-bklprice="1" ${busy?"disabled":""}>See the price</button></div>
+    ${L.price?`<div class="cnt">Book $${esc(L.price.book||"")}, shipping $${esc(L.price.shipping||"")}, tax $${esc(L.price.tax||"")}. Total $${esc(L.price.total)}.</div>
+    <div class="actions"><button class="btn small" data-bklorder="1" ${busy?"disabled":""}>Order one copy for $${esc(L.price.total)}</button></div>
+    <div class="cnt">The order waits in your Lulu account until it is paid there, and it can be cancelled until then.</div>`:""}`;
+  else body=`<div class="actions"><button class="btn small ghost" data-bklfiles="1" ${busy?"disabled":""}>Make the print files and check them with Lulu</button></div>`;
+  return `<div class="sethead">Printing with Lulu</div><section class="card">${body}${L.msg?`<div class="bkflag">${esc(L.msg)}</div>`:""}${orders?`<div class="cnt" style="margin-top:8px">Orders</div>${orders}`:""}</section>`}
+function bkLuluSetHtml(){if(!isDirector())return"";const set=bkLuluSet(),a=set.address;const f=(k,lab,w)=>`<label class="cnt" style="flex:${w||1}">${lab}<input data-bklset="${k}" value="${esc(a[k]||"")}"></label>`;
+  return `<div class="sethead">Printing with Lulu</div><section class="card"><div class="cnt">Books print as 11 by 8.5 inch hardcovers in premium color, on 80 pound coated white paper. Lulu writes to this email about an order, and books ship to this address unless an order says otherwise.</div>
+    <div class="bkaddr"><label class="cnt" style="flex:2">Email for Lulu<input data-bklset="email" value="${esc(set.email||"")}" type="email"></label><label class="cnt" style="flex:1">Cover<select data-bklset="finish"><option value="G" ${set.finish!=="M"?"selected":""}>Gloss</option><option value="M" ${set.finish==="M"?"selected":""}>Matte</option></select></label></div>
+    <div class="bkaddr">${f("name","Ship to",2)}${f("street1","Street",2)}${f("city","City",1)}${f("state_code","State",.5)}${f("postcode","ZIP",.6)}${f("phone_number","Phone",1)}</div></section>`}
+function bkLuluSetSave(){clearTimeout(BK.timers.get("lulu"));BK.timers.set("lulu",setTimeout(()=>{BK.timers.delete("lulu");if(db)db.doc("settings/lulu").set(JSON.parse(JSON.stringify(luluSet))).catch(()=>toast("Could not save that. Check your connection."))},700))}
+
 // the words of the book as a Word file, in the order they print
 async function bkWord(c){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))return;BK.making=true;renderMain();
   try{const X=await TREE_KIT.word();const {Paragraph,TextRun,AlignmentType}=X;const kids=[];
@@ -350,7 +444,7 @@ async function bkWord(c){const b=bkBook(c);if(!b.pages.some(p=>!p.hidden))return
 
 /* ----- what the buttons and the fields do ----- */
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
-  if(view==="books"&&t.dataset.bkkid){kidOpen=t.dataset.bkkid;LS.set("tree.kid",kidOpen);kidTab="book";LS.set("tree.kidtab","book");goView("child");return}
+  if(view==="kidbooks"&&t.dataset.bkkid){kidOpen=t.dataset.bkkid;LS.set("tree.kid",kidOpen);kidTab="book";LS.set("tree.kidtab","book");goView("child");return}
   if(view!=="child"||kidTab!=="book")return;const c=children.get(kidOpen);if(!c)return;const d=t.dataset;
   const b=bkBook(c),page=id=>b.pages.find(p=>p.id===id);
   if(d.bkpdf==="proof"){if(!BK.making)bkPdf(c,true);return}
@@ -358,6 +452,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(d.bknote){const ta=document.querySelector(`textarea[data-bknotetext="${d.bknote}"]`),text=ta?ta.value.trim():"";if(!text||!books.has(c.id))return;
     b.notes=Object.assign({},b.notes,{["n"+Date.now().toString(36)+Math.random().toString(36).slice(2,5)]:{on:d.bknote,by:whoAmI(),at:Date.now(),text:text.slice(0,1200)}});b.readBy=null;bkSave(b);toast("The director will see your note.");renderMain();return}
   if(!bkCan())return;
+  if(d.bklfiles){bkLuluFiles(c);return}
+  if(d.bklprice){bkLuluPrice(c);return}
+  if(d.bklorder){bkLuluOrder(c);return}
+  if(d.bkljob){bkLuluJob(c,Number(d.bkljob),false);return}
+  if(d.bklcancel){bkLuluJob(c,Number(d.bklcancel),true);return}
   if(d.bknotedone){if(b.notes&&b.notes[d.bknotedone]){b.notes=Object.assign({},b.notes);delete b.notes[d.bknotedone];bkSave(b);renderMain()}return}
   if(d.bkyear){if(!BK.busy)bkDraftYear(c,d.bkyear);return}
   if(d.bkuse){if(!BK.busy)bkDraftOne(c,d.bkuse,d.bkfor||"");return}
@@ -377,7 +476,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(d.bklast){b.last=b.last===d.bklast?"":d.bklast;bkTouched(b);bkSave(b);renderMain();return}
 });
 document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset)return;
-  if(view==="books"&&t.dataset.bksign&&isDirector()){bookSet=Object.assign({id:"book"},bookSet,{signs:Object.assign({},bookSet.signs,{[t.dataset.bksign]:t.value.trim()})});clearTimeout(BK.timers.get("set"));BK.timers.set("set",setTimeout(()=>{BK.timers.delete("set");if(db)db.doc("settings/book").set(JSON.parse(JSON.stringify(bookSet))).catch(()=>toast("Could not save the names. Check your connection."))},700));return}
+  if(view==="kidbooks"&&t.dataset.bklset&&isDirector()){const k=t.dataset.bklset,cur=bkLuluSet();
+    if(k==="email"||k==="finish")cur[k]=t.value.trim();else cur.address=Object.assign({},cur.address,{[k]:t.value.trim()});luluSet=Object.assign({id:"lulu"},cur);bkLuluSetSave();return}
+  if(view==="child"&&kidTab==="book"&&t.dataset.bkladdr&&bkCan()){const L=bkL(kidOpen);L.addr=Object.assign({},L.addr||bkLuluSet().address,{[t.dataset.bkladdr]:t.value.trim()});L.price=null;return}
+  if(view==="child"&&kidTab==="book"&&t.dataset.bkllevel&&bkCan()){const L=bkL(kidOpen);L.level=t.value;L.price=null;renderMain();return}
+  if(view==="kidbooks"&&t.dataset.bksign&&isDirector()){bookSet=Object.assign({id:"book"},bookSet,{signs:Object.assign({},bookSet.signs,{[t.dataset.bksign]:t.value.trim()})});clearTimeout(BK.timers.get("set"));BK.timers.set("set",setTimeout(()=>{BK.timers.delete("set");if(db)db.doc("settings/book").set(JSON.parse(JSON.stringify(bookSet))).catch(()=>toast("Could not save the names. Check your connection."))},700));return}
   if(view!=="child"||kidTab!=="book"||!bkCan())return;const c=children.get(kidOpen);if(!c)return;const b=bkBook(c);
   if(t.dataset.bkf){const p=b.pages.find(x=>x.id===t.dataset.bkp);if(!p)return;p[t.dataset.bkf]=t.value;p.edited=true;
     if(t.dataset.bkf==="quote"){const q=bkNorm(t.value),ents=bkEntries(c).filter(x=>p.sources.includes(x.k));const from=q.length>1&&ents.find(x=>bkNorm(x.words).includes(q));p.quoteOk=!!from;p.qat=from?from.at:(p.qat||0);if(b.opening&&b.opening.page===p.id)b.opening=has(t.value)?Object.assign({},b.opening,{quote:t.value.trim()}):null}

@@ -61,7 +61,7 @@ const forViewer = (kind, doc, director, office) => {
   return doc;
 };
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
-const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch', 'backuppics'];
+const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch', 'backuppics', 'lulu'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy', 'byDirector'];
 // every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
@@ -130,6 +130,8 @@ function makeSession(name, v) { const body = b64u(JSON.stringify(Object.assign({
 /* A photo's address carries a key for that photo alone. A signed-in page holds a twelve-hour secret and makes each
    photo's key from it and the photo's id, so an address copied out of TREE opens only that one photo, and only until
    the key runs out. Pages the server builds, the Family page and the staff room display, get each photo's key made here. */
+// printing a book with Lulu, lulu.js
+const lulu = require('./lulu.js').make({ SECRET, log: (...a) => log(...a) });
 function photoSecret(e) { return b64u(crypto.createHmac('sha256', SECRET).update('photos|' + e).digest()); }
 function makeFileKey() { const e = Date.now() + 12 * 36e5; return e.toString(36) + '.' + photoSecret(e); }
 function photoMac(secret, id) { return b64u(crypto.createHmac('sha256', Buffer.from(secret, 'utf8')).update(String(id), 'utf8').digest()).slice(0, 32); }
@@ -2965,6 +2967,8 @@ async function handle(req, res) {
   if ((req.method === 'GET' || req.method === 'HEAD') && path === '/ready') { const ok = store.ready && calendar.ready && staff.isReady(); send(req, res, ok ? 200 : 503, { 'Content-Type': 'text/plain; charset=utf-8' }, req.method === 'HEAD' ? undefined : ok ? 'ready' : 'loading'); return; }
   if (req.method === 'GET' && path === '/health') { json(req, res, 200, { ok: true, ready: store.ready, error: store.error || undefined, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, bootId: BOOT_ID }); return; }
 
+  // a book's print file, downloaded by Lulu with the key in its address (November 15, 2026)
+  if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/lulu-file/')) { lulu.serve(req, res, path, url.searchParams); return; }
   // a clip plays in a video element, which cannot send a header, so its address carries a key for that clip alone, made
   // the way a photo's key is. The video is fetched from the TREE Drive once and sent from this server's disk, in ranges.
   if ((req.method === 'GET' || req.method === 'HEAD') && path.startsWith('/clip/')) {
@@ -3358,6 +3362,14 @@ async function handle(req, res) {
   /* a child's book. The earlier years' Moments kept for it stay with the director's Kaymbu records, so the page asks here
      for one child's, and gets only what a book page needs, the words, the day, the class, the children and the photo. A
      kitchen sign-in and a new educator never reach this (November 14, 2026). */
+  // printing a book with Lulu, for the director alone (November 15, 2026)
+  if (path.startsWith('/api/lulu/')) {
+    if (!isDirector(me.name)) { err(req, res, 403, 'Printing with Lulu is for the director.'); return; }
+    const origin = process.env.PUBLIC_URL || (String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim() + '://' + String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim());
+    try { json(req, res, 200, await lulu.api(path.slice(10), body || {}, origin)); }
+    catch (e) { err(req, res, e.code >= 400 && e.code < 600 ? e.code : 500, e.message || 'Lulu could not be reached. Try again in a moment.'); }
+    return;
+  }
   if (path === '/api/book/moments') {
     const kid = typeof body.child === 'string' ? body.child : ''; const cr = ID_RE.test(kid) ? store.recs.children.get(kid) : null;
     if (!cr || cr.deleted) { err(req, res, 404, 'That child is not on the roster.'); return; }

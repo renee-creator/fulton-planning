@@ -200,9 +200,9 @@ It takes in its own observations, every observation and plan of a connected thre
 
 ## The Book
 
-Children, a child, then Book. Children, then Books, lists every child's book. The Book is the story of a child's time at our school, made cover to cover in TREE for the child and the family. It takes the place of the Shutterfly keepsake. Everyone who signs in to the classroom side sees it. A kitchen sign-in and a new educator do not.
+Children, a child, then Book. Children, then Children's books, lists every child's book. The Book is the story of a child's time at our school, made cover to cover in TREE for the child and the family. It takes the place of the Shutterfly keepsake. Everyone who signs in to the classroom side sees it. A kitchen sign-in and a new educator do not.
 
-The director drafts and changes a book. An educator reads it, with the educators' own words under each page and a proof to open. Under each page, each page across the years and the letter, an educator can write a note to the director about what is not true or is missing. The director sees the notes on the page and counted on the Books page, and marks each one Done. A note asks for the reading again, and the book cannot be marked read while a note is open. An educator or the director marks it read. The server holds an educator's save to the notes and the reading.
+The director drafts and changes a book. An educator reads it, with the educators' own words under each page and a proof to open. Under each page, each page across the years and the letter, an educator can write a note to the director about what is not true or is missing. The director sees the notes on the page and counted on the Children's books page, and marks each one Done. A note asks for the reading again, and the book cannot be marked read while a note is open. An educator or the director marks it read. The server holds an educator's save to the notes and the reading.
 
 A book has a cover with the child's full name, an opening page with the child's own words when a page has some, one page for a month, a page that opens each class year when the book holds more than one, closing pages at the end of each year, a culminating page across all the years when the book holds more than one, and a last page with a letter to the child beside a photo and the school's name.
 
@@ -220,9 +220,15 @@ Truth comes first, and these rules are in the code.
 
 Every page can be changed in place. Photos chooses the large photo and two more from the month, and the photos for the cover and the last page. Another story lists the other days of the month, and TREE writes a page from the one chosen, in place of the page or as another page for the month, which is how a book grows longer. Leave out keeps a page but drops it from the book. A page an educator changed is kept when its year is drafted again.
 
-The letter on the last page is written to the child. Draft a start writes one from the pages, for an educator to make true. It is signed With love and the first names the director enters on the Books page for each class and year (settings/book). A year with no names signs With love only.
+The letter on the last page is written to the child. Draft a start writes one from the pages, for an educator to make true. It is signed With love and the first names the director enters on the Children's books page for each class and year (settings/book). A year with no names signs With love only.
 
 The print is 11 by 8.5 inches with an eighth of an inch of bleed on every side, the size a hardcover printer asks for. Photos print at the size TREE holds them. A printed hardcover needs at least 24 pages, and the Book shows its count. The words also come as a Word file. The wrap for a printer's cover is not made yet.
+
+Printing with Lulu. Once a book has been read, the director makes the print files from the Book tab and Lulu checks them. TREE makes the inside pages, padded with white pages to an even count of at least 24, and a one-piece cover, back, spine and front, at the size Lulu gives for that page count. The front has a photo to the outer edge with the child's full name beside it, and the back has one photo and the school's name. Both files are sent to the server in parts and kept for a week at an address only Lulu is given, a key for that file alone in the address (lulu.js). After Lulu's check the director sees the price for the address and shipping chosen, and Order one copy sends the order. Lulu keeps an order unpaid until it is paid in the director's Lulu account, unless a card is saved there, and an unpaid order can be cancelled from the Book tab. Check on it shows where an order stands, with tracking once shipped.
+
+Books print as 11 by 8.5 inch hardcover casewraps in premium color on 80 pound coated white paper (1100X0850.FC.PRE.CW.080CW444, with G or M at the end for a gloss or matte cover). The Children's books page keeps, for the director alone, the cover finish, the email Lulu writes to and the address books ship to, the school's by default (settings/lulu). An order can ship elsewhere by changing the address on the Book tab before seeing the price.
+
+The keys live in Render, never in the records. LULU_CLIENT_KEY and LULU_CLIENT_SECRET are the live keys, LULU_SANDBOX_KEY and LULU_SANDBOX_SECRET the sandbox's, where nothing is printed or charged. With both set, LULU_MODE chooses, sandbox unless it says live. With none set, the Book tab says Lulu is not connected. test/s73-lulu.test.js checks this against a stand-in Lulu.
 
 A book is kept as books/<child>.json. The code is src/book-ui.js, set into the page by tools/build.py, and test/s71-book.test.js checks it.
 

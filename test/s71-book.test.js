@@ -108,7 +108,7 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   await s.p.waitForTimeout(2500);
   const kept = rec(fx, 'books/pip.json'); assert.ok(kept && kept.pages.length === 2 && kept.child === 'pip');
   // the Books page, with the signing names for the director alone
-  await s.p.evaluate(() => goView('books')); await s.p.waitForSelector('[data-bkkid="pip"]');
+  await s.p.evaluate(() => goView('kidbooks')); await s.p.waitForSelector('[data-bkkid="pip"]');
   assert.match(await s.p.innerText('#main'), /Pip Test\s*2 pages, not read yet/); assert.match(await s.p.innerText('#main'), /Ivy Test\s*Not started/);
   assert.ok(await s.p.locator('[data-bksign]').count() > 0);
   // an educator reads, cannot change a page, and leaves a note for the director
@@ -127,7 +127,7 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   assert.strictEqual(await a.p.locator('[data-bkread]').count(), 0, 'the reading waits while a note is open');
   // the director sees the note, marks it done, and then the book can be read
   await s.p.waitForFunction(() => Object.keys((books.get('pip') || {}).notes || {}).length === 1, null, { timeout: 30000 });
-  await s.p.evaluate(() => goView('books')); await s.p.waitForSelector('[data-bkkid="pip"]'); assert.match(await s.p.innerText('#main'), /1 note from educators/);
+  await s.p.evaluate(() => goView('kidbooks')); await s.p.waitForSelector('[data-bkkid="pip"]'); assert.match(await s.p.innerText('#main'), /1 note from educators/);
   await s.p.click('[data-bkkid="pip"]'); await s.p.waitForSelector('[data-bknotedone]'); await s.p.click('[data-bknotedone]'); await s.p.waitForSelector('[data-bkread]');
   await a.p.waitForSelector('[data-bkread]', { timeout: 30000 }); await a.p.click('[data-bkread]'); await a.p.waitForTimeout(2500);
   assert.strictEqual(rec(fx, 'books/pip.json').readBy.name, 'Ann');
