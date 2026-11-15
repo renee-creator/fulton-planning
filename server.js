@@ -344,11 +344,39 @@ async function gqlFiles(branch) {
   const big = ['originals', 'photos'];
   for (const k of [...dirs.filter(k => !big.includes(k)), ...big]) {
     let d;
-    try { d = await ask([k]); }
-    catch (e) { if (!gqlGone(e)) throw e; await new Promise(r => setTimeout(r, 2000)); try { d = await ask([k]); } catch (e2) { throw new Error(e2.message + ' when listing ' + k); } }
+    try { d = await (k === 'photos' ? askNames(branch, k) : ask([k])); }
+    catch (e) { if (!gqlGone(e)) throw e; await new Promise(r => setTimeout(r, 2000));
+      try { d = await (k === 'photos' ? askNames(branch, k) : ask([k])); }
+      catch (e2) {
+        /* a photo folder too large for GitHub to list in time no longer stops a start. The records are read without it,
+           and it is listed once the server is running (November 15, 2026) */
+        if (big.includes(k) && gqlGone(e2)) { log('GitHub could not list', k, 'in time, so the server starts without it and lists it once running'); store.unlisted = [...new Set([...(store.unlisted || []), k])]; continue; }
+        throw new Error(e2.message + ' when listing ' + k); } }
     take(k, (d.repository || {}).d0);
   }
   return files;
+}
+// a large photo folder asked for by its file names alone, which GitHub answers faster than names with their ids
+const askNames = (branch, k) => gql(`query{${gqlRepo()}{d0:object(expression:${JSON.stringify(branch + ':' + k)}){...on Tree{entries{name type}}}}}`);
+/* a photo folder the start could not list, listed while the server runs. The folder's own id comes through GraphQL, and
+   its file names through one ordinary request when the hourly allowance has room, or through GraphQL again. Tried every
+   five minutes until it comes through. Until then a photo whose place is not known yet is looked up the usual way. */
+let unlistedBusy = false;
+async function listUnlisted() {
+  if (unlistedBusy || !(store.unlisted || []).length) return; unlistedBusy = true;
+  try {
+    for (const k of store.unlisted.slice()) {
+      let names = null;
+      try { const d = await gql(`query{${gqlRepo()}{d:object(expression:${JSON.stringify(store.branch + ':' + k)}){oid}}}`); const oid = ((d.repository || {}).d || {}).oid;
+        if (oid) { const r = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${oid}`); if (r.status === 200 && r.json && Array.isArray(r.json.tree)) names = r.json.tree.filter(f => f.type === 'blob').map(f => ({ name: f.path, sha: f.sha, size: f.size })); } } catch (e) {}
+      if (!names) { try { const d = await askNames(store.branch, k); names = (((d.repository || {}).d0 || {}).entries || []).filter(e => e.type === 'blob').map(e => ({ name: e.name })); } catch (e) {} }
+      if (!names) continue;
+      for (const f of names) { const path = k + '/' + f.name;
+        if (k === 'photos') photosDrive.seen(path);
+        else if (k === 'originals' && !store.originals.has(f.name)) store.originals.set(f.name, { path, sha: f.sha || '', size: f.size || 0 }); }
+      store.unlisted = store.unlisted.filter(x => x !== k); log('Listed', k, 'once running,', names.length, 'files');
+    }
+  } finally { unlistedBusy = false; if ((store.unlisted || []).length) setTimeout(() => listUnlisted(), 5 * 60e3).unref(); }
 }
 // every file under a folder, its folders included to four levels, for the educator records when the allowance is spent
 async function gqlDeep(branch, dirs) {
@@ -1008,6 +1036,7 @@ async function doLoadGraph() {
     if (o) { const cur = store.originals.get(o[1]); if (cur && cur.drive) cur.leftover = { path: f.path, sha: f.sha }; else store.originals.set(o[1], { path: f.path, sha: f.sha, size: 0 }); }
     if (f.path.startsWith('photos/')) photosDrive.seen(f.path);
   }
+  if ((store.unlisted || []).length) setTimeout(() => listUnlisted(), 1000).unref();
   const small = await gqlTexts([...(accSha ? [accSha] : []), ...(rolesSha ? [rolesSha] : []), ...(drdpSha ? [drdpSha] : [])]);
   if (rolesSha) takeRoles(small.get(rolesSha));
   if (accSha) { accounts.sha = accSha; try { const a = JSON.parse(small.get(accSha) || '{}'); if (Array.isArray(a.accounts)) accounts.list = a.accounts.filter(x => x && x.name); } catch (e) { log('The sign-ins file could not be read'); } }
@@ -1364,6 +1393,8 @@ async function recheckRecords() {
     const o = f.path.match(/^originals\/([^/]+)$/); if (o && !store.originals.has(o[1])) { store.originals.set(o[1], { path: f.path, sha: f.sha, size: f.size }); ph++; }
   }
   if (ph) log('Found', ph, 'photos kept while the server was starting');
+  // a full listing also lists any photo folder the start could not
+  if (!tree.json.truncated && (store.unlisted || []).length) { log('Listed', store.unlisted.join(' and '), 'with the records'); store.unlisted = []; }
   if (store.partial) {
     const unread = (tree.json.tree || []).filter(f => { const m = f.type === 'blob' && f.path.match(KIND_RE); return m && !store.recs[m[1]].has(m[2]); });
     if (!unread.length) { store.partial = false; log('Every record is read now, so the one-time steps can run'); runOnce(); }
@@ -3004,6 +3035,7 @@ async function handle(req, res) {
       const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/originals/${encodeURIComponent(id)}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`);
       if (r.status === 200 && r.json && r.json.sha) { o = { path: `originals/${id}`, sha: r.json.sha, size: r.json.size }; store.originals.set(id, o); log('Photo found in the records directly', id.slice(0, 60)); }
     }
+    if (!o && (store.unlisted || []).length) listUnlisted();
     if (!o || !ID_RE.test(id)) { log('Photo not found', id.slice(0, 60));
       // a photo another copy of the server kept while this one started is found by reading the records again, at most every five minutes
       if (store.ready && Date.now() - (store.photoRecheckAt || 0) > 5 * 60e3) { store.photoRecheckAt = Date.now(); recheckRecords().catch(e => log('Could not read the records again', e.message)); } send(req, res, 404, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Not found'); return; }

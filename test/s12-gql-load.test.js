@@ -54,3 +54,17 @@ test('with the allowance spent, a file too large for GraphQL is read from the ra
   assert.strictEqual(L.recipes.length, 1);
   assert.ok(gh.rawCalls >= 1, 'the large file came through the raw address');
 });
+
+test('when GitHub cannot list the photos folder in time, the server starts without it and lists it once running', async t => {
+  const gh = { gql: true, spent: true, gqlPhotosFail: 3 };
+  const fx = await start({ gh, more: put => {
+    put('staff/library/recipes/r0.md', '<!--\nlibrary: recipe\nkind: food\nsource: Ours\n-->\n# Recipe zero\n');
+    put('photos/p1.jpg~drive1~1234', '');
+  } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  let d = null; for (let i = 0; i < 60; i++) { d = await fx.as(dee, '/api/data', {}); if (d.status === 200) break; await new Promise(r => setTimeout(r, 250)); }
+  assert.strictEqual(d.status, 200, 'the records were read without the photos folder');
+  for (let i = 0; i < 40 && (gh.photosAsked || 0) < 4; i++) await new Promise(r => setTimeout(r, 250));
+  assert.strictEqual(gh.photosAsked, 4, 'listed at the start three times without an answer, then once running');
+});

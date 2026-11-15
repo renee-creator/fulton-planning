@@ -872,6 +872,8 @@ When GitHub refuses a save because the file changed there, the server reads the 
 
 When the hourly allowance is spent at a start, the records are listed through GraphQL in one request. When GitHub gives up on that request, as it does on a request that takes about ten seconds, each folder is listed on its own, the photo folders last, and the records are read in smaller batches, so a deploy still finishes. The log says which step failed, listing the records or reading them.
 
+When the photos folder is too large for GitHub to list in time, the start goes on without it, so a restart never waits on the photos. Once the server is running it lists that folder by its file names, in one ordinary request when the hourly allowance has room or through GraphQL, and tries again every five minutes until it comes through. A photo asked for before then is looked up the usual way and starts that listing. test/s12-gql-load.test.js checks this.
+
 A save that finally goes through after failing logs Save written after earlier failures, with the file and how many minutes it waited.
 
 When a save needed more than three tries, the director's Today shows it once a day as one closed line, A few saves took more than one try, with each record's name and Seen inside, kept in settings/saves for 30 days. Seen keeps it away until the next day.

@@ -33,6 +33,8 @@ function start(dir, port, opt) {
       // folders by their path, to four levels, for the GraphQL listing used when the hourly allowance is spent
       if (u.pathname === '/graphql' && opt.gql && /object\(expression:/.test(body.query || '')) {
         // with opt.gqlShallow a nested listing times out the way GitHub does on a large folder, and only a one-level listing answers
+        // with opt.gqlPhotosFail, listing the photos folder times out that many times, the way GitHub does on a very large folder
+        if (opt.gqlPhotosFail && /:photos"\)\{\.\.\.on Tree\{entries/.test(body.query || '')) { opt.photosAsked = (opt.photosAsked || 0) + 1; if (opt.photosAsked <= opt.gqlPhotosFail) return send(504, { message: 'We couldn\'t respond to your request in time.' }); }
         if (opt.gqlShallow && /object\{\.\.\.on Tree\{entries/.test(body.query || '')) { opt.gqlShallowCalls = (opt.gqlShallowCalls || 0) + 1; return send(502, { message: 'timed out' }); }
         const tree = (rel, n) => { const full = path.join(dir, rel); if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return null;
           return { entries: fs.readdirSync(full, { withFileTypes: true }).filter(e => e.name !== '.git').map(e => e.isDirectory() ? { name: e.name, oid: 't', type: 'tree', object: n > 0 ? tree(path.join(rel, e.name), n - 1) : {} } : { name: e.name, oid: blobSha(fs.readFileSync(path.join(full, e.name))), type: 'blob' }) }; };
