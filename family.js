@@ -601,7 +601,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     // the newsletters the director posted to the Family page, the latest first
     const news = [];
     for (const [id, r] of store.recs.newsletters || []) { const d = r && !r.deleted && r.doc; if (!d || !d.posted || !Array.isArray(d.posted.blocks)) continue;
-      news.push({ month: d.month || '', title: d.posted.title || '', at: d.posted.at || 0, blocks: d.posted.blocks.map(b => ({ h: String(b.h || ''), text: String(b.text || ''), photos: (b.photos || []).filter(x => x && x.id).map(x => ({ src: photoSrc(x.id), cap: String(x.cap || '') })) })) }); }
+      news.push({ month: d.month || '', title: d.posted.title || '', at: d.posted.at || 0, blocks: d.posted.blocks.map(b => ({ h: String(b.h || ''), text: String(b.text || ''), cal: b.cal ? CALENDAR_URL : '', photos: (b.photos || []).filter(x => x && x.id).map(x => ({ src: photoSrc(x.id), cap: String(x.cap || '') })) })) }); }
     news.sort((a, b) => String(b.month).localeCompare(String(a.month)));
     // the recipe of the month comes from the recipe library. A month from before the library keeps its own words.
     const lib = mr.recipeId && recipeOf ? recipeOf(mr.recipeId) : null;

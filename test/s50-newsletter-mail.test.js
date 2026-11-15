@@ -144,6 +144,8 @@ test('A closure that runs a week shows once with its first and last day, with th
   const r = await s.p.evaluate(() => { const L = nlTidyEvents([{ date: '2026-11-23', end: '2026-11-27', text: 'Thanksgiving Break, school closed' }, { date: '2026-11-26', text: 'Thanksgiving Day Holiday' },
     { date: '2026-12-21', text: 'Winter Break, school closed' }, { date: '2026-12-22', text: 'Winter Break, school closed' }, { date: '2026-12-23', text: 'Winter Break, school closed' }, { date: '2026-11-09', text: 'Family conferences' }]);
     return L.map(e => nlWhen(e) + '. ' + e.text); });
+  const em = await s.p.evaluate(async () => { const e = await nlEmail({ id: 'nlmid-x', kind: 'mid', month: '2026-11', note: '', coming: [{ date: '2026-11-23', end: '2026-11-27', text: 'Thanksgiving Break, school closed' }] }, false); return { html: e.html, text: e.text }; });
+  assert.match(em.html, /See the whole school calendar/); assert.match(em.html, /calendar\.google\.com\/calendar\/embed/); assert.match(em.text, /See the whole school calendar\.\nhttps:\/\/calendar\.google\.com/);
   assert.deepStrictEqual(r, ['Monday, November 9. Family conferences', 'Monday, November 23 to Friday, November 27. Thanksgiving Break, school closed', 'Monday, December 21 to Wednesday, December 23. Winter Break, school closed']);
   assert.deepStrictEqual(s.errors, []);
 });

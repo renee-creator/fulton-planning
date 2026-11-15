@@ -303,6 +303,8 @@ function nlSmall(url,shape){return new Promise(ok=>{if(!url){ok("");return}const
 // is its own white card with a short coloured label, sixteen point words with room between lines, photos the full width
 // of the card, two side by side on a computer and one under the other on a phone, and the dates as a small table.
 const NL_FAMILY_URL="https://renee-creator.github.io/fulton-planning/family.html";
+// the school calendar families already see on the Family page, linked under Coming up
+const NL_CAL_URL="https://calendar.google.com/calendar/embed?src=c_fb2e747462e605bde4e83259ffadf24b98a87617bb24eca797ad223dc34930d2%40group.calendar.google.com&ctz=America%2FLos_Angeles";
 const NL_C={ink:"#1B2920",moss:"#2B5A40",muted:"#5B6B61",line:"#DCE3DA",link:"#245B78",soft:"#F3F6F2",warm:"#FBF3E4",amber:"#9A5B07"};
 const nlEP=(t,st)=>`<p style="margin:0 0 14px;${st||""}">${t}</p>`;
 const nlEsc=t=>esc(nlTxt(t));
@@ -331,7 +333,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
         <div style="clear:both">${nlEBtn(bk.lib,"Borrow from the library")}${nlEBtn(bk.shop,"Buy from our bookshop")}</div></div>`}}
     else if(b.h==="Try at home"&&(b.home||b.reading)){const hm=b.home;if(hm&&hm.text)inner+=`${hm.title?`<div style="font-size:18px;font-weight:bold;margin:0 0 8px">${nlEsc(hm.title)}</div>`:""}${nlEParas(hm.text)}`;
       for(const r of b.reading||[])inner+=nlEP(`<a href="${esc(r.url)}" style="color:${NL_C.link};font-weight:bold">${esc(r.title)}</a>${r.source?`<br><span style="color:${NL_C.muted};font-size:14px">${esc(r.source)}</span>`:""}`)}
-    else if(b.coming){inner+=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${b.coming.map(c=>`<tr><td valign="top" style="padding:8px 12px 8px 0;border-bottom:1px solid ${NL_C.line};white-space:nowrap;font-weight:bold;color:${NL_C.moss}">${c.date?esc(nlWhen(c,true)).replace(" to ","<br>to "):""}</td><td valign="top" style="padding:8px 0;border-bottom:1px solid ${NL_C.line}">${nlEsc(nlComing(c.text))}</td></tr>`).join("")}</table>`}
+    else if(b.coming){inner+=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${b.coming.map(c=>`<tr><td valign="top" style="padding:8px 12px 8px 0;border-bottom:1px solid ${NL_C.line};white-space:nowrap;font-weight:bold;color:${NL_C.moss}">${c.date?esc(nlWhen(c,true)).replace(" to ","<br>to "):""}</td><td valign="top" style="padding:8px 0;border-bottom:1px solid ${NL_C.line}">${nlEsc(nlComing(c.text))}</td></tr>`).join("")}</table><div style="margin:12px 0 8px">${nlEBtn(NL_CAL_URL,"See the whole school calendar")}</div>`}
     else if(b.reading){inner+=b.reading.map(r=>nlEP(`<a href="${esc(r.url)}" style="color:${NL_C.link};font-weight:bold">${esc(r.title)}</a>${r.source?`<br><span style="color:${NL_C.muted};font-size:14px">${esc(r.source)}</span>`:""}`)).join("")}
     else{inner+=await photos(b.photos);inner+=b.farms?nlFarmLinks(nlEParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))):nlEParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))}
     cards.push(`<tr><td class="pad" style="padding:0 16px 16px"><div class="card" style="background:#ffffff;border:1px solid ${NL_C.line};border-radius:14px;padding:22px 22px 10px">${inner}</div></td></tr>`)}
@@ -347,7 +349,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
     ${cards.join("")}
     <tr><td class="pad" style="padding:8px 16px 36px;font-size:14px;color:${NL_C.muted};text-align:center">${fam}${B.some(b=>b.books)?`<div style="margin-top:10px;font-size:13px">Our book links go to Bookshop.org, which supports independent bookstores. A small share of each purchase supports Fulton Community School &amp; Farm.</div>`:""}<div style="margin-top:10px">Fulton Community School &amp; Farm<br>1225 Fulton Road, Santa Rosa, CA 95401</div></td></tr>
     </table></td></tr></table></body></html>`;
-  const text=[title,"",...B.map(b=>b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.fits,bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.h)+"\n\n"+nlTxt(b.text)),B.some(b=>b.books)?"Our book links go to Bookshop.org, which supports independent bookstores. A small share of each purchase supports Fulton Community School & Farm.":"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
+  const text=[title,"",...B.map(b=>b.coming?nlTxt(b.h)+"\n\n"+nlTxt(b.text)+"\n\nSee the whole school calendar.\n"+NL_CAL_URL:b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.fits,bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.h)+"\n\n"+nlTxt(b.text)),B.some(b=>b.books)?"Our book links go to Bookshop.org, which supports independent bookstores. A small share of each purchase supports Fulton Community School & Farm.":"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
   return {html,text,images}}
 // farm names in the farm part link to each farm's own site, from the director's list of farm sites
 function nlFarmLinks(h){const L=nlFarmSites();for(const [name,url] of Object.entries(L)){if(!name||!url)continue;const re=new RegExp("(^|[^\\w>])("+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![^<]*</a>)","g");h=h.replace(re,(m,a,n)=>`${a}<a href="${esc(url)}" style="color:${NL_C.link}">${n}</a>`)}return h}
@@ -674,7 +676,7 @@ function nlBlocks(x){
   if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
   {const ft=nlFarmText(x);if(ft)B.push({h:"From our farms",farms:true,text:ft,photos:nlIsMid(x)?(x.foodPhotos||[]):[]})}
   {const tt=x.thanks!==false?famThanksText(x.month):"";if(tt)B.push({h:"Thank you, families",text:tt})}
-  if((x.coming||[]).length)B.push({h:"Coming up",coming:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))),text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlWhen(c)+". ":""}${nlComing(c.text)}`).join("\n")});
+  if((x.coming||[]).length)B.push({h:"Coming up",cal:true,coming:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))),text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlWhen(c)+". ":""}${nlComing(c.text)}`).join("\n")});
   return B;
 }
 function nlKaymbuHtml(x){
@@ -793,7 +795,7 @@ document.addEventListener("click",async e=>{
   // the newsletter goes on the Family page only when the director posts it, as it reads at that moment
   if(d.nlpost){if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length){toast("A topic about a behavior names a child. Take the name out before posting.");return}
     const B=nlBlocks(x);if(!B.length){toast("Nothing is written yet.");return}
-    const blocks=tidyWords(B.map(b=>({h:nlTxt(b.h),text:nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""),photos:(b.photos||[]).map(p=>{if(p.cover)return {id:p.cover,cap:p.cap||""};const n=notices.get(p.notice);return n&&n.photo&&n.photo.id?{id:n.photo.id,cap:p.cap||""}:null}).filter(Boolean)})));
+    const blocks=tidyWords(B.map(b=>({h:nlTxt(b.h),cal:!!b.cal,text:nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""),photos:(b.photos||[]).map(p=>{if(p.cover)return {id:p.cover,cap:p.cap||""};const n=notices.get(p.notice);return n&&n.photo&&n.photo.id?{id:n.photo.id,cap:p.cap||""}:null}).filter(Boolean)})));
     if(!confirm(x.posted?"Update the newsletter on the Family page with what is here now?":`Post the ${nlIsMid(x)?"mid-"+nlMonthOnly(x.month)+" note":nlName(x.month)+" newsletter"} to the Family page? Every family will see it.`))return;
     x.posted={title:nlIsMid(x)?`Mid-${nlMonthOnly(x.month)} note`:`The ${nlName(x.month)} newsletter`,blocks,at:Date.now()};nlSave(x,true);toast("On the Family page.");renderNewsletter();return}
   if(d.nlunpost){if(!confirm("Take the newsletter off the Family page?"))return;x.posted=null;nlSave(x,true);toast("Taken off the Family page.");renderNewsletter();return}
