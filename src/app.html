@@ -7424,28 +7424,61 @@ function nlBooksHtml(x,n){const L=x.books||[];
 // the email, written from the same parts as the Family page copy, with the books laid out beside their covers
 const nlLink=u=>{let h="";try{const v=new URL(u);h=v.hostname.replace(/^www\./,"")}catch(e){}return `<a href="${esc(u)}" style="color:#245B78">${esc(h||u)}</a>`};
 const nlParas=t=>String(t||"").trim().split(/\n\s*\n/).map(p=>`<p style="margin:0 0 12px">${p.split("\n").map(l=>/^https?:\/\/\S+$/.test(l.trim())?nlLink(l.trim()):esc(l)).join("<br>")}</p>`).join("");
-function nlSmall(url){return new Promise(ok=>{if(!url){ok("");return}const im=new Image();im.onload=()=>{const sc=Math.min(1,760/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.82))};im.onerror=()=>ok("");im.src=url})}
+// a photo made small for email. With a shape, such as 4/3, it is trimmed from the middle so photos side by side match
+function nlSmall(url,shape){return new Promise(ok=>{if(!url){ok("");return}const im=new Image();im.onload=()=>{let sx=0,sy=0,sw=im.width,sh=im.height;
+  if(shape){if(sw/sh>shape){const w=sh*shape;sx=(sw-w)/2;sw=w}else{const h=sw/shape;sy=(sh-h)/2;sh=h}}
+  const sc=Math.min(1,760/Math.max(sw,sh));const c=document.createElement("canvas");c.width=Math.round(sw*sc);c.height=Math.round(sh*sc);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.82))};im.onerror=()=>ok("");im.src=url})}
+// The email families receive (redesigned November 15, 2026). One column, at most 600 wide, that fills a phone. Each part
+// is its own white card with a short coloured label, sixteen point words with room between lines, photos the full width
+// of the card, two side by side on a computer and one under the other on a phone, and the dates as a small table.
+const NL_C={ink:"#1B2920",moss:"#2B5A40",muted:"#5B6B61",line:"#DCE3DA",link:"#245B78",soft:"#F3F6F2",warm:"#FBF3E4",amber:"#9A5B07"};
+const nlEP=(t,st)=>`<p style="margin:0 0 14px;${st||""}">${t}</p>`;
+const nlEsc=t=>esc(nlTxt(t));
+const nlEParas=t=>String(t||"").trim().split(/\n\s*\n/).filter(Boolean).map(p=>nlEP(p.split("\n").map(l=>/^https?:\/\/\S+$/.test(l.trim())?nlLink(l.trim()):nlEsc(l)).join("<br>"))).join("");
+const nlESub=t=>`<p style="margin:18px 0 6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;font-weight:bold;color:${NL_C.moss}">${esc(t)}</p>`;
+const nlEBtn=(u,t)=>`<a href="${esc(u)}" style="display:inline-block;margin:4px 8px 4px 0;padding:9px 14px;border:1px solid ${NL_C.moss};border-radius:20px;color:${NL_C.moss};text-decoration:none;font-size:14px;font-weight:bold">${esc(t)}</a>`;
 async function nlEmail(x,forSend){await nlPhotos(x);const images=[],seen=new Map();
-  const src=async p=>{const im=nlIm(p);if(!im)return "";const k=p.cover?"c:"+p.cover:"n:"+p.notice;if(seen.has(k))return seen.get(k);const small=await nlSmall(im.url);if(!small){seen.set(k,"");return ""}
+  const src=async (p,shape)=>{const im=nlIm(p);if(!im)return "";const k=(p.cover?"c:"+p.cover:"n:"+p.notice)+"|"+(shape||"");if(seen.has(k))return seen.get(k);const small=await nlSmall(im.url,shape);if(!small){seen.set(k,"");return ""}
     let out=small;if(forSend){const cid="p"+(images.length+1);images.push({cid,data:small.split(",")[1]});out="cid:"+cid}seen.set(k,out);return out};
-  const title=nlTitle(x),rows=[];
-  for(const b of nlBlocks(x)){let inner=`<h2 style="font-size:20px;color:#2B5A40;margin:0 0 10px">${esc(nlTxt(b.h))}</h2>`;
-    if(b.h==="Try at home"&&(b.home||b.reading)){const hm=b.home;if(hm&&hm.text)inner+=`${hm.title?`<p style="margin:0 0 6px"><b>${esc(hm.title)}</b></p>`:""}${nlParas(hm.text)}`;
-      for(const r of b.reading||[])inner+=`<p style="margin:0 0 10px"><a href="${esc(r.url)}" style="color:#245B78">${esc(r.title)}</a>${r.source?`<span style="color:#5B6B61">, ${esc(r.source)}</span>`:""}</p>`}
+  // photos, two to a row on a computer and stacked on a phone, each with its caption under it
+  const photos=async ps=>{const n=(ps||[]).filter(p=>nlIm(p)).length,L=[];for(const p of ps||[]){const im=nlIm(p);if(!im)continue;const s=await src(p,n>1?4/3:im.h>im.w*1.25?4/5:0);if(s)L.push({s,cap:p.cap||""})}if(!L.length)return "";
+    const cell=q=>`<div class="ph" style="display:inline-block;vertical-align:top;width:${L.length>1?"48%":"100%"};margin:0 ${L.length>1?"1%":"0"} 12px"><img src="${q.s}" alt="" style="display:block;width:100%;height:auto;border-radius:10px">${q.cap?`<div style="font-size:13px;line-height:1.45;color:${NL_C.muted};margin-top:6px">${nlEsc(q.cap)}</div>`:""}</div>`;
+    return `<div style="margin:4px 0 10px;font-size:0">${L.map(cell).join("")}</div>`};
+  const B=nlBlocks(x),cards=[];
+  for(const b of B){let inner=`<h2 style="font-size:22px;line-height:1.25;color:${NL_C.moss};margin:0 0 12px">${nlEsc(b.h)}</h2>`;
+    if(b.topic){const t=b.topic;inner+=await photos(t.photos);if(t.happening)inner+=nlEParas(t.happening);
+      if(t.why)inner+=nlESub("Why it matters")+nlEParas(t.why);
+      if((t.grows||[]).length)inner+=nlESub("How it grows")+t.grows.map(g=>`<div style="margin:0 0 10px;padding:10px 12px;background:${NL_C.soft};border-radius:8px"><b style="color:${NL_C.moss}">${nlEsc(g.age)}.</b> ${nlEsc(g.text)}</div>`).join("");
+      if(t.bonus)inner+=`<div style="margin:14px 0;padding:12px 14px;background:${NL_C.warm};border-left:4px solid ${NL_C.amber};border-radius:6px"><b style="color:${NL_C.amber}">Bonus for school.</b> ${nlEsc(t.bonus)}</div>`;
+      if((t.tips||[]).length)inner+=nlESub("Ideas to try at home")+t.tips.map(p=>`<div style="margin:0 0 12px;padding-left:12px;border-left:3px solid ${NL_C.line}"><b>${nlEsc(p.lead)}</b> ${nlEsc(p.text)}</div>`).join("")}
     else if(b.books){for(const bk of b.books){const s=bk.cover?await src({cover:bk.cover}):"";
-      inner+=`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>${s?`<td valign="top" style="padding-right:14px;width:96px"><img src="${s}" width="96" alt="" style="display:block;border-radius:4px"></td>`:""}<td valign="top"><b>${esc(bk.title)}</b>${bk.author?`<span style="color:#5B6B61">, ${esc(bk.author)}</span>`:""}
-        ${bk.fits?`<p style="margin:6px 0">${esc(bk.fits)}</p>`:""}${bk.why?`<p style="margin:6px 0">${esc(bk.why)}</p>`:""}${bk.wonder?`<p style="margin:6px 0"><b>Wonder together.</b> ${esc(bk.wonder.replace(/\n+/g," "))}</p>`:""}
-        <p style="margin:6px 0"><a href="${esc(bk.lib)}" style="color:#245B78">Borrow it from Sonoma County Library</a><br><a href="${esc(bk.shop)}" style="color:#245B78">Buy it from our Bookshop.org shop</a></p></td></tr></table>`}}
-    else{const ph=[];for(const p of b.photos||[]){const s=await src(p);if(s)ph.push({s,cap:p.cap||""})}
-      if(ph.length)inner+=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px"><tr>${ph.map(q=>`<td valign="top" style="padding-right:8px;width:${Math.floor(100/ph.length)}%"><img src="${q.s}" alt="" style="display:block;width:100%;height:auto;border-radius:6px">${q.cap?`<div style="font-size:13px;color:#5B6B61;margin-top:4px">${esc(q.cap)}</div>`:""}</td>`).join("")}</tr></table>`;
-      inner+=nlParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))}
-    rows.push(`<tr><td style="padding:18px 20px 4px;border-top:1px solid #C6D0C3">${inner}</td></tr>`)}
-  const fam=x.posted?`<p style="margin:0 0 8px"><a href="https://renee-creator.github.io/fulton-planning/family.html" style="color:#245B78">Read it on our family page</a></p>`:"";
-  const html=`<div style="background:#ffffff;margin:0;padding:0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff"><tr><td align="center"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;font-family:Andika,'Trebuchet MS',Arial,sans-serif;color:#1B2920;font-size:16px;line-height:1.55">
-    <tr><td style="padding:24px 20px 10px"><div style="font-size:12px;letter-spacing:1.5px;color:#5B6B61;font-weight:bold">FULTON COMMUNITY SCHOOL &amp; FARM</div><h1 style="font-size:26px;color:#2B5A40;margin:6px 0 0">${esc(title)}</h1></td></tr>
-    ${rows.join("")}<tr><td style="padding:18px 20px 30px;border-top:1px solid #C6D0C3;font-size:14px;color:#5B6B61">${fam}Fulton Community School &amp; Farm, 1225 Fulton Road, Santa Rosa, CA 95401</td></tr></table></td></tr></table></div>`;
-  const text=[title,"",...nlBlocks(x).map(b=>b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.fits,bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.text)),"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
+      inner+=`<div style="margin:0 0 18px;padding:14px;background:${NL_C.soft};border-radius:10px;overflow:hidden">${s?`<img src="${s}" alt="" width="90" style="float:left;width:90px;height:auto;margin:0 14px 6px 0;border-radius:4px">`:""}
+        <div style="font-size:18px;font-weight:bold;line-height:1.3">${esc(bk.title)}</div>${bk.author?`<div style="color:${NL_C.muted};margin:2px 0 8px">${esc(bk.author)}</div>`:""}
+        ${bk.fits?nlEP(esc(bk.fits)):""}${bk.why?nlEP(esc(bk.why)):""}${bk.wonder?nlEP(`<b>Wonder together.</b> ${esc(bk.wonder.replace(/\n+/g," "))}`):""}
+        <div style="clear:both">${nlEBtn(bk.lib,"Borrow from the library")}${nlEBtn(bk.shop,"Buy from our bookshop")}</div></div>`}}
+    else if(b.h==="Try at home"&&(b.home||b.reading)){const hm=b.home;if(hm&&hm.text)inner+=`${hm.title?`<div style="font-size:18px;font-weight:bold;margin:0 0 8px">${nlEsc(hm.title)}</div>`:""}${nlEParas(hm.text)}`;
+      for(const r of b.reading||[])inner+=nlEP(`<a href="${esc(r.url)}" style="color:${NL_C.link};font-weight:bold">${esc(r.title)}</a>${r.source?`<br><span style="color:${NL_C.muted};font-size:14px">${esc(r.source)}</span>`:""}`)}
+    else if(b.coming){inner+=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${b.coming.map(c=>`<tr><td valign="top" style="padding:8px 12px 8px 0;border-bottom:1px solid ${NL_C.line};white-space:nowrap;font-weight:bold;color:${NL_C.moss}">${c.date?esc(parseIso(c.date).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})):""}</td><td valign="top" style="padding:8px 0;border-bottom:1px solid ${NL_C.line}">${nlEsc(nlComing(c.text))}</td></tr>`).join("")}</table>`}
+    else if(b.reading){inner+=b.reading.map(r=>nlEP(`<a href="${esc(r.url)}" style="color:${NL_C.link};font-weight:bold">${esc(r.title)}</a>${r.source?`<br><span style="color:${NL_C.muted};font-size:14px">${esc(r.source)}</span>`:""}`)).join("")}
+    else{inner+=await photos(b.photos);inner+=b.farms?nlFarmLinks(nlEParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))):nlEParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))}
+    cards.push(`<tr><td class="pad" style="padding:0 16px 16px"><div class="card" style="background:#ffffff;border:1px solid ${NL_C.line};border-radius:14px;padding:22px 22px 10px">${inner}</div></td></tr>`)}
+  const title=nlTitle(x),fam=x.posted?nlEBtn("https://renee-creator.github.io/fulton-planning/family.html","Read it on our family page"):"";
+  const toc=B.length>2?`<div style="margin-top:14px;font-size:14px;color:${NL_C.muted}"><b style="color:${NL_C.ink}">In this issue.</b> ${B.map(b=>nlEsc(b.h)).join(" · ")}</div>`:"";
+  const html=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><style>
+    @media (max-width:620px){.pad{padding:0 8px 12px!important}.card{padding:18px 16px 6px!important}.ph{width:100%!important;margin:0 0 12px!important}h1{font-size:26px!important}}
+    a{color:${NL_C.link}}</style></head><body style="margin:0;padding:0;background:#ffffff">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff"><tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;font-family:Andika,'Trebuchet MS',Verdana,Arial,sans-serif;color:${NL_C.ink};font-size:16px;line-height:1.6">
+    <tr><td class="pad" style="padding:28px 16px 18px"><div style="font-size:12px;letter-spacing:2px;color:${NL_C.muted};font-weight:bold">FULTON COMMUNITY SCHOOL &amp; FARM</div>
+      <h1 style="font-size:30px;line-height:1.2;color:${NL_C.moss};margin:8px 0 0">${esc(title)}</h1>${toc}</td></tr>
+    ${cards.join("")}
+    <tr><td class="pad" style="padding:8px 16px 36px;font-size:14px;color:${NL_C.muted};text-align:center">${fam}<div style="margin-top:10px">Fulton Community School &amp; Farm<br>1225 Fulton Road, Santa Rosa, CA 95401</div></td></tr>
+    </table></td></tr></table></body></html>`;
+  const text=[title,"",...B.map(b=>b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.fits,bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.h)+"\n\n"+nlTxt(b.text)),"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
   return {html,text,images}}
+// farm names in the farm part link to each farm's own site, from the director's list of farm sites
+function nlFarmLinks(h){const L=nlFarmSites();for(const [name,url] of Object.entries(L)){if(!name||!url)continue;const re=new RegExp("(^|[^\\w>])("+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![^<]*</a>)","g");h=h.replace(re,(m,a,n)=>`${a}<a href="${esc(url)}" style="color:${NL_C.link}">${n}</a>`)}return h}
+const nlFarmSites=()=>(nlLib().farmSites)||{};
 // the mid-month note's photos, up to four from the last two weeks of observations, never from a team inquiry
 function nlMidOffer(){const t=Date.now()-14*864e5,inq=shareInquiryIds();return [...notices.values()].filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&(n.at||0)>=t&&!inq.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,24).map(n=>n.id)}
 function nlMidPhotosHtml(x){const L=x.photos||[],offer=nlMidOffer();
@@ -7687,16 +7720,16 @@ function nlBlocks(x){
     if((t.grows||[]).length){p.push("How it grows");for(const g of t.grows)p.push(`${g.age}. ${g.text}`);p.push("")}
     if(t.bonus)p.push("Bonus for school. "+t.bonus,"");
     if((t.tips||[]).length){p.push("Ideas to try at home");for(const tp of t.tips)p.push(nlTxt(`${tp.lead} ${tp.text}`).trim())}
-    B.push({h:t.title,text:p.join("\n").replace(/\n{3,}/g,"\n\n").trim(),photos:t.photos||[]});
+    B.push({h:t.title,topic:t,text:p.join("\n").replace(/\n{3,}/g,"\n\n").trim(),photos:t.photos||[]});
   }
   if((x.books||[]).length)B.push({h:"Books to share",books:x.books,text:x.books.map(b=>[b.title+(b.author?", "+b.author:""),b.fits,b.why,b.wonder?"Wonder together. "+b.wonder.replace(/\n+/g," "):"","Borrow it from Sonoma County Library.\n"+b.lib,"Buy it from our Bookshop.org shop.\n"+b.shop].filter(Boolean).join("\n")).join("\n\n"),photos:x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:b.title}))});
   if(nlIsMid(x)&&(x.home&&String(x.home.text||"").trim()||(x.homeReading||[]).length))B.push({h:"Try at home",home:x.home||null,reading:x.homeReading||[],text:[x.home&&x.home.text?(x.home.title?x.home.title+"\n":"")+x.home.text:"",...(x.homeReading||[]).map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`)].filter(Boolean).join("\n\n")});
-  if((x.reading||[]).length)B.push({h:"For families who want to read more",text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
+  if((x.reading||[]).length)B.push({h:"For families who want to read more",reading:x.reading,text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
   if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
-  {const ft=x.farms?farmNewsletterText(x.month):"";if(ft)B.push({h:"From our farms",text:ft})}
+  {const ft=x.farms?farmNewsletterText(x.month):"";if(ft)B.push({h:"From our farms",farms:true,text:ft})}
   {const tt=x.thanks!==false?famThanksText(x.month):"";if(tt)B.push({h:"Thank you, families",text:tt})}
-  if((x.coming||[]).length)B.push({h:"Coming up",text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlDay(c.date)+". ":""}${nlComing(c.text)}`).join("\n")});
+  if((x.coming||[]).length)B.push({h:"Coming up",coming:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))),text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlDay(c.date)+". ":""}${nlComing(c.text)}`).join("\n")});
   return B;
 }
 function nlKaymbuHtml(x){
