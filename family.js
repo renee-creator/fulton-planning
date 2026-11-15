@@ -345,6 +345,17 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
   const cpId = e => 'cp-' + crypto.createHash('sha256').update(norm(e)).digest('hex').slice(0, 16);
   const contactOut = e => { const r = recs().get(cpId(e)); return !!(r && !r.deleted && r.doc && r.doc.out); };
   function contactPref(f, out) { save(cpId(f.email), { id: cpId(f.email), kind: 'contactpref', out: !!out, at: nowIso() }); return { ok: true }; }
+  /* who a newsletter or note emailed from TREE goes to (November 15, 2026). While test mode is on, only the testers,
+     each once. Otherwise every parent email of every child at our school, or of one class, each address once with the
+     first names of its children. */
+  function mailList(classroom) { const c = cfg(); const out = new Map();
+    const kidsOf = ids => (ids || []).map(id => store.recs.children.get(id)).filter(r => r && !r.deleted && r.doc && r.doc.status !== 'withdrawn').map(r => r.doc);
+    if (c.test) { for (const t of c.testers) { const e = norm(t && t.email); if (!okEmail(e)) continue; const kids = kidsOf(t.children);
+      if (classroom && !kids.some(k => k.classroom === classroom)) continue; out.set(e, kids.map(firstOf)); } }
+    else for (const [, r] of store.recs.children) { const k = r.doc; if (r.deleted || !k || k.status === 'withdrawn' || (classroom && k.classroom !== classroom)) continue;
+      for (const p of k.parents || []) { const e = norm(p && p.email); if (!okEmail(e)) continue; out.set(e, (out.get(e) || []).concat(firstOf(k))); } }
+    return { test: c.test, list: [...out].map(([email, kids]) => ({ email, kids })) };
+  }
   function contactList(f) {
     const c = cfg(); const keep = new Set(c.test ? c.testers.flatMap(t => t.children || []) : []); const rows = [];
     for (const [id, r] of store.recs.children) { const k = r.doc; if (r.deleted || !k || k.status === 'withdrawn' || (c.test && !keep.has(id))) continue;
@@ -684,7 +695,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { mailList, learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;

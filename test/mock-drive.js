@@ -10,7 +10,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), vm = r
 
 function start(opt) {
   opt = opt || {}; const key = opt.key || 'mock-drive-key-' + crypto.randomBytes(4).toString('hex');
-  const nodes = new Map(); let n = 0; const sessions = new Map(); const props = new Map(), cache = new Map(); const calls = [];
+  const nodes = new Map(); let n = 0; const sessions = new Map(); const props = new Map(), cache = new Map(); const calls = []; const mails = [];
   const add = (o) => { const id = 'drv' + String(++n).padStart(8, '0') + 'x'; nodes.set(id, Object.assign({ id, trashed: false }, o)); return id; };
   const kids = (pid, folder) => [...nodes.values()].filter(x => x.parent === pid && !!x.folder === folder && !x.trashed);
   const iter = l => { l = l.slice(); return { hasNext: () => l.length > 0, next: () => l.shift() }; };
@@ -34,6 +34,8 @@ function start(opt) {
     DriveApp: { Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK', ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' }, Permission: { VIEW: 'VIEW' }, getFolderById: id => { if (!nodes.has(id)) throw new Error('No item with the given ID could be found'); return folderObj(id); }, getFileById: id => { if (!nodes.has(id)) throw new Error('No item with the given ID could be found'); return fileObj(id); },
       getFoldersByName: nm => folderObj(root).getFoldersByName(nm), createFolder: nm => folderObj(root).createFolder(nm) },
     Utilities: { base64Decode: s => Buffer.from(String(s), 'base64'), base64Encode: b => Buffer.from(b).toString('base64'), newBlob: (b, t, nm) => blob(b, t, nm), sleep: () => {}, formatDate: () => '' },
+    // the family email the newsletter sends, kept here so a test can read what each family received
+    MailApp: { sendEmail: o => { mails.push({ to: o.to, subject: o.subject, html: o.htmlBody, text: o.body, name: o.name, replyTo: o.replyTo || '', images: Object.keys(o.inlineImages || {}) }); }, getRemainingDailyQuota: () => 1500 },
     ScriptApp: { getOAuthToken: () => 'token', getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({}) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ text: t, setMimeType() { return this; } }) },
     // Drive's own resumable upload, the way the readable copies send a large file in pieces
@@ -66,7 +68,7 @@ function start(opt) {
   });
   return new Promise(ok => server.listen(0, '127.0.0.1', () => {
     const pathOf = id => { const p = []; for (let x = nodes.get(id); x && x.id !== root; x = nodes.get(x.parent)) p.unshift(x.name); return p.join('/'); };
-    ok({ url: 'http://127.0.0.1:' + server.address().port + '/exec', key, calls,
+    ok({ url: 'http://127.0.0.1:' + server.address().port + '/exec', key, calls, mails,
       tree: () => [...nodes.values()].filter(x => !x.folder && !isTrashed(x.id)).map(x => pathOf(x.id)).sort(),
       trashed: () => [...nodes.values()].filter(x => x.folder && x.trashed).map(x => pathOf(x.id)),
       file: p => { const x = [...nodes.values()].find(y => !y.folder && !isTrashed(y.id) && pathOf(y.id) === p); return x ? x.bytes : null; },

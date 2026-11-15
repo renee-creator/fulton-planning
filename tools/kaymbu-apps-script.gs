@@ -173,6 +173,8 @@ function doPost(e) {
     if (!inFolder) return reply_({ error: 'That file is not a TREE photo' });
     return reply_({ data: Utilities.base64Encode(file.getBlob().getBytes()), type: file.getMimeType() });
   }
+  // the newsletter and notes TREE emails to families, one email to each address (November 15, 2026)
+  if (body.op === 'mail') return reply_(familyMail_(body));
   // video clips, read by TREE in pieces, their Drive thumbnail, and their sharing for signed-in school accounts
   if (/^video-/.test(String(body.op || ''))) return reply_(videoOp_(body));
   return reply_({ error: 'Unknown request' });
@@ -468,4 +470,34 @@ function keepBackups_(folder) {
   weekly.sort(newest);
   weekly.slice(BACKUP_WEEKS).forEach(f => f.setTrashed(true));
   return { nightly: Math.min(nightly.length, BACKUP_KEEP), weekly: Math.min(weekly.length, BACKUP_WEEKS) };
+}
+
+/*
+  Email to families from TREE (November 15, 2026).
+  The director's newsletter or mid-month note, sent from TREE's Newsletter page after a preview. TREE sends the email
+  with its photos once, and this script sends one copy to each family address, so no family sees another's address.
+  It goes out from this mailbox with the name Fulton Community School, and replies go to the address the director gives.
+
+  Setup, once
+  1. Paste this whole file over the old one and save.
+  2. Choose Deploy, then Manage deployments, the pencil, New version, Deploy. The address does not change.
+     Google asks once to allow sending email as this account. Allow it.
+  A Google Workspace account sends to about 1,500 addresses a day, far more than a newsletter needs.
+*/
+function familyMail_(b) {
+  const ok = e => /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/i.test(String(e || ''));
+  const to = (Array.isArray(b.to) ? b.to : []).filter(ok).slice(0, 400);
+  if (!to.length) return { error: 'No family address to send to' };
+  if (!b.subject || !b.html) return { error: 'The email has no subject or words' };
+  const inline = {};
+  (Array.isArray(b.images) ? b.images : []).forEach(i => { if (i && i.cid && i.data) inline[i.cid] = Utilities.newBlob(Utilities.base64Decode(i.data), 'image/jpeg', i.cid + '.jpg'); });
+  let sent = 0; const failed = [];
+  to.forEach(t => {
+    try {
+      const o = { to: t, subject: String(b.subject), htmlBody: String(b.html), body: String(b.text || ''), name: String(b.name || 'Fulton Community School'), inlineImages: inline };
+      if (ok(b.replyTo)) o.replyTo = b.replyTo;
+      MailApp.sendEmail(o); sent++;
+    } catch (e) { failed.push(t); }
+  });
+  return { sent: sent, failed: failed, left: MailApp.getRemainingDailyQuota() };
 }

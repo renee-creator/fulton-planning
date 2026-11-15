@@ -5262,7 +5262,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="15393a563dbc";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="a468b859aedf";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8098,7 +8098,7 @@ let guideList=[],guideSel="";
 /* The libraries for plans, read from the server: recipes, the song book, read-alouds and the bank of provocations and
    curiosity prompts, each a page in the private records the director edits in place with its history. */
 let libData=null,libBusy=false;
-async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","books","artists","museums","settings","today"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();if(view==="search"&&typeof gsResults==="function")gsResults();return libData}
+async function loadLibrary(force){if(libBusy||!window.FP_API||(libData&&!force))return libData;libBusy=true;try{libData=await window.FP_API("/api/staff/library",{})}catch(e){libData=libData||{recipes:[],songs:[],readalouds:[],provocations:null}}finally{libBusy=false}if(["plans","recipes","songs","books","artists","museums","settings","today","newsletter"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();if(view==="search"&&typeof gsResults==="function")gsResults();return libData}
 const libLines=t=>String(t||"").split("\n").map(l=>l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map(m=>m[1].trim());
 // the bank, under a plan's questions, as wonderings an educator can tap in or ignore
 function provocationsChips(k){if(!libData){loadLibrary();return ""}const pv=libData.provocations;if(!pv)return "";
@@ -9695,7 +9695,8 @@ function renderWalls(){
 
 let nlDeleted=new Set(),newsletters=new Map(),nlMonth=LS.get("tree.nlmonth",""),nlBusy={},nlEvents={},nlKaymbu=false;
 const nlKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-const nlDoc=k=>newsletters.get("nl-"+k)||null;
+let nlMode=LS.get("tree.nlmode","month")==="mid"?"mid":"month";
+const nlDoc=k=>newsletters.get((nlMode==="mid"?"nlmid-":"nl-")+k)||null;
 function nlCur(){if(!nlMonth){const d=new Date();nlMonth=nlKey(d.getDate()>=15?d:new Date(d.getFullYear(),d.getMonth()-1,1));if(!nlDoc(nlMonth)&&nlDoc(nlKey(d)))nlMonth=nlKey(d)}return nlMonth}
 const nlTimers={};
 function nlSave(x,now){x.updatedAt=Date.now();newsletters.set(x.id,x);clearTimeout(nlTimers[x.id]);
@@ -9711,7 +9712,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","0b9f518f75").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","9797872109").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
