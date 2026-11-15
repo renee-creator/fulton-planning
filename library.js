@@ -126,9 +126,52 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     if (value !== null) lines.splice(lines.length - (lines[lines.length - 1] === '' ? 1 : 0), 0, `${key}: ${value}`);
     putText(path, guard(path, r.text.replace(m[0], `<!--${lines.join('\n')}-->`))); return true;
   }
+  /* The book bag (November 15, 2026). Educators add books from the collection for a coming week's plans, and the bag
+     closes at the end of Monday. That night the director places the holds at Sonoma County Library, and she picks the
+     books up at the library later that week, ready for the week after. Each book then moves from Requested to Ready, to
+     Picked up with its due date, and to Returned. A draft book waits for vetting, so only the director adds one, to read
+     it for vetting. staff/library/bookbag.json keeps the bag, and BOOKBAG_TODAY sets the day for the tests. */
+  const BAG = 'staff/library/bookbag.json';
+  const BAG_STEPS = ['bag', 'requested', 'ready', 'out', 'returned'];
+  const laIso = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const dayAdd = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  // the bag open now closes at the end of the coming Monday, or today when today is Monday, and holds books for the week after
+  function bagOpen() { const today = /^\d{4}-\d{2}-\d{2}$/.test(process.env.BOOKBAG_TODAY || '') ? process.env.BOOKBAG_TODAY : laIso(new Date());
+    const dow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7; const close = dayAdd(today, (7 - dow) % 7); return { today, close, week: dayAdd(close, 7) }; }
+  const bagAll = () => { const d = get(BAG); return d && Array.isArray(d.items) ? d.items : []; };
+  // what each person sees. Everyone sees the books on their way and the books here, and the director also sees the last
+  // returned. Who added a book is kept for the record and never shown.
+  function bagOut(me) { const dir = isDirector(me), open = bagOpen();
+    const books = new Map(paths('books').map(item).filter(Boolean).map(x => [x.path, x]));
+    const items = bagAll().filter(x => books.has(x.path) && (x.status !== 'returned' || dir)).sort((a, b) => (b.at || 0) - (a.at || 0))
+      .filter((x, i, L) => x.status !== 'returned' || L.filter(y => y.status === 'returned').indexOf(x) < 20)
+      .map(x => { const b = books.get(x.path); return { id: x.id, path: x.path, bookId: b.id, title: b.title, author: String(b.meta.author || ''), cover: String(b.meta.cover || ''), draft: b.draft,
+        week: x.week, for: x.for || '', status: x.status, due: x.due || '', at: x.at || 0, mine: x.by === me }; });
+    return { open, items };
+  }
   async function handle(P, body, me, req, res, { json, err, send }) {
     const dir = isDirector(me), kit = isKitchen(me);
-    if (P === 'library') { json(req, res, 200, list(me)); return; }
+    if (P === 'library') { json(req, res, 200, Object.assign(list(me), kit ? {} : { bag: bagOut(me) })); return; }
+    if (P === 'library/bag/add') { if (kit) { err(req, res, 403, 'The book bag is for educators.'); return; }
+      const x = item(String(body.path || '')); if (!x || x.kind !== 'book' || x.removed) { err(req, res, 404, 'That book is not in the collection.'); return; }
+      if (x.draft && !dir) { err(req, res, 403, 'This book is waiting to be vetted. The director adds it to the bag to read it for vetting.'); return; }
+      const all = bagAll(); if (all.some(y => y.path === x.path && y.status !== 'returned')) { err(req, res, 400, 'That book is already in the bag or on its way.'); return; }
+      const open = bagOpen(); const one = v => String(v || '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+      all.push({ id: crypto.randomBytes(5).toString('hex'), path: x.path, week: open.week, for: one(body.for), by: me, at: Date.now(), status: 'bag' });
+      put(BAG, { items: all }); log('Book bag, added', x.path, 'for the week of', open.week, 'by', me); json(req, res, 200, { bag: bagOut(me) }); return; }
+    if (P === 'library/bag/remove') { const all = bagAll(); const i = all.findIndex(y => y.id === String(body.id || ''));
+      if (i < 0) { err(req, res, 404, 'That book is not in the bag.'); return; }
+      if (all[i].status !== 'bag') { err(req, res, 400, 'The hold is placed. The director takes it out at the library.'); return; }
+      if (!dir && all[i].by !== me) { err(req, res, 403, 'The educator who added it, or the director, takes it out.'); return; }
+      all.splice(i, 1); put(BAG, { items: all }); json(req, res, 200, { bag: bagOut(me) }); return; }
+    // the director moves one book, or several at once, to the next step, and a book picked up keeps its due date
+    if (P === 'library/bag/status') { if (!dir) { err(req, res, 403, 'The director keeps track of the library books.'); return; }
+      const st = String(body.status || ''); if (!BAG_STEPS.includes(st)) { err(req, res, 400, 'Choose a step.'); return; }
+      const ids = new Set((Array.isArray(body.ids) ? body.ids : [body.id]).map(String)); const all = bagAll(); let n = 0;
+      const due = /^\d{4}-\d{2}-\d{2}$/.test(String(body.due || '')) ? String(body.due) : '';
+      for (const y of all) if (ids.has(y.id)) { y.status = st; y[st + 'At'] = Date.now(); if (st === 'out') y.due = due || y.due || ''; if (st === 'bag' || st === 'requested' || st === 'ready') delete y.due; n++; }
+      if (!n) { err(req, res, 404, 'That book is not in the bag.'); return; }
+      put(BAG, { items: all }); log('Book bag,', n, 'marked', st, 'by', me); json(req, res, 200, { bag: bagOut(me) }); return; }
     if (P === 'library/places/switch') { if (!dir) { err(req, res, 403, 'The director turns these on and off.'); return; }
       const k = String(body.key || ''); if (!SWITCHES.includes(k)) { err(req, res, 400, 'That switch is not here.'); return; }
       put(PLACES_SET, Object.assign({}, get(PLACES_SET) || {}, { [k]: !!body.on, at: Date.now(), by: me })); log('Community switch', k, body.on ? 'on' : 'off', 'by', me); json(req, res, 200, list(me)); return; }
