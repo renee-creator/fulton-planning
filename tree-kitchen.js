@@ -42,7 +42,7 @@ function kSaveSoon(month,day,k,val){const key=day+"|"+k;clearTimeout(kTimers[key
 function kWeeks(month){const days=menuSchoolDays(month);const weeks=[];for(const d of days){const m=mondayOf(parseIso(d));let w=weeks.find(x=>x.m===m);if(!w){w={m,days:[]};weeks.push(w)}w.days.push(d)}return weeks}
 function kCellHtml(month,d){const x=(((menus.get(month)||{}).days)||{})[d]||{},dr=kDraft&&kDraft.month===month?(kDraft.days[d]||{}):{};const closed=!!x.closed;
   const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});const shut=(kClosed[month]||new Set()).has(d);
-  return `<div class="kday${closed?" closed":""}"><div class="kdayh"><b>${esc(lab)}</b><label class="cnt"><input type="checkbox" data-kclosed="${d}" ${closed?"checked":""}> No school</label></div>
+  return `<div class="kday${closed?" closed":""}"><div class="kdayh"><b>${esc(lab)}</b></div><label class="kclosed"><input type="checkbox" data-kclosed="${d}" ${closed?"checked":""}> No school</label>
     ${shut&&!closed?`<div class="cnt warnline">The calendar shows the school closed</div>`:""}
     ${closed?"":kMealsOf(d).map(k=>{const v=x[k]||"",dv=!has(v)&&dr[k]?dr[k]:"";return `<label class="kmeal">${K_MEAL[k]}<textarea rows="1" data-kday="${d}" data-kk="${k}" class="kin${dv?" kdraft":""}" ${kSel&&kSel.day===d&&kSel.k===k?'data-ksel="1"':""}>${esc(v||dv)}</textarea>
       <textarea rows="1" class="kin kside" data-kday="${d}" data-kk="${k}Side" placeholder="${k==="lunch"?"Salad and vegetable":"Fruit"}" aria-label="${K_MEAL[k]} sides">${esc(x[k+"Side"]||"")}</textarea></label>`}).join("")}</div>`}
