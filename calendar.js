@@ -119,7 +119,7 @@ async function writeFile(path) {
     const known = store.shas.get(path);
     const r = await gh('PUT', `/repos/${RECORDS_REPO}/contents/${path}`, { message: label + by, content, branch: store.branch, ...(known ? { sha: known } : {}) });
     if (r.status === 200 || r.status === 201) { store.shas.set(path, r.json.content.sha); store.saveError = ''; return; }
-    if (r.status === 409 || r.status === 422) { const s = await currentSha(path); if (s) store.shas.set(path, s); else store.shas.delete(path); continue; }   // changed on GitHub directly, keep the app's copy
+    if (r.status === 409 || r.status === 422) { const s = opts.fileSha ? await opts.fileSha(path) : await currentSha(path); if (s === undefined) throw new Error('GitHub could not say which version of the file is newest'); if (s) store.shas.set(path, s); else store.shas.delete(path); continue; }   // changed on GitHub directly, keep the app's copy
     if (isRateLimit(r)) { log('GitHub asked to slow down'); throw new Error('GitHub rate limit, trying again shortly'); }
     if (r.status === 401) { store.saveError = KEY_PROBLEM; log('GitHub rejected the token'); }
     if (r.status === 403) { store.saveError = KEY_NO_WRITE; log('GitHub key cannot write'); }

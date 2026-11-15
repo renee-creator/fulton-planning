@@ -805,8 +805,8 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 @media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}.chip{padding-top:8px;padding-bottom:8px}}
 .kwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}.kmain{display:grid;gap:10px;min-width:0}
 .kweek{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.kday{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;gap:6px;min-width:0;align-content:start}.kday.closed{opacity:.6}
-.kdayh{display:flex;justify-content:space-between;gap:2px 4px;flex-wrap:wrap;align-items:center;font-size:12.5px;min-height:22px}.kdayh label{white-space:nowrap;font-size:11.5px;display:flex;align-items:center;gap:3px}.kdayh label input{margin:0}.kmeal{display:grid;gap:3px;font-size:11.5px;color:var(--muted);font-weight:600}
-.kmeal .kin{font-size:13.5px;padding:6px 7px;font-weight:400;color:var(--ink);resize:none;overflow:hidden;min-height:0;line-height:1.3;font-family:inherit}.kmeal .kin.kside{font-size:12px;padding:4px 7px;background:var(--bg)}.kmeal .kin.kdraft{color:var(--muted);font-style:italic;border-style:dashed}
+.kdayh{display:flex;justify-content:space-between;gap:2px 4px;flex-wrap:wrap;align-items:center;font-size:14px;min-height:22px}.kclosed{display:flex;align-items:center;gap:8px;min-height:40px;font-size:14px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:2px;cursor:pointer}.kclosed input{width:20px;height:20px;margin:0}.kdayh label{white-space:nowrap;font-size:11.5px;display:flex;align-items:center;gap:3px}.kdayh label input{margin:0}.kmeal{display:grid;gap:3px;font-size:13px;color:var(--muted);font-weight:600}
+.kmeal .kin{font-size:13.5px;padding:6px 7px;font-weight:400;color:var(--ink);resize:none;overflow:hidden;min-height:0;line-height:1.3;font-family:inherit}.kmeal .kin.kside{font-size:13px;padding:4px 7px;background:var(--bg)}.kmeal .kin.kdraft{color:var(--muted);font-style:italic;border-style:dashed}
 .kmeal .kin.ksel{outline:2px solid var(--moss);outline-offset:1px}.kaside{display:grid;gap:10px;position:sticky;top:96px}.klib{display:flex;flex-wrap:wrap;gap:6px;max-height:340px;overflow:auto}
 .kdish{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 10px;font-size:13px;cursor:pointer;text-align:left}.kdish .cnt{font-size:11px}.kly{display:grid;gap:4px;padding:6px 0;border-top:1px solid var(--line)}
 .nfmore>summary{cursor:pointer;padding:6px 0;font-weight:600;color:var(--moss)}.nfmore>*+*{margin-top:10px}
@@ -5262,7 +5262,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="3a2e15971fbc";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="7cefdc61d920";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -8474,7 +8474,7 @@ const DEMO_PANTRY=/^(.*water|.*salt|.*pepper|.*oil|.*butter|.*flour|.*sugar|ice|
 const DEMO_CUTS="quarters|chunks|slices|halves|pieces|sticks|cubes|rounds|wedges|strips";
 const DEMO_CHANGE=/\b(cooks?|simmers?|boils?|bakes?|roasts?|sautes?|steams?|blanch(es)?|fr(y|ies))\b/i;
 // the words under a picture of a changed food, such as apple quarters or cooked apple
-const demoStateLabel=k=>{const m=String(k).match(/^(.*)_(cooked|mashed|grated)$/);return (m?m[2]+" "+m[1]:k).replace(/_/g," ")};
+const demoStateLabel=k=>{const m=String(k).match(/^(.*)_(cooked|mashed|grated|soaked)$/);return (m?m[2]+" "+m[1]:k).replace(/_/g," ")};
 function demoFoodWalk(ings,steps,title){const keys=[...new Set(ings.map(l=>{const q=demoQty(l);return demoKey(q?q.item:l)}).filter(Boolean))],foods=keys.filter(k=>!DEMO_PANTRY.test(k));
   // a step that names any ingredient at all, pantry staples too, means that ingredient and never "them" from before
   const anyWords=[...new Set([...keys.flatMap(k=>k.split("_")),...ings.flatMap(l=>String(l).toLowerCase().split(",")[0].replace(/[^a-z ]/g," ").split(/\s+/))].filter(w=>w.length>3&&!DEMO_GENERIC.test(w)&&!/^(each|child|children|every|from|with|about|cups?|tablespoons?|teaspoons?|pounds?|ounces?|large|small|medium|fresh|dried|ripe|whole|plain|warm|cold|hot|softened|melted|chopped|sliced|grated|cooked|like|more|such|spoonful|pinch|handful|bunch|head|heads|cloves?)$/.test(w)))];
@@ -8596,7 +8596,6 @@ function demoStepPictures(x) {
   return pictures;
 }
 const demoFinishedKey = x => "finished_" + String(x.id || "").replace(/-/g, "_");
-const demoStepPictureLabel = key => key === "sticky_rice_soaked" ? "soaked sticky rice" : demoStateLabel(key);
 // every item the recipes name, ingredients and tools, by key, for the Pictures still needed list
 function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(q?q.item:l),name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
@@ -8609,11 +8608,11 @@ function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.re
     const stepPictures = demoStepPictures(x);
     if (!stepPictures.size) continue;
     for (const key of stepPictures.values()) {
-      if (!out.has(key)) out.set(key, {key, name: demoStepPictureLabel(key), kind: "as the recipe changes it", recipes: new Set()});
+      if (!out.has(key)) out.set(key, {key, name: demoStateLabel(key), kind: "as the recipe changes it", recipes: new Set()});
       out.get(key).recipes.add(x.title);
     }
     const key = demoFinishedKey(x);
-    out.set(key, {key, name: x.title + " — We made it", kind: "finished recipe", recipes: new Set([x.title])});
+    out.set(key, {key, name: "We made it, " + x.title, kind: "finished recipe", recipes: new Set([x.title])});
   }
   // the three pictures every demonstration set uses, washing hands, the timer and the adult hand
   for(const [k,name] of [["washing_hands","washing hands"],["kitchen_timer","kitchen timer"],["adult_hand","adult hand"]])if(!out.has(k))out.set(k,{key:k,name,kind:"every demonstration set",recipes:new Set(((libData&&libData.recipes)||[]).filter(r=>!r.draft).map(r=>r.title))});
@@ -8699,7 +8698,7 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=demoScaleL
       const stage = await demoPicData(demoPicOf(stageKey));
       if (stage) {
         const duplicate = pics.findIndex(pic => pic.img === stage.data);
-        const label = demoStepPictureLabel(stageKey);
+        const label = demoStateLabel(stageKey);
         const picture = duplicate >= 0 ? pics.splice(duplicate, 1)[0] :
           {img: stage.data, w: .85, cap: label, label, big: true, credit: stage.credit || ""};
         pics.unshift(picture);
@@ -12082,9 +12081,9 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
 const kCanEdit=()=>isDirector()||isKitchenUser();
 // every dish ever on a menu, how often and when it was last served
-function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","02342b8884").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","02342b8884").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function kMonthMenu(...a){return lazyLoad("kitchen","02342b8884").then(()=>kMonthMenu(...a))}
+function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","0f0c5afd5b").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","0f0c5afd5b").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function kMonthMenu(...a){return lazyLoad("kitchen","0f0c5afd5b").then(()=>kMonthMenu(...a))}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */

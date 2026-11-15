@@ -79,7 +79,7 @@ test('Find the book, Suggest books, We own it and Vet this book', async t => {
   await s.p.click('[data-bookown="find"]');
   // the starter set waits, every book of it a draft for the director to vet
   const toFind = await s.p.evaluate(() => libData.books.filter(x => !bookOwned(x)).map(x => ({ draft: x.draft, from: x.meta.from })));
-  assert.ok(toFind.length >= 70); assert.ok(toFind.every(x => x.draft && /starter set/.test(x.from)));
+  assert.ok(toFind.length >= 70); assert.ok(toFind.every(x => x.draft && /starter set|more books/.test(x.from)));
   assert.strictEqual(await s.p.$$eval('[data-readrow]', xs => xs.length), toFind.length);
   await s.p.click('[data-bookown="ours"]'); assert.strictEqual(await s.p.$$eval('[data-readrow]', xs => xs.length), 1);
   // At our library shows the books we do not own that the library holds, and ours is not one of them
@@ -148,7 +148,8 @@ test('Vet the books I chose vets each one, saves its notes and approves a group 
   // each book shows the first sentence of why we chose it
   assert.match(await s.p.textContent('[data-readrow="b-owl-moon"] .bkwhy'), /^A child and a parent walk quietly into the winter woods to look for an owl\.$/);
   // a checkbox draws the list again, so each is clicked once and read back from what TREE holds
-  for (const id of ['owl-moon', 'wave']) await s.p.$eval(`[data-bookpick="${id}"]`, e => e.click());
+  // a redraw from the background can replace a row just as it is clicked, so a click that did not take is made again
+  for (const id of ['owl-moon', 'wave']) for (let k = 0; k < 5 && !(await s.p.evaluate(id => bookPick.has(id), id)); k++) { await s.p.$eval(`[data-bookpick="${id}"]`, e => { if (!e.checked) e.click(); }).catch(() => {}); await s.p.waitForTimeout(300); }
   assert.deepStrictEqual(await s.p.evaluate(() => [...bookPick].sort()), ['owl-moon', 'wave']);
   await s.p.click('[data-bookbatch]');
   await s.p.waitForSelector('[data-bookbatchok="check"]', { timeout: 30000 });

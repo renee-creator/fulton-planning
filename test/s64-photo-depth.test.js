@@ -7,8 +7,7 @@ const LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 's64-
 const M = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 's63-photo-module.json'), 'utf8')).changes[0];
 
 test('s64PhotoDepth adds the In depth tab and the Presenting section', async () => {
-  const skip = 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces,s59BeanHouse,s60IdeaFacts,s61PastDates,s62ReadingDates,s63PhotoModule';
-  const f = await fx.start({ env: { ONCE_SKIP: skip }, more: put => put(M.path, M.create) });
+  const f = await fx.start({ env: { ONCE_SKIP: '', ONCE_ONLY: 's64PhotoDepth' }, more: put => put(M.path, M.create) });
   try {
     let ok = false;
     const dp = path.join(f.dir, LIST.changes[0].path), mp = path.join(f.dir, M.path);

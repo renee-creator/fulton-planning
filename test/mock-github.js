@@ -22,6 +22,8 @@ function start(dir, port, opt) {
       const u = new URL(req.url, 'http://x'); const send = (st, j) => { res.writeHead(st, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j)); };
       let body = {}; try { body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch (e) {}
       const m = u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)?$/);
+      // with opt.gqlFailStaffOnce the first listing of the educator records through GraphQL is refused with an error
+      if (u.pathname === '/graphql' && opt.gql && opt.gqlFailStaffOnce && !opt.staffFailed && /object\(expression:"[^:"]+:staff"/.test(String(body.query || ''))) { opt.staffFailed = true; return send(200, { errors: [{ message: 'Resource not accessible just now' }] }); }
       // with opt.gqlWideOver or opt.gqlBatchOver, a GraphQL request that asks for more folders or more files than that gives
       // up with a 504, the way GitHub does when a request takes too long
       if (u.pathname === '/graphql' && opt.gql) { const q = String(body.query || ''); const nExp = (q.match(/object\(expression:/g) || []).length, nOid = (q.match(/object\(oid:/g) || []).length;
@@ -34,7 +36,9 @@ function start(dir, port, opt) {
         if (opt.gqlShallow && /object\{\.\.\.on Tree\{entries/.test(body.query || '')) { opt.gqlShallowCalls = (opt.gqlShallowCalls || 0) + 1; return send(502, { message: 'timed out' }); }
         const tree = (rel, n) => { const full = path.join(dir, rel); if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return null;
           return { entries: fs.readdirSync(full, { withFileTypes: true }).filter(e => e.name !== '.git').map(e => e.isDirectory() ? { name: e.name, oid: 't', type: 'tree', object: n > 0 ? tree(path.join(rel, e.name), n - 1) : {} } : { name: e.name, oid: blobSha(fs.readFileSync(path.join(full, e.name))), type: 'blob' }) }; };
-        const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(expression:"[^:"]+:([^"]+)"\)/g)) repo[mm[1]] = tree(mm[2], 4);
+        // a file asked for by its path answers with its version, the way GitHub gives a blob's oid
+        const fileOid = rel => { const full = path.join(dir, rel); return fs.existsSync(full) && fs.statSync(full).isFile() ? { oid: blobSha(fs.readFileSync(full)) } : null; };
+        const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(expression:"[^:"]+:([^"]+)"\)/g)) repo[mm[1]] = tree(mm[2], 4) || fileOid(mm[2]);
         if (/defaultBranchRef/.test(body.query)) repo.defaultBranchRef = { name: 'main' };
         return send(200, { data: { repository: repo } }); }
       // a file's latest commits through GraphQL, newest first, the way the saves are checked when the allowance is spent

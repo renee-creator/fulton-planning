@@ -22,7 +22,7 @@ const DEMO_PANTRY=/^(.*water|.*salt|.*pepper|.*oil|.*butter|.*flour|.*sugar|ice|
 const DEMO_CUTS="quarters|chunks|slices|halves|pieces|sticks|cubes|rounds|wedges|strips";
 const DEMO_CHANGE=/\b(cooks?|simmers?|boils?|bakes?|roasts?|sautes?|steams?|blanch(es)?|fr(y|ies))\b/i;
 // the words under a picture of a changed food, such as apple quarters or cooked apple
-const demoStateLabel=k=>{const m=String(k).match(/^(.*)_(cooked|mashed|grated)$/);return (m?m[2]+" "+m[1]:k).replace(/_/g," ")};
+const demoStateLabel=k=>{const m=String(k).match(/^(.*)_(cooked|mashed|grated|soaked)$/);return (m?m[2]+" "+m[1]:k).replace(/_/g," ")};
 function demoFoodWalk(ings,steps,title){const keys=[...new Set(ings.map(l=>{const q=demoQty(l);return demoKey(q?q.item:l)}).filter(Boolean))],foods=keys.filter(k=>!DEMO_PANTRY.test(k));
   // a step that names any ingredient at all, pantry staples too, means that ingredient and never "them" from before
   const anyWords=[...new Set([...keys.flatMap(k=>k.split("_")),...ings.flatMap(l=>String(l).toLowerCase().split(",")[0].replace(/[^a-z ]/g," ").split(/\s+/))].filter(w=>w.length>3&&!DEMO_GENERIC.test(w)&&!/^(each|child|children|every|from|with|about|cups?|tablespoons?|teaspoons?|pounds?|ounces?|large|small|medium|fresh|dried|ripe|whole|plain|warm|cold|hot|softened|melted|chopped|sliced|grated|cooked|like|more|such|spoonful|pinch|handful|bunch|head|heads|cloves?)$/.test(w)))];
@@ -144,7 +144,6 @@ function demoStepPictures(x) {
   return pictures;
 }
 const demoFinishedKey = x => "finished_" + String(x.id || "").replace(/-/g, "_");
-const demoStepPictureLabel = key => key === "sticky_rice_soaked" ? "soaked sticky rice" : demoStateLabel(key);
 // every item the recipes name, ingredients and tools, by key, for the Pictures still needed list
 function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.recipes)||[]).filter(r=>!r.draft)){
     for(const l of libLines(recPart(x,"Ingredients"))){const q=demoQty(l);const k=demoKey(q?q.item:l);if(k&&!out.has(k))out.set(k,{key:k,old:demoKeyOld(q?q.item:l),name:k.replace(/_/g," "),kind:"ingredient",recipes:new Set()});if(k)out.get(k).recipes.add(x.title)}
@@ -157,11 +156,11 @@ function demoItemsAll(){const out=new Map();for(const x of ((libData&&libData.re
     const stepPictures = demoStepPictures(x);
     if (!stepPictures.size) continue;
     for (const key of stepPictures.values()) {
-      if (!out.has(key)) out.set(key, {key, name: demoStepPictureLabel(key), kind: "as the recipe changes it", recipes: new Set()});
+      if (!out.has(key)) out.set(key, {key, name: demoStateLabel(key), kind: "as the recipe changes it", recipes: new Set()});
       out.get(key).recipes.add(x.title);
     }
     const key = demoFinishedKey(x);
-    out.set(key, {key, name: x.title + " — We made it", kind: "finished recipe", recipes: new Set([x.title])});
+    out.set(key, {key, name: "We made it, " + x.title, kind: "finished recipe", recipes: new Set([x.title])});
   }
   // the three pictures every demonstration set uses, washing hands, the timer and the adult hand
   for(const [k,name] of [["washing_hands","washing hands"],["kitchen_timer","kitchen timer"],["adult_hand","adult hand"]])if(!out.has(k))out.set(k,{key:k,name,kind:"every demonstration set",recipes:new Set(((libData&&libData.recipes)||[]).filter(r=>!r.draft).map(r=>r.title))});
@@ -247,7 +246,7 @@ async function demoPlan(x){if(!libData)await loadLibrary();const ings=demoScaleL
       const stage = await demoPicData(demoPicOf(stageKey));
       if (stage) {
         const duplicate = pics.findIndex(pic => pic.img === stage.data);
-        const label = demoStepPictureLabel(stageKey);
+        const label = demoStateLabel(stageKey);
         const picture = duplicate >= 0 ? pics.splice(duplicate, 1)[0] :
           {img: stage.data, w: .85, cap: label, label, big: true, credit: stage.credit || ""};
         pics.unshift(picture);

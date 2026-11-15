@@ -103,7 +103,7 @@ module.exports = function staffModule(o) {
         if (k) await new Promise(ok => setTimeout(ok, 1500 * k));
         const res = await gh('PUT', `/repos/${repo}/contents/${p}`, { message: 'Update ' + p.replace(/^staff\//, 'educator records ').replace(/\.json$/, ''), content, branch: store.branch, ...(r.sha ? { sha: r.sha } : {}) });
         if (res.status === 200 || res.status === 201) { r.sha = res.json.content.sha; if ((r.doc !== undefined ? r.doc : r.text) === doc) r.local = false; return true; }
-        if (res.status === 409 || res.status === 422) { const g = await gh('GET', `/repos/${repo}/contents/${p}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); r.sha = g.status === 200 ? g.json.sha : undefined; continue; }
+        if (res.status === 409 || res.status === 422) { let sha; if (o.fileSha) sha = await o.fileSha(p); else { const g = await gh('GET', `/repos/${repo}/contents/${p}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); sha = g.status === 200 ? g.json.sha : g.status === 404 ? null : undefined; } if (sha === undefined) break; r.sha = sha || undefined; continue; }
         // a 403 while GitHub's hourly allowance is spent is tried again like a 429, any other answer below 500 ends the tries
         if (res.status < 500 && res.status !== 429 && !(res.status === 403 && spentAnswer(res))) break;
       }
@@ -118,7 +118,7 @@ module.exports = function staffModule(o) {
 
   // after a failed load TREE waits before reading every record again, 2 then 5 then 10 minutes, so a spent GitHub
   // allowance has time to come back. Requests in between are told the records are still loading.
-  const WAITS = [2, 5, 10].map(m => m * 60000); let failN = 0, retryAt = 0;
+  const WAITS = (process.env.STAFF_RETRY_MS ? process.env.STAFF_RETRY_MS.split(',').map(Number) : [2, 5, 10].map(m => m * 60000)); let failN = 0, retryAt = 0;
   async function load() {
     if (S.loading) return S.loading;
     if (Date.now() < retryAt) throw new Error('Waiting before reading the educator records again');
@@ -167,8 +167,15 @@ module.exports = function staffModule(o) {
       try { PR.seed(); } catch (e) { log('Presenting entries could not be started', e.message); }
       log(`Loaded educator records, ${[...S.files.keys()].filter(p => p.startsWith('staff/people/')).length} people, ${[...S.files.keys()].filter(p => p.startsWith('staff/handbook/')).length} handbook sections`);
       failN = 0; retryAt = 0;
-    })().catch(e => { S.loading = null; retryAt = Date.now() + WAITS[Math.min(failN, WAITS.length - 1)]; failN++; log('Educator records could not be read, trying again in', Math.round((retryAt - Date.now()) / 60000), 'minutes,', e.message); throw e; });
+    })().catch(e => { S.loading = null; retryAt = Date.now() + WAITS[Math.min(failN, WAITS.length - 1)]; failN++; log('Educator records could not be read, trying again in', Math.round((retryAt - Date.now()) / 60000), 'minutes,', e.message); retrySoon(); throw e; });
     return S.loading;
+  }
+  // the next try is made by itself when the wait is over, since a new server gets no requests until its records are in
+  let retryT = null;
+  function retrySoon() {
+    clearTimeout(retryT);
+    retryT = setTimeout(() => { retryT = null; if (S.ready) return; load().then(() => { if (o.onLoad) try { o.onLoad(); } catch (e) { log('After the educator records loaded', e.message); } }, () => {}); }, Math.max(1000, retryAt - Date.now() + 50));
+    if (retryT.unref) retryT.unref();
   }
   // the school's settings start with every part closed to educators. The handbook, the welcome and the pieces themselves
   // are kept in the records, never in TREE's own code, which anyone can read.

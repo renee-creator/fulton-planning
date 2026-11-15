@@ -7,8 +7,7 @@ const fx = require('./fixture.js');
 const LIST = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'once', 's63-photo-module.json'), 'utf8'));
 
 test('s63PhotoModule adds the draft module and its printables', async () => {
-  const skip = 's49PdRefresh,s50PdScreens,s51Citations,s52Wording,s55SofterWords,s56RecordText,s58PdPieces,s59BeanHouse,s60IdeaFacts,s61PastDates,s62ReadingDates';
-  const f = await fx.start({ env: { ONCE_SKIP: skip } });
+  const f = await fx.start({ env: { ONCE_SKIP: '', ONCE_ONLY: 's63PhotoModule' } });
   try {
     let ok = false;
     for (let i = 0; i < 60 && !ok; i++) {
