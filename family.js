@@ -142,7 +142,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
   const hbAck = (k, y) => (k.handbookAck || {})[y] || (y === '2026' && k.familyChecks && k.familyChecks.handbook ? { at: k.familyChecks.handbook } : null);
   const KIND = 'participation';
   const recs = () => store.recs[KIND];
-  const cfg = () => { const r = recs().get('config'); const d = r && !r.deleted && r.doc ? r.doc : {}; return { test: d.test !== false, goal: Number(d.goal) > 0 ? Number(d.goal) : 10, testers: Array.isArray(d.testers) ? d.testers : [], confOpen: !!d.confOpen, aa: d.aa && typeof d.aa === 'object' ? d.aa : {}, welcome: typeof d.welcome === 'string' ? d.welcome : '', roles: Array.isArray(d.roles) ? d.roles.filter(x => x && x.name) : [], firstFriday: d.firstFriday && typeof d.firstFriday === 'object' ? d.firstFriday : { on: false } }; };
+  const cfg = () => { const r = recs().get('config'); const d = r && !r.deleted && r.doc ? r.doc : {}; return { test: d.test !== false, mailFamilies: !!d.mailFamilies, goal: Number(d.goal) > 0 ? Number(d.goal) : 10, testers: Array.isArray(d.testers) ? d.testers : [], confOpen: !!d.confOpen, aa: d.aa && typeof d.aa === 'object' ? d.aa : {}, welcome: typeof d.welcome === 'string' ? d.welcome : '', roles: Array.isArray(d.roles) ? d.roles.filter(x => x && x.name) : [], firstFriday: d.firstFriday && typeof d.firstFriday === 'object' ? d.firstFriday : { on: false } }; };
   const getRec = (kind, id) => { const r = store.recs[kind].get(id); return r && !r.deleted && r.doc ? r.doc : null; };
   // in test mode, each family save notes which parts of the record the tester changed, with what they were before, so
   // Clear test entries puts back only those parts and never anything staff added since
@@ -347,14 +347,14 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
   function contactPref(f, out) { save(cpId(f.email), { id: cpId(f.email), kind: 'contactpref', out: !!out, at: nowIso() }); return { ok: true }; }
   /* who a newsletter or note emailed from TREE goes to (November 15, 2026). While test mode is on, only the testers,
      each once. Otherwise every parent email of every child at our school, or of one class, each address once with the
-     first names of its children. */
-  function mailList(classroom) { const c = cfg(); const out = new Map();
+     first names of its children. The director can email families while the Family page is still in test mode. */
+  function mailList(classroom) { const c = cfg(); const out = new Map(); const tmail = c.test && !c.mailFamilies;
     const kidsOf = ids => (ids || []).map(id => store.recs.children.get(id)).filter(r => r && !r.deleted && r.doc && r.doc.status !== 'withdrawn').map(r => r.doc);
-    if (c.test) { for (const t of c.testers) { const e = norm(t && t.email); if (!okEmail(e)) continue; const kids = kidsOf(t.children);
+    if (tmail) { for (const t of c.testers) { const e = norm(t && t.email); if (!okEmail(e)) continue; const kids = kidsOf(t.children);
       if (classroom && !kids.some(k => k.classroom === classroom)) continue; out.set(e, kids.map(firstOf)); } }
     else for (const [, r] of store.recs.children) { const k = r.doc; if (r.deleted || !k || k.status === 'withdrawn' || (classroom && k.classroom !== classroom)) continue;
       for (const p of k.parents || []) { const e = norm(p && p.email); if (!okEmail(e)) continue; out.set(e, (out.get(e) || []).concat(firstOf(k))); } }
-    return { test: c.test, list: [...out].map(([email, kids]) => ({ email, kids })) };
+    return { test: tmail, pageTest: c.test, list: [...out].map(([email, kids]) => ({ email, kids })) };
   }
   function contactList(f) {
     const c = cfg(); const keep = new Set(c.test ? c.testers.flatMap(t => t.children || []) : []); const rows = [];

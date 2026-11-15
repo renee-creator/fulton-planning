@@ -11,7 +11,7 @@ module.exports = function newsMail(o) {
     if (!isDirector(me)) { err(req, res, 403, 'Only the director sends email to families.'); return; }
     const classroom = one(body.classroom, 40).trim();
     const who = () => familyPage.mailList(classroom || '');
-    if (P === 'newsletter/recipients') { const w = who(); json(req, res, 200, { test: w.test, count: w.list.length, kids: w.list.reduce((a, x) => a + x.kids.length, 0), mailOn: drive.on() }); return; }
+    if (P === 'newsletter/recipients') { const w = who(); json(req, res, 200, { test: w.test, pageTest: !!w.pageTest, count: w.list.length, kids: w.list.reduce((a, x) => a + x.kids.length, 0), mailOn: drive.on() }); return; }
     if (P === 'newsletter/send') {
       if (!drive.on()) { err(req, res, 400, 'The TREE mailbox is not connected, so email cannot go out yet.'); return; }
       const subject = one(body.subject, 200).replace(/\s+/g, ' ').trim(), html = one(body.html, 2e6), text = one(body.text, 2e5);

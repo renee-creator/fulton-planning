@@ -33,6 +33,16 @@ test('In test mode only the testers get the email, and only the director sends i
   assert.strictEqual(drive.mails[0].replyTo, 'dee@example.test'); assert.strictEqual(drive.mails[0].name, 'Fulton Community School');
 });
 
+test('With Email families on, every parent gets the email while the Family page stays in test mode', async t => {
+  const drive = await require('./mock-drive.js').start(); t.after(() => drive.close());
+  const fx = await start({ env: { DRIVE_PHOTOS_URL: drive.url, KAYMBU_INBOX_KEY: drive.key, BOOK_CATALOG_TEST_BASE: 'http://127.0.0.1:9' }, more: put => { kids(put);
+    put('participation/config.json', { id: 'config', test: true, mailFamilies: true, testers: [{ email: 'pip.family@example.test', children: ['k1'] }] }); } });
+  t.after(() => fx.stop());
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  const r = await fx.as(dee, '/api/staff/newsletter/recipients', {});
+  assert.deepStrictEqual([r.body.test, r.body.pageTest, r.body.count], [false, true, 3]);
+});
+
 test('Once the Family page is open, every parent address gets one email, or one class', async t => {
   const { fx, drive } = await setup(t, false);
   const dee = (await fx.login('Dee', 'director-pass-1')).token;

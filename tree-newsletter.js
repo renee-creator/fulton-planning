@@ -340,7 +340,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
     else if(b.reading){inner+=b.reading.map(r=>nlEP(`<a href="${esc(r.url)}" style="color:${NL_C.link};font-weight:bold">${esc(r.title)}</a>${r.source?`<br><span style="color:${NL_C.muted};font-size:14px">${esc(r.source)}</span>`:""}`)).join("")}
     else{inner+=await photos(b.photos);inner+=b.farms?nlFarmLinks(nlEParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))):nlEParas(nlTxt(b.text).replace(new RegExp("^"+nlTxt(b.h).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*\\n+"),""))}
     cards.push(`<tr><td class="pad" style="padding:0 16px 16px"><div class="card" style="background:#ffffff;border:1px solid ${NL_C.line};border-radius:14px;padding:22px 22px 10px">${inner}</div></td></tr>`)}
-  const title=nlTitle(x),fam=x.posted?nlEBtn(NL_FAMILY_URL,short?"Read the whole newsletter on our family page":"Read it on our family page"):"";
+  const title=nlTitle(x),fam=x.posted&&!(nlMail&&nlMail.pageTest)?nlEBtn(NL_FAMILY_URL,short?"Read the whole newsletter on our family page":"Read it on our family page"):"";
   const toc=B.length>2?`<div style="margin-top:14px;font-size:14px;color:${NL_C.muted}"><b style="color:${NL_C.ink}">In this issue.</b> ${B.map(b=>nlEsc(b.h)).join(" · ")}</div>`:"";
   const html=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><style>
     @media (max-width:620px){.pad{padding:0 8px 12px!important}.card{padding:18px 16px 6px!important}.ph{width:100%!important;margin:0 0 12px!important}h1{font-size:26px!important}}
@@ -753,7 +753,7 @@ document.addEventListener("click",async e=>{
   if(d.nlmprev||d.nlmsend){const M=nlMail;if(!M||M.id!==x.id||M.busy)return;
     if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length){toast("A topic about a behavior names a child. Take the name out before emailing.");return}
     if(!nlBlocks(x).length){toast("Nothing is written yet.");return}
-    if(d.nlmprev){M.busy="prev";renderNewsletter();try{const [r,em]=await Promise.all([window.FP_API("/api/staff/newsletter/recipients",{classroom:M.classroom}),nlEmail(x,false,!!M.short)]);Object.assign(M,{html:em.html,count:r.count,test:r.test,mailOn:r.mailOn})}catch(er){toast(er&&er.message||"The preview could not be made.")}M.busy=false;renderNewsletter();return}
+    if(d.nlmprev){M.busy="prev";renderNewsletter();try{const [r,em]=await Promise.all([window.FP_API("/api/staff/newsletter/recipients",{classroom:M.classroom}),nlEmail(x,false,!!M.short)]);M.pageTest=!!r.pageTest;const em2=r.pageTest?await nlEmail(x,false,!!M.short):em;Object.assign(M,{html:em2.html,count:r.count,test:r.test,mailOn:r.mailOn})}catch(er){toast(er&&er.message||"The preview could not be made.")}M.busy=false;renderNewsletter();return}
     if(!M.subject.trim()){toast("Add a subject first.");return}
     if(!confirm(`Send "${M.subject}" to ${M.count} ${M.test?(M.count===1?"tester":"testers"):M.count===1?"family email":"family emails"}?`))return;
     M.busy="send";renderNewsletter();
