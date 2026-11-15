@@ -1096,3 +1096,4 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Books that match the observations from those dates are listed after the book bag, under Fits these two weeks.
 - Strengthen my words sits on the note in both the monthly newsletter and the mid-month note. TREE tightens the director's own words and keeps her voice, and her version and the stronger version show side by side until she chooses Use this or Keep mine.
 - Coming up ends with a See the whole school calendar button in the email and on the Family page, linking to the school's Google Calendar (November 15, 2026).
+- Drafts are shorter, with one idea to a sentence and nothing that restates the obvious or what a nearby section says. The note is three or four sentences on the one or two moments that matter most, and a drafted sentence that runs long is split (November 15, 2026).

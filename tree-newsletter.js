@@ -14,6 +14,9 @@ const nlSchoolYear=k=>{const [y,m]=k.split("-").map(Number);return m>=8?y:y-1};
 const nlIsMid=x=>!!x&&x.kind==="mid";
 const nlTitle=x=>nlIsMid(x)?"Mid-month note, "+nlName(x.month):"Family newsletter, "+nlName(x.month);
 const nlLib=()=>newsletters.get("library")||{id:"library",items:[]};
+// a drafted sentence that runs long is split at its first ", and" after the opening words
+function nlShort(t){return String(t||"").split(/\n\s*\n/).map(par=>(par.match(/[^.!?]+[.!?]+["”]?\s*|[^.!?]+$/g)||[par]).map(sn=>{sn=sn.trim();if(sn.split(/\s+/).length<=24)return sn;
+  const m=sn.match(/^((?:\S+\s+){6,}?\S+?),\s+and\s+(.+)$/);return m?m[1]+". "+m[2].charAt(0).toUpperCase()+m[2].slice(1):sn}).join(" ")).join("\n\n")}
 const nlClean=s=>String(s??"").replace(/\*+/g,"").replace(/\s*[—–]\s*/g,", ").trim();
 function nlRange(x){const today=iso(new Date());let to=x&&x.to;if(!to){to=x&&x.month&&x.month!==today.slice(0,7)?x.month+"-15":today;if(to>today)to=today}
   let from=x&&x.from||addDays(to,-13);if(from>to)from=to;return {from,to}}
@@ -61,7 +64,7 @@ function nlDrdpWords(codes){
     parts.push(`${v==="it"?"Infant and toddler view":"Preschool view"}, ${c} ${(DRDP_M[v][c]||{}).n||""}. Definition. ${m.def} Levels in order. ${Object.entries(m.levels||{}).map(([k,t])=>(DRDP_LV[k]||k)+", "+t).join(". ")}.`)}
     return parts.join("\n")}).filter(Boolean).join("\n");
 }
-const nlRules=(behavior)=>`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. ${behavior?"This topic is about a behavior or a challenge, so never name a child or describe a child so a family could tell who it is.":"Use children's first names as the educators wrote them when telling what children did. Never use a last name."} Write every line as a complete sentence with a subject and a verb, never a list of fragments. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Whenever a professional term such as self-regulation, proprioception or expressive language is used, put the plain everyday words first and the professional term after it in parentheses, such as a steady adult to borrow calm from (co-regulation) or strong pushing and pulling for the muscles (proprioception), and never a professional term on its own. Say "research shows" only for findings that are well established in early childhood research. ${FULTON_TALK}`;
+const nlRules=(behavior)=>`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. ${behavior?"This topic is about a behavior or a challenge, so never name a child or describe a child so a family could tell who it is.":"Use children's first names as the educators wrote them when telling what children did. Never use a last name."} Write every line as a complete sentence with a subject and a verb, never a list of fragments. Keep sentences short, one idea in each, under about 20 words, and never string three or more ideas together with "and". Do not restate the obvious, such as that children learn through play, that the weeks were busy or full, or anything a nearby section already tells families. Leave out filler, greetings and summary lines. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Whenever a professional term such as self-regulation, proprioception or expressive language is used, put the plain everyday words first and the professional term after it in parentheses, such as a steady adult to borrow calm from (co-regulation) or strong pushing and pulling for the muscles (proprioception), and never a professional term on its own. Say "research shows" only for findings that are well established in early childhood research. ${FULTON_TALK}`;
 
 async function nlFindTopics(x,btn){
   const obs=nlObs(x.month);
@@ -387,7 +390,7 @@ Return a JSON object with one key "items", an array of objects with "text" and "
 Observations.
 ${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.ids.some(id=>chosen.has(id))?", the director's chosen photo":o.photos.length?", with photo":""}. ${o.noticed.replace(/\n+/g," / ")}`).join("\n")}`;
   const out=await nlAsk(prompt,btn,"Reading the last two weeks");if(!out){renderNewsletter();return}
-  const byRef=new Map(obs.map(o=>[o.ref,o]));const items=(Array.isArray(out.items)?out.items:[]).slice(0,4).map(i=>({text:nlClean(i?.text),from:((byRef.get(String(i?.obs))||{}).photos||[])[0]||""})).filter(i=>i.text);
+  const byRef=new Map(obs.map(o=>[o.ref,o]));const items=(Array.isArray(out.items)?out.items:[]).slice(0,4).map(i=>({text:nlShort(nlClean(i?.text)),from:((byRef.get(String(i?.obs))||{}).photos||[])[0]||""})).filter(i=>i.text);
   x=newsletters.get(x.id)||x;x.highlights=items.map(i=>({text:i.text}));x.highlightsDraft=true;
   if(!(x.photos||[]).length)x.photos=[...new Set(items.map(i=>i.from).filter(Boolean))].slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));
   nlSave(x,true);toast("Highlights are in. Rewrite them in your own voice.");renderNewsletter()}
@@ -407,7 +410,7 @@ Also rewrite each book's own description as one or two complete sentences for fa
 
 Return a JSON object with one key "fits", an array of objects with "book" (like "b2"), "text", the sentences on why it fits now, and "why", the description rewritten in complete sentences.`;
   const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
-  x=newsletters.get(x.id)||x;for(const f of Array.isArray(out.fits)?out.fits:[]){const i=Number(String(f?.book||"").replace(/\D/g,""))-1;const t=nlClean(f?.text),w=nlClean(f?.why);if(x.books[i]&&t){x.books[i].fits=t;x.books[i].fitsDraft=true}if(x.books[i]&&w)x.books[i].why=w}
+  x=newsletters.get(x.id)||x;for(const f of Array.isArray(out.fits)?out.fits:[]){const i=Number(String(f?.book||"").replace(/\D/g,""))-1;const t=nlShort(nlClean(f?.text)),w=nlShort(nlClean(f?.why));if(x.books[i]&&t){x.books[i].fits=t;x.books[i].fitsDraft=true}if(x.books[i]&&w)x.books[i].why=w}
   nlSave(x,true);toast("Why each book fits now is drafted. Rewrite it in your own voice.");renderNewsletter()}
 // Strengthen my words (November 15, 2026). TREE tightens the director's own note and keeps her voice, and nothing
 // changes until she chooses Use this
@@ -428,12 +431,12 @@ async function nlDraftNote(x,btn){if((x.note||"").trim()&&!confirm("Replace your
   if(!parts.length){toast("Add highlights or books first, so the note has something to draw on.");return}
   const prompt=`${nlRules(false)}
 
-Draft the director's short opening note for the mid-month note to families, three to five warm sentences in the voice of "we". Draw on what is below without repeating it word for word, and end by inviting families to look, talk or wonder together at home. Do not sign it.
+Draft the director's short opening note for the mid-month note to families, three or four short sentences in all, in the voice of "we". Choose the one or two moments below that matter most and say something true and specific about them. Do not name the books, the home idea or the dates, because each has its own section below. End with one simple invitation to wonder or talk together at home. Do not sign it.
 ${parts.join("\n")}
 
 Return a JSON object with one key "note".`;
   const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
-  x=newsletters.get(x.id)||x;const t=nlClean(out.note);if(t){x.note=t;x.noteDraft=true;nlSave(x,true);toast("A draft note is in. Rewrite it in your own voice.")}renderNewsletter()}
+  x=newsletters.get(x.id)||x;const t=nlShort(nlClean(out.note));if(t){x.note=t;x.noteDraft=true;nlSave(x,true);toast("A draft note is in. Rewrite it in your own voice.")}renderNewsletter()}
 function nlHomeCards(x){const cards=(typeof ibCards==="function"?ibCards():[]).filter(c=>c&&c.home&&c.home.title);
   const ws=bagWords([...(x.highlights||[]).map(h=>h.text),...(x.books||[]).map(b=>b.title+" "+(b.fits||""))].join(" "));
   return cards.map(c=>{let s=0;for(const w of bagWords([c.title,c.home.title,c.group||""].join(" ")))if(ws.has(w))s++;return {c,s}}).sort((a,b)=>b.s-a.s||a.c.home.title.localeCompare(b.c.home.title))}
@@ -446,7 +449,7 @@ What the children have been exploring. ${now.join(" / ")}
 
 Return a JSON object with "title", 3 to 7 words, and "text", three to five sentences.`;
   const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
-  x=newsletters.get(x.id)||x;const t=nlClean(out.title),tx=nlClean(out.text);if(tx){x.home={title:t||"Try at home",text:tx,draft:true};nlSave(x,true)}renderNewsletter()}
+  x=newsletters.get(x.id)||x;const t=nlClean(out.title),tx=nlShort(nlClean(out.text));if(tx){x.home={title:t||"Try at home",text:tx,draft:true};nlSave(x,true)}renderNewsletter()}
 async function nlCheckLinks(items){if(!items.length)return items;try{const r=await window.FP_API("/api/staff/newsletter/linkcheck",{urls:items.map(i=>i.url)});const m=new Map((r.list||[]).map(c=>[c.url,c]));
   return items.map(i=>{const c=m.get(i.url)||{};return Object.assign(i,{ok:!!c.ok,checkWhy:c.ok?"":(c.why||"did not open")})})}catch(e){return items.map(i=>Object.assign(i,{ok:false,checkWhy:"the check did not run"}))}}
 const nlCheckLine=r=>r.ok===true?`<div class="nlsmall">Checked. It opens to this article.</div>`:r.ok===false?`<div class="nlsmall"><b>Not checked.</b> It ${esc(r.checkWhy||"did not open")}. Open it yourself before adding it.</div>`:"";
