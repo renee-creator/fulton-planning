@@ -86,8 +86,13 @@ function deckCard(e){if(!e.module||!(edit()||D()))return"";const outside=e.audie
   const q=String(st.dkQ||"").trim().toLowerCase();
   const fromObs=(typeof notices!=="undefined"?[...notices.values()]:[]).filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&!have.has("obs:"+n.photo.id)&&(!q||[n.noticed,n.wonder,n.classroom].join(" ").toLowerCase().includes(q))).sort((a,x)=>(x.at||0)-(a.at||0)).slice(0,st.dkMore||12)
     .map(n=>({key:"obs:"+n.photo.id,thumb:n.photo.thumb||"",cap:[n.at?fd(new Date(n.at).toISOString().slice(0,10)):"",n.classroom?n.classroom+" class":""].filter(Boolean).join(", "),w:n.photo.w||0,h:n.photo.h||0}));
+  // the observation photos that fit the module and the entry's guiding question, first among the ways to choose (November 15, 2026)
+  const fits=ed&&window.TreeGrowth&&TreeGrowth.photoFits?TreeGrowth.photoFits(e.module,{have:[...have],question:e.question,n:st.dkFitN||6}):[];st.dkFits=fits;
+  const fitRow=p=>`<div class="prmom" style="align-items:center"><img src="${H(p.src||"")}" alt="" loading="lazy" style="width:96px;height:64px;object-fit:cover;border-radius:6px;background:var(--line)"><div style="min-width:0;flex:1"><div class="cnt">${H(p.cap||"")}</div><div>${H(p.why||"")}</div><button class="btn small ghost" data-dkfit="${H(p.key)}">Add</button></div></div>`;
+  const fitHtml=ed?`<div class="lbl" style="margin-top:10px">Suggested photos</div>${fits.length?`<div class="hint">Observation photos that fit this module's key ideas${e.question?" and the guiding question":""}, read from what educators wrote and TREE's description of each photo.</div>
+    <div style="display:grid;gap:6px;margin-top:6px">${fits.map(fitRow).join("")}</div><div class="actions"><button class="btn small ghost" data-dkfitall="1">Add all ${fits.length}</button><button class="linkbtn" data-dkfitmore="1">Show more</button></div>`:empty("No observation photo fits this module yet. Choose from our documentation below.")}`:"";
   const photos=`<div class="lbl" style="margin-top:14px">Photos for the deck</div><div class="hint">The first photo fills the title slide. The others go beside key ideas and fill full photo slides during the experience, in this order. With none chosen, the deck uses the module's own pictures. Children's names and faces stay, so take them out before sharing a file outside our school.</div>
-    <div style="display:grid;gap:6px;margin-top:6px">${L.map(row).join("")||empty("No photos chosen yet.")}</div>
+    <div style="display:grid;gap:6px;margin-top:6px">${L.map(row).join("")||empty("No photos chosen yet.")}</div>${fitHtml}
     ${ed?`<details style="margin-top:10px" ${st.dkOpen?"open":""} data-dkopen="1"><summary class="cnt" style="cursor:pointer">Choose photos</summary><div style="display:grid;gap:6px;margin-top:6px">
       ${fromMod.length?`<div class="cnt"><b>From this module</b></div>${fromMod.map(opt).join("")}`:""}
       ${fromCh.length?`<div class="cnt"><b>From Chosen moments</b></div>${fromCh.map(opt).join("")}`:""}
@@ -102,11 +107,14 @@ function deckCard(e){if(!e.module||!(edit()||D()))return"";const outside=e.audie
 async function fillThumbs(){for(const im of document.querySelectorAll("img[data-dkthumb]:not([src])")){const key=im.dataset.dkthumb;im.setAttribute("src","data:image/gif;base64,R0lGODlhAQABAAAAACw=");
   try{const u=await TreeDeck.thumb({key,thumb:im.dataset.dkt});if(u)im.src=u}catch(er){}}}
 async function saveDeck(photos){try{set(await pa("save",{id:E().id,fields:{deck:{photos}}}));X.redraw()}catch(er){fail(er)}}
-document.addEventListener("click",e=>{const t=e.target.closest("[data-prdeck],[data-prpresent],[data-dkadd],[data-dkrm],[data-dkmove],[data-dkfind],[data-dkmore]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-prdeck],[data-prpresent],[data-dkadd],[data-dkrm],[data-dkmove],[data-dkfind],[data-dkmore],[data-dkfit],[data-dkfitall],[data-dkfitmore]");if(!t)return;const d=t.dataset;
   if(d.prdeck){if(!window.TreeModuleDeck)return;e.preventDefault();const [slug,dp,format,outside]=d.prdeck.split("|");window.TreeModuleDeck(slug,{depth:dp==="1",format,outside:outside==="1",entry:E()});return}
   if(d.prpresent){e.preventDefault();if(window.TreeDeck)TreeDeck.present({slug:E().module,depth:d.prpresent==="1",entry:E()});return}
   e.preventDefault();const L=deckPhotos(E()).slice();st.dkOpen=!!document.querySelector("[data-dkopen][open]");
   if(d.dkadd){let p;try{p=JSON.parse(d.dkadd)}catch(er){return}if(L.length>=40){toast("A deck holds up to 40 photos. Take one out first.");return}saveDeck([...L,p]);return}
+  if(d.dkfit||d.dkfitall){const pic=window.TreeGrowth&&TreeGrowth.deckPic||(p=>p);const add=(st.dkFits||[]).filter(p=>d.dkfitall||p.key===d.dkfit).filter(p=>!L.some(x=>x.key===p.key)).map(pic);
+    if(!add.length)return;if(L.length+add.length>40){toast("A deck holds up to 40 photos. Take some out first.");return}saveDeck([...L,...add]);return}
+  if(d.dkfitmore){st.dkFitN=(st.dkFitN||6)+6;X.redraw();return}
   if(d.dkrm){L.splice(+d.dkrm,1);saveDeck(L);return}
   if(d.dkmove){const [i,dir]=d.dkmove.split("|").map(Number);const j=i+dir;if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];saveDeck(L);return}
   if(d.dkfind){st.dkQ=val("#dk-q");st.dkMore=12;X.redraw();return}

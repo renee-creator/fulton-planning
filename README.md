@@ -446,6 +446,16 @@ A module's printables are in staff/pd/printables, one file a module named for it
 
 Slides from this module, on the director's module page, makes a slide set in our own print style from the module as it stands, a title slide with the module's question, Why it matters, one slide for each part of the Reading with its first lines, Try this week, the reflection questions and Plus and delta, as PDF and Word. A change to the module changes the slides. The original deck stays under Original materials.
 
+### Photos that fit a module
+
+Under Presenting this module, the director sees Photos that fit this module. These are observation photos from this school year and last, ranked by the module's key ideas. TREE reads what the educator wrote and its own description of each photo. One photo shows once, however many posts carry it. The director ticks the ones for the PowerPoint, in order, and the first fills the title slide. The ticks stay while TREE is open, and the PowerPoint button at the top of the module uses them too. Show more photos adds eight more.
+
+A Presenting entry made from a module shows Suggested photos above Choose photos in its Slide deck. They are ranked the same way, and the entry's guiding question adds weight to the photos that share its words. Add puts one in the deck, and Add all puts in every one shown. A photo already in the deck is not offered again. Children's faces and names stay on these slides, so they are shown and kept with us. Anything people take away is made with faces softened, as before.
+
+### Educators pages stay still
+
+The Educators pages, the PD library, a module, Presenting and the growth pages, read their own records from the server. A change to the school's records never draws one of them again once it is open. That includes an observation read by TREE in the background on the director's computer, or a setting saved elsewhere. Saving, ticking or a reading finishing on the page itself draws it again in place, at the same spot. Only opening a module starts at its top. Matching a module's examples keeps each text's words once worked out, and the module word weights while the modules stay the same, so a module opens faster (November 15, 2026).
+
 ### Pictures in a module
 
 A module can hold pictures, such as a diagram or a screen from TREE, each on its own line in the Markdown as ![Its caption](staff/pd/images/its-name.png). The pictures are kept in the private records under staff/pd/images and read through the same signed-in route as the pictures in the Policies and Procedures, so only signed-in staff can open them. On the module page each shows at full width with its caption beneath. Slides from this module gives each picture in the Reading a slide of its own after its part, with the caption as the slide's title.

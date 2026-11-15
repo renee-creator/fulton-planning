@@ -221,7 +221,7 @@ function restoreDrafts(m){wordsLoad();if(!DRAFTS.size)return;const n0=DRAFTS.siz
   if(String(v).trim()===String(el.value).trim())DRAFTS.delete(k);else el.value=v});if(DRAFTS.size!==n0)wordsSoon()}
 const redraw=()=>{T._keep=true;T.render(view)};
 // what the growth pages share with these
-T._={paFor:k=>((pa.mine||{}).choose||[]).find(p=>!p.started&&(p.areas||[]).includes(k))||null,W,W2,peBtn:(a,b,c)=>peBtn(a,b,c),tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
+T._={paFor:k=>((pa.mine||{}).choose||[]).find(p=>!p.started&&(p.areas||[]).includes(k))||null,W,W2,peBtn:(a,b,c)=>peBtn(a,b,c),tapOnce:(t,f)=>tapOnce(t,f),api,fail,H,card,chip,head,md,mdBlocks,plain,report,out,draw:(my,h)=>draw(my,h),isCur:my=>my===RT,redraw,keeping:()=>!!T._keep,boot:()=>B,reboot:()=>boot(true),st,fd,fms,today,meName,D,P,loadPerson,loadPd,pickFile,b64,addMonths,addDays,daysTo,hourText:h=>hourText(h),yearStart,fillPics:()=>fillPics(),picData:p=>picData(p)};
 
 /* the director's list of every educator */
 async function pageTeam(my){if(!D())return pageRecords(my);await loadPeople();const ps=st.people;

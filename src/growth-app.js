@@ -482,7 +482,10 @@ const EX_COMMON=new Set("play time learn work idea group adult morning week noti
 // a word's plain stem, so notice, noticed and notices meet, and a stem keeps four letters
 function exStem(w){if(w.length>4&&/ies$/.test(w))return w.slice(0,-3)+"y";for(const s of ["ings","ing","ed","es","e","s"]){if(!w.endsWith(s)||(s==="s"&&/ss$/.test(w)))continue;const r=w.slice(0,-s.length);if(r.length>=4)return r}return w}
 // the words that carry meaning, with stopwords and numbers dropped
-const exWords=t=>[...new Set(String(t||"").toLowerCase().replace(/['’]s\b/g,"").replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!EX_STOP.has(w)).map(exStem).filter(w=>!EX_STOP.has(w)))];
+// each text's words are worked out once and kept, since the same observations are read for every module
+const EX_WORDS=new Map();
+const exWords=t=>{const k=String(t||"");let w=EX_WORDS.get(k);if(w)return w;w=exWordsOf(k);if(EX_WORDS.size>8000)EX_WORDS.clear();EX_WORDS.set(k,w);return w};
+const exWordsOf=t=>[...new Set(String(t||"").toLowerCase().replace(/['’]s\b/g,"").replace(/[^a-z\s]/g," ").split(/\s+/).filter(w=>w.length>3&&!EX_STOP.has(w)).map(exStem).filter(w=>!EX_STOP.has(w)))];
 const exPlain=t=>String(t||"").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/[*_`#]/g,"").replace(/[.:,;\s]+$/,"").replace(/\s+/g," ").trim();
 // a module's key ideas, the headings of its reading and the bold labels under them, and the words of its topic
 function exKeyIdeas(m){const S=(m&&m.sections)||[];const sec=h=>S.find(x=>String(x.heading||"").trim().toLowerCase().startsWith(h));
@@ -492,7 +495,10 @@ function exKeyIdeas(m){const S=(m&&m.sections)||[];const sec=h=>S.find(x=>String
   const named=ideas.map(i=>Object.assign(i,{words:exWords(i.label)})).filter(i=>i.words.length);const why=sec("why it matters"),tr=sec("try this week");
   return {ideas:named,words:exWords([m&&m.title,...named.map(i=>i.label),why&&why.body,tr&&tr.body,m&&m.desc].filter(Boolean).join(" "))}}
 // how rare each word is across the modules, the inverse document frequency, so a word in every module weighs almost nothing
-function exIdf(mods){const docs=(mods||[]).filter(Boolean).map(m=>new Set(exWords([m.title,m.desc,...(m.sections||[]).map(s=>(s.heading||"")+" "+(s.body||""))].join(" "))));
+// kept while the modules stay the same, so drawing a module again does not read every module's words again
+let exIdfKeep=null;
+function exIdf(mods){mods=(mods||[]).filter(Boolean);if(exIdfKeep&&exIdfKeep.mods.length===mods.length&&exIdfKeep.mods.every((x,i)=>x===mods[i]))return exIdfKeep.f;const f=exIdfOf(mods);exIdfKeep={mods,f};return f}
+function exIdfOf(mods){const docs=(mods||[]).filter(Boolean).map(m=>new Set(exWords([m.title,m.desc,...(m.sections||[]).map(s=>(s.heading||"")+" "+(s.body||""))].join(" "))));
   const N=docs.length,df=new Map();for(const d of docs)for(const w of d)df.set(w,(df.get(w)||0)+1);
   return w=>Math.max(0.05,Math.log((N+1)/((df.get(w)||0)+0.5)))*(EX_COMMON.has(w)?0.25:1)}
 // the key idea a piece shows most, by the weighed words they share, with a bonus when it holds every word of the idea
@@ -539,9 +545,28 @@ function exSuggest(m,slug,own,extra){const ex=((st.mods&&st.mods.examples)||{})[
   const written=own?String(own.body||"").split(/\n\s*\n|\n(?=\s*[-*] )/).map(t=>t.replace(/^\s*[-*]\s+/,"").replace(/\*\*/g,"").trim()).filter(t=>t.length>30&&!/appears? here once the director|once the director chooses them/i.test(t)).map((t,i)=>({kind:"module",id:"module:"+slug+":"+i,text:exAnon(t),why:"Written into this module as its example."})):[];
   const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);const mods=Object.values((st.mods&&st.mods.modules)||{});
   const areas=(m.serves||[]).map(areaName).filter(Boolean).join(" and ");
-  const ranked=exRank(m,mods,(extra||exPool()).filter(x=>!out.has(x.id)&&!kept.has(x.id)),areaRes,!!extra).map(x=>({kind:x.kind,id:x.id,raw:x.raw,sc:x.sc,text:clip(exAnon(x.raw),420),
+  const ranked=exRank(m,mods,(extra||exPool()).filter(x=>!out.has(x.id)&&!kept.has(x.id)),areaRes,!!extra).slice(0,40).map(x=>({kind:x.kind,id:x.id,raw:x.raw,sc:x.sc,text:clip(exAnon(x.raw),420),
     why:x.why||exIdeaLine(x.idea)||(`${x.label} that touches on ${[...new Set(x.hits.slice(0,3).map(h=>((String(x.raw).toLowerCase().match(new RegExp("\\b"+h.replace(/[^a-z]/g,"")+"[a-z]*"))||[h])[0])))].join(", ")||"this module"}`+(areas?", and "+areas:"")+".")}));
   return [...written.filter(x=>!out.has(x.id)&&!kept.has(x.id)),...ranked]}
+/* ---------- photos that fit a module ----------
+   Observation photos from this school year and last, ranked by the module's key ideas, read from what the educator
+   wrote and TREE's own description of the photo. A guiding question adds weight to the photos that share its words.
+   One photo shows once, however many posts carry it. They fill the deck in Presenting and the module's PowerPoint
+   (November 15, 2026). */
+function photoFits(slug,o){o=o||{};const ms=st.mods;const m=ms&&ms.modules&&ms.modules[slug];if(!m||typeof notices==="undefined")return [];
+  const have=new Set(o.have||[]);const y0=Date.parse((typeof schoolYearStart==="function"?schoolYearStart():new Date().getFullYear()+"-08-01")+"T00:00:00")-365*864e5;
+  const qw=new Set(exWords(o.question||""));const pool=[],seen=new Set();
+  for(const n of notices.values()){if(!n||n.deleted||!n.photo||!n.photo.id||(n.at||0)<y0)continue;const key="obs:"+n.photo.id;if(have.has(key)||seen.has(key))continue;
+    const note=typeof photoNoteOf==="function"?photoNoteOf(n):(n.photoNote||"");const raw=[n.noticed,n.wonder,note].filter(Boolean).join(" ");if(raw.length<30)continue;
+    let boost=0;if(qw.size)for(const w of exWords(raw))if(qw.has(w))boost+=0.5;seen.add(key);pool.push({kind:"obs",id:key,n,raw,at:n.at||0,boost:Math.min(boost,2)})}
+  const mods=Object.values(ms.modules||{});const areaRes=(m.serves||[]).map(k=>AREA_WORDS[k]).filter(Boolean);const want=o.n||6;
+  let ranked=exRank(m,mods,pool,areaRes,false);if(ranked.length<want){const got=new Set(ranked.map(x=>x.id));ranked=ranked.concat(exRank(m,mods,pool.filter(x=>!got.has(x.id)),areaRes,true))}
+  return ranked.slice(0,want).map(x=>{const n=x.n;return {key:x.id,thumb:n.photo.thumb||"",cap:[n.at?fd(new Date(n.at).toISOString().slice(0,10)):"",n.classroom?n.classroom+" class":""].filter(Boolean).join(", "),w:n.photo.w||0,h:n.photo.h||0,
+    src:typeof photoThumb==="function"?photoThumb(n):"",why:exIdeaLine(x.idea)||("Touches on "+[...new Set(x.hits.slice(0,3))].join(", ")+".")}})}
+Gr.photoFits=photoFits;
+// a photo as the deck keeps it, without what only this page shows
+const deckPic=p=>({key:p.key,thumb:p.thumb||"",cap:p.cap||"",w:p.w||0,h:p.h||0});
+Gr.deckPic=deckPic;
 /* TREE's writing help reads the best word matches against the module's key ideas, at most 12, with children as initials
    and no photo, through the same server request, privacy and hourly limits as all writing help. It runs only once the
    director opens Suggested, and once a day for each module. Without the writing help the word matches show alone. */
@@ -608,7 +633,24 @@ async function drdpRefPage(my){const ms=await loadMods();const dir=isDir();let L
     ${!L?card("The official wording",`<div class="hint">The official wording could not be read just now. Try again in a moment.</div>`):""}
     ${doms.map(d=>card((typeof DRDP_DOM!=="undefined"&&DRDP_DOM[d])||d,Object.keys(M).filter(k=>M[k].d===d).map(mBlock).join(""))).join("")}`)}
 document.addEventListener("click",e=>{const t=e.target.closest("[data-drefview]");if(!t)return;st.drefView=t.dataset.drefview;redraw()});
-Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return drdpRefPage(my);const ms=await loadMods();let m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
+/* On a module, the director sees the photos that fit it under Presenting this module and ticks the ones for the
+   PowerPoint. The ticks stay while TREE is open, and the PowerPoint at the top uses them too. */
+function modPhotos(slug,deep){st.mfPick=st.mfPick||{};st.mfMore=st.mfMore||{};const pick=st.mfPick[slug]=st.mfPick[slug]||[];
+  const fits=photoFits(slug,{n:st.mfMore[slug]||8});st.mfFits=Object.assign(st.mfFits||{},{[slug]:fits});
+  const picked=new Set(pick.map(p=>p.key));const extra=pick.filter(p=>!fits.some(f=>f.key===p.key));
+  const row=p=>`<label class="prmom" style="align-items:center;cursor:pointer"><span style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-gmphoto="${H(slug)}|${H(p.key)}" ${picked.has(p.key)?"checked":""}>${p.src?`<img src="${H(p.src)}" alt="" loading="lazy" style="width:96px;height:64px">`:""}</span><span style="min-width:0"><span class="cnt">${H(p.cap||"")}</span><br>${H(p.why||"")}</span></label>`;
+  if(!fits.length&&!extra.length)return `<div class="lbl" style="margin-top:12px">Photos that fit this module</div><div class="cnt">No observation photo from this school year or last fits this module's key ideas yet.</div>`;
+  return `<div class="lbl" style="margin-top:12px">Photos that fit this module</div><div class="hint">Read from what educators wrote and TREE's description of each photo. Tick the ones you want in the PowerPoint, in the order you tick them. The first fills the title slide. Children's faces and names stay, so these slides are shown and kept with us.</div>
+    <div style="display:grid;gap:2px;margin-top:6px">${[...extra,...fits].map(row).join("")}</div>
+    <div class="actions" style="margin-top:8px"><button class="btn small" data-gmpptxpics="${H(slug)}|0">PowerPoint, overview${pick.length?", with "+pick.length+(pick.length===1?" photo":" photos"):""}</button><button class="btn small ghost" data-gmpptxpics="${H(slug)}|1">PowerPoint, in depth</button><button class="linkbtn" data-gmfitmore="${H(slug)}">Show more photos</button>${pick.length?`<button class="linkbtn" data-gmfitclear="${H(slug)}">Untick all</button>`:""}</div>`}
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.gmphoto)return;const [slug,key]=t.dataset.gmphoto.split(/\|(.*)/s);st.mfPick=st.mfPick||{};const L=(st.mfPick[slug]||[]).filter(p=>p.key!==key);
+  if(t.checked){const p=((st.mfFits||{})[slug]||[]).find(f=>f.key===key);if(p)L.push(p)}st.mfPick[slug]=L;redraw()});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gmpptxpics],[data-gmfitmore],[data-gmfitclear]");if(!t)return;e.preventDefault();const d=t.dataset;
+  if(d.gmfitmore){st.mfMore=st.mfMore||{};st.mfMore[d.gmfitmore]=(st.mfMore[d.gmfitmore]||8)+8;redraw();return}
+  if(d.gmfitclear){st.mfPick[d.gmfitclear]=[];redraw();return}
+  const [slug,dp]=d.gmpptxpics.split("|");const photos=((st.mfPick||{})[slug]||[]).map(deckPic);window.TreeModuleDeck(slug,{depth:dp==="1",photos})});
+// a page drawn again in place, after a save or a reading, stays where the reader was. Only opening a module starts at its top.
+Gr.module=async function(my,slug){const stay=!!(X.keeping&&X.keeping());await Gr.ready();if(slug==='drdpref')return drdpRefPage(my);const ms=await loadMods();let m=ms.modules[slug];if(!m){draw(my,card("Not here",`<div class="hint">This module is not in the PD library yet.</div>`));return}
   // the director reads a restored draft in the same page, beside the module educators know, and accepts it or goes back
   const viewing=isDir()&&st.restView===slug&&m.restored;if(viewing){try{m=Object.assign({},(await ga("module/restored",{slug})).module,{draft:false})}catch(er){st.restView="";toast(er.message||"The restored draft could not be opened.")}}
   // a module with an in-depth version shows two tabs, Overview and In depth, each with about how long it takes. Progress,
@@ -659,9 +701,9 @@ Gr.module=async function(my,slug){await Gr.ready();if(slug==='drdpref')return dr
     ${sh?card("Share at a staff meeting",`${md(sh.body)}<label class="fld-label">What I will share, if I want a note<textarea rows="2" id="gmod-share">${H(pr.share||"")}</textarea></label>`):""}
     ${rd?card("Readings",md(rd.body)):""}${await (async()=>{const R2=((await loadReadings()).list||[]).filter(x=>(x.modules||[]).includes(slug));const bk=R2.filter(x=>x.kind!=="article"),ar=R2.filter(x=>x.kind==="article");
       return (bk.length?card("Books",bk.map(readingRow).join("")):"")+(ar.length?card("Articles to read online",`<div class="hint">Each opens in a new tab.</div>${ar.map(readingRow).join("")}`):"")})()}
-    ${other.map(x=>card(x.heading,md(x.body))).join("")}${printCard(m,prints,dir)}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)):""}${origCard}
+    ${other.map(x=>card(x.heading,md(x.body))).join("")}${printCard(m,prints,dir)}${dir&&pres?card("Presenting this module, seen only by you",md(pres.body)+modPhotos(slug,deep)):""}${origCard}
     ${dir&&(m.source||(m.sources||[]).length)?`<div class="cnt" style="margin:8px 0">Source, seen only by you. ${H([m.source,...(m.sources||[])].filter(Boolean).join(". "))}</div>`:""}
-    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish on my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);try{if(X.fillPics)X.fillPics()}catch(er){}window.scrollTo(0,0)};
+    ${viewing?"":`<div class="actions"><button class="btn small ghost" data-gmodsave="${H(slug)}">Save</button>${pr.done?"":`<button class="btn" data-gmodfinish="${H(slug)}">${ways?"Finish on my own":"Finish the module"}</button><span class="cnt">Its hours go on your records page as our PD hours.</span>`}</div>`}`);try{if(X.fillPics)X.fillPics()}catch(er){}if(!stay)window.scrollTo(0,0)};
 /* Slides from a module, in our own print style. A title slide with the module's question, why it matters, one slide for
    each part of the Reading with its first lines, Try this week, the reflection questions and plus delta. They follow
    the module as it stands, so a change to the module changes the slides. */
@@ -1130,7 +1172,7 @@ document.addEventListener("change",async e=>{const t=e.target;if(!t.dataset||t.d
   try{st.rlib=await ga("readings/onsite",{id:t.dataset.grlonsite,on:t.checked});toast(t.checked?"Marked In our library.":"No longer marked In our library.");redraw()}catch(er){t.checked=!t.checked;toast(er&&er.message||"That did not save.")}});
 
 // the director's Edit button on a module, the same editor as a How To guide and the PD library letter
-document.addEventListener("click",e=>{const t=e.target.closest("[data-gmpptx]");if(!t)return;e.preventDefault();const [slug,dp]=t.dataset.gmpptx.split("|");window.TreeModuleDeck(slug,{depth:dp==="1"})});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-gmpptx]");if(!t)return;e.preventDefault();const [slug,dp]=t.dataset.gmpptx.split("|");window.TreeModuleDeck(slug,{depth:dp==="1",photos:((st.mfPick||{})[slug]||[]).map(deckPic)})});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gmtab]");if(!t)return;e.preventDefault();const [slug,w]=t.dataset.gmtab.split("|");st.modTab=st.modTab||{};st.modTab[slug]=w;redraw();window.scrollTo(0,0)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-gmdepthedit]");if(!t||!window.TREE_PAGEEDIT)return;e.preventDefault();window.TREE_PAGEEDIT({path:t.dataset.gmdepthedit},async()=>{st.mods=null;redraw()})});
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-gmreadtime]");if(!t)return;e.preventDefault();const [slug,which]=t.dataset.gmreadtime.split("|");

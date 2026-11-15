@@ -162,7 +162,7 @@ const css=()=>{if(document.getElementById("dk-css"))return;const s=document.crea
 let P=null;
 async function deckFrom(o){const K=kit();if(!K.loadMods)throw new Error("Open the PD library once, then try again.");const ms=await K.loadMods();const m=ms.modules[o.slug];if(!m)throw new Error("That module is not in the PD library yet.");
   const e=o.entry||null;const outside=e?(e.audienceType==="external"||e.audienceType==="both"):!!o.outside;
-  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:e&&e.deck&&e.deck.photos,moments:e&&e.chosen,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});
+  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:(e&&e.deck&&e.deck.photos)||o.photos,moments:e&&e.chosen,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});
   d.outside=outside;d.depth=!!o.depth;await loadPhotos(d);return d}
 Dk.present=async function(o){if(typeof progress==="function")progress("Opening the presentation");let d;try{d=await deckFrom(o)}catch(er){if(typeof toast==="function")toast(er.message||"The presentation could not open.");return}
   if(typeof toast==="function")toast("Click or press the arrow keys to move. Full screen and the presenter view are in the bar at the bottom.");css();
@@ -225,7 +225,7 @@ function clock(){if(!P||!P.win||P.win.closed)return;const doc=P.win.document,s=P
 /* ---------- the PowerPoint ---------- */
 const IN=px=>px/120,PT=px=>Math.round(px*0.6);
 Dk.pptx=async function(m,o){o=o||{};const K=kit();const e=o.entry||null;const outside=e?(e.audienceType==="external"||e.audienceType==="both"):!!o.outside;
-  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:e&&e.deck&&e.deck.photos,moments:e&&e.chosen,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});if(o._kinds)d.slides=d.slides.filter(s=>o._kinds.includes(s.k));await loadPhotos(d);
+  const d=slidesFor(m,{depth:o.depth,outside,plan:e&&e.plan,question:e&&e.question,photos:(e&&e.deck&&e.deck.photos)||o.photos,moments:e&&e.chosen,title:e&&e.title||m.title,subtitle:e&&e.subtitle||""});if(o._kinds)d.slides=d.slides.filter(s=>o._kinds.includes(s.k));await loadPhotos(d);
   const Pp=await K.loadPptx();const pres=new Pp();pres.layout="LAYOUT_WIDE";// the PowerPoint maker writes these two into the file as they are, so an ampersand is written the way the file needs
   const xml=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");pres.title=xml(d.title);pres.company=xml("Fulton Community School & Farm");
   const hex=c=>c.replace("#","");const F="Georgia";
