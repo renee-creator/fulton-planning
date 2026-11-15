@@ -15,6 +15,16 @@ const nlIsMid=x=>!!x&&x.kind==="mid";
 const nlTitle=x=>nlIsMid(x)?"Mid-month note, "+nlName(x.month):"Family newsletter, "+nlName(x.month);
 const nlLib=()=>newsletters.get("library")||{id:"library",items:[]};
 const nlClean=s=>String(s??"").replace(/\*+/g,"").replace(/\s*[—–]\s*/g,", ").trim();
+function nlRange(x){const today=iso(new Date());let to=x&&x.to;if(!to){to=x&&x.month&&x.month!==today.slice(0,7)?x.month+"-15":today;if(to>today)to=today}
+  let from=x&&x.from||addDays(to,-13);if(from>to)from=to;return {from,to}}
+const nlRangeT=r=>({a:parseIso(r.from).getTime(),b:parseIso(r.to).getTime()+864e5});
+const nlMD=d=>parseIso(d).toLocaleDateString("en-US",{month:"long",day:"numeric"});
+const nlRangeName=r=>`${nlMD(r.from)} to ${nlMD(r.to)}`;
+// photos of food in action for the farm part, from observations in the note's dates that talk about food
+const NL_FOOD=/\b(food|foods|cook\w*|kitchen|harvest\w*|garden\w*|tast\w*|eat|eats|eating|ate|snack\w*|lunch\w*|bak\w*|soup|fruit\w*|vegetabl\w*|veggie\w*|seed\w*|egg|eggs|apple\w*|pear\w*|pumpkin\w*|squash\w*|bread|chop\w*|peel\w*|slic\w*|sprout\w*|herb\w*|kale|lettuce|carrot\w*|potato\w*|bean\w*|tomato\w*|berr\w*|grape\w*|citrus|orange\w*|lemon\w*|persimmon\w*|corn|chard|recipe\w*|jam|milk|butter|cheese|honey|tortilla\w*|rice|flour|piazza)\b/gi;
+function nlFoodOffer(x){const r=nlRangeT(nlRange(x)),inq=shareInquiryIds();
+  return [...notices.values()].filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&(n.at||0)>=r.a&&(n.at||0)<r.b&&!inq.has(n.id)).map(n=>({n,s:new Set((String([n.noticed,n.wonder,n.title].join(" ")).match(NL_FOOD)||[]).map(w=>w.toLowerCase())).size}))
+    .filter(o=>o.s).sort((a,b)=>b.s-a.s||(b.n.at||0)-(a.n.at||0)).slice(0,16).map(o=>o.n.id)}
 function nlNewMid(k){return {id:"nlmid-"+k,kind:"mid",month:k,status:"draft",note:"",books:[],coming:[],createdAt:Date.now(),by:me()}}
 function nlNew(k){return {id:"nl-"+k,month:k,status:"draft",note:"",suggestions:[],topics:[],reading:[],school:[],schoolPhotos:[],coming:[],comingAdded:[],createdAt:Date.now(),by:me()}}
 
@@ -269,7 +279,9 @@ function nlBooksHtml(x,n){const L=x.books||[];
   const all=(libData.books||[]).filter(b=>!b.draft&&!chosen.has(b.path)).sort((a,b)=>a.title.replace(/^(The|A) /,"").localeCompare(b.title.replace(/^(The|A) /,"")));
   const shared=nlSharedBooks(x);
   const opt=b=>`<option value="${esc(b.path)}" ${nlPick.bk===b.path?"selected":""}>${esc(b.title)}${(b.meta||{}).author?", "+esc(bagAuthor(b.meta.author)):""}${shared.has(b.path)?", shared in "+esc(shared.get(b.path)):""}</option>`;
-  const bagL=all.filter(b=>inBag.has(b.path)),rest=all.filter(b=>!inBag.has(b.path));
+  const bagL=all.filter(b=>inBag.has(b.path));let rest=all.filter(b=>!inBag.has(b.path)),fitL=[];
+  // in the mid-month note, books that match the observations from the note's dates come right after the bag
+  if(nlIsMid(x)){const ws=bagWords(nlRecentObs(14,nlRange(x)).map(o=>o.noticed).join(" "));if(ws.size){fitL=rest.map(b=>{let n=0;for(const w of bagBookWords(b))if(ws.has(w))n++;return {b,n}}).filter(o=>o.n>=2).sort((a,b)=>b.n-a.n).slice(0,10).map(o=>o.b);const fs=new Set(fitL.map(b=>b.path));rest=rest.filter(b=>!fs.has(b.path))}}
   return `<section class="card nlcard"><div class="nlstep">${n}</div><div class="head-row"><h3>Books to share</h3>${L.length?`<button class="btn small ghost" data-nlfits="1">Draft why each fits now, in full sentences</button>`:""}</div>
     <p class="muted nlhint">One book or several from our collection. Each links to Sonoma County Library and to our Bookshop.org shop.</p>
     ${L.some(b=>b.fitsDraft)?`<p class="nldraft">Why it fits now is drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}
@@ -279,7 +291,7 @@ function nlBooksHtml(x,n){const L=x.books||[];
       <label class="nll">Wonder together at home<textarea class="nlta" rows="2" data-nlf="books.${j}.wonder" placeholder="I wonder...">${esc(b.wonder)}</textarea></label>
       <div class="nlsmall"><a href="${esc(b.lib)}" target="_blank" rel="noopener">At the library</a> · <a href="${esc(b.shop)}" target="_blank" rel="noopener">At our bookshop</a></div></div>
       <span class="actions" style="flex-direction:column">${j?`<button class="btn small ghost" data-nlbookup="${j}" aria-label="Move up">↑</button>`:""}<button class="btn small ghost" data-nlbookrm="${j}" aria-label="Remove">×</button></span></div>`).join("")}
-    <div class="nlrow" style="margin-top:8px"><select id="nlbk" aria-label="A book from our collection" style="flex:1;min-width:0"><option value="">Choose a book</option>${bagL.length?`<optgroup label="In the book bag">${bagL.map(opt).join("")}</optgroup>`:""}<optgroup label="Our collection">${rest.map(opt).join("")}</optgroup></select><button class="btn small ghost" data-nlbookadd="1">Add this book</button></div></section>`}
+    <div class="nlrow" style="margin-top:8px"><select id="nlbk" aria-label="A book from our collection" style="flex:1;min-width:0"><option value="">Choose a book</option>${bagL.length?`<optgroup label="In the book bag">${bagL.map(opt).join("")}</optgroup>`:""}${fitL.length?`<optgroup label="Fits these two weeks">${fitL.map(opt).join("")}</optgroup>`:""}<optgroup label="Our collection">${rest.map(opt).join("")}</optgroup></select><button class="btn small ghost" data-nlbookadd="1">Add this book</button></div></section>`}
 // the email, written from the same parts as the Family page copy, with the books laid out beside their covers
 const nlLink=u=>{let h="";try{const v=new URL(u);h=v.hostname.replace(/^www\./,"")}catch(e){}return `<a href="${esc(u)}" style="color:#245B78">${esc(h||u)}</a>`};
 const nlParas=t=>String(t||"").trim().split(/\n\s*\n/).map(p=>`<p style="margin:0 0 12px">${p.split("\n").map(l=>/^https?:\/\/\S+$/.test(l.trim())?nlLink(l.trim()):esc(l)).join("<br>")}</p>`).join("");
@@ -341,17 +353,17 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
 function nlFarmLinks(h){const L=nlFarmSites();for(const [name,url] of Object.entries(L)){if(!name||!url)continue;const re=new RegExp("(^|[^\\w>])("+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![^<]*</a>)","g");h=h.replace(re,(m,a,n)=>`${a}<a href="${esc(url)}" style="color:${NL_C.link}">${n}</a>`)}return h}
 const nlFarmSites=()=>(nlLib().farmSites)||{};
 // the mid-month note's photos, up to four from the last two weeks of observations, never from a team inquiry
-function nlMidOffer(){const t=Date.now()-14*864e5,inq=shareInquiryIds();return [...notices.values()].filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&(n.at||0)>=t&&!inq.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,24).map(n=>n.id)}
-function nlMidPhotosHtml(x){const L=x.photos||[],offer=nlMidOffer();
+function nlMidOffer(x){const r=nlRangeT(nlRange(x)),inq=shareInquiryIds();return [...notices.values()].filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&(n.at||0)>=r.a&&(n.at||0)<r.b&&!inq.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,24).map(n=>n.id)}
+function nlMidPhotosHtml(x){const L=x.photos||[],offer=nlMidOffer(x);
   return `<section class="card nlcard"><div class="nlstep">2</div><h3>Photos from the last two weeks</h3><p class="muted nlhint">Up to four, from the last two weeks of observations. Tap a photo to add it or take it out.</p>
-    ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from the last two weeks yet.</p>`}
+    ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from these dates yet.</p>`}
     ${L.map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`}
 /* The mid-month note's parts (November 15, 2026). Highlights from the last two weeks, why each book fits now, and Try at
    home with an idea and an article. TREE drafts each part when asked and the director rewrites it. The note and the
    monthly newsletter know what the other said, so the note never repeats the newsletter's topics and the newsletter's
    topics go deeper than the note's highlights. Every suggested article is opened by the server before it is offered. */
-function nlRecentObs(days){const t=Date.now()-(days||14)*864e5,seen=new Map(),inq=shareInquiryIds();
-  for(const n of [...notices.values()].filter(n=>n&&!n.deleted&&(n.at||0)>=t&&!inq.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){const text=String(n.noticed||"").trim();if(!text)continue;
+function nlRecentObs(days,rng){const R=rng?nlRangeT(rng):{a:Date.now()-(days||14)*864e5,b:Infinity},seen=new Map(),inq=shareInquiryIds();
+  for(const n of [...notices.values()].filter(n=>n&&!n.deleted&&(n.at||0)>=R.a&&(n.at||0)<R.b&&!inq.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){const text=String(n.noticed||"").trim();if(!text)continue;
     const key=(n.classroom||"")+"|"+text.slice(0,200);let o=seen.get(key);if(!o){o={ids:[],photos:[],room:n.classroom||"",noticed:text};seen.set(key,o)}o.ids.push(n.id);if(n.photo&&n.photo.id)o.photos.push(n.id)}
   return [...seen.values()].slice(-120).map((o,i)=>Object.assign(o,{ref:"o"+(i+1),noticed:o.noticed.length>500?o.noticed.slice(0,500)+"…":o.noticed}))}
 // what the other kind of letter said in this month and the month before
@@ -361,7 +373,7 @@ function nlOtherSaid(x){const ms=[x.month,nlShift(x.month,-1)];const other=[...n
 function nlSharedBooks(x){const yr=nlSchoolYear(x.month),m=new Map();for(const d of newsletters.values())if(d&&d.id!==x.id&&d.month&&nlSchoolYear(d.month)===yr)for(const b of d.books||[])if(!m.has(b.path))m.set(b.path,(nlIsMid(d)?"mid-":"")+nlMonthOnly(d.month));return m}
 async function nlAsk(prompt,btn,label){if(!sample){toast("TREE's writing help is not available right now.");return null}if(btn){btn.disabled=true;btn.textContent=label}
   try{return await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"})}catch(err){toast(assistError(err||"unknown","Nothing was changed."));return null}}
-async function nlDraftHighlights(x,btn){const obs=nlRecentObs(14);if(!obs.length){toast("No observations from the last two weeks yet.");return}
+async function nlDraftHighlights(x,btn){const obs=nlRecentObs(14,nlRange(x));if(!obs.length){toast("No observations from these dates yet.");return}
   const chosen=new Set((x.photos||[]).map(p=>p.notice)),said=nlOtherSaid(x);
   const prompt=`${nlRules(false)}
 
@@ -379,7 +391,7 @@ ${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.ids.some(id=>chosen.has(id))?",
   nlSave(x,true);toast("Highlights are in. Rewrite them in your own voice.");renderNewsletter()}
 async function nlDraftFits(x,btn){const L=x.books||[];if(!L.length)return;const bag=bagData().items;
   const now=nlIsMid(x)?(x.highlights||[]).map(h=>h.text):(x.topics||[]).map(t=>t.title+". "+(t.happening||""));
-  const obs=nlRecentObs(nlIsMid(x)?14:31).slice(-40);
+  const obs=(nlIsMid(x)?nlRecentObs(14,nlRange(x)):nlRecentObs(31)).slice(-40);
   const prompt=`${nlRules(false)}
 
 For each book below, write one or two sentences for families on why this book fits right now, connecting it to what the children have been exploring. Name the connection plainly, such as the goats, puddles or color mixing, and do not repeat the book's own description.
@@ -395,6 +407,20 @@ Return a JSON object with one key "fits", an array of objects with "book" (like 
   const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
   x=newsletters.get(x.id)||x;for(const f of Array.isArray(out.fits)?out.fits:[]){const i=Number(String(f?.book||"").replace(/\D/g,""))-1;const t=nlClean(f?.text),w=nlClean(f?.why);if(x.books[i]&&t){x.books[i].fits=t;x.books[i].fitsDraft=true}if(x.books[i]&&w)x.books[i].why=w}
   nlSave(x,true);toast("Why each book fits now is drafted. Rewrite it in your own voice.");renderNewsletter()}
+// Strengthen my words (November 15, 2026). TREE tightens the director's own note and keeps her voice, and nothing
+// changes until she chooses Use this
+let nlStrong=null;
+async function nlStrengthen(x){const mine=String(x.note||"").trim();if(!mine){toast("Write your note first, then TREE can strengthen it.");return}
+  const prompt=`${nlRules(false)}
+
+Below is the director's own note to families, in her words. Strengthen it and keep it hers. Keep her meaning, her facts, her warmth and her way of speaking, in the first person as she wrote it. Make every line a complete sentence with a subject and a verb. Fix spelling, grammar and punctuation, cut repeated words, and make each sentence clear and easy to read. Keep about the same length and the same paragraphs, with a blank line between paragraphs. Do not add new facts, events, names or ideas, and do not add a greeting or a sign-off.
+
+Her note.
+${mine}
+
+Return a JSON object with one key "note".`;
+  nlStrong={id:x.id,busy:true};renderNewsletter();const out=await nlAsk(prompt,null,"");
+  const t=out?nlClean(out.note):"";nlStrong=t?{id:x.id,text:t}:null;if(out&&!t)toast("TREE could not strengthen it this time. Your note is unchanged.");renderNewsletter()}
 async function nlDraftNote(x,btn){if((x.note||"").trim()&&!confirm("Replace your note with a draft?"))return;
   const parts=[...(x.highlights||[]).map(h=>"Highlight. "+h.text),...(x.books||[]).map(b=>"Book. "+b.title+(b.fits?". "+b.fits:"")),x.home&&x.home.title?"Try at home. "+x.home.title:"",...(x.coming||[]).map(c=>"Coming up. "+(c.date?nlWhen(c)+". ":"")+c.text)].filter(Boolean);
   if(!parts.length){toast("Add highlights or books first, so the note has something to draw on.");return}
@@ -431,10 +457,10 @@ Return only a JSON object with one key "items", an array of objects with "title"
   let items=[];try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter-reading"});items=(Array.isArray(out?.items)?out.items:[]).map(i=>({title:nlClean(i?.title).replace(/:\s*/g,", "),url:String(i?.url||"").trim(),source:nlClean(i?.source)})).filter(i=>i.title&&nlSiteOk(i.url)).slice(0,4)}catch(err){toast("Suggested reading is not available right now.")}
   items=await nlCheckLinks(items);x=newsletters.get(x.id)||x;x.homeOffer=items;nlSave(x,true);
   if(items.length)toast(`${items.filter(i=>i.ok).length} of ${items.length} articles opened and checked.`);else toast("No articles came back from trusted sites.");renderNewsletter()}
-function nlMidPartsHtml(x){const L=x.photos||[],offer=nlMidOffer(),H=x.highlights||[];
+function nlMidPartsHtml(x){const L=x.photos||[],offer=nlMidOffer(x),H=x.highlights||[];
   return `<section class="card nlcard"><div class="nlstep">2</div><div class="head-row"><h3>From the last two weeks</h3><button class="btn small ghost" data-nlmhigh="1">${H.length?"Draft new highlights":"Draft highlights for me"}</button></div>
-    <p class="muted nlhint">Up to four photos and two to four highlights from the last two weeks of observations. Tap a photo to add it or take it out.</p>
-    ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from the last two weeks yet.</p>`}
+    <p class="muted nlhint">Up to four photos and two to four highlights from observations from ${esc(nlRangeName(nlRange(x)))}. Tap a photo to add it or take it out.</p>
+    ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from these dates yet.</p>`}
     ${L.map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}
     <div class="nll" style="margin-top:10px">Highlights</div>
     ${x.highlightsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
@@ -453,18 +479,27 @@ function nlHomeHtml(x,n){const h=x.home||null,cards=nlHomeCards(x),art=x.homeRea
 /* From our farms moved to the mid-month note on November 15, 2026, and covers the month before, since a month's food is
    only complete at its end. A newsletter that already carried it keeps it. Each farm's name links to its own site, from
    the director's list kept with the newsletter library as farmSites, which TREE can fill by finding each farm's site. */
-const nlFarmText=x=>{if(!x||!x.farms)return "";try{return farmNewsletterText(nlIsMid(x)?nlShift(x.month,-1):x.month)}catch(e){return ""}};
+const nlFarmText=x=>{if(!x||!x.farms)return "";try{return nlIsMid(x)?farmNewsletterText(x.month,nlRange(x)):farmNewsletterText(x.month)}catch(e){return ""}};
 let nlFarmFound={},nlFarmBusy=false;
-function nlFarmsHtml(x){const pm=nlShift(x.month,-1);let F=null,ft="";try{F=farmMonthData(pm);ft=farmNewsletterText(pm)}catch(e){}const sites=nlFarmSites();
+function nlFarmsHtml(x){const rg=nlRange(x),rn=nlRangeName(rg);let F=null,ft="";try{F=farmMonthData(x.month,rg);ft=farmNewsletterText(x.month,rg)}catch(e){}const sites=nlFarmSites();
   const names=F?[...new Set(F.farms.map(f=>f.farm).filter(Boolean))]:[];
-  return `<section class="card nlcard"><div class="nlstep">5</div><h3>From our farms in ${esc(nlMonthOnly(pm))}</h3>
-    ${ft?`<label class="nlcheck"><input type="checkbox" data-nlfarms="1" ${x.farms?"checked":""}> Include where ${esc(nlMonthOnly(pm))}'s lunches and snacks came from</label>${x.farms?`<div class="muted" style="white-space:pre-line;margin-top:6px">${esc(ft)}</div>`:""}`:`<p class="muted nlhint">No orders are kept for ${esc(nlMonthOnly(pm))}, so there is nothing to show.</p>`}
+  return `<section class="card nlcard"><div class="nlstep">5</div><h3>From our farms</h3><p class="muted nlhint">Where our lunches and snacks came from, ${esc(rn)}.</p>
+    ${ft?`<label class="nlcheck"><input type="checkbox" data-nlfarms="1" ${x.farms?"checked":""}> Include where these two weeks' lunches and snacks came from</label>${x.farms?`<div class="muted" style="white-space:pre-line;margin-top:6px">${esc(ft)}</div>`:""}`:`<p class="muted nlhint">No orders are kept for these dates, so there is nothing to show.</p>`}
     ${x.farms&&names.length?`<details class="nlown" style="margin-top:8px"><summary>Farm websites, ${names.filter(n=>sites[n]).length} of ${names.length}</summary>
       <p class="muted nlhint">Each farm's name links to its site in the email and on the Family page. Check a site before saving it.</p>
       ${names.map(n=>{const v=sites[n]||(nlFarmFound[n]&&nlFarmFound[n].url)||"",f=nlFarmFound[n];return `<label class="nll">${esc(n)}<input data-nlfarmsite="${esc(n)}" value="${esc(v)}" placeholder="https://"></label>${f&&!sites[n]?`<div class="nlsmall">${f.ok?"Found and checked. It opens.":"Found, but it "+esc(f.checkWhy||"did not open")+". Check it yourself."}</div>`:""}`}).join("")}
-      <div class="actions"><button class="btn small ghost" data-nlfarmfind="1" ${nlFarmBusy?"disabled":""}>${nlFarmBusy?"Looking":"Find the websites"}</button><button class="btn small" data-nlfarmsave="1">Save the farm sites</button></div></details>`:""}</section>`}
+      <div class="actions"><button class="btn small ghost" data-nlfarmfind="1" ${nlFarmBusy?"disabled":""}>${nlFarmBusy?"Looking":"Find the websites"}</button><button class="btn small" data-nlfarmsave="1">Save the farm sites</button></div></details>`:""}${x.farms?nlFoodHtml(x):""}</section>`}
+function nlFoodHtml(x){const fo=nlFoodOffer(x),all=nlMidOffer(x);
+  if(x.foodPhotos===undefined&&fo.length){x.foodPhotos=fo.slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));nlSave(x)}
+  const FP=x.foodPhotos||[],on=id=>FP.some(p=>p.notice===id),more=all.filter(id=>!fo.includes(id));
+  return `<div class="nll" style="margin-top:14px">Photos of food in action</div>
+    <p class="muted nlhint">At least two photos of children growing, harvesting, cooking or eating food. Tap a photo to add it or take it out.</p>
+    ${FP.length<2?`<div class="nlwarn">${FP.length?"Only one food photo is chosen.":"No food photos are chosen yet."} ${fo.length<2?"TREE found fewer than two in these dates, so choose one from the other photos below.":"Choose at least two."}</div>`:""}
+    ${fo.length?`<div class="nlphotos">${fo.map(id=>nlThumb(id,on(id),`data-nlfph="${id}"`)).join("")}</div>`:""}
+    ${more.length?`<details class="nlown"><summary>Other photos from these dates</summary><div class="nlphotos">${more.map(id=>nlThumb(id,on(id),`data-nlfph="${id}"`)).join("")}</div></details>`:""}
+    ${FP.map((p,j)=>`<label class="nll">Caption for food photo ${j+1}<input data-nlf="foodPhotos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}`}
 async function nlFarmFind(names){if(!sample){toast("TREE's writing help is not available right now.");return}nlFarmBusy=true;renderNewsletter();
-  const towns={};try{for(const f of farmMonthData(nlShift(nlCur(),-1)).farms)towns[f.farm]=f.town||""}catch(e){}
+  const towns={};try{const fx=nlDoc(nlCur());for(const f of farmMonthData(nlCur(),fx&&nlIsMid(fx)?nlRange(fx):null).farms)towns[f.farm]=f.town||""}catch(e){}
   const prompt=`Find the official website of each of these farms and food producers in Sonoma County and nearby, California. Search the web, and use only addresses you actually found. Give the farm's own site, never a directory, a review site or a social media page. Leave a farm out when you are not sure.
 ${names.map(n=>"- "+n+(towns[n]?", "+towns[n]:"")).join("\n")}
 
@@ -517,8 +552,13 @@ function renderNewsletter(){
   if(sent)h+=`<div class="card nlcard nlsent">Sent ${x.sentAt?fmtDate(iso(new Date(x.sentAt))):""}. It stays here to look back on, and its topics are not suggested again this school year. <button class="btn small ghost" data-nlunsend="1">Open it again</button></div>`;
 
   // 1. the director's note
-  h+=`<section class="card nlcard"><div class="nlstep">1</div>${mid?`<div class="head-row"><h3>A note from you</h3><button class="btn small ghost" data-nlmnote="1">Draft it for me</button></div>`:`<h3>A note from you</h3>`}${x.noteDraft?`<p class="nldraft">Drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}<p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
+  if(mid){const rg=nlRange(x);h+=`<section class="card nlcard"><div class="nlrow" style="align-items:flex-end;flex-wrap:wrap"><label class="nll" style="flex:1;min-width:150px">These two weeks start<input type="date" data-nlrange="from" value="${rg.from}"></label><label class="nll" style="flex:1;min-width:150px">and end<input type="date" data-nlrange="to" value="${rg.to}"></label></div>
+    <p class="muted nlhint">Highlights, photos, books and farms all come from ${esc(nlRangeName(rg))}. Change the dates if a closure falls inside them.</p></section>`}
+  const st=nlStrong&&nlStrong.id===x.id?nlStrong:null;
+  h+=`<section class="card nlcard"><div class="nlstep">1</div><div class="head-row"><h3>A note from you</h3><span class="actions">${mid?`<button class="btn small ghost" data-nlmnote="1">Draft it for me</button>`:""}<button class="btn small ghost" data-nlstrong="1" ${st&&st.busy?"disabled":""}>${st&&st.busy?"Strengthening":"Strengthen my words"}</button></span></div>${x.noteDraft?`<p class="nldraft">Drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}<p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
     <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea>
+    ${st&&st.text?`<div class="nlstrong"><div class="nlsc"><div class="nll">Yours</div><div class="nlsbox">${esc(x.note||"")}</div></div><div class="nlsc"><div class="nll">Stronger</div><textarea class="nlta" id="nl-strong" rows="5" aria-label="The stronger version">${esc(st.text)}</textarea></div></div>
+    <p class="muted nlhint">TREE kept your meaning and your voice. Edit the stronger version if you like, then choose.</p><div class="actions"><button class="btn small" data-nlstrongok="1">Use this</button><button class="btn small ghost" data-nlstrongno="1">Keep mine</button></div>`:""}
     <div class="nlrow" style="margin-top:8px;align-items:flex-start"><label class="nll" style="flex:1">Heading, a note from<input id="nl-signer" value="${esc(nlSigner())}"></label><label class="nll" style="flex:1">Your sign-off<textarea class="nlta" id="nl-signoff" rows="2">${esc(nlSignoff())}</textarea></label></div>
     <p class="muted nlhint">Your name and sign-off carry to every newsletter and note.</p></section>`;
 
@@ -632,7 +672,7 @@ function nlBlocks(x){
   if((x.reading||[]).length)B.push({h:"For families who want to read more",reading:x.reading,text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
   if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
-  {const ft=nlFarmText(x);if(ft)B.push({h:"From our farms",farms:true,text:ft})}
+  {const ft=nlFarmText(x);if(ft)B.push({h:"From our farms",farms:true,text:ft,photos:nlIsMid(x)?(x.foodPhotos||[]):[]})}
   {const tt=x.thanks!==false?famThanksText(x.month):"";if(tt)B.push({h:"Thank you, families",text:tt})}
   if((x.coming||[]).length)B.push({h:"Coming up",coming:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))),text:[...x.coming].sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(c=>`${c.date?nlWhen(c)+". ":""}${nlComing(c.text)}`).join("\n")});
   return B;
@@ -678,6 +718,12 @@ document.addEventListener("click",async e=>{
   if(d.nlfarmfind){const names=[...document.querySelectorAll("[data-nlfarmsite]")].map(i=>i.dataset.nlfarmsite);nlFarmFind(names);return}
   if(d.nlfarmsave){const lib=nlLib();lib.farmSites=Object.assign({},lib.farmSites||{});for(const i of document.querySelectorAll("[data-nlfarmsite]")){const v=i.value.trim();if(/^https:\/\/[^\s"<>]+$/.test(v))lib.farmSites[i.dataset.nlfarmsite]=v;else if(!v)delete lib.farmSites[i.dataset.nlfarmsite]}nlSave(lib,true);nlFarmFound={};toast("The farm sites are saved.");renderNewsletter();return}
   if(d.nlmnote){nlDraftNote(x,t);return}
+  if(d.nlstrong){nlStrengthen(x);return}
+  if(d.nlstrongok){const v=String($("#nl-strong")?.value||"").trim();if(!v)return;x.note=v;x.noteDraft=false;nlStrong=null;nlSave(x,true);toast("Your note is updated.");renderNewsletter();return}
+  if(d.nlstrongno){nlStrong=null;renderNewsletter();return}
+  if(d.nlfph){const has=(x.foodPhotos||[]).some(p=>p.notice===d.nlfph);
+    if(has)x.foodPhotos=x.foodPhotos.filter(p=>p.notice!==d.nlfph);else{if((x.foodPhotos||[]).length>=4){toast("Four food photos fit best. Take one out first.");return}x.foodPhotos=(x.foodPhotos||[]).concat([{notice:d.nlfph,cap:nlCaption(notices.get(d.nlfph))}])}
+    nlSave(x);renderNewsletter();return}
   if(d.nlmhigh){if((x.highlights||[]).length&&!confirm("Replace these highlights with a new draft?"))return;nlDraftHighlights(x,t);return}
   if(t.hasAttribute("data-nlmhighrm")){x.highlights.splice(+d.nlmhighrm,1);nlSave(x);renderNewsletter();return}
   if(d.nlmhighadd){x.highlights=(x.highlights||[]).concat([{text:""}]);nlSave(x);renderNewsletter();return}
@@ -760,7 +806,7 @@ document.addEventListener("click",async e=>{
 
 // photos for the printed copies, at a size that prints well
 async function nlPhotos(x){
-  const list=[...(x.topics||[]).flatMap(t=>t.photos||[]),...(x.schoolPhotos||[]),...(x.photos||[])].map(p=>notices.get(p.notice)).filter(n=>n&&n.photo&&n.photo.id);
+  const list=[...(x.topics||[]).flatMap(t=>t.photos||[]),...(x.schoolPhotos||[]),...(x.photos||[]),...(x.foodPhotos||[])].map(p=>notices.get(p.notice)).filter(n=>n&&n.photo&&n.photo.id);
   const covers=(x.books||[]).filter(b=>b.cover).map(b=>({key:"nl:cover:"+b.cover,src:window.FP_ORIGINAL_URL(b.cover)}));
   await loadPhotos([{photos:list.map(n=>({key:"nl:"+n.id,src:window.FP_ORIGINAL_URL(n.photo.id)})).concat(covers)}]);
 }

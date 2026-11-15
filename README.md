@@ -1089,3 +1089,9 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - The phone stays signed in. The sign-in is TREE's own name and four numbers. Each time Observe TREE opens with a sign-in more than a week old, the server hands it a fresh one, so a phone in regular use is not asked again. A changed or cleared passcode, or an educator who has left, still ends the sign-in. A kitchen sign-in and a new educator without full access are refused.
 - Left to TREE on purpose, so nothing here waits: proofreading, copying the writing from a photo of children's words, the day it happened, plan, project, thread, languages, the weekly bin, more than one photo in an observation, and changing an observation already kept.
 - observe.html is written by hand and is not made by tools/build.py. Its test is test/s72-observe.test.js.
+
+### Mid-month note, two weeks and Strengthen my words (November 15, 2026)
+- The mid-month note covers two weeks. By default they end today, or on the 15th for a past month, and the director can change the dates at the top. Highlights, photos, book picks and From our farms all come from those dates.
+- From our farms in the note shows what the children ate in those two weeks, with photos of food in action. TREE picks two photos from observations in those dates that talk about food, and the director can swap them. A warning shows when fewer than two are chosen.
+- Books that match the observations from those dates are listed after the book bag, under Fits these two weeks.
+- Strengthen my words sits on the note in both the monthly newsletter and the mid-month note. TREE tightens the director's own words and keeps her voice, and her version and the stronger version show side by side until she chooses Use this or Keep mine.

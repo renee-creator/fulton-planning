@@ -776,6 +776,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .nlres a{font-weight:600}#main a:not(.btn):not(.linkbtn),.libsheet a:not(.btn){color:var(--moss,#2f4a33);text-decoration-color:rgba(47,74,51,.35);text-underline-offset:2px}
 .nlwarn{background:color-mix(in srgb,var(--clay) 12%,var(--paper));border-left:3px solid var(--clay);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:14px}
 .nldraft{font-size:13px;color:var(--marigold);font-weight:600;margin:4px 0}
+.nlstrong{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}.nlsc{flex:1 1 260px;min-width:0}.nlsbox{white-space:pre-wrap;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;font-size:15px;line-height:1.5}
 .talknote{font-size:13px;line-height:1.45;background:var(--marigold-soft,#fbf0dc);border-radius:8px;padding:8px 10px;margin:6px 0;display:grid;gap:4px;overflow-wrap:anywhere}
 .nlsent{background:color-mix(in srgb,var(--moss) 8%,var(--paper))}
 .nlcheck{display:block;margin:6px 0}
@@ -5263,7 +5264,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="fabfb8d74177";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="fd150c07bb4a";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9807,6 +9808,8 @@ const nlTimers={};
 function nlSave(x,now){x.updatedAt=Date.now();newsletters.set(x.id,x);clearTimeout(nlTimers[x.id]);
   const go=()=>{delete nlTimers[x.id];if(db)db.doc("newsletters/"+x.id).set(JSON.parse(JSON.stringify(x))).catch(()=>toast("Could not save the newsletter. Check your connection."))};
   if(now){clearTimeout(nlTimers[x.id]);go()}else nlTimers[x.id]=setTimeout(go,700)}
+/* The mid-month note covers two weeks (November 15, 2026). By default they end today, or on the 15th for a past month,
+   and the director can change the dates. Highlights, photos, books and farms all come from the same dates. */
 function nlNameWarn(text){
   const t=" "+String(text||"")+" ";if(!t.trim())return[];
   const skip=new Set([...GROUPS.map(g=>g.name.toLowerCase()),"north","south","west","east","may","june","april","summer","autumn","sky","rain"]);
@@ -9817,7 +9820,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","e84392da11").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","329b6b35db").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -11919,7 +11922,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-stdel],[da
 let kMonthLines={};
 async function kMonthFetch(month){const [y,mo]=month.split("-").map(Number);const from=iso(new Date(y,mo-1,1)),to=iso(new Date(y,mo,0));
   try{const j=await window.FP_API("/api/kitchen-month",{from:addDays(from,-70),to});kMonthLines[month]=j.lines||[]}catch(e){kMonthLines[month]=[]}}
-function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const from=iso(new Date(y,mo-1,1)),to=iso(new Date(y,mo,0));
+function farmMonthData(month,rng){const [y,mo]=month.split("-").map(Number);const from=rng?rng.from:iso(new Date(y,mo-1,1)),to=rng?rng.to:iso(new Date(y,mo,0)),per=rng?"in these two weeks":"this month";
   const lines=[];
   if(!isDirector()){for(const x of kMonthLines[month]||[]){if(x.manual){if((x.kind&&x.kind!=="local"&&!kMill(x.producer))||!kLocal(x.producer))continue;const k=kName(x.item);if(k.food)lines.push({day:x.day,name:k.name,food:k.food,farm:x.producer||""});continue}
     const l=kLine({item:x.item,producer:x.producer,serve:x.serve},x.day);if(l)lines.push(l)}}
@@ -11943,22 +11946,22 @@ function farmMonthData(month){const [y,mo]=month.split("-").map(Number);const fr
   // the foods served most, with the farm each came from
   const md=kMenuDays(from,to);const foods=new Map();for(const l of lines.filter(l=>l.day>=addDays(from,-6)&&!kMill(l.farm)&&!kIsStaple(l))){const k=kLabel(l.food,l.farm);const e=foods.get(k)||{food:k,farms:new Map(),uses:0,lines:0};e.lines++;e.farms.set(l.farm,(e.farms.get(l.farm)||0)+1);foods.set(k,e)}
   // a fruit or salad served on the side counts as used on the days it was ordered for
-  const mNotes=kNotesFor([month]);for(const e of foods.values())e.uses=kUses(e.food,md,[...e.farms.keys()][0]).length||(/^(Fruit|Salad|Side)/.test(kSideUse(e.food,mNotes))?e.lines:0);
+  const mNotes=kNotesFor(rng?[...new Set([from.slice(0,7),to.slice(0,7)])]:[month]);for(const e of foods.values())e.uses=kUses(e.food,md,[...e.farms.keys()][0]).length||(/^(Fruit|Salad|Side)/.test(kSideUse(e.food,mNotes))?e.lines:0);
   const top=[...foods.values()].sort((a,b)=>b.uses-a.uses||b.lines-a.lines).map(e=>{const f=[...e.farms.entries()].sort((a,b)=>b[1]-a[1])[0][0];return {food:e.food,farm:f,town:farmTown(f)||gProducer(f).town||""}});
   // foods the children also met in a bin or the garden that month
   const binMet=[],gardenMet=[];for(const e of foods.values()){const re=kFoodRe(e.food);if(!re)continue;
     if(binAll().some(b=>b.date>=from&&b.date<=to&&(b.items||[]).some(x=>re.test(x.name||""))))binMet.push(e.food);
     else if([...notices.values()].some(n=>{const d=iso(new Date(n.at||0));return d>=from&&d<=to&&/garden/i.test(n.noticed||"")&&re.test((n.noticed||"")+" "+(n.wonder||""))}))gardenMet.push(e.food)}
   // the garden part is kept for later, and only the bin part is shown for now
-  const met=[binMet.length?`The children also met ${kList(binMet.slice(0,6))} in a FEED bin this month`:"",K_SHOW_MET&&gardenMet.length?`${binMet.length?"and":"The children also met"} ${kList(gardenMet.slice(0,4))} in the garden`:""].filter(Boolean).join(", ");
+  const met=[binMet.length?`The children also met ${kList(binMet.slice(0,6))} in a FEED bin ${per}`:"",K_SHOW_MET&&gardenMet.length?`${binMet.length?"and":"The children also met"} ${kList(gardenMet.slice(0,4))} in the garden`:""].filter(Boolean).join(", ");
   // the staples list, with any staple from these orders the list does not name yet
   const staples=kStapleList().map(x=>({food:x.food,maker:x.maker||"",town:x.town||""}));
   for(const l of lines.filter(l=>l.day>=addDays(from,-70)&&kIsStaple(l))){if(staples.some(x=>gKey(x.maker)===gKey(l.farm)))continue;staples.push({food:kLabel(l.food,l.farm),maker:l.farm,town:farmTown(l.farm)||gProducer(l.farm).town||""})}
   // the range of tastes, the different fruits and vegetables from the month's orders and the different dishes on the menu
   const fv={fruit:new Set(),veg:new Set()};for(const l of lines.filter(l=>l.day>=addDays(from,-2)&&l.day<=to&&!kIsStaple(l)&&!kMill(l.farm))){const f=kLabel(l.food,l.farm);if(!f)continue;if(K_FRUIT.test(l.food))fv.fruit.add(f);else if(!K_NOTVEG.test(l.food))fv.veg.add(f)}
   const dishes=new Set();for(const o of md)for(const k of ["am","lunch","pm"])if(has(o.x[k]))dishes.add(String(o.x[k]).trim().toLowerCase());
-  const mrec=menus.get(month)||{};const recipe=String(mrec.recipe||(mrec.intake&&mrec.intake.recipe)||"").trim();
-  return {month,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,fruits:[...fv.fruit].sort(),vegs:[...fv.veg].sort(),dishes:dishes.size,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
+  const mrec=rng?{}:menus.get(month)||{};const recipe=String(mrec.recipe||(mrec.intake&&mrec.intake.recipe)||"").trim();
+  return {month,rng:!!rng,name:parseIso(from).toLocaleDateString("en-US",{month:"long"}),year:y,from,to,weeks,farms,staples,fruits:[...fv.fruit].sort(),vegs:[...fv.veg].sort(),dishes:dishes.size,sonoma,top,met:met?met+".":"",recipe,lunches:md.filter(o=>has(o.x.lunch)).length}}
 function farmSheetDoc(month){const F=farmMonthData(month);const blocks=[];
   blocks.push(dFigures([[String(F.farms.length),"local farms fed us this month"],[String(F.sonoma),"of them in Sonoma County"],[String(F.fruits.length+F.vegs.length),"fruits and vegetables"],[String(F.dishes),"different dishes"],[String(F.lunches),"lunches made at school"]]));
   if(F.weeks.length){
@@ -12229,10 +12232,10 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
 function kStapleGroups(list){const g=new Map();for(const x of list){const k=gKey(x.maker||"")+"|"+(x.town||"");const e=g.get(k)||{maker:x.maker||"",town:x.town||"",f:[]};
     e.f.push(String(x.food||"").trim().replace(/^organic\s+/i,m=>e.f.length&&/^organic\b/i.test(e.f[0])?"":m));g.set(k,e)}
   return [...g.values()].map(e=>({maker:e.maker,town:e.town,foods:kList(e.f)}))}
-function farmNewsletterText(month){const F=farmMonthData(month);if(!F.farms.length)return "";
-  const lines=[`In ${F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
+function farmNewsletterText(month,rng){const F=farmMonthData(month,rng);if(!F.farms.length)return "";
+  const lines=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
-  if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes this month.`);
+  if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes ${rng?"in these two weeks":"this month"}.`);
   if(F.staples.length)lines.push("Our staples are "+kList(kStapleGroups(F.staples).slice(0,6).map(x=>x.foods+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);
   {const fm=foodMoments(F.from,F.to).conf.find(n=>sentFit(momentBody(n),300).length>40);if(fm)lines.push("In the educators' words. "+shareScrub(sentFit(momentBody(fm),300)))}
   lines.push(F2S_FUND);return lines.join("\n\n")}
@@ -12243,6 +12246,7 @@ function famThanksText(month){const ls=ptLogs().filter(l=>!l.test&&!ptConf(l)&&S
   const mn=parseIso(month+"-01").toLocaleDateString("en-US",{month:"long"});
   return `Thank you to ${kList(fams)} for the time you gave the school in ${mn}${what.length?`, from ${kList(what)}`:""}. It makes our school the community it is.`}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.nlthanks&&view==="newsletter"){const x=nlDoc(nlCur());if(!x)return;x.thanks=t.checked;nlSave(x);renderNewsletter();return}});
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlrange||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x||!/^\d{4}-\d\d-\d\d$/.test(t.value))return;x[t.dataset.nlrange]=t.value;nlSave(x,true);renderNewsletter()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
 /* ---------- Meals or education ----------
    Each order line counts for meals unless it is a FEED bin, and TREE asks the director about a line it is unsure of,

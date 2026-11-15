@@ -89,6 +89,7 @@ test('The mid-month note drafts highlights, why each book fits, a note and a hom
     if (/why this book fits right now/.test(body)) return reply(r, { fits: [{ book: 'b1', text: 'The children have been feeding the goats.' }] });
     if (/one simple idea families can try/.test(body)) return reply(r, { title: 'Watch an animal together', text: 'Find a bird or a cat and notice it together.' });
     if (/Find 3 articles/.test(body)) return reply(r, { items: [{ title: 'Animals and children', url: 'https://www.zerotothree.org/animals', source: 'Zero to Three' }, { title: 'A broken page', url: 'https://www.naeyc.org/broken', source: 'NAEYC' }, { title: 'Elsewhere', url: 'https://example.com/x', source: 'Somewhere' }] });
+    if (/Strengthen it and keep it hers/.test(body)) return reply(r, { note: 'We have had two full weeks with the goats.' });
     if (/opening note for the mid-month note/.test(body)) return reply(r, { note: 'We have had a busy two weeks with the goats.' });
     return reply(r, {}); }); });
   await new Promise(ok => ai.listen(0, '127.0.0.1', ok)); t.after(() => ai.close());
@@ -116,6 +117,15 @@ test('The mid-month note drafts highlights, why each book fits, a note and a hom
   assert.match(offers[0], /Checked/); assert.match(offers[1], /Not checked/);
   await s.p.click('[data-nlhomeart]');
   await s.p.click('[data-nlmnote]'); await s.p.waitForFunction(() => /busy two weeks/.test(document.querySelector('[data-nlf="note"]').value), null, { timeout: 20000 });
+  await s.p.click('[data-nlstrong]'); await s.p.waitForSelector('#nl-strong', { timeout: 20000 });
+  assert.match(await s.p.textContent('.nlsbox'), /busy two weeks/, 'her own words sit beside the stronger version');
+  await s.p.click('[data-nlstrongok]');
+  assert.strictEqual(await s.p.inputValue('[data-nlf="note"]'), 'We have had two full weeks with the goats.');
+  const food = await s.p.evaluate(() => { notices.set('f1', { id: 'f1', at: Date.now() - 60e3, classroom: 'North', noticed: 'The children peeled apples for snack.', photo: { id: 'p-f1', w: 800, h: 600 } });
+    notices.set('f2', { id: 'f2', at: Date.now() - 20 * 864e5, classroom: 'North', noticed: 'We baked bread.', photo: { id: 'p-f2', w: 800, h: 600 } });
+    const x = [...newsletters.values()].find(x => x.kind === 'mid'); const r = nlRange(x); return { offer: nlFoodOffer(x), days: (parseIso(r.to) - parseIso(r.from)) / 864e5 }; });
+  assert.deepStrictEqual(food.offer, ['f1'], 'only food photos from the two weeks are offered');
+  assert.strictEqual(food.days, 13, 'two weeks, counting both ends');
   const x = await s.p.evaluate(() => { const x = [...newsletters.values()].find(x => x.kind === 'mid'); return nlBlocks(x).map(b => b.h); });
   assert.deepStrictEqual(x, ['A note from Renee', 'From the last two weeks', 'Books to share', 'Try at home']);
   await s.p.click('[data-nlmopen]'); await s.p.click('[data-nlmprev]');
