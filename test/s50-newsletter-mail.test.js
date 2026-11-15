@@ -124,3 +124,16 @@ test('The mid-month note drafts highlights, why each book fits, a note and a hom
   assert.match(html, /feeding the goats/); assert.match(html, /Watch an animal together/); assert.match(html, /zerotothree\.org/);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('A closure that runs a week shows once with its first and last day, with the holiday inside it folded in', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({}); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1000); t.after(() => s.close());
+  await s.p.evaluate(() => goView('newsletter')); await s.p.waitForFunction(() => typeof nlTidyEvents === 'function', null, { timeout: 15000 });
+  const r = await s.p.evaluate(() => { const L = nlTidyEvents([{ date: '2026-11-23', end: '2026-11-27', text: 'Thanksgiving Break, school closed' }, { date: '2026-11-26', text: 'Thanksgiving Day Holiday' },
+    { date: '2026-12-21', text: 'Winter Break, school closed' }, { date: '2026-12-22', text: 'Winter Break, school closed' }, { date: '2026-12-23', text: 'Winter Break, school closed' }, { date: '2026-11-09', text: 'Family conferences' }]);
+    return L.map(e => nlWhen(e) + '. ' + e.text); });
+  assert.deepStrictEqual(r, ['Monday, November 9. Family conferences', 'Monday, November 23 to Friday, November 27. Thanksgiving Break, school closed', 'Monday, December 21 to Wednesday, December 23. Winter Break, school closed']);
+  assert.deepStrictEqual(s.errors, []);
+});

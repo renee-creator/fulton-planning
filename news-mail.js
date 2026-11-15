@@ -31,22 +31,24 @@ module.exports = function newsMail(o) {
     // else, is never put in front of families. Only the trusted sites the newsletter reads from are fetched.
     if (P === 'newsletter/linkcheck') {
       const urls = (Array.isArray(body.urls) ? body.urls : []).slice(0, 8).map(u => String(u || '').trim());
-      const out = await Promise.all(urls.map(u => checkLink(u)));
+      const out = await Promise.all(urls.map(u => checkLink(u, !!body.any)));
       json(req, res, 200, { list: out }); return;
     }
     err(req, res, 404, 'Not found');
   }
   const SITES = ['developingchild.harvard.edu', 'earlychildhood.stanford.edu', 'reggiochildren.it', 'reggioalliance.org', 'healthychildren.org', 'aap.org', 'zerotothree.org', 'naeyc.org', 'cdc.gov', 'first5california.com', 'cde.ca.gov', 'extension.psu.edu', 'childmind.org', 'pbs.org', 'kidshealth.org', 'eatright.org', 'myplate.gov', 'janetlansbury.com', 'rie.org', 'understood.org'];
   const siteOk = u => { try { const v = new URL(u); const h = v.hostname.replace(/^www\./, ''); return v.protocol === 'https:' && SITES.some(x => h === x || h.endsWith('.' + x)); } catch (e) { return false; } };
-  async function checkLink(url) {
-    if (!siteOk(url)) return { url, ok: false, why: 'not a trusted site' };
+  // a farm's own site can be anywhere, so for farms any public https address is opened, never a local or numbered one
+  const publicOk = u => { try { const v = new URL(u); return v.protocol === 'https:' && /\.[a-z]{2,}$/i.test(v.hostname) && !/^(localhost|.*\.local|.*\.internal)$/i.test(v.hostname); } catch (e) { return false; } };
+  async function checkLink(url, any) {
+    if (!(any ? publicOk(url) : siteOk(url))) return { url, ok: false, why: any ? 'is not a web address' : 'not a trusted site' };
     if (process.env.LINKCHECK_TEST) return { url, ok: !/broken/.test(url), title: 'A test page', why: /broken/.test(url) ? 'did not open' : '' };
     const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 10000);
     try { const r = await fetch(url, { signal: ac.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (TREE, Fulton Community School newsletter link check)', Accept: 'text/html' } });
       const t = r.ok ? (await r.text()).slice(0, 200000) : '';
       const m = t.match(/<title[^>]*>([\s\S]*?)<\/title>/i); const title = m ? m[1].replace(/\s+/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, "'").trim().slice(0, 200) : '';
       // a page that redirects off the trusted site, or to a home page, is not the article
-      const ok = r.ok && siteOk(r.url) && new URL(r.url).pathname.length > 1;
+      const ok = r.ok && (any ? publicOk(r.url) : siteOk(r.url) && new URL(r.url).pathname.length > 1);
       return { url, ok, status: r.status, title, why: ok ? '' : r.ok ? 'opened somewhere else' : 'answered ' + r.status }; }
     catch (e) { return { url, ok: false, why: 'did not open' }; }
     finally { clearTimeout(tm); }
