@@ -327,8 +327,8 @@ function ghNow(method, path, body) {
 async function gql(query) { const r = await gh('POST', '/graphql', { query }); if (r.status !== 200 || !r.json || r.json.errors) throw new Error('GitHub GraphQL answered ' + r.status + (r.json && r.json.errors ? ' ' + JSON.stringify(r.json.errors).slice(0, 200) : '')); return r.json.data; }
 const gqlRepo = () => { const [o, n] = RECORDS_REPO.split('/'); return `repository(owner:${JSON.stringify(o)},name:${JSON.stringify(n)})`; };
 // GitHub gives up on a GraphQL request it cannot answer in about ten seconds, with a 502 or 504, or with a 200 that carries
-// a timeout, a node limit or "something went wrong"
-const gqlGone = e => /answered (502|504)|timeout|timed out|NODE_LIMIT|went wrong/i.test(String(e && e.message));
+// a timeout, a node limit or "something went wrong". A request with no answer in a minute counts the same
+const gqlGone = e => /answered (502|504)|timeout|timed out|did not answer in time|NODE_LIMIT|went wrong/i.test(String(e && e.message));
 // every file the loader needs, listed folder by folder, in the same shape the tree listing gives. All the folders are asked
 // for in one request. When GitHub gives up on that, each folder is asked for on its own, the large photo folders last, so
 // a start still lists the records as they grow
