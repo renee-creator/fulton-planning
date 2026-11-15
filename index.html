@@ -5262,7 +5262,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="2a7bfc96760f";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="71b47cd47e18";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9082,9 +9082,10 @@ function bookBagHtml(){const {open,items,sync}=bagData();if(!open)return "";cons
     ${dir&&inBag.length?`<div class="actions" style="margin-top:6px;flex-wrap:wrap"><button class="btn small ghost" data-bagreq="some" ${bagTick.size?"":"disabled"}>Mark the ones I ticked as requested${bagTick.size?" ("+bagTick.size+")":""}</button><button class="linkbtn" data-bagreq="all">${inBag.length===1?"Mark it as requested":"Mark all "+inBag.length+" as requested"}</button>${bagSugOn?"":`<button class="linkbtn" data-bagsugon="1">Suggest more books</button>`}</div>`:""}
     ${sug.length?`<div class="lbl" style="margin-top:10px">Suggested for you</div><div class="cnt">From the coming week's plans and the plans and observations of the three weeks before.</div>${sug.map(r=>bagRow({title:r.x.title,author:(r.x.meta||{}).author,cover:(r.x.meta||{}).cover,for:""},`<span class="cnt">Shares ${esc(r.hit.slice(0,3).join(", "))}${r.x.draft?". Not vetted yet":""}</span>`,bagBox("s",r.x.path,r.x.title))).join("")}
       <div class="actions" style="margin-top:6px;flex-wrap:wrap"><button class="btn small ghost" data-bagsugadd="some" ${bagTickSug.size?"":"disabled"}>Add the ones I ticked${bagTickSug.size?" ("+bagTickSug.size+")":""}</button><button class="linkbtn" data-bagsugadd="all">${sug.length===1?"Add it":"Add all "+sug.length}</button></div>`:dir&&!inBag.length?`<div class="cnt" style="margin-top:6px">Nothing in the collection matches the coming week's plans yet.</div>`:""}
-    ${part("Waiting at the library",req,b=>bagRow(b,dir?`<button class="btn small ghost" data-bagstep="${esc(b.id)}|ready">It's ready</button>${lib(b)}`:""))}
-    ${part("Ready to pick up",rdy,b=>bagRow(b,dir?(bagDue===b.id?`<label class="fld-label">Due back<input type="date" id="bag-due"></label><button class="btn small" data-bagduesave="${esc(b.id)}">Save</button><button class="linkbtn" data-bagcancel="1">Cancel</button>`:`<button class="btn small ghost" data-bagdue="${esc(b.id)}">I picked it up</button>`):""))}
-    ${part("Checked out, with us",out,b=>bagRow(Object.assign({},b,{note:b.due?"Due "+bagShort(b.due):""}),dir?`<button class="btn small ghost" data-bagstep="${esc(b.id)}|returned">Returned</button>`:""))}
+    ${req.length||rdy.length||out.length?`<div class="cnt" style="margin-top:10px">The library check moves each book along by itself, from waiting to ready, checked out and returned.</div>`:""}
+    ${part("Waiting at the library",req,b=>bagRow(b,dir?lib(b):""))}
+    ${part("Ready to pick up",rdy,b=>bagRow(b,dir?lib(b):""))}
+    ${part("Checked out, with us",out,b=>bagRow(Object.assign({},b,{note:b.due?"Due "+bagShort(b.due):""}),dir?lib(b):""))}
     ${dir&&sync&&(sync.others||[]).length?`<details style="margin-top:10px"><summary class="linkbtn">Also on your library card, ${sync.others.length}</summary>${sync.others.map(o=>`<div class="cnt" style="margin:4px 0">${esc(o.title)}. ${esc(o.step==="out"?"Checked out"+(o.due?", due "+bagShort(o.due):""):BAG_STEP[o.step]||"")}</div>`).join("")}</details>`:""}
     ${dir&&back.length?`<details style="margin-top:10px"><summary class="linkbtn">Returned, ${back.length}</summary>${back.map(b=>bagRow(b,`<button class="linkbtn" data-bagagain="${esc(b.path)}">Add it again</button>`)).join("")}</details>`:""}</section>`}
 // the short card on This week, with the books for the week in view and the bag that is open
