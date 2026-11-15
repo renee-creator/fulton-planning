@@ -8,7 +8,7 @@ const { start, browser, signedIn } = require('./fixture.js');
 
 const book = (title, why, con, draft) => `<!--\nlibrary: book\nauthor: Ada Plum\nowned: no\n${draft ? 'status: draft\nby: Ann\n' : ''}-->\n# ${title}\n\n## Why we chose it\n\n${why}\n\n## Connections\n\n${con}\n`;
 async function setup(t, today) {
-  const fx = await start({ env: { BOOKBAG_TODAY: today, BOOK_CATALOG_TEST_BASE: 'http://127.0.0.1:9' }, more: put => {
+  const fx = await start({ env: { BOOKBAG_TODAY: today, BOOKBAG_GRACE_MS: '0', BOOK_CATALOG_TEST_BASE: 'http://127.0.0.1:9' }, more: put => {
     put('staff/library/books/goats-in-the-hay.md', book('Goats in the Hay', 'Goats eat hay and climb on everything.', '- The goat pen'));
     put('staff/library/books/rain-again.md', book('Rain Again', 'Puddles and rain boots.', '- Weather'));
     put('staff/library/books/a-draft-book.md', book('A Draft Book', 'Goats and hay again.', '- The goat pen', true)); } });
@@ -56,6 +56,11 @@ test('Educators add through Monday, the director tracks each book, and drafts wa
   assert.ok(!r.body.bag.items.some(x => x.title === 'Rain Again' && x.status !== 'returned'));
   await fx.as(dee, '/api/staff/library/bag/add', { path: rain.path });
   assert.ok((await fx.as(dee, '/api/staff/library', {})).body.bag.sync.at);
+  // a book marked requested with no hold at the library goes back in the bag for the next check to place
+  const rr = (await fx.as(dee, '/api/staff/library', {})).body.bag.items.find(x => x.title === 'Rain Again' && x.status === 'bag');
+  await fx.as(dee, '/api/staff/library/bag/status', { id: rr.id, status: 'requested' });
+  r = await fx.as(dee, '/api/staff/library/bag/sync', { holds: [{ title: 'Goats in the Hay', ready: true }], out: [] });
+  assert.strictEqual(r.body.bag.items.find(x => x.id === rr.id).status, 'bag'); assert.deepStrictEqual(r.body.bag.sync.moved, ['Rain Again']);
 });
 
 test('On a Monday the bag closes that day, and the director sees suggestions, the report and Today', async t => {

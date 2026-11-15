@@ -162,7 +162,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     const one = v => String(v || '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
     const holds = (Array.isArray(b.holds) ? b.holds : []).slice(0, 60).map(h => ({ title: one(h.title), ready: !!h.ready }));
     const out = (Array.isArray(b.out) ? b.out : []).slice(0, 60).map(h => ({ title: one(h.title), due: /^\d{4}-\d{2}-\d{2}$/.test(String(h.due || '')) ? String(h.due) : '' }));
-    const all = bagAll(), now = Date.now(), open = bagOpen(), used = new Set();
+    const all = bagAll(), now = Date.now(), open = bagOpen(), used = new Set(), moved = [];
     const books = paths('books').map(item).filter(x => x && !x.removed);
     const step = (y, st, due) => { if (y.status !== st) { y.status = st; y[st + 'At'] = now; } if (st === 'out') y.due = due || y.due || ''; else delete y.due; };
     for (const y of all) { if (y.status === 'returned') continue; const bk = books.find(x => x.path === y.path); if (!bk) continue;
@@ -170,7 +170,10 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       if (o >= 0) { used.add('o' + o); step(y, 'out', out[o].due); }
       else if (h >= 0) { used.add('h' + h); step(y, holds[h].ready ? 'ready' : 'requested'); }
       // a book that was here and has left the card was returned. A book in the bag with no hold yet stays in the bag.
-      else if (y.status === 'out' || y.status === 'ready') step(y, 'returned'); }
+      else if (y.status === 'out' || y.status === 'ready') step(y, 'returned');
+      // a book marked requested with no hold on the card goes back in the bag, so the next check places its hold. A hold
+      // marked in the last ten minutes is left, since the library can take a moment to list it.
+      else if (y.status === 'requested' && now - (y.requestedAt || 0) > (process.env.BOOKBAG_GRACE_MS ? Number(process.env.BOOKBAG_GRACE_MS) : 10 * 60e3)) { step(y, 'bag'); moved.push(bk.title); } }
     const others = [];
     const take = (h, st, due) => { const bk = books.find(x => bagSame(h.title, x.title));
       if (bk && !all.some(y => y.path === bk.path && y.status !== 'returned')) { const y = { id: crypto.randomBytes(5).toString('hex'), path: bk.path, week: open.week, for: '', by: me, at: now, status: 'bag' }; step(y, st, due); all.push(y); }
@@ -178,7 +181,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     out.forEach((h, i) => { if (!used.has('o' + i)) take(h, 'out', h.due); });
     holds.forEach((h, i) => { if (!used.has('h' + i)) take(h, h.ready ? 'ready' : 'requested'); });
     const missed = (Array.isArray(b.missed) ? b.missed : []).slice(0, 30).map(one).filter(Boolean);
-    put(BAG, Object.assign({}, get(BAG) || {}, { items: all, sync: { at: now, others: others.slice(0, 40), missed } }));
+    put(BAG, Object.assign({}, get(BAG) || {}, { items: all, sync: { at: now, others: others.slice(0, 40), missed, moved: moved.slice(0, 40) } }));
     log('Book bag, library check by', me, holds.length, 'holds', out.length, 'checked out');
   }
   async function handle(P, body, me, req, res, { json, err, send }) {
