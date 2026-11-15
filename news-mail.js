@@ -19,7 +19,9 @@ module.exports = function newsMail(o) {
       const images = (Array.isArray(body.images) ? body.images : []).slice(0, 24).filter(i => i && /^[a-z0-9]{1,20}$/.test(String(i.cid || '')) && /^[A-Za-z0-9+/=]+$/.test(String(i.data || '')) && String(i.data).length < 1.5e6)
         .map(i => ({ cid: String(i.cid), type: 'image/jpeg', data: String(i.data) }));
       const replyTo = /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/i.test(String(body.replyTo || '').trim()) ? String(body.replyTo).trim() : '';
-      const w = who(); if (!w.list.length) { err(req, res, 400, w.test ? 'The Family page is in test mode and no tester is listed for this.' : 'No family email is on file for this.'); return; }
+      // a test to the director's own address goes there alone, whatever the Family page's mode
+      const testTo = /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/i.test(String(body.testTo || '').trim()) ? String(body.testTo).trim().toLowerCase() : '';
+      const w = testTo ? { test: true, list: [{ email: testTo, kids: [] }] } : who(); if (!w.list.length) { err(req, res, 400, w.test ? 'The Family page is in test mode and no tester is listed for this.' : 'No family email is on file for this.'); return; }
       let r; try { r = await drive.ask({ op: 'mail', to: w.list.map(x => x.email), subject, html, text, images, name: 'Fulton Community School', replyTo }, 300000); }
       catch (e) { log('Family email did not go out,', e.message); err(req, res, 502, /Unknown request/.test(e.message) ? 'The TREE mailbox script needs its update before it can send email.' : 'The TREE mailbox did not send it. ' + e.message); return; }
       log('Family email sent', subject, 'to', r.sent, 'of', w.list.length, w.test ? '(test mode)' : '', 'by', me);

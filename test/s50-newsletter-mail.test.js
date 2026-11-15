@@ -10,6 +10,7 @@ const kids = put => {
   put('children/k1.json', { first: 'Wren', last: 'Hale', classroom: 'North', status: 'active', parents: [{ name: 'Ada', email: 'ada@example.test' }, { name: 'Bo', email: 'bo@example.test' }] });
   put('children/k2.json', { first: 'Lark', last: 'One', classroom: 'West', status: 'active', parents: [{ name: 'Ada', email: 'ADA@example.test' }, { name: 'Cy', email: 'cy@example.test' }] });
   put('children/k3.json', { first: 'Moss', last: 'Gone', classroom: 'West', status: 'withdrawn', parents: [{ name: 'Di', email: 'di@example.test' }] });
+  put('notices/m1.json', { id: 'm1', at: Date.now() - 3600e3, classroom: 'North', noticed: 'The goats climbed the hay.', photo: { id: 'p-m1', w: 800, h: 600 } });
   put('staff/library/books/goats-in-the-hay.md', '<!--\nlibrary: book\nauthor: Plum, Ada\nisbn: 9780000000002\nowned: no\n-->\n# Goats in the Hay\n\n## Why we chose it\n\nGoats eat hay and climb on everything. A second sentence. A third one.\n\n## Reading guide\n\n- I notice the goats\n- I wonder where the goats sleep\n');
 };
 async function setup(t, testMode) {
@@ -59,7 +60,13 @@ test('The mid-month note carries books with library and bookshop links, previewe
   await s.p.waitForSelector('[data-nlf="books.0.why"]', { timeout: 15000 });
   assert.strictEqual(await s.p.inputValue('[data-nlf="books.0.why"]'), 'Goats eat hay and climb on everything. A second sentence.');
   assert.strictEqual(await s.p.inputValue('[data-nlf="books.0.wonder"]'), 'I wonder where the goats sleep');
-  await s.p.click('[data-nlmopen]'); await s.p.click('[data-nlmprev]');
+  await s.p.click('[data-nlmph="m1"]'); await s.p.waitForSelector('[data-nlf="photos.0.cap"]', { timeout: 15000 });
+  await s.p.click('[data-nlmopen]');
+  await s.p.fill('#nlm-me', 'me@example.test'); await s.p.click('[data-nlmme]');
+  await s.p.waitForFunction(n => n, null, { timeout: 2000 }).catch(() => {});
+  for (let i = 0; i < 60 && !drive.mails.length; i++) await new Promise(r => setTimeout(r, 250));
+  assert.deepStrictEqual(drive.mails.map(m => m.to), ['me@example.test']); assert.match(drive.mails[0].subject, /^Test\. /);
+  await s.p.click('[data-nlmprev]');
   await s.p.waitForSelector('iframe[title="Preview of the email"]', { timeout: 20000 });
   const html = await s.p.$eval('iframe[title="Preview of the email"]', f => f.srcdoc);
   assert.match(html, /Mid-month note, /); assert.match(html, /Goats in the Hay/); assert.match(html, /Ada Plum/);
@@ -67,7 +74,8 @@ test('The mid-month note carries books with library and bookshop links, previewe
   assert.match(await s.p.textContent('#main'), /test mode, so this goes only to your 1 tester/);
   await s.p.click('[data-nlmsend]');
   await s.p.waitForFunction(() => [...newsletters.values()].some(x => x.kind === 'mid' && (x.emails || []).length === 1), null, { timeout: 20000 });
-  assert.strictEqual(drive.mails.length, 1); assert.match(drive.mails[0].subject, /mid-/);
+  assert.strictEqual(drive.mails.length, 2); assert.match(drive.mails[1].subject, /^A note from school, mid-/);
+  assert.match(html, /From the last two weeks/);
   assert.match(await s.p.textContent('#main'), /Test email .* to 1 tester/);
   assert.deepStrictEqual(s.errors, []);
 });

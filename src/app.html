@@ -7437,6 +7437,12 @@ async function nlEmail(x,forSend){await nlPhotos(x);const images=[],seen=new Map
     ${rows.join("")}<tr><td style="padding:18px 20px 30px;border-top:1px solid #C6D0C3;font-size:14px;color:#5B6B61">${fam}Fulton Community School &amp; Farm, 1225 Fulton Road, Santa Rosa, CA 95401</td></tr></table></td></tr></table></div>`;
   const text=[title,"",...nlBlocks(x).map(b=>b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.text)),"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
   return {html,text,images}}
+// the mid-month note's photos, up to four from the last two weeks of observations, never from a team inquiry
+function nlMidOffer(){const t=Date.now()-14*864e5,inq=shareInquiryIds();return [...notices.values()].filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&(n.at||0)>=t&&!inq.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,24).map(n=>n.id)}
+function nlMidPhotosHtml(x){const L=x.photos||[],offer=nlMidOffer();
+  return `<section class="card nlcard"><div class="nlstep">2</div><h3>Photos from the last two weeks</h3><p class="muted nlhint">Up to four, from the last two weeks of observations. Tap a photo to add it or take it out.</p>
+    ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from the last two weeks yet.</p>`}
+    ${L.map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`}
 let nlMail=null;
 function nlMailHtml(x){const sends=x.emails||[];
   const hist=sends.length?`<div class="nlsmall" style="margin-top:8px">${sends.map(e=>`${e.test?"Test email":"Emailed"} ${esc(fmtDate(iso(new Date(e.at))))} to ${e.sent} ${e.test?(e.sent===1?"tester":"testers"):e.sent===1?"family email":"family emails"}${e.classroom?", "+esc(e.classroom)+" class":""}${e.failed?`, ${e.failed} did not go`:""}.`).join("<br>")}</div>`:"";
@@ -7445,6 +7451,7 @@ function nlMailHtml(x){const sends=x.emails||[];
     <label class="nll">Send to<select id="nlm-to">${[["","Every family"],...CLASSROOMS.map(r=>[r,r+" class families"])].map(([v,l])=>`<option value="${esc(v)}" ${M.classroom===v?"selected":""}>${esc(l)}</option>`).join("")}</select></label>
     <label class="nll">Subject<input id="nlm-sub" value="${esc(M.subject)}"></label>
     <label class="nll">Family replies go to<input id="nlm-reply" value="${esc(M.replyTo)}" placeholder="An email address, such as your own"></label>
+    <div class="nlrow"><input id="nlm-me" value="${esc(M.me)}" placeholder="Your email, for a test" aria-label="Send a test to"><button class="btn small ghost" data-nlmme="1" ${M.busy?"disabled":""}>${M.busy==="me"?"Sending":"Send me a test"}</button></div>
     <div class="actions"><button class="btn small ghost" data-nlmprev="1" ${M.busy?"disabled":""}>${M.busy==="prev"?"Making the preview":"Show the preview"}</button><button class="btn small" data-nlmsend="1" ${M.html&&!M.busy?"":"disabled"}>${M.busy==="send"?"Sending":"Send it now"}</button><button class="linkbtn" data-nlmclose="1">Close</button></div>
     ${M.count!=null?`<div class="cnt" style="margin-top:6px">${M.test?`The Family page is in test mode, so this goes only to your ${M.count} ${M.count===1?"tester":"testers"}.`:`This goes to ${M.count} family ${M.count===1?"email":"emails"}, one email each.`}${M.mailOn===false?" The TREE mailbox is not connected yet.":""}</div>`:""}
     ${M.html?`<iframe title="Preview of the email" style="width:100%;height:720px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:8px" srcdoc="${esc(M.html)}"></iframe>`:""}</div>${hist}`}
@@ -7471,7 +7478,7 @@ function renderNewsletter(){
   h+=`<section class="card nlcard"><div class="nlstep">1</div><h3>A note from you</h3><p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
     <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea></section>`;
 
-  const step=mid?1:4+(x.topics||[]).length;
+  const step=mid?2:4+(x.topics||[]).length;
   if(!mid){
   // 2. topics TREE noticed
   const used=new Set((x.topics||[]).map(t=>t.from));
@@ -7526,7 +7533,8 @@ function renderNewsletter(){
     ${(x.schoolPhotos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="schoolPhotos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`;
 
   }
-  h+=nlBooksHtml(x,mid?2:3+(x.topics||[]).length);
+  if(mid)h+=nlMidPhotosHtml(x);
+  h+=nlBooksHtml(x,mid?3:3+(x.topics||[]).length);
   // coming up
   const ev=mid?nlMidEvents(k):nlEvents[nlShift(k,1)];const chosen=new Set((x.coming||[]).map(c=>c.date+"|"+c.text));
   // where the month's food came from, the same content as the farm sheet for families
@@ -7561,6 +7569,7 @@ function nlArchiveHtml(k){
 function nlBlocks(x){
   const B=[];
   if((x.note||"").trim())B.push({h:"A note from the director",text:x.note.trim()});
+  if(nlIsMid(x)&&(x.photos||[]).length)B.push({h:"From the last two weeks",text:"",photos:x.photos});
   for(const t of x.topics||[]){
     const p=[t.title,"",t.happening,"","Why it matters",t.why,""];
     if((t.grows||[]).length){p.push("How it grows");for(const g of t.grows)p.push(`${g.age}. ${g.text}`);p.push("")}
@@ -7595,7 +7604,7 @@ document.addEventListener("input",e=>{
   nlSave(x);
 });
 document.addEventListener("input",e=>{if(view!=="newsletter"||!nlMail)return;const el=e.target;
-  if(el.id==="nlm-sub")nlMail.subject=el.value;else if(el.id==="nlm-reply"){nlMail.replyTo=el.value.trim();LS.set("tree.nlreply",nlMail.replyTo)}});
+  if(el.id==="nlm-sub")nlMail.subject=el.value;else if(el.id==="nlm-me"){nlMail.me=el.value.trim();LS.set("tree.nlme",nlMail.me)}else if(el.id==="nlm-reply"){nlMail.replyTo=el.value.trim();LS.set("tree.nlreply",nlMail.replyTo)}});
 document.addEventListener("change",e=>{
   if(view!=="newsletter")return;const el=e.target;
   if(el.id==="nlm-to"&&nlMail){nlMail.classroom=el.value;nlMail.html="";nlMail.count=null;renderNewsletter();return}
@@ -7611,11 +7620,17 @@ document.addEventListener("click",async e=>{
   if(d.nlstart){if(!sample){toast("TREE's reading help is not available right now.");return}x=nlNew(d.nlstart);nlDeleted.delete(x.id);nlSave(x,true);renderNewsletter();nlFindTopics(x,$("[data-nlfind]"));return}
   if(d.nlopen){nlMonth=d.nlopen;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();jumpTop();return}
   if(!x)return;
+  if(d.nlmph){const has=(x.photos||[]).some(p=>p.notice===d.nlmph);
+    if(has)x.photos=x.photos.filter(p=>p.notice!==d.nlmph);else{if((x.photos||[]).length>=4){toast("Four photos fit the note best. Take one out first.");return}x.photos=(x.photos||[]).concat([{notice:d.nlmph,cap:nlCaption(notices.get(d.nlmph))}])}
+    nlSave(x);renderNewsletter();return}
   if(d.nlbookadd){const v=$("#nlbk")?.value;const b=v&&(libData.books||[]).find(y=>y.path===v);if(!b){toast("Choose a book first.");return}x.books=(x.books||[]).concat([nlBookFrom(b)]);nlSave(x,true);renderNewsletter();return}
   if(t.hasAttribute("data-nlbookrm")){x.books.splice(+d.nlbookrm,1);nlSave(x,true);renderNewsletter();return}
   if(d.nlbookup){const j=+d.nlbookup;if(j>0){const L=x.books;[L[j-1],L[j]]=[L[j],L[j-1]];nlSave(x,true);renderNewsletter()}return}
-  if(d.nlmopen){nlMail={id:x.id,classroom:"",subject:nlIsMid(x)?`A note from school, mid-${nlMonthOnly(x.month)}`:`Our ${nlMonthOnly(x.month)} newsletter`,replyTo:LS.get("tree.nlreply",""),html:"",count:null};renderNewsletter();setTimeout(()=>document.getElementById("nlm-sub")?.scrollIntoView({block:"center"}),60);return}
+  if(d.nlmopen){nlMail={id:x.id,classroom:"",subject:nlIsMid(x)?`A note from school, mid-${nlMonthOnly(x.month)}`:`Our ${nlMonthOnly(x.month)} newsletter`,replyTo:LS.get("tree.nlreply",""),me:LS.get("tree.nlme",""),html:"",count:null};renderNewsletter();setTimeout(()=>document.getElementById("nlm-sub")?.scrollIntoView({block:"center"}),60);return}
   if(d.nlmclose){nlMail=null;renderNewsletter();return}
+  if(d.nlmme){const M=nlMail;if(!M||M.busy)return;if(!/^\S+@\S+\.\S+$/.test(M.me||"")){toast("Type your email first.");return}if(!M.subject.trim()){toast("Add a subject first.");return}
+    M.busy="me";renderNewsletter();try{const em=await nlEmail(x,true);await window.FP_API("/api/staff/newsletter/send",{testTo:M.me,subject:"Test. "+M.subject,html:em.html,text:em.text,images:em.images,replyTo:M.replyTo});toast("A test is on its way to "+M.me+".")}catch(er){toast(er&&er.message||"The test did not go out.")}
+    M.busy=false;renderNewsletter();return}
   if(d.nlmprev||d.nlmsend){const M=nlMail;if(!M||M.id!==x.id||M.busy)return;
     if(nlNameWarn((x.topics||[]).filter(t=>t.behavior).map(nlTopicText).join(" ")).length){toast("A topic about a behavior names a child. Take the name out before emailing.");return}
     if(!nlBlocks(x).length){toast("Nothing is written yet.");return}
@@ -7677,7 +7692,7 @@ document.addEventListener("click",async e=>{
 
 // photos for the printed copies, at a size that prints well
 async function nlPhotos(x){
-  const list=[...(x.topics||[]).flatMap(t=>t.photos||[]),...(x.schoolPhotos||[])].map(p=>notices.get(p.notice)).filter(n=>n&&n.photo&&n.photo.id);
+  const list=[...(x.topics||[]).flatMap(t=>t.photos||[]),...(x.schoolPhotos||[]),...(x.photos||[])].map(p=>notices.get(p.notice)).filter(n=>n&&n.photo&&n.photo.id);
   const covers=(x.books||[]).filter(b=>b.cover).map(b=>({key:"nl:cover:"+b.cover,src:window.FP_ORIGINAL_URL(b.cover)}));
   await loadPhotos([{photos:list.map(n=>({key:"nl:"+n.id,src:window.FP_ORIGINAL_URL(n.photo.id)})).concat(covers)}]);
 }
@@ -7712,6 +7727,7 @@ async function nlWord(x){
     if(t.bonus)ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},shading:{type:ShadingType.CLEAR,color:"auto",fill:"FBF3E4"},borders:{top:none,bottom:none,right:none,left:{style:BorderStyle.SINGLE,size:24,color:"9A5B07"}},margins:{top:140,bottom:140,left:240,right:240},children:[new Paragraph({children:[r("Bonus for school. ",{bold:true,color:"9A5B07"}),r(t.bonus)],spacing:{after:0,line:290}})]})]})]}));
     if((t.tips||[]).length){ch.push(sub("Ideas to try at home"));for(const p of t.tips)ch.push(bul([r((p.lead||"")+" ",{bold:true}),r(p.text)]))}
   }
+  if(nlIsMid(x)&&(x.photos||[]).length){ch.push(rule());ch.push(H("From the last two weeks",28,{before:120}));for(let i=0;i<x.photos.length;i+=2)ch.push(...photoRow(x.photos.slice(i,i+2)))}
   if((x.books||[]).length){ch.push(rule());ch.push(H("Books to share",28,{before:120}));const cv=x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:""}));for(let i=0;i<cv.length;i+=3)ch.push(...photoRow(cv.slice(i,i+3)));
     for(const b of x.books){ch.push(sub(b.title+(b.author?", "+b.author:"")));if(b.why)ch.push(P(b.why));for(const w of String(b.wonder||"").split("\n").filter(l=>l.trim()))ch.push(bul([r(w)]));
       ch.push(bul([r("Borrow it. ",{bold:true}),new ExternalHyperlink({link:b.lib,children:[r("Sonoma County Library",{color:"245B78",underline:{}})]})]));ch.push(bul([r("Buy it. ",{bold:true}),new ExternalHyperlink({link:b.shop,children:[r("Our Bookshop.org shop",{color:"245B78",underline:{}})]})]))}}
@@ -7771,6 +7787,7 @@ async function nlPdf(x){
       doc.setFillColor(251,243,228);doc.rect(L,y,TW,hh,"F");doc.setFillColor(...C.marigold);doc.rect(L,y,3,hh,"F");
       lines.forEach((ln,i)=>{if(i===0){pfont(doc,"fs",bs);doc.setTextColor(154,91,7);doc.text("Bonus for school.",L+16,y+9+bs);const bw=doc.getTextWidth("Bonus for school. ");pfont(doc,"fr",bs);ink();doc.text(ln.replace(/^Bonus for school\.\s*/,""),L+16+bw,y+9+bs)}else{pfont(doc,"fr",bs);ink();doc.text(ln,L+16,y+9+bs+i*blh)}});y+=hh+10}
     if((t.tips||[]).length){sub("Ideas to try at home");for(const p of t.tips)bullet(p.lead,p.text)}}
+  if(nlIsMid(x)&&(x.photos||[]).length){rule();head("From the last two weeks",14,photoH(x.photos.slice(0,2)));for(let i=0;i<x.photos.length;i+=2)photos(x.photos.slice(i,i+2))}
   if((x.books||[]).length){rule();const cv=x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:""}));head("Books to share",14,photoH(cv.slice(0,2)));for(let i=0;i<cv.length;i+=2)photos(cv.slice(i,i+2));
     for(const b of x.books){sub(b.title+(b.author?", "+b.author:""));if(b.why)para(b.why);for(const w of String(b.wonder||"").split("\n").filter(l=>l.trim()))bullet("",w);bullet("Borrow it.","Sonoma County Library");mut();link(b.lib);bullet("Buy it.","Our Bookshop.org shop");mut();link(b.shop)}}
   if((x.reading||[]).length){rule();head("For families who want to read more",14);for(const it of x.reading){bullet("",it.title+(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:""));mut();link(it.url)}}
