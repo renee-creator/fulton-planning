@@ -22,10 +22,11 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
 
 1. `npm ci` if node_modules is missing, then `node tools/watch-check.js > /tmp/watch-check.json` and read it. It checks
    every script parses, the generated pages match src, the size of the first page, the server's health and, when
-   WATCH_KEY is set, the program watch's own findings from the last day.
-2. The walk needs Playwright and a Chromium browser, which TREE itself does not install. If
-   `node -e "require('playwright')"` fails, run `npm install --no-save playwright` and `npx playwright install chromium`
-   first. Then run `node tools/user-walk.js /tmp/user-walk` and read /tmp/user-walk/walk-report.md. It walks through TREE on a made-up
+   WATCH_KEY is set, the program watch's own findings from the last day. When `watch` is null, WATCH_KEY is not set in
+   this session's environment, so say once in the report that the server's own findings were not read.
+2. The walk needs Playwright and a Chromium browser, which TREE itself does not install. Most sessions already have them.
+   Only if `node -e "require('playwright')"` fails, run `npm install --no-save playwright` and
+   `npx playwright install chromium` first. Then run `node tools/user-walk.js /tmp/user-walk` and read /tmp/user-walk/walk-report.md. It walks through TREE on a made-up
    school as an educator on a phone, the director on a laptop and the kitchen on a tablet, and checks formatting and
    getting around: pages wider than the screen, buttons too small to tap or drawn over one another, text cut off or very
    small, buttons and boxes with no name, slow pages, how many taps each page is from Today, and everyday tasks done by
@@ -37,9 +38,21 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
      walk-report.json. If a person could plainly do it and only the walk missed it, leave it out.
    - Report only what would really slow an educator down or confuse them, with the page, what to change, and the file
      in src where it is drawn. Leave out the same finding you already reported in an open program-watch issue.
-3. `npm test`. A test that fails is a glitch. Read the failure and find the commit that caused it with `git log`.
+3. `npm test`. The full run takes 20 to 30 minutes, so run it in the background with a limit of about 40 minutes, and
+   not while the walk runs. A busy machine makes some files fail that pass alone, so rerun every failing file on its
+   own (`node --test test/<file>.test.js`) before calling it a failure. A test that still fails is a glitch. Read the
+   failure and find the commit that caused it with `git log`. Two checks of a Word file (s13-fieldguide, s71-book) are
+   skipped with a note where the Word tool cannot be fetched from cdn.jsdelivr.net. That is the sandbox, not TREE.
 4. If the Render connector is available, read the last day of the TREE service's logs, its deploys and its metrics.
-   Look for lines with "could not", "Request error", "Unexpected", "Slow request" and "refused", and for a failed deploy.
+   Pass the workspace and the service by their ids, since the connector does not pick a workspace by itself: workspace
+   `tea-db2k6hajnfac73ck7aq0`, TREE service `srv-db462hu0tbcc73d9084g` (named fulton-planning). Only read. Look for:
+   - lines with "could not", "Request error", "Unexpected", "Slow request" and "refused";
+   - "Save failed" (a save GitHub kept refusing), "Sorting skipped" (a sort dropped), "GraphQL answered 504" (GitHub gave
+     up on a request at a start);
+   - "Sorting waits for room" and "Saves asked about", which are normal, but many in a row mean the hourly allowance
+     is tight or a device's saves are not settling;
+   - a deploy whose status is `update_failed`, and an out-of-memory restart.
+   A busy day of deploys spends GitHub's hourly allowance, so read the starts after the third deploy of a day closely.
    If the connector is not available, say so in the report and go on.
 5. Read the commits of the last day (`git log --since="26 hours ago" -p`) for anything that could break: a change to
    server.js without a test, src changed without building, a writing rule broken (see Writing rules in README.md).
@@ -49,6 +62,18 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
    - **Why it matters** to educators, families or the records.
    - **Plan of correction**, numbered steps, naming the file and the place in it when it is in the code.
    - **How we will know it is corrected.**
+
+## Closing what is corrected
+
+Each morning, read every open program-watch issue against the code on main and the last three days of logs.
+
+- When every finding in an issue is corrected and its "How we will know" has held for three days, comment with what
+  was checked and close the issue as completed.
+- When some findings are corrected and some are not, comment with which are which, and leave it open.
+- When the code for a finding has changed since the issue was written, check the plan still names the right file and
+  line, and correct it in a comment.
+
+So the open issues are always the list of what still needs correcting.
 
 ## Telling the director
 
