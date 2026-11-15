@@ -611,6 +611,8 @@ function sendNote(text, to, by) {
 const ONCE = [];
 // the tests leave out a step that adds many pages at start, such as the starter books, unless a test asks for it
 const ONCE_SKIP = new Set(String(process.env.ONCE_SKIP || '').split(',').map(x => x.trim()).filter(Boolean));
+// a test of one step can name it in ONCE_ONLY, and every other step is left out
+const ONCE_ONLY = new Set(String(process.env.ONCE_ONLY || '').split(',').map(x => x.trim()).filter(Boolean));
 function onceDone(id) { const r = store.recs.settings.get('once'); return !!(r && !r.deleted && r.doc && r.doc.done && r.doc.done[id]); }
 // a step may finish later, such as one that takes away a page on GitHub. Steps still run one at a time and in order.
 let onceBusy = null;
@@ -626,7 +628,7 @@ function runOnce() {
     log('One-time step done,', id); };
   (async () => {
     for (const [id, fn] of ONCE) {
-      if (onceDone(id) || ONCE_SKIP.has(id)) continue;
+      if (onceDone(id) || ONCE_SKIP.has(id) || (ONCE_ONLY.size && !ONCE_ONLY.has(id))) continue;
       try { let out = fn(); if (out && typeof out.then === 'function') out = await out; if (out === false) continue; mark(id); }
       catch (e) { log('One-time step could not run,', id, e.message); }
     }

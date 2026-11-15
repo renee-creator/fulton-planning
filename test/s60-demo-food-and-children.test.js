@@ -35,3 +35,26 @@ test('a food follows the recipe, amounts follow the children, and chosen sheets 
   assert.strictEqual(r.tsp, '1 1/4 teaspoons salt');
   assert.deepStrictEqual(s.errors, []);
 });
+
+// A recipe can name the picture for a step, such as soaked rice on step 2, and a picture of the finished recipe. Each is
+// listed once under Pictures still needed, named plainly with no dash, and a step picture stands on its own sheet once
+// the director adds it (program watch, issue 38). Made-up recipes only.
+const RICE = `<!--\nlibrary: recipe\nkind: food\nsteppictures: 2=sticky_rice_soaked\n-->\n# Rice for the morning\n\nA made-up recipe.\n\n## Makes enough for\n\n6 children\n\n## Ingredients\n\n- 2 cups sticky rice\n- water\n\n## Tools\n\n- a big bowl\n\n## Steps\n\n- Wash our hands.\n- Put the rice in the bowl and cover it with water.\n- Let it rest overnight.\n`;
+
+test('a recipe\'s own step pictures are listed once and named plainly', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const fx = await start({ more: put => put('staff/library/recipes/rice-morning.md', RICE) }); t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => goView('recipes')); await s.p.waitForFunction(() => libData && libRecipe('rice-morning'), null, { timeout: 15000 });
+  const r = await s.p.evaluate(() => {
+    const all = demoItemsAll().filter(i => i.recipes.has('Rice for the morning'));
+    return { soaked: all.filter(i => i.key === 'sticky_rice_soaked').map(i => [i.name, i.kind]), done: all.filter(i => i.kind === 'finished recipe').map(i => i.name),
+      dashes: all.filter(i => /[—–]/.test(i.name)).length, step: [...demoStepPictures(libRecipe('rice-morning'))] };
+  });
+  assert.deepStrictEqual(r.step, [[2, 'sticky_rice_soaked']]);
+  assert.deepStrictEqual(r.soaked, [['soaked sticky rice', 'as the recipe changes it']]);
+  assert.deepStrictEqual(r.done, ['We made it, Rice for the morning']);
+  assert.strictEqual(r.dashes, 0);
+  assert.deepStrictEqual(s.errors, []);
+});
