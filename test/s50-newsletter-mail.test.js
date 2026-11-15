@@ -79,3 +79,48 @@ test('The mid-month note carries books with library and bookshop links, previewe
   assert.match(await s.p.textContent('#main'), /Test email .* to 1 tester/);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('The mid-month note drafts highlights, why each book fits, a note and a home idea, and checks each article', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const http = require('http');
+  const reply = (r, o) => { r.writeHead(200, { 'Content-Type': 'application/json' }); r.end(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(o) }], stop_reason: 'end_turn' })); };
+  const ai = http.createServer((q, r) => { const c = []; q.on('data', d => c.push(d)); q.on('end', () => { const body = Buffer.concat(c).toString();
+    if (/choose 2 to 4 highlights/.test(body)) return reply(r, { items: [{ text: 'The goats climbed the hay all week.', obs: 'o1' }] });
+    if (/why this book fits right now/.test(body)) return reply(r, { fits: [{ book: 'b1', text: 'The children have been feeding the goats.' }] });
+    if (/one simple idea families can try/.test(body)) return reply(r, { title: 'Watch an animal together', text: 'Find a bird or a cat and notice it together.' });
+    if (/Find 3 articles/.test(body)) return reply(r, { items: [{ title: 'Animals and children', url: 'https://www.zerotothree.org/animals', source: 'Zero to Three' }, { title: 'A broken page', url: 'https://www.naeyc.org/broken', source: 'NAEYC' }, { title: 'Elsewhere', url: 'https://example.com/x', source: 'Somewhere' }] });
+    if (/opening note for the mid-month note/.test(body)) return reply(r, { note: 'We have had a busy two weeks with the goats.' });
+    return reply(r, {}); }); });
+  await new Promise(ok => ai.listen(0, '127.0.0.1', ok)); t.after(() => ai.close());
+  const drive = await require('./mock-drive.js').start(); t.after(() => drive.close());
+  const fx = await start({ env: { DRIVE_PHOTOS_URL: drive.url, KAYMBU_INBOX_KEY: drive.key, BOOK_CATALOG_TEST_BASE: 'http://127.0.0.1:9', ANTHROPIC_API_KEY: 'sk-ant-test', ANTHROPIC_API_BASE: 'http://127.0.0.1:' + ai.address().port, LINKCHECK_TEST: '1' },
+    more: put => { kids(put); put('participation/config.json', { id: 'config', test: true, testers: [{ email: 'pip.family@example.test', children: ['k1'] }] });
+      put('newsletters/nl-' + new Date().toISOString().slice(0, 7) + '.json', { id: 'nl-' + new Date().toISOString().slice(0, 7), month: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }).slice(0, 7), status: 'sent', topics: [{ id: 't1', title: 'Big feelings at pickup' }], books: [{ path: 'staff/library/books/goats-in-the-hay.md', title: 'Goats in the Hay' }] }); } });
+  t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  s.p.on('dialog', d => d.accept());
+  await s.p.evaluate(() => { nlMode = 'mid'; goView('newsletter'); });
+  await s.p.waitForSelector('[data-nlstartmid]', { timeout: 15000 }); await s.p.click('[data-nlstartmid]');
+  await s.p.click('[data-nlmhigh]'); await s.p.waitForSelector('[data-nlf="highlights.0.text"]', { timeout: 20000 });
+  assert.strictEqual(await s.p.inputValue('[data-nlf="highlights.0.text"]'), 'The goats climbed the hay all week.');
+  assert.ok(await s.p.evaluate(() => [...newsletters.values()].find(x => x.kind === 'mid').photos.length === 1), 'the highlight brings its photo');
+  await s.p.waitForSelector('#nlbk option[value="staff/library/books/goats-in-the-hay.md"]', { timeout: 15000, state: 'attached' });
+  assert.match(await s.p.textContent('#nlbk option[value="staff/library/books/goats-in-the-hay.md"]'), /shared in /, 'a book from this month\'s newsletter says so');
+  await s.p.selectOption('#nlbk', 'staff/library/books/goats-in-the-hay.md'); await s.p.click('[data-nlbookadd]');
+  await s.p.click('[data-nlfits]'); await s.p.waitForFunction(() => document.querySelector('[data-nlf="books.0.fits"]') && /feeding/.test(document.querySelector('[data-nlf="books.0.fits"]').value), null, { timeout: 20000 });
+  await s.p.click('[data-nlhomedraft]'); await s.p.waitForSelector('[data-nlf="home.text"]', { timeout: 20000 });
+  await s.p.click('[data-nlhomeread]'); await s.p.waitForSelector('[data-nlhomeart]', { timeout: 20000 });
+  const offers = await s.p.$$eval('[data-nlhomeart]', xs => xs.map(x => x.closest('.nlres').textContent));
+  assert.strictEqual(offers.length, 2, 'only trusted sites are offered');
+  assert.match(offers[0], /Checked/); assert.match(offers[1], /Not checked/);
+  await s.p.click('[data-nlhomeart]');
+  await s.p.click('[data-nlmnote]'); await s.p.waitForFunction(() => /busy two weeks/.test(document.querySelector('[data-nlf="note"]').value), null, { timeout: 20000 });
+  const x = await s.p.evaluate(() => { const x = [...newsletters.values()].find(x => x.kind === 'mid'); return nlBlocks(x).map(b => b.h); });
+  assert.deepStrictEqual(x, ['A note from the director', 'From the last two weeks', 'Books to share', 'Try at home']);
+  await s.p.click('[data-nlmopen]'); await s.p.click('[data-nlmprev]');
+  await s.p.waitForSelector('iframe[title="Preview of the email"]', { timeout: 20000 });
+  const html = await s.p.$eval('iframe[title="Preview of the email"]', f => f.srcdoc);
+  assert.match(html, /feeding the goats/); assert.match(html, /Watch an animal together/); assert.match(html, /zerotothree\.org/);
+  assert.deepStrictEqual(s.errors, []);
+});

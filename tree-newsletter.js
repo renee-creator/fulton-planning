@@ -62,6 +62,7 @@ async function nlFindTopics(x,btn){
   const ages=nlRoomAges();
   const prompt=`You are helping the director of Fulton Community School & Farm choose topics for the monthly family newsletter. Read the educators' observations from ${nlName(x.month)} and find the 3 or 4 subjects that came up most, or that families would most want support with. Good topics are developmental things families also meet at home, such as a behavior that is hard for parents, language, friendships, food and growth, independence, feelings, or big physical skills. A subject seen across several classes, or several times, comes first. A smaller one can still matter when it is a common challenge for parents.
 ${past.length?`Topics already used this school year, which you should not suggest again unless the observations are about something new. ${past.join("; ")}.`:""}
+${(()=>{const o=nlOtherSaid(x);return o.highlights.length?`The mid-month note already shared these highlights with families. ${o.highlights.join(" / ")}. Choose topics that go deeper than these or cover other ground.`:""})()}
 
 Classes. ${Object.entries(ages).map(([r,a])=>r+", "+a).join(". ")}.
 
@@ -161,6 +162,7 @@ Return only a JSON object with one key "items", an array of objects with "title"
   if(btn){btn.disabled=true;btn.textContent="Searching trusted sites"}
   try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter-reading"});
     const items=(Array.isArray(out?.items)?out.items:[]).map(i=>({title:nlClean(i?.title).replace(/:\s*/g,", "),url:String(i?.url||"").trim(),source:nlClean(i?.source),why:nlClean(i?.why)})).filter(i=>i.title&&/^https:\/\//.test(i.url)&&nlSiteOk(i.url)).slice(0,4);
+    await nlCheckLinks(items);
     x=newsletters.get(x.id)||x;const tt=x.topics.find(y=>y.id===t.id);if(tt){tt.readingOffer=items}nlSave(x,true);
     toast(items.length?`${items.length} articles found. Open each one before adding it.`:"No articles came back from trusted sites. Add your own instead.");
   }catch(err){toast(err?.code==="truncated"||err?.code==="invalid_json"?"The search did not come back clearly. Try again, or add your own.":"Suggested reading is not available right now. Add your own article below.")}
@@ -253,11 +255,14 @@ function nlBooksHtml(x,n){const L=x.books||[];
   if(!libData)return `<section class="card nlcard"><div class="nlstep">${n}</div><h3>Books to share</h3><p class="muted">Opening the book collection</p></section>`;
   const inBag=new Set(bagData().items.filter(i=>i.status!=="returned").map(i=>i.path)),chosen=new Set(L.map(b=>b.path));
   const all=(libData.books||[]).filter(b=>!b.draft&&!chosen.has(b.path)).sort((a,b)=>a.title.replace(/^(The|A) /,"").localeCompare(b.title.replace(/^(The|A) /,"")));
-  const opt=b=>`<option value="${esc(b.path)}">${esc(b.title)}${(b.meta||{}).author?", "+esc(bagAuthor(b.meta.author)):""}</option>`;
+  const shared=nlSharedBooks(x);
+  const opt=b=>`<option value="${esc(b.path)}">${esc(b.title)}${(b.meta||{}).author?", "+esc(bagAuthor(b.meta.author)):""}${shared.has(b.path)?", shared in "+esc(shared.get(b.path)):""}</option>`;
   const bagL=all.filter(b=>inBag.has(b.path)),rest=all.filter(b=>!inBag.has(b.path));
-  return `<section class="card nlcard"><div class="nlstep">${n}</div><h3>Books to share</h3>
+  return `<section class="card nlcard"><div class="nlstep">${n}</div><div class="head-row"><h3>Books to share</h3>${L.length?`<button class="btn small ghost" data-nlfits="1">Draft why each fits now</button>`:""}</div>
     <p class="muted nlhint">One book or several from our collection. Each links to Sonoma County Library and to our Bookshop.org shop.</p>
+    ${L.some(b=>b.fitsDraft)?`<p class="nldraft">Why it fits now is drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}
     ${L.map((b,j)=>`<div class="nlres" style="align-items:flex-start;gap:10px">${b.cover&&window.FP_ORIGINAL_URL?`<img src="${esc(window.FP_ORIGINAL_URL(b.cover))}" alt="" style="width:64px;border-radius:4px">`:""}<div style="flex:1;min-width:0"><b>${esc(b.title)}</b>${b.author?` <span class="muted">${esc(b.author)}</span>`:""}
+      <label class="nll">Why it fits now<textarea class="nlta" rows="2" data-nlf="books.${j}.fits" placeholder="How it connects to what the children are exploring">${esc(b.fits||"")}</textarea></label>
       <label class="nll">Why we chose it<textarea class="nlta" rows="2" data-nlf="books.${j}.why">${esc(b.why)}</textarea></label>
       <label class="nll">Wonder together at home<textarea class="nlta" rows="2" data-nlf="books.${j}.wonder" placeholder="I wonder...">${esc(b.wonder)}</textarea></label>
       <div class="nlsmall"><a href="${esc(b.lib)}" target="_blank" rel="noopener">At the library</a> · <a href="${esc(b.shop)}" target="_blank" rel="noopener">At our bookshop</a></div></div>
@@ -272,9 +277,11 @@ async function nlEmail(x,forSend){await nlPhotos(x);const images=[],seen=new Map
     let out=small;if(forSend){const cid="p"+(images.length+1);images.push({cid,data:small.split(",")[1]});out="cid:"+cid}seen.set(k,out);return out};
   const title=nlTitle(x),rows=[];
   for(const b of nlBlocks(x)){let inner=`<h2 style="font-size:20px;color:#2B5A40;margin:0 0 10px">${esc(nlTxt(b.h))}</h2>`;
-    if(b.books){for(const bk of b.books){const s=bk.cover?await src({cover:bk.cover}):"";
+    if(b.h==="Try at home"&&(b.home||b.reading)){const hm=b.home;if(hm&&hm.text)inner+=`${hm.title?`<p style="margin:0 0 6px"><b>${esc(hm.title)}</b></p>`:""}${nlParas(hm.text)}`;
+      for(const r of b.reading||[])inner+=`<p style="margin:0 0 10px"><a href="${esc(r.url)}" style="color:#245B78">${esc(r.title)}</a>${r.source?`<span style="color:#5B6B61">, ${esc(r.source)}</span>`:""}</p>`}
+    else if(b.books){for(const bk of b.books){const s=bk.cover?await src({cover:bk.cover}):"";
       inner+=`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>${s?`<td valign="top" style="padding-right:14px;width:96px"><img src="${s}" width="96" alt="" style="display:block;border-radius:4px"></td>`:""}<td valign="top"><b>${esc(bk.title)}</b>${bk.author?`<span style="color:#5B6B61">, ${esc(bk.author)}</span>`:""}
-        ${bk.why?`<p style="margin:6px 0">${esc(bk.why)}</p>`:""}${bk.wonder?`<p style="margin:6px 0"><b>Wonder together.</b> ${esc(bk.wonder.replace(/\n+/g," "))}</p>`:""}
+        ${bk.fits?`<p style="margin:6px 0">${esc(bk.fits)}</p>`:""}${bk.why?`<p style="margin:6px 0">${esc(bk.why)}</p>`:""}${bk.wonder?`<p style="margin:6px 0"><b>Wonder together.</b> ${esc(bk.wonder.replace(/\n+/g," "))}</p>`:""}
         <p style="margin:6px 0"><a href="${esc(bk.lib)}" style="color:#245B78">Borrow it from Sonoma County Library</a><br><a href="${esc(bk.shop)}" style="color:#245B78">Buy it from our Bookshop.org shop</a></p></td></tr></table>`}}
     else{const ph=[];for(const p of b.photos||[]){const s=await src(p);if(s)ph.push({s,cap:p.cap||""})}
       if(ph.length)inner+=`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px"><tr>${ph.map(q=>`<td valign="top" style="padding-right:8px;width:${Math.floor(100/ph.length)}%"><img src="${q.s}" alt="" style="display:block;width:100%;height:auto;border-radius:6px">${q.cap?`<div style="font-size:13px;color:#5B6B61;margin-top:4px">${esc(q.cap)}</div>`:""}</td>`).join("")}</tr></table>`;
@@ -284,7 +291,7 @@ async function nlEmail(x,forSend){await nlPhotos(x);const images=[],seen=new Map
   const html=`<div style="background:#ffffff;margin:0;padding:0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff"><tr><td align="center"><table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;font-family:Andika,'Trebuchet MS',Arial,sans-serif;color:#1B2920;font-size:16px;line-height:1.55">
     <tr><td style="padding:24px 20px 10px"><div style="font-size:12px;letter-spacing:1.5px;color:#5B6B61;font-weight:bold">FULTON COMMUNITY SCHOOL &amp; FARM</div><h1 style="font-size:26px;color:#2B5A40;margin:6px 0 0">${esc(title)}</h1></td></tr>
     ${rows.join("")}<tr><td style="padding:18px 20px 30px;border-top:1px solid #C6D0C3;font-size:14px;color:#5B6B61">${fam}Fulton Community School &amp; Farm, 1225 Fulton Road, Santa Rosa, CA 95401</td></tr></table></td></tr></table></div>`;
-  const text=[title,"",...nlBlocks(x).map(b=>b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.text)),"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
+  const text=[title,"",...nlBlocks(x).map(b=>b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.fits,bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.text)),"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
   return {html,text,images}}
 // the mid-month note's photos, up to four from the last two weeks of observations, never from a team inquiry
 function nlMidOffer(){const t=Date.now()-14*864e5,inq=shareInquiryIds();return [...notices.values()].filter(n=>n&&!n.deleted&&n.photo&&n.photo.id&&(n.at||0)>=t&&!inq.has(n.id)).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,24).map(n=>n.id)}
@@ -292,6 +299,108 @@ function nlMidPhotosHtml(x){const L=x.photos||[],offer=nlMidOffer();
   return `<section class="card nlcard"><div class="nlstep">2</div><h3>Photos from the last two weeks</h3><p class="muted nlhint">Up to four, from the last two weeks of observations. Tap a photo to add it or take it out.</p>
     ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from the last two weeks yet.</p>`}
     ${L.map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`}
+/* The mid-month note's parts (November 15, 2026). Highlights from the last two weeks, why each book fits now, and Try at
+   home with an idea and an article. TREE drafts each part when asked and the director rewrites it. The note and the
+   monthly newsletter know what the other said, so the note never repeats the newsletter's topics and the newsletter's
+   topics go deeper than the note's highlights. Every suggested article is opened by the server before it is offered. */
+function nlRecentObs(days){const t=Date.now()-(days||14)*864e5,seen=new Map(),inq=shareInquiryIds();
+  for(const n of [...notices.values()].filter(n=>n&&!n.deleted&&(n.at||0)>=t&&!inq.has(n.id)).sort((a,b)=>(a.at||0)-(b.at||0))){const text=String(n.noticed||"").trim();if(!text)continue;
+    const key=(n.classroom||"")+"|"+text.slice(0,200);let o=seen.get(key);if(!o){o={ids:[],photos:[],room:n.classroom||"",noticed:text};seen.set(key,o)}o.ids.push(n.id);if(n.photo&&n.photo.id)o.photos.push(n.id)}
+  return [...seen.values()].slice(-120).map((o,i)=>Object.assign(o,{ref:"o"+(i+1),noticed:o.noticed.length>500?o.noticed.slice(0,500)+"…":o.noticed}))}
+// what the other kind of letter said in this month and the month before
+function nlOtherSaid(x){const ms=[x.month,nlShift(x.month,-1)];const other=[...newsletters.values()].filter(d=>d&&d.id!==x.id&&ms.includes(d.month)&&nlIsMid(d)!==nlIsMid(x));
+  return {topics:other.flatMap(d=>(d.topics||[]).map(t=>t.title)),highlights:other.flatMap(d=>(d.highlights||[]).map(h=>h.text)),books:other.flatMap(d=>(d.books||[]).map(b=>b.title))}}
+// the books shared this school year, so the picker says where each went before
+function nlSharedBooks(x){const yr=nlSchoolYear(x.month),m=new Map();for(const d of newsletters.values())if(d&&d.id!==x.id&&d.month&&nlSchoolYear(d.month)===yr)for(const b of d.books||[])if(!m.has(b.path))m.set(b.path,(nlIsMid(d)?"mid-":"")+nlMonthOnly(d.month));return m}
+async function nlAsk(prompt,btn,label){if(!sample){toast("TREE's writing help is not available right now.");return null}if(btn){btn.disabled=true;btn.textContent=label}
+  try{return await sample.json(prompt,{modelTier:"default",cache:false,purpose:"newsletter"})}catch(err){toast(assistError(err||"unknown","Nothing was changed."));return null}}
+async function nlDraftHighlights(x,btn){const obs=nlRecentObs(14);if(!obs.length){toast("No observations from the last two weeks yet.");return}
+  const chosen=new Set((x.photos||[]).map(p=>p.notice)),said=nlOtherSaid(x);
+  const prompt=`${nlRules(false)}
+
+This is the director's short mid-month note to families, sent about two weeks after the monthly newsletter. From the observations of the last two weeks below, choose 2 to 4 highlights. Each highlight is one or two sentences telling what children explored or discovered and why it matters for their learning. Lead with the observations marked as the director's chosen photos. Keep each one specific to these two weeks.
+${said.topics.length?`The monthly newsletter already covered ${said.topics.join("; ")}. Do not repeat those, though a highlight may show how one of them has grown since.`:""}
+
+Return a JSON object with one key "items", an array of objects with "text" and "obs", the reference (like "o4") it comes from.
+
+Observations.
+${obs.map(o=>`${o.ref}. ${o.room||"No class"}${o.ids.some(id=>chosen.has(id))?", the director's chosen photo":o.photos.length?", with photo":""}. ${o.noticed.replace(/\n+/g," / ")}`).join("\n")}`;
+  const out=await nlAsk(prompt,btn,"Reading the last two weeks");if(!out){renderNewsletter();return}
+  const byRef=new Map(obs.map(o=>[o.ref,o]));const items=(Array.isArray(out.items)?out.items:[]).slice(0,4).map(i=>({text:nlClean(i?.text),from:((byRef.get(String(i?.obs))||{}).photos||[])[0]||""})).filter(i=>i.text);
+  x=newsletters.get(x.id)||x;x.highlights=items.map(i=>({text:i.text}));x.highlightsDraft=true;
+  if(!(x.photos||[]).length)x.photos=[...new Set(items.map(i=>i.from).filter(Boolean))].slice(0,2).map(id=>({notice:id,cap:nlCaption(notices.get(id))}));
+  nlSave(x,true);toast("Highlights are in. Rewrite them in your own voice.");renderNewsletter()}
+async function nlDraftFits(x,btn){const L=x.books||[];if(!L.length)return;const bag=bagData().items;
+  const now=nlIsMid(x)?(x.highlights||[]).map(h=>h.text):(x.topics||[]).map(t=>t.title+". "+(t.happening||""));
+  const obs=nlRecentObs(nlIsMid(x)?14:31).slice(-40);
+  const prompt=`${nlRules(false)}
+
+For each book below, write one or two sentences for families on why this book fits right now, connecting it to what the children have been exploring. Name the connection plainly, such as the goats, puddles or color mixing, and do not repeat the book's own description.
+What is happening now. ${now.join(" / ")||"See the observations."}
+Recent observations. ${obs.map(o=>o.noticed.replace(/\n+/g," ")).join(" / ").slice(0,6000)}
+
+Books.
+${L.map((b,i)=>{const it=bag.find(y=>y.path===b.path&&y.for);return `b${i+1}. ${b.title}${b.author?", "+b.author:""}. ${b.why}${it?" An educator chose it for "+it.for+".":""}`}).join("\n")}
+
+Return a JSON object with one key "fits", an array of objects with "book" (like "b2") and "text".`;
+  const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
+  x=newsletters.get(x.id)||x;for(const f of Array.isArray(out.fits)?out.fits:[]){const i=Number(String(f?.book||"").replace(/\D/g,""))-1;const t=nlClean(f?.text);if(x.books[i]&&t){x.books[i].fits=t;x.books[i].fitsDraft=true}}
+  nlSave(x,true);toast("Why each book fits now is drafted. Rewrite it in your own voice.");renderNewsletter()}
+async function nlDraftNote(x,btn){if((x.note||"").trim()&&!confirm("Replace your note with a draft?"))return;
+  const parts=[...(x.highlights||[]).map(h=>"Highlight. "+h.text),...(x.books||[]).map(b=>"Book. "+b.title+(b.fits?". "+b.fits:"")),x.home&&x.home.title?"Try at home. "+x.home.title:"",...(x.coming||[]).map(c=>"Coming up. "+(c.date?nlDay(c.date)+". ":"")+c.text)].filter(Boolean);
+  if(!parts.length){toast("Add highlights or books first, so the note has something to draw on.");return}
+  const prompt=`${nlRules(false)}
+
+Draft the director's short opening note for the mid-month note to families, three to five warm sentences in the voice of "we". Draw on what is below without repeating it word for word, and end by inviting families to look, talk or wonder together at home. Do not sign it.
+${parts.join("\n")}
+
+Return a JSON object with one key "note".`;
+  const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
+  x=newsletters.get(x.id)||x;const t=nlClean(out.note);if(t){x.note=t;x.noteDraft=true;nlSave(x,true);toast("A draft note is in. Rewrite it in your own voice.")}renderNewsletter()}
+function nlHomeCards(x){const cards=(typeof ibCards==="function"?ibCards():[]).filter(c=>c&&c.home&&c.home.title);
+  const ws=bagWords([...(x.highlights||[]).map(h=>h.text),...(x.books||[]).map(b=>b.title+" "+(b.fits||""))].join(" "));
+  return cards.map(c=>{let s=0;for(const w of bagWords([c.title,c.home.title,c.group||""].join(" ")))if(ws.has(w))s++;return {c,s}}).sort((a,b)=>b.s-a.s||a.c.home.title.localeCompare(b.c.home.title))}
+const nlCardText=c=>(c.home.sections||[]).slice(0,3).map(s=>s.style==="text"?String(s.text||"").trim():(s.items||[]).slice(0,3).join(" ")).filter(Boolean).join("\n\n").slice(0,900);
+async function nlDraftHome(x,btn){const now=[...(x.highlights||[]).map(h=>h.text),...(x.books||[]).map(b=>b.title)];if(!now.length){toast("Add highlights or books first.");return}
+  const prompt=`${nlRules(false)}
+
+Draft one simple idea families can try at home this week that builds on what the children have been exploring. No special materials. Lead with noticing, joining in and wondering together, never quizzing or directing the child. Where it helps, give one short example of what a parent might say, in quotation marks, that describes what they see or shares their own wondering.
+What the children have been exploring. ${now.join(" / ")}
+
+Return a JSON object with "title", 3 to 7 words, and "text", three to five sentences.`;
+  const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
+  x=newsletters.get(x.id)||x;const t=nlClean(out.title),tx=nlClean(out.text);if(tx){x.home={title:t||"Try at home",text:tx,draft:true};nlSave(x,true)}renderNewsletter()}
+async function nlCheckLinks(items){if(!items.length)return items;try{const r=await window.FP_API("/api/staff/newsletter/linkcheck",{urls:items.map(i=>i.url)});const m=new Map((r.list||[]).map(c=>[c.url,c]));
+  return items.map(i=>{const c=m.get(i.url)||{};return Object.assign(i,{ok:!!c.ok,checkWhy:c.ok?"":(c.why||"did not open")})})}catch(e){return items.map(i=>Object.assign(i,{ok:false,checkWhy:"the check did not run"}))}}
+const nlCheckLine=r=>r.ok===true?`<div class="nlsmall">Checked. It opens to this article.</div>`:r.ok===false?`<div class="nlsmall"><b>Not checked.</b> It ${esc(r.checkWhy||"did not open")}. Open it yourself before adding it.</div>`:"";
+async function nlHomeReading(x,btn){const topic=[...(x.highlights||[]).map(h=>h.text),x.home&&x.home.title||""].filter(Boolean).join(" / ");if(!topic){toast("Add highlights first, so the article fits them.");return}
+  const prompt=`Find 3 articles for families of young children that fit what these children have been exploring, for a preschool's mid-month note. Search the web, and use only articles you actually found in your search results, with their exact web addresses, and only from these sites. ${NL_SITES.join(", ")}. Prefer short, practical pages written for parents, reviewed or updated in recent years.
+What the children have been exploring. ${topic.slice(0,1500)}
+
+Return only a JSON object with one key "items", an array of objects with "title" (with any colon replaced by a comma), "url", "source" (the organization) and "why" (one short sentence).`;
+  if(btn){btn.disabled=true;btn.textContent="Searching and checking"}
+  let items=[];try{const out=await sample.json(prompt,{modelTier:"complex",cache:false,purpose:"newsletter-reading"});items=(Array.isArray(out?.items)?out.items:[]).map(i=>({title:nlClean(i?.title).replace(/:\s*/g,", "),url:String(i?.url||"").trim(),source:nlClean(i?.source)})).filter(i=>i.title&&nlSiteOk(i.url)).slice(0,4)}catch(err){toast("Suggested reading is not available right now.")}
+  items=await nlCheckLinks(items);x=newsletters.get(x.id)||x;x.homeOffer=items;nlSave(x,true);
+  if(items.length)toast(`${items.filter(i=>i.ok).length} of ${items.length} articles opened and checked.`);else toast("No articles came back from trusted sites.");renderNewsletter()}
+function nlMidPartsHtml(x){const L=x.photos||[],offer=nlMidOffer(),H=x.highlights||[];
+  return `<section class="card nlcard"><div class="nlstep">2</div><div class="head-row"><h3>From the last two weeks</h3><button class="btn small ghost" data-nlmhigh="1">${H.length?"Draft new highlights":"Draft highlights for me"}</button></div>
+    <p class="muted nlhint">Up to four photos and two to four highlights from the last two weeks of observations. Tap a photo to add it or take it out.</p>
+    ${offer.length?`<div class="nlphotos">${offer.map(id=>nlThumb(id,L.some(p=>p.notice===id),`data-nlmph="${id}"`)).join("")}</div>`:`<p class="muted">No observation photos from the last two weeks yet.</p>`}
+    ${L.map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="photos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}
+    <div class="nll" style="margin-top:10px">Highlights</div>
+    ${x.highlightsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
+    ${H.map((h,j)=>`<div class="nlrow"><textarea class="nlta" rows="2" aria-label="Highlight" data-nlf="highlights.${j}.text">${esc(h.text)}</textarea><button class="btn small ghost" data-nlmhighrm="${j}" aria-label="Remove">×</button></div>`).join("")}
+    <button class="btn small ghost" data-nlmhighadd="1">Add a highlight</button></section>`}
+function nlHomeHtml(x,n){const h=x.home||null,cards=nlHomeCards(x),art=x.homeReading||[],lib=(nlLib().items||[]).filter(r=>r.url&&!art.some(a=>a.url===r.url));
+  if(typeof ibLoad==="function"&&!ibCards().length&&!nlHomeHtml.asked){nlHomeHtml.asked=true;ibLoad().then(()=>{if(view==="newsletter")renderNewsletter()}).catch(()=>{})}
+  return `<section class="card nlcard"><div class="nlstep">${n}</div><div class="head-row"><h3>Try at home</h3><button class="btn small ghost" data-nlhomedraft="1">Draft one for me</button></div>
+    <p class="muted nlhint">One idea for families, from the At home side of an Idea bank card or drafted fresh, and an article if you like.</p>
+    ${h?`<label class="nll">Title<input data-nlf="home.title" value="${esc(h.title)}"></label><label class="nll">The idea<textarea class="nlta" rows="4" data-nlf="home.text">${esc(h.text)}</textarea></label>${h.draft?`<p class="nldraft">Drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}<button class="btn small ghost" data-nlhomerm="1">Take the idea out</button>`:""}
+    ${cards.length?`<div class="nlrow" style="margin-top:8px"><select id="nlhc" aria-label="An Idea bank card" style="flex:1;min-width:0"><option value="">Choose an Idea bank card</option>${cards.slice(0,60).map(r=>`<option value="${esc(r.c.id)}">${esc(r.c.home.title)}${r.s?", fits this note":""}</option>`).join("")}</select><button class="btn small ghost" data-nlhomecard="1">Use this card</button></div>`:""}
+    <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">An article for families</div><button class="btn small ghost" data-nlhomeread="1">Suggest an article</button></div>
+    ${art.map((r,j)=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source||"")}</span></div><button class="btn small ghost" data-nlhomeartrm="${j}" aria-label="Remove">×</button></div>`).join("")}
+    ${(x.homeOffer||[]).filter(r=>!art.some(a=>a.url===r.url)).map((r,j)=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${nlCheckLine(r)}</div><button class="btn small" data-nlhomeart="${esc(r.url)}">Add</button></div>`).join("")}
+    ${lib.length?`<details class="nlown"><summary>From your library</summary>${lib.slice(0,30).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source||"")}</span></div><button class="btn small ghost" data-nlhomeart="${esc(r.url)}">Add</button></div>`).join("")}</details>`:""}</section>`}
 let nlMail=null;
 function nlMailHtml(x){const sends=x.emails||[];
   const hist=sends.length?`<div class="nlsmall" style="margin-top:8px">${sends.map(e=>`${e.test?"Test email":"Emailed"} ${esc(fmtDate(iso(new Date(e.at))))} to ${e.sent} ${e.test?(e.sent===1?"tester":"testers"):e.sent===1?"family email":"family emails"}${e.classroom?", "+esc(e.classroom)+" class":""}${e.failed?`, ${e.failed} did not go`:""}.`).join("<br>")}</div>`:"";
@@ -324,10 +433,10 @@ function renderNewsletter(){
   if(sent)h+=`<div class="card nlcard nlsent">Sent ${x.sentAt?fmtDate(iso(new Date(x.sentAt))):""}. It stays here to look back on, and its topics are not suggested again this school year. <button class="btn small ghost" data-nlunsend="1">Open it again</button></div>`;
 
   // 1. the director's note
-  h+=`<section class="card nlcard"><div class="nlstep">1</div><h3>A note from you</h3><p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
+  h+=`<section class="card nlcard"><div class="nlstep">1</div>${mid?`<div class="head-row"><h3>A note from you</h3><button class="btn small ghost" data-nlmnote="1">Draft it for me</button></div>`:`<h3>A note from you</h3>`}${x.noteDraft?`<p class="nldraft">Drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}<p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
     <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea></section>`;
 
-  const step=mid?2:4+(x.topics||[]).length;
+  const step=mid?3:4+(x.topics||[]).length;
   if(!mid){
   // 2. topics TREE noticed
   const used=new Set((x.topics||[]).map(t=>t.from));
@@ -360,7 +469,7 @@ function renderNewsletter(){
       ${t.tipsDraft?`<p class="nldraft">Drafted by TREE. Rewrite them in your own voice before this goes out.</p>`:""}
       ${(t.tips||[]).length?(t.tips||[]).map((p,j)=>`<div class="nlrow"><input class="nlage" data-nlf="topics.${i}.tips.${j}.lead" value="${esc(nlTxt(p.lead))}" placeholder="Short opening" aria-label="Short opening"><textarea class="nlta" rows="2" data-nlf="topics.${i}.tips.${j}.text" data-talk="1" aria-label="The tip">${esc(p.text)}</textarea><button class="btn small ghost" data-nltiprm="${esc(t.id)}" data-j="${j}" aria-label="Remove this tip">×</button></div>`).join(""):`<p class="muted nlhint">Write your own with Add a tip, or ask TREE for a draft to rewrite.</p>`}
       <div class="head-row" style="margin-top:12px"><div class="nll" style="margin:0">Reading for families</div><button class="btn small ghost" data-nlread="${esc(t.id)}">${(t.readingOffer||[]).length?"Search again":"Suggest reading"}</button></div>
-      ${(t.readingOffer||[]).filter(r=>!(x.reading||[]).some(y=>y.url===r.url)).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${r.why?`<div class="nlsmall">${esc(r.why)}</div>`:""}</div><button class="btn small" data-nladdoffer="${esc(t.id)}" data-url="${esc(r.url)}">Add</button></div>`).join("")}
+      ${(t.readingOffer||[]).filter(r=>!(x.reading||[]).some(y=>y.url===r.url)).map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span>${r.why?`<div class="nlsmall">${esc(r.why)}</div>`:""}${nlCheckLine(r)}</div><button class="btn small" data-nladdoffer="${esc(t.id)}" data-url="${esc(r.url)}">Add</button></div>`).join("")}
       ${lib.length?`<div class="nlsmall" style="margin-top:8px"><b>From your library</b></div>${lib.map(r=>`<div class="nlres"><div><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a><span class="muted">. ${esc(r.source)}</span></div><button class="btn small" data-nladdlib="${esc(r.id)}" data-topic="${esc(t.id)}">Add</button></div>`).join("")}`:""}
     </section>`;
   });
@@ -382,8 +491,9 @@ function renderNewsletter(){
     ${(x.schoolPhotos||[]).map((p,j)=>`<label class="nll">Caption for photo ${j+1}<input data-nlf="schoolPhotos.${j}.cap" value="${esc(p.cap)}"></label>`).join("")}</section>`;
 
   }
-  if(mid)h+=nlMidPhotosHtml(x);
+  if(mid)h+=nlMidPartsHtml(x);
   h+=nlBooksHtml(x,mid?3:3+(x.topics||[]).length);
+  if(mid)h+=nlHomeHtml(x,4);
   // coming up
   const ev=mid?nlMidEvents(k):nlEvents[nlShift(k,1)];const chosen=new Set((x.coming||[]).map(c=>c.date+"|"+c.text));
   // where the month's food came from, the same content as the farm sheet for families
@@ -418,7 +528,7 @@ function nlArchiveHtml(k){
 function nlBlocks(x){
   const B=[];
   if((x.note||"").trim())B.push({h:"A note from the director",text:x.note.trim()});
-  if(nlIsMid(x)&&(x.photos||[]).length)B.push({h:"From the last two weeks",text:"",photos:x.photos});
+  if(nlIsMid(x)&&((x.photos||[]).length||(x.highlights||[]).some(h=>String(h.text||"").trim())))B.push({h:"From the last two weeks",text:(x.highlights||[]).map(h=>String(h.text||"").trim()).filter(Boolean).join("\n\n"),photos:x.photos||[]});
   for(const t of x.topics||[]){
     const p=[t.title,"",t.happening,"","Why it matters",t.why,""];
     if((t.grows||[]).length){p.push("How it grows");for(const g of t.grows)p.push(`${g.age}. ${g.text}`);p.push("")}
@@ -426,7 +536,8 @@ function nlBlocks(x){
     if((t.tips||[]).length){p.push("Ideas to try at home");for(const tp of t.tips)p.push(nlTxt(`${tp.lead} ${tp.text}`).trim())}
     B.push({h:t.title,text:p.join("\n").replace(/\n{3,}/g,"\n\n").trim(),photos:t.photos||[]});
   }
-  if((x.books||[]).length)B.push({h:"Books to share",books:x.books,text:x.books.map(b=>[b.title+(b.author?", "+b.author:""),b.why,b.wonder?"Wonder together. "+b.wonder.replace(/\n+/g," "):"","Borrow it from Sonoma County Library.\n"+b.lib,"Buy it from our Bookshop.org shop.\n"+b.shop].filter(Boolean).join("\n")).join("\n\n"),photos:x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:b.title}))});
+  if((x.books||[]).length)B.push({h:"Books to share",books:x.books,text:x.books.map(b=>[b.title+(b.author?", "+b.author:""),b.fits,b.why,b.wonder?"Wonder together. "+b.wonder.replace(/\n+/g," "):"","Borrow it from Sonoma County Library.\n"+b.lib,"Buy it from our Bookshop.org shop.\n"+b.shop].filter(Boolean).join("\n")).join("\n\n"),photos:x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:b.title}))});
+  if(nlIsMid(x)&&(x.home&&String(x.home.text||"").trim()||(x.homeReading||[]).length))B.push({h:"Try at home",home:x.home||null,reading:x.homeReading||[],text:[x.home&&x.home.text?(x.home.title?x.home.title+"\n":"")+x.home.text:"",...(x.homeReading||[]).map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`)].filter(Boolean).join("\n\n")});
   if((x.reading||[]).length)B.push({h:"For families who want to read more",text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
   if(sch.length)B.push({h:"Around the school and farm",text:sch.join("\n\n"),photos:x.schoolPhotos||[]});
@@ -449,6 +560,8 @@ document.addEventListener("input",e=>{
   if(view!=="newsletter")return;const el=e.target;if(!el.dataset||!el.dataset.nlf)return;
   const x=nlDoc(nlCur());if(!x)return;nlSetPath(x,el.dataset.nlf,el.value);
   const m=el.dataset.nlf.match(/^topics\.(\d+)\.tips\./);if(m&&x.topics[+m[1]])x.topics[+m[1]].tipsDraft=false;
+  if(el.dataset.nlf==="note")x.noteDraft=false;if(/^highlights\./.test(el.dataset.nlf))x.highlightsDraft=false;if(/^home\./.test(el.dataset.nlf)&&x.home)x.home.draft=false;
+  {const fm=el.dataset.nlf.match(/^books\.(\d+)\.fits$/);if(fm&&x.books[+fm[1]])x.books[+fm[1]].fitsDraft=false}
   if(el.tagName==="TEXTAREA")try{autoGrow(el)}catch(err){}
   nlSave(x);
 });
@@ -469,6 +582,17 @@ document.addEventListener("click",async e=>{
   if(d.nlstart){if(!sample){toast("TREE's reading help is not available right now.");return}x=nlNew(d.nlstart);nlDeleted.delete(x.id);nlSave(x,true);renderNewsletter();nlFindTopics(x,$("[data-nlfind]"));return}
   if(d.nlopen){nlMonth=d.nlopen;LS.set("tree.nlmonth",nlMonth);nlKaymbu=false;renderNewsletter();jumpTop();return}
   if(!x)return;
+  if(d.nlmnote){nlDraftNote(x,t);return}
+  if(d.nlmhigh){if((x.highlights||[]).length&&!confirm("Replace these highlights with a new draft?"))return;nlDraftHighlights(x,t);return}
+  if(t.hasAttribute("data-nlmhighrm")){x.highlights.splice(+d.nlmhighrm,1);nlSave(x);renderNewsletter();return}
+  if(d.nlmhighadd){x.highlights=(x.highlights||[]).concat([{text:""}]);nlSave(x);renderNewsletter();return}
+  if(d.nlfits){if((x.books||[]).some(b=>b.fits)&&!confirm("Replace why each book fits now with a new draft?"))return;nlDraftFits(x,t);return}
+  if(d.nlhomedraft){if(x.home&&x.home.text&&!confirm("Replace the idea with a new draft?"))return;nlDraftHome(x,t);return}
+  if(d.nlhomecard){const c=typeof ibCard==="function"&&ibCard($("#nlhc")?.value);if(!c||!c.home){toast("Choose a card first.");return}x.home={title:c.home.title,text:nlCardText(c),card:c.id};nlSave(x,true);renderNewsletter();return}
+  if(d.nlhomerm){x.home=null;nlSave(x,true);renderNewsletter();return}
+  if(d.nlhomeread){nlHomeReading(x,t);return}
+  if(d.nlhomeart){const r=(x.homeOffer||[]).find(y=>y.url===d.nlhomeart)||(nlLib().items||[]).find(y=>y.url===d.nlhomeart);if(!r)return;x.homeReading=(x.homeReading||[]).concat([{title:r.title,url:r.url,source:r.source||""}]);nlSave(x,true);renderNewsletter();return}
+  if(t.hasAttribute("data-nlhomeartrm")){x.homeReading.splice(+d.nlhomeartrm,1);nlSave(x,true);renderNewsletter();return}
   if(d.nlmph){const has=(x.photos||[]).some(p=>p.notice===d.nlmph);
     if(has)x.photos=x.photos.filter(p=>p.notice!==d.nlmph);else{if((x.photos||[]).length>=4){toast("Four photos fit the note best. Take one out first.");return}x.photos=(x.photos||[]).concat([{notice:d.nlmph,cap:nlCaption(notices.get(d.nlmph))}])}
     nlSave(x);renderNewsletter();return}
@@ -576,10 +700,11 @@ async function nlWord(x){
     if(t.bonus)ch.push(new Table({width:{size:W,type:WidthType.DXA},columnWidths:[W],rows:[new TableRow({children:[new TableCell({width:{size:W,type:WidthType.DXA},shading:{type:ShadingType.CLEAR,color:"auto",fill:"FBF3E4"},borders:{top:none,bottom:none,right:none,left:{style:BorderStyle.SINGLE,size:24,color:"9A5B07"}},margins:{top:140,bottom:140,left:240,right:240},children:[new Paragraph({children:[r("Bonus for school. ",{bold:true,color:"9A5B07"}),r(t.bonus)],spacing:{after:0,line:290}})]})]})]}));
     if((t.tips||[]).length){ch.push(sub("Ideas to try at home"));for(const p of t.tips)ch.push(bul([r((p.lead||"")+" ",{bold:true}),r(p.text)]))}
   }
-  if(nlIsMid(x)&&(x.photos||[]).length){ch.push(rule());ch.push(H("From the last two weeks",28,{before:120}));for(let i=0;i<x.photos.length;i+=2)ch.push(...photoRow(x.photos.slice(i,i+2)))}
+  if(nlIsMid(x)&&((x.photos||[]).length||(x.highlights||[]).length)){ch.push(rule());ch.push(H("From the last two weeks",28,{before:120}));for(let i=0;i<(x.photos||[]).length;i+=2)ch.push(...photoRow(x.photos.slice(i,i+2)));for(const hl of x.highlights||[])if(String(hl.text||"").trim())ch.push(P(hl.text))}
   if((x.books||[]).length){ch.push(rule());ch.push(H("Books to share",28,{before:120}));const cv=x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:""}));for(let i=0;i<cv.length;i+=3)ch.push(...photoRow(cv.slice(i,i+3)));
-    for(const b of x.books){ch.push(sub(b.title+(b.author?", "+b.author:"")));if(b.why)ch.push(P(b.why));for(const w of String(b.wonder||"").split("\n").filter(l=>l.trim()))ch.push(bul([r(w)]));
+    for(const b of x.books){ch.push(sub(b.title+(b.author?", "+b.author:"")));if(b.fits)ch.push(P(b.fits));if(b.why)ch.push(P(b.why));for(const w of String(b.wonder||"").split("\n").filter(l=>l.trim()))ch.push(bul([r(w)]));
       ch.push(bul([r("Borrow it. ",{bold:true}),new ExternalHyperlink({link:b.lib,children:[r("Sonoma County Library",{color:"245B78",underline:{}})]})]));ch.push(bul([r("Buy it. ",{bold:true}),new ExternalHyperlink({link:b.shop,children:[r("Our Bookshop.org shop",{color:"245B78",underline:{}})]})]))}}
+  if(nlIsMid(x)&&(x.home&&x.home.text||(x.homeReading||[]).length)){ch.push(rule());ch.push(H("Try at home",28,{before:120}));if(x.home&&x.home.text){if(x.home.title)ch.push(sub(x.home.title));ch.push(P(x.home.text))}for(const it of x.homeReading||[])ch.push(bul([new ExternalHyperlink({link:it.url,children:[r(it.title,{color:"245B78",underline:{}})]}),r(it.source?". "+it.source:"",{color:MUTED})]))}
   if((x.reading||[]).length){ch.push(rule());ch.push(H("For families who want to read more",28,{before:120}));for(const it of x.reading)ch.push(bul([new ExternalHyperlink({link:it.url,children:[r(it.title,{color:"245B78",underline:{}})]}),r(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:"",{color:MUTED})]))}
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
   if(sch.length){ch.push(rule());ch.push(H("Around the school and farm",28,{before:120}));ch.push(...photoRow(x.schoolPhotos||[]));for(const s of sch)ch.push(bul([r(s)]))}
@@ -636,9 +761,10 @@ async function nlPdf(x){
       doc.setFillColor(251,243,228);doc.rect(L,y,TW,hh,"F");doc.setFillColor(...C.marigold);doc.rect(L,y,3,hh,"F");
       lines.forEach((ln,i)=>{if(i===0){pfont(doc,"fs",bs);doc.setTextColor(154,91,7);doc.text("Bonus for school.",L+16,y+9+bs);const bw=doc.getTextWidth("Bonus for school. ");pfont(doc,"fr",bs);ink();doc.text(ln.replace(/^Bonus for school\.\s*/,""),L+16+bw,y+9+bs)}else{pfont(doc,"fr",bs);ink();doc.text(ln,L+16,y+9+bs+i*blh)}});y+=hh+10}
     if((t.tips||[]).length){sub("Ideas to try at home");for(const p of t.tips)bullet(p.lead,p.text)}}
-  if(nlIsMid(x)&&(x.photos||[]).length){rule();head("From the last two weeks",14,photoH(x.photos.slice(0,2)));for(let i=0;i<x.photos.length;i+=2)photos(x.photos.slice(i,i+2))}
+  if(nlIsMid(x)&&((x.photos||[]).length||(x.highlights||[]).length)){rule();head("From the last two weeks",14,photoH((x.photos||[]).slice(0,2)));for(let i=0;i<(x.photos||[]).length;i+=2)photos(x.photos.slice(i,i+2));for(const hl of x.highlights||[])if(String(hl.text||"").trim())para(hl.text)}
   if((x.books||[]).length){rule();const cv=x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:""}));head("Books to share",14,photoH(cv.slice(0,2)));for(let i=0;i<cv.length;i+=2)photos(cv.slice(i,i+2));
-    for(const b of x.books){sub(b.title+(b.author?", "+b.author:""));if(b.why)para(b.why);for(const w of String(b.wonder||"").split("\n").filter(l=>l.trim()))bullet("",w);bullet("Borrow it.","Sonoma County Library");mut();link(b.lib);bullet("Buy it.","Our Bookshop.org shop");mut();link(b.shop)}}
+    for(const b of x.books){sub(b.title+(b.author?", "+b.author:""));if(b.fits)para(b.fits);if(b.why)para(b.why);for(const w of String(b.wonder||"").split("\n").filter(l=>l.trim()))bullet("",w);bullet("Borrow it.","Sonoma County Library");mut();link(b.lib);bullet("Buy it.","Our Bookshop.org shop");mut();link(b.shop)}}
+  if(nlIsMid(x)&&(x.home&&x.home.text||(x.homeReading||[]).length)){rule();head("Try at home",14);if(x.home&&x.home.text){if(x.home.title)sub(x.home.title);para(x.home.text)}for(const it of x.homeReading||[]){bullet("",it.title+(it.source?". "+it.source:""));mut();link(it.url)}}
   if((x.reading||[]).length){rule();head("For families who want to read more",14);for(const it of x.reading){bullet("",it.title+(it.source?(/[.?!]$/.test(it.title)?" ":". ")+it.source:""));mut();link(it.url)}}
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
   if(sch.length){rule();head("Around the school and farm",14,photoH(x.schoolPhotos));photos(x.schoolPhotos||[]);for(const s of sch)bullet("",s)}
