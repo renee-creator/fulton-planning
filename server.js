@@ -326,12 +326,26 @@ function ghNow(method, path, body) {
    which has its own allowance and reads a hundred files in one request. A restart then costs a handful of requests. */
 async function gql(query) { const r = await gh('POST', '/graphql', { query }); if (r.status !== 200 || !r.json || r.json.errors) throw new Error('GitHub GraphQL answered ' + r.status + (r.json && r.json.errors ? ' ' + JSON.stringify(r.json.errors).slice(0, 200) : '')); return r.json.data; }
 const gqlRepo = () => { const [o, n] = RECORDS_REPO.split('/'); return `repository(owner:${JSON.stringify(o)},name:${JSON.stringify(n)})`; };
-// every file the loader needs, listed folder by folder, in the same shape the tree listing gives
+// GitHub gives up on a GraphQL request it cannot answer in about ten seconds, with a 502 or 504, or with a 200 that carries
+// a timeout, a node limit or "something went wrong". A request with no answer in a minute counts the same
+const gqlGone = e => /answered (502|504)|timeout|timed out|did not answer in time|NODE_LIMIT|went wrong/i.test(String(e && e.message));
+// every file the loader needs, listed folder by folder, in the same shape the tree listing gives. All the folders are asked
+// for in one request. When GitHub gives up on that, each folder is asked for on its own, the large photo folders last, so
+// a start still lists the records as they grow
 async function gqlFiles(branch) {
   const dirs = [...KINDS, 'originals', 'photos', 'drdp', 'access'];
-  const d = await gql(`query{${gqlRepo()}{${dirs.map((k, i) => `d${i}:object(expression:${JSON.stringify(branch + ':' + k)}){...on Tree{entries{name oid type}}}`).join(' ')}}}`);
-  const repo = d.repository || {}, files = [];
-  dirs.forEach((k, i) => { for (const e of ((repo['d' + i] || {}).entries || [])) if (e.type === 'blob') files.push({ type: 'blob', path: k + '/' + e.name, sha: e.oid }); });
+  const ask = list => gql(`query{${gqlRepo()}{${list.map((k, i) => `d${i}:object(expression:${JSON.stringify(branch + ':' + k)}){...on Tree{entries{name oid type}}}`).join(' ')}}}`);
+  const files = [];
+  const take = (k, t) => { for (const e of ((t || {}).entries || [])) if (e.type === 'blob') files.push({ type: 'blob', path: k + '/' + e.name, sha: e.oid }); };
+  try { const d = await ask(dirs); const repo = d.repository || {}; dirs.forEach((k, i) => take(k, repo['d' + i])); return files; }
+  catch (e) { if (!gqlGone(e)) throw e; log('GitHub could not list the records in one go, listing each folder on its own'); }
+  const big = ['originals', 'photos'];
+  for (const k of [...dirs.filter(k => !big.includes(k)), ...big]) {
+    let d;
+    try { d = await ask([k]); }
+    catch (e) { if (!gqlGone(e)) throw e; await new Promise(r => setTimeout(r, 2000)); try { d = await ask([k]); } catch (e2) { throw new Error(e2.message + ' when listing ' + k); } }
+    take(k, (d.repository || {}).d0);
+  }
   return files;
 }
 // every file under a folder, its folders included to four levels, for the educator records when the allowance is spent
@@ -346,22 +360,26 @@ async function gqlDeepOne(branch, dir, files, depth) {
   const lvl = n => n ? `entries{name oid type object{...on Tree{${lvl(n - 1)}}}}` : 'entries{name oid type}';
   const ask = n => gql(`query{${gqlRepo()}{d:object(expression:${JSON.stringify(branch + ':' + dir)}){...on Tree{${lvl(n)}}}}}`);
   const walk = (base, t) => { for (const e of (t && t.entries) || []) { const pth = base + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') walk(pth, e.object); } };
-  // GitHub also gives up on a large query with a 200 that carries an error, a timeout, a node limit or "something went wrong"
-  const gone = e => /answered (502|504)|timeout|timed out|NODE_LIMIT|went wrong/i.test(String(e && e.message));
   try { const d = await ask(depth); walk(dir, (d.repository || {}).d); return; }
-  catch (e) { if (!gone(e) || depth < 1) throw e; log('GitHub could not list', dir, 'in one go, reading its folders one by one'); }
+  catch (e) { if (!gqlGone(e) || depth < 1) throw e; log('GitHub could not list', dir, 'in one go, reading its folders one by one'); }
   const d = await ask(0); const subs = [];
   for (const e of (((d.repository || {}).d || {}).entries) || []) { const pth = dir + '/' + e.name; if (e.type === 'blob') files.push({ type: 'blob', path: pth, sha: e.oid }); else if (e.type === 'tree') subs.push(pth); }
   for (const s of subs) await gqlDeepOne(branch, s, files, depth - 1);
 }
-// the text of many files at once, by their ids
+// the text of many files at once, by their ids, ninety to a request. When GitHub gives up on a request, the same files are
+// asked for again in halves, down to a few at a time, so a batch of large files still comes through
 async function gqlTexts(shas) {
   const out = new Map();
-  for (let i = 0; i < shas.length; i += 90) {
-    const part = shas.slice(i, i + 90);
-    const d = await gql(`query{${gqlRepo()}{${part.map((s, j) => `b${j}:object(oid:${JSON.stringify(s)}){...on Blob{text isTruncated}}`).join(' ')}}}`);
-    part.forEach((s, j) => { const b = (d.repository || {})['b' + j]; if (b && typeof b.text === 'string' && !b.isTruncated) out.set(s, b.text); });
-  }
+  const one = async part => {
+    try {
+      const d = await gql(`query{${gqlRepo()}{${part.map((s, j) => `b${j}:object(oid:${JSON.stringify(s)}){...on Blob{text isTruncated}}`).join(' ')}}}`);
+      part.forEach((s, j) => { const b = (d.repository || {})['b' + j]; if (b && typeof b.text === 'string' && !b.isTruncated) out.set(s, b.text); });
+    } catch (e) {
+      if (!gqlGone(e) || part.length <= 5) throw e;
+      const half = Math.ceil(part.length / 2); await one(part.slice(0, half)); await one(part.slice(half));
+    }
+  };
+  for (let i = 0; i < shas.length; i += 90) await one(shas.slice(i, i + 90));
   return out;
 }
 const restSpent = r => r && (r.status === 403 || r.status === 429);
@@ -973,7 +991,7 @@ async function doLoadGraph() {
   log('GitHub allowance spent, reading the records through GraphQL');
   const d = await gql(`query{${gqlRepo()}{defaultBranchRef{name}}}`);
   store.branch = ((d.repository || {}).defaultBranchRef || {}).name || 'main';
-  const files = await gqlFiles(store.branch);
+  let files; try { files = await gqlFiles(store.branch); } catch (e) { throw new Error(e.message + ', while listing the records through GraphQL'); }
   const jobs = [];let accSha = '', rolesSha = '';
   for (const f of files) {
     const m = f.path.match(KIND_RE);
@@ -989,7 +1007,8 @@ async function doLoadGraph() {
   if (rolesSha) takeRoles(small.get(rolesSha));
   if (accSha) { accounts.sha = accSha; try { const a = JSON.parse(small.get(accSha) || '{}'); if (Array.isArray(a.accounts)) accounts.list = a.accounts.filter(x => x && x.name); } catch (e) { log('The sign-ins file could not be read'); } }
   accounts.loaded = true;
-  const { texts, missing } = await recordTexts(jobs);
+  let got; try { got = await recordTexts(jobs); } catch (e) { throw new Error(e.message + ', while reading ' + jobs.length + ' records through GraphQL'); }
+  const { texts, missing } = got;
   for (const j of jobs) { const tx = texts.get(j.sha); if (tx == null) continue; try { store.recs[j.kind].set(j.id, { doc: JSON.parse(tx), sha: j.sha, path: j.path }); } catch (e) { log('Skipped unreadable record', j.path); missing.push(j.path); } }
   noteMissing(missing);
   if (drdpSha) { try { DRDP_DESC = JSON.parse(small.get(drdpSha)); } catch (e) { DRDP_DESC = null; } }
@@ -1571,18 +1590,32 @@ async function flushOthers() {
 // true when everything waiting reached GitHub
 async function flushEverything() { await Promise.all([...dirtyPaths.keys()].map(flushPath)); await Promise.all([...chains.values()]); return dirtyPaths.size === 0; }
 // the address changes each time, so GitHub never hands back a copy from before the last save
-// the messages of the latest commits that changed a file, kept a minute, or null when GitHub cannot be asked just now
+// the messages of the latest commits that changed a file, kept a minute, or null when GitHub cannot be asked just now.
+// When the hourly allowance is spent, the same history is read through GraphQL, which has an allowance of its own
 const commitCache = new Map();
-const savedAsks = new Map();
+const savedAsks = new Map(), savedLogged = new Map();
+const commitLooks = new Map();   // a file to the lookup already running for it, so many asks share one request
+function commitCached(path) { const c = commitCache.get(path); return c && Date.now() - c.at < 60000 ? c.msgs : undefined; }
+function keepCommits(path, msgs) { commitCache.set(path, { at: Date.now(), msgs }); if (commitCache.size > 500) commitCache.delete(commitCache.keys().next().value); return msgs; }
+async function commitMessagesGql(path) {
+  const d = await gql(`query{${gqlRepo()}{ref(qualifiedName:${JSON.stringify('refs/heads/' + store.branch)}){target{...on Commit{history(first:100,path:${JSON.stringify(path)}){nodes{message committedDate}}}}}}}`);
+  const nodes = (((((d.repository || {}).ref || {}).target || {}).history || {}).nodes) || [];
+  const msgs = nodes.map(n => String((n && n.message) || '')); msgs.full = nodes.length >= 100;
+  msgs.oldest = msgs.full ? Date.parse(nodes[nodes.length - 1].committedDate || '') || 0 : 0;
+  return msgs;
+}
 async function commitMessages(path) {
-  const c = commitCache.get(path); if (c && Date.now() - c.at < 60000) return c.msgs;
+  const c = commitCached(path); if (c !== undefined) return c;
   try { const r = await gh('GET', `/repos/${RECORDS_REPO}/commits?path=${encodeURIComponent(path)}&sha=${encodeURIComponent(store.branch)}&per_page=100&fresh=${Date.now()}`);
+    if (restSpent(r)) { try { return keepCommits(path, await commitMessagesGql(path)); } catch (e) { return null; } }
     if (r.status !== 200 || !Array.isArray(r.json)) return null;
     // each message with its time, and whether the list is full, so older commits may be left out of it
     const msgs = r.json.map(x => String((x.commit && x.commit.message) || '')); msgs.full = r.json.length >= 100;
-    msgs.oldest = msgs.full ? Date.parse((r.json[r.json.length - 1].commit || {}).committer && r.json[r.json.length - 1].commit.committer.date || '') || 0 : 0; commitCache.set(path, { at: Date.now(), msgs }); if (commitCache.size > 500) commitCache.delete(commitCache.keys().next().value); return msgs; }
+    msgs.oldest = msgs.full ? Date.parse((r.json[r.json.length - 1].commit || {}).committer && r.json[r.json.length - 1].commit.committer.date || '') || 0 : 0; return keepCommits(path, msgs); }
   catch (e) { return null; }
 }
+// one lookup at a time for each file, however many devices ask about it
+function lookCommits(path) { if (!commitLooks.has(path)) commitLooks.set(path, commitMessages(path).finally(() => commitLooks.delete(path))); return commitLooks.get(path); }
 async function currentSha(path) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); return r.status === 200 ? r.json.sha : null; }
 /* Each save from a device carries a save id. The id rides in the commit's message, so once GitHub has the commit the
    save is known to be written, even after the server restarts. A device keeps its copy of a save until it hears so. */
@@ -3727,13 +3760,27 @@ async function handle(req, res) {
     // person asks GitHub about at most 20 records a minute. A save older than the last 100 commits of its record is
     // taken as written, so an old copy never goes over newer work.
     const atOf = new Map(items.map(x => [x.sid, Number(x.at) || 0])); const now = Date.now(); const asks = (savedAsks.get(me.name) || []).filter(t => now - t < 60e3);
+    // the files are looked up side by side, and the answer goes back within two seconds. A file GitHub has not answered
+    // for yet is waiting, its lookup goes on, and the device's next ask finds it kept
+    const pending = new Map();
+    for (const [fp] of look) {
+      const [kind, id] = fp.replace(/\.json$/, '').split('/'); if (!(store.recs[kind] && store.recs[kind].has(id))) continue;
+      if (commitCached(fp) !== undefined || commitLooks.has(fp)) { pending.set(fp, lookCommits(fp)); continue; }
+      if (asks.length >= 20) continue;
+      asks.push(now); pending.set(fp, lookCommits(fp));
+    }
+    const answered = new Map(); let budget = null;
+    await Promise.race([Promise.all([...pending].map(([fp, p]) => p.then(m => { answered.set(fp, m); }))), new Promise(r => { budget = setTimeout(r, 2000); })]); clearTimeout(budget);
+    let nWritten = out.written.length;
     for (const [fp, sids] of look) {
       const [kind, id] = fp.replace(/\.json$/, '').split('/'); const held = store.recs[kind] && store.recs[kind].has(id);
       if (!held) { out.unknown.push(...sids); continue; }
-      if (asks.length >= 20) { out.waiting.push(...sids); continue; }
-      asks.push(now); const msgs = await commitMessages(fp);
+      if (!answered.has(fp)) { out.waiting.push(...sids); continue; }
+      const msgs = answered.get(fp);
       for (const s0 of sids) { if (msgs === null) out.waiting.push(s0); else if (msgs.some(m => m.includes(s0)) || (msgs.full && atOf.get(s0) && atOf.get(s0) < msgs.oldest)) { sidWritten(s0); out.written.push(s0); } else out.unknown.push(s0); } }
     savedAsks.set(me.name, asks);
+    // counts only, so a save that never settles shows in the log without its record
+    if (look.size && Date.now() - (savedLogged.get(me.name) || 0) > 60e3) { savedLogged.set(me.name, Date.now()); log('Saves asked about,', out.written.length - nWritten, 'found written,', out.waiting.length, 'waiting,', out.unknown.length, 'to send again'); }
     json(req, res, 200, Object.assign({ bootId: BOOT_ID }, out)); return;
   }
   // the gatherings, read again when an educator opens the Gatherings page

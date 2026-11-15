@@ -22,6 +22,10 @@ function start(dir, port, opt) {
       const u = new URL(req.url, 'http://x'); const send = (st, j) => { res.writeHead(st, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j)); };
       let body = {}; try { body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch (e) {}
       const m = u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)?$/);
+      // with opt.gqlWideOver or opt.gqlBatchOver, a GraphQL request that asks for more folders or more files than that gives
+      // up with a 504, the way GitHub does when a request takes too long
+      if (u.pathname === '/graphql' && opt.gql) { const q = String(body.query || ''); const nExp = (q.match(/object\(expression:/g) || []).length, nOid = (q.match(/object\(oid:/g) || []).length;
+        if ((opt.gqlWideOver && nExp > opt.gqlWideOver) || (opt.gqlBatchOver && nOid > opt.gqlBatchOver)) { opt.gql504 = (opt.gql504 || 0) + 1; return send(504, { message: 'We couldn\'t respond to your request in time.' }); } }
       // with opt.gql the mock answers GraphQL requests for files by their ids, the way educator records are read in batches
       if (u.pathname === '/graphql' && opt.gql && /object\(oid:/.test(body.query || '')) { const bs = blobs(); const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(oid:"([a-f0-9]+)"\)/g)) { const b = bs.get(mm[2]); repo[mm[1]] = b ? (opt.gqlTruncateOver && b.length > opt.gqlTruncateOver ? { text: '', isTruncated: true } : { text: b.toString('utf8'), isTruncated: false }) : null; } opt.gqlCalls = (opt.gqlCalls || 0) + 1; return send(200, { data: { repository: repo } }); }
       // folders by their path, to four levels, for the GraphQL listing used when the hourly allowance is spent
@@ -33,6 +37,10 @@ function start(dir, port, opt) {
         const repo = {}; for (const mm of String(body.query).matchAll(/(\w+):object\(expression:"[^:"]+:([^"]+)"\)/g)) repo[mm[1]] = tree(mm[2], 4);
         if (/defaultBranchRef/.test(body.query)) repo.defaultBranchRef = { name: 'main' };
         return send(200, { data: { repository: repo } }); }
+      // a file's latest commits through GraphQL, newest first, the way the saves are checked when the allowance is spent
+      if (u.pathname === '/graphql' && opt.gql && /history\(first:/.test(body.query || '')) { const fp = (String(body.query).match(/history\(first:\d+,path:"([^"]+)"\)/) || [])[1]; opt.historyCalls = (opt.historyCalls || 0) + 1;
+        const nodes = writes.filter(w => !w.refused && w.path === fp).slice().reverse().slice(0, 100).map(w => ({ message: w.message || '', committedDate: new Date(w.at || Date.now()).toISOString() }));
+        return send(200, { data: { repository: { ref: { target: { history: { nodes } } } } } }); }
       if (u.pathname === '/graphql' && opt.gql && /defaultBranchRef/.test(body.query || '')) return send(200, { data: { repository: { defaultBranchRef: { name: 'main' } } } });
       if (u.pathname === '/graphql') return send(502, { message: 'not in the mock' });
       // the raw file address, /raw/<owner>/<repo>/<branch>/<path>, with an allowance of its own
@@ -78,7 +86,7 @@ function start(dir, port, opt) {
         return;
       }
       // the latest commits that changed a file, newest first, with their messages
-      if (rest === '/commits') { const fp = u.searchParams.get('path'); return send(200, writes.filter(w => !w.refused && (!fp || w.path === fp)).slice().reverse().slice(0, 100).map(w => ({ commit: { message: w.message || '' } }))); }
+      if (rest === '/commits') { const fp = u.searchParams.get('path'); opt.commitsCalls = (opt.commitsCalls || 0) + 1; const answer = () => send(200, writes.filter(w => !w.refused && (!fp || w.path === fp)).slice().reverse().slice(0, 100).map(w => ({ commit: { message: w.message || '' } }))); if (opt.commitsDelayMs) { setTimeout(answer, opt.commitsDelayMs); return; } return answer(); }
       send(404, { message: 'Not Found' });
     });
   });
