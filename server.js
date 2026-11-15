@@ -813,6 +813,8 @@ ONCE.push(['s68LaoNori', () => staff.once.edits('s68LaoNori', recsEdit)]);
 ONCE.push(['s69RecognizableFaces', () => staff.once.edits('s69RecognizableFaces', recsEdit)]);
 // The links to the DRDP (2025) instrument point to the state's current file of August 20, 2026, November 14, 2026
 ONCE.push(['s71DrdpAugust', () => staff.once.edits('s71DrdpAugust', recsEdit)]);
+// Photographing Documentation, a shorter Reading on the Overview tab, with the full Reading kept in In depth, November 15, 2026
+ONCE.push(['s72PhotoOverview', () => staff.once.edits('s72PhotoOverview', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
