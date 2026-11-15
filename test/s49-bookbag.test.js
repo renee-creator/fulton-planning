@@ -42,6 +42,20 @@ test('Educators add through Monday, the director tracks each book, and drafts wa
   r = await fx.as(dee, '/api/staff/library/bag/status', { id: it.id, status: 'returned' });
   assert.ok(!(await fx.as(ann, '/api/staff/library', {})).body.bag.items.some(x => x.id === it.id), 'a returned book leaves the educators\' view');
   assert.strictEqual((await fx.as(ann, '/api/staff/library/bag/add', { path: goats.path })).status, 200, 'a returned book can go in the bag again');
+  // the library check, from the director's library account
+  const rain = lib.books.find(x => x.title === 'Rain Again');
+  await fx.as(ann, '/api/staff/library/bag/add', { path: rain.path });
+  assert.strictEqual((await fx.as(ann, '/api/staff/library/bag/sync', {})).status, 403);
+  r = await fx.as(dee, '/api/staff/library/bag/sync', { holds: [{ title: 'Goats in the hay : a farm story', ready: true }, { title: 'Some Other Book' }], out: [{ title: 'Rain again', due: '2026-12-10' }], missed: ['A Draft Book'] });
+  const by = t => r.body.bag.items.filter(x => x.title === t && x.status !== 'returned');
+  assert.strictEqual(by('Goats in the Hay')[0].status, 'ready'); assert.strictEqual(by('Rain Again')[0].status, 'out'); assert.strictEqual(by('Rain Again')[0].due, '2026-12-10');
+  assert.deepStrictEqual(r.body.bag.sync.others, [{ title: 'Some Other Book', step: 'requested', due: '' }]); assert.deepStrictEqual(r.body.bag.sync.missed, ['A Draft Book']);
+  assert.ok(!('sync' in (await fx.as(ann, '/api/staff/library', {})).body.bag), 'the library check is the director\'s');
+  // the next check finds Rain Again gone from the card, so it was returned, and the sync survives a later add
+  r = await fx.as(dee, '/api/staff/library/bag/sync', { holds: [{ title: 'Goats in the Hay', ready: true }], out: [] });
+  assert.ok(!r.body.bag.items.some(x => x.title === 'Rain Again' && x.status !== 'returned'));
+  await fx.as(dee, '/api/staff/library/bag/add', { path: rain.path });
+  assert.ok((await fx.as(dee, '/api/staff/library', {})).body.bag.sync.at);
 });
 
 test('On a Monday the bag closes that day, and the director sees suggestions, the report and Today', async t => {
@@ -53,26 +67,31 @@ test('On a Monday the bag closes that day, and the director sees suggestions, th
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
   // an observation about goats this week gives the suggestion something to match
   await s.p.evaluate(() => { const n = newNotice(); n.noticed = 'The goats climbed the hay bales and the children fed the goats hay.'; n.week = '2026-11-16'; notices.set(n.id, n); });
-  await s.p.evaluate(() => { songTab = 'collection'; goView('songs'); });
+  await s.p.evaluate(() => { goView('books'); });
   await s.p.waitForSelector('#bookbag', { timeout: 15000 });
   assert.match(await s.p.textContent('#bookbag'), /Add books through Monday, November 16/);
-  await s.p.waitForSelector('[data-bagsug]', { timeout: 15000 });
-  const sug = await s.p.$$eval('[data-bagsug]', xs => xs.map(x => x.closest('.prow').textContent));
+  await s.p.waitForSelector('[data-bagtick="s"]', { timeout: 15000 });
+  const sug = await s.p.$$eval('[data-bagtick="s"]', xs => xs.map(x => x.closest('.prow').textContent));
   assert.match(sug[0], /Goats in the Hay/); assert.ok(!sug.some(t => /Rain Again/.test(t)), 'a book that shares nothing is not suggested');
   assert.match(sug.find(t => /A Draft Book/.test(t)) || '', /Not vetted yet/);
-  await s.p.click('[data-bagsug]');
+  await s.p.check('[data-bagtick="s"]'); await s.p.click('[data-bagsugadd="some"]');
   await s.p.waitForFunction(() => libData.bag.items.length === 1, null, { timeout: 15000 });
   assert.match(await s.p.textContent('#bookbag'), /Goats in the Hay/);
   // the report, why it was chosen and how it connects
   const doc = await s.p.evaluate(() => bagReportDoc(libData.bag.items[0].week));
   assert.strictEqual(doc.title, 'Book bag, week of November 23');
   assert.match(JSON.stringify(doc.blocks), /Goats eat hay/); assert.match(JSON.stringify(doc.blocks), /The goat pen/); assert.match(JSON.stringify(doc.blocks), /Shares goat/);
-  // on Monday night the holds wait on Today
-  await s.p.evaluate(() => goView('today'));
-  await s.p.waitForFunction(() => /Place the holds for the book bag/.test(document.body.textContent), null, { timeout: 15000 });
+  // a book that has waited in the bag over a day shows on Today
+  await s.p.evaluate(() => { libData.bag.items[0].at = Date.now() - 2 * 864e5; goView('today'); });
+  await s.p.waitForFunction(() => /Holds still to place/.test(document.body.textContent), null, { timeout: 15000 });
+  // tick boxes on the suggestions add the ones ticked
+  await s.p.evaluate(() => { goView('books'); bagSugOn = true; renderMain(); });
+  await s.p.waitForSelector('[data-bagtick="s"]', { timeout: 15000 });
+  await s.p.check('[data-bagtick="s"]'); await s.p.click('[data-bagsugadd="some"]');
+  await s.p.waitForFunction(() => libData.bag.items.length === 2, null, { timeout: 15000 });
   // an educator's card shows Add to book bag, and no button on a draft
   const e = await signedIn(fx, br, 'Ann', '1357', 1100); t.after(() => e.close());
-  await e.p.evaluate(() => { songTab = 'collection'; goView('songs'); });
+  await e.p.evaluate(() => { goView('books'); });
   await e.p.waitForSelector('[data-readrow="b-rain-again"]', { timeout: 15000 });
   await e.p.click('[data-readrow="b-rain-again"] summary'); await e.p.click('[data-readrow="b-rain-again"] [data-bagadd]');
   await e.p.fill('#bag-for', 'North, puddles'); await e.p.click('[data-bagaddgo]');

@@ -39,7 +39,7 @@ test('Find the book, Suggest books, We own it and Vet this book', async t => {
   const fx = await setup(t);
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
-  await s.p.evaluate(() => { songTab = 'collection'; goView('songs'); }); await s.p.waitForSelector('[data-bookadd="1"]', { timeout: 15000 });
+  await s.p.evaluate(() => { goView('books'); }); await s.p.waitForSelector('[data-bookadd="1"]', { timeout: 15000 });
   await s.p.click('[data-bookadd="1"]'); await s.p.fill('#bk-t', 'garden book'); await s.p.click('[data-bookfind]');
   await s.p.waitForSelector('[data-bookpickm="0"]', { timeout: 15000 });
   assert.match(await s.p.textContent('[data-bookpickm="0"]'), /Sonoma County Library · 2 of 3 in now/);
@@ -144,7 +144,7 @@ test('Vet the books I chose vets each one, saves its notes and approves a group 
   const fx = await setup(t);
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 390); t.after(() => s.close());
-  await s.p.evaluate(() => { songTab = 'collection'; goView('songs'); }); await s.p.waitForSelector('[data-bookpickdrafts]', { timeout: 15000 });
+  await s.p.evaluate(() => { goView('books'); }); await s.p.waitForSelector('[data-bookpickdrafts]', { timeout: 15000 });
   // each book shows the first sentence of why we chose it
   assert.match(await s.p.textContent('[data-readrow="b-owl-moon"] .bkwhy'), /^A child and a parent walk quietly into the winter woods to look for an owl\.$/);
   // a checkbox draws the list again, so each is clicked once and read back from what TREE holds

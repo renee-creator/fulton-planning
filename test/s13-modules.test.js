@@ -108,8 +108,7 @@ test('restored drafts, three ways in and layers', async t => {
     await s.p.evaluate(() => goView('stpd')); await wait(1200);
     await s.p.evaluate(() => { const x = document.querySelector('[data-stmod="m:documentation"]'); if (x) x.click(); }); await wait(1500);
     const txt = await s.p.evaluate(() => document.getElementById('main').textContent);
-    await s.p.evaluate(() => goView('songs')); await wait(1500);
-    await s.p.evaluate(() => { const b = document.querySelector('[data-songtab="collection"]'); if (b) b.click(); }); await wait(800);
+    await s.p.evaluate(() => goView('books')); await wait(1500);
     const bk = await s.p.evaluate(() => document.getElementById('main').innerText);
     assert.match(bk, /A Made Up Book/); assert.match(bk, /Suggest a book/);
     await s.p.evaluate(() => goView('stpd')); await wait(1200);

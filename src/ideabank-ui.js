@@ -112,7 +112,7 @@ function ibConnHtml(k){const hit=ibByTitle(k);if(hit)return `<button class="link
     return c?`${ibLibBtn("artist",c.id,am[1])}${esc(" on the Artists page"+am[2])}`:page("artists")}
   // the book collection, the recipe library and the song book, with each item the line names or fits linked
   const lm=k.match(/^(?:The )?(Book collection|Recipe library|Song book)(?:, for (.+))?$/i);
-  if(lm){const kind=/book c/i.test(lm[1])?"book":/recipe/i.test(lm[1])?"recipe":"song",go=kind==="recipe"?"recipes":"songs";if(!lm[2])return page(go);
+  if(lm){const kind=/book c/i.test(lm[1])?"book":/recipe/i.test(lm[1])?"recipe":"song",go=kind==="recipe"?"recipes":kind==="book"?"books":"songs";if(!lm[2])return page(go);
     const pool=typeof attachPool==="function"?attachPool().filter(a=>a.kind===kind):[];
     // each title the line names becomes its own link, for books, songs and recipes alike (November 1, 2026)
     {let out=esc(lm[2]),any=false;const bare=b=>String(b.title||"").replace(/^© /,"");for(const b of pool.slice().sort((x,y)=>bare(y).length-bare(x).length)){const t=bare(b);if(!t||lm[2].indexOf(t)<0||out.indexOf(esc(t))<0)continue;out=out.replace(esc(t),ibLibBtn(kind,b.id,t));any=true}
