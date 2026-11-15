@@ -448,7 +448,7 @@ function readPhoto(sha) {
   return job;
 }
 // the calendar keeps its own part of the records, under calendar/
-const calendar = require('./calendar.js')({ gh, log, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: branch => gqlDeep(branch, ['calendar']), gqlBranch: async () => { const d = await gql(`query{${gqlRepo()}{defaultBranchRef{name}}}`); return ((d.repository || {}).defaultBranchRef || {}).name || 'main'; }, token: githubToken, oneLists: () => oneLists(), extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
+const calendar = require('./calendar.js')({ fileSha: p => currentSha(p), gh, log, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: branch => gqlDeep(branch, ['calendar']), gqlBranch: async () => { const d = await gql(`query{${gqlRepo()}{defaultBranchRef{name}}}`); return ((d.repository || {}).defaultBranchRef || {}).name || 'main'; }, token: githubToken, oneLists: () => oneLists(), extraEvents: conferenceEvents, extraRev: () => rev + '.' + (typeof staff !== 'undefined' ? staff.rev() : 0) });
 // each family conference with a day, as an entry on the calendar. Only the child's first name is shown.
 function conferenceEvents(from, to, me) {
   const events = []; const plus = (t, m) => { const [h, mm] = t.split(':').map(Number); const v = h * 60 + mm + m; return String(Math.floor(v / 60) % 24).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0'); };
@@ -964,7 +964,7 @@ function keepingDue() {
 const keepKey = it => it.kind + ':' + (it.kind === 'staff' ? nameKey(it.id) : it.id);
 function dropRecord(kind, id) { const r = store.recs[kind].get(id); if (!r || r.deleted) return 0; r.deleted = true; r.local = true; noteChange(kind, id); scheduleSave(kind, id); return 1; }
 function setSetting(id, doc) { const cur = store.recs.settings.get(id); store.recs.settings.set(id, { doc: Object.assign({}, doc, { id, updatedByName: 'TREE', savedAt: Date.now() }), sha: cur && cur.sha, path: `settings/${id}.json`, local: true }); noteChange('settings', id); scheduleSave('settings', id); }
-const staff = require('./staff.js')({ ask: (c, careful, extra) => askClaude(c, careful, extra), hasAsk: () => !!anthropicKey(), gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), rawText: p => rawText(p, store.branch), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
+const staff = require('./staff.js')({ onLoad: () => runOnce(), fileSha: p => currentSha(p), ask: (c, careful, extra) => askClaude(c, careful, extra), hasAsk: () => !!anthropicKey(), gh, repo: RECORDS_REPO, gqlTexts: shas => gqlTexts(shas), gqlList: () => gqlDeep(store.branch, ['staff', 'family']), rawText: p => rawText(p, store.branch), store, log, classrooms: () => oneLists().classrooms, accounts, accountFor, saveAccounts: n => saveAccounts(n), isDirector, isKitchen, isOffice, nameKey, keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), readOriginal, reminders, lensNow, rosterNames,
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), spaces: () => calendar.spaces(), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 staff.useRecsEdit(recsEdit);
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
@@ -1616,7 +1616,16 @@ async function commitMessages(path) {
 }
 // one lookup at a time for each file, however many devices ask about it
 function lookCommits(path) { if (!commitLooks.has(path)) commitLooks.set(path, commitMessages(path).finally(() => commitLooks.delete(path))); return commitLooks.get(path); }
-async function currentSha(path) { const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`); return r.status === 200 ? r.json.sha : null; }
+// a file's version on GitHub, null when the file is not there, or undefined when GitHub cannot say just now. When the
+// hourly allowance for ordinary reads is spent, the version is read through GraphQL, so a save refused because the file
+// changed can still be written on the newest version instead of being refused again and again (program watch, issue 39)
+async function currentSha(path) {
+  const r = await gh('GET', `/repos/${RECORDS_REPO}/contents/${path}?ref=${encodeURIComponent(store.branch)}&fresh=${Date.now()}`);
+  if (r.status === 200) return r.json.sha;
+  if (r.status === 404) return null;
+  if (restSpent(r)) { try { const d = await gql(`query{${gqlRepo()}{f:object(expression:${JSON.stringify(store.branch + ':' + path)}){oid}}}`); const f = (d.repository || {}).f; return f && f.oid ? f.oid : null; } catch (e) {} }
+  return undefined;
+}
 /* Each save from a device carries a save id. The id rides in the commit's message, so once GitHub has the commit the
    save is known to be written, even after the server restarts. A device keeps its copy of a save until it hears so. */
 const SID_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{5,63}$/;
@@ -1662,6 +1671,7 @@ async function writeFile(kind, id) {
       let r;
       if (!rec || rec.deleted) {
         const shaNow = (rec && rec.sha) || await currentSha(path);
+        if (shaNow === undefined) throw new Error('GitHub could not say which version of the file to remove');
         const forget = () => { const now = store.recs[kind].get(id); if (!now || now === rec) store.recs[kind].delete(id); };   // keep a record made again since the delete
         if (!shaNow) { forget(); done(tries); return; }
         r = await gh('DELETE', `/repos/${RECORDS_REPO}/contents/${path}`, { message: `Remove ${kind} ${id}${tag}`, sha: shaNow, branch: store.branch });
@@ -1673,7 +1683,7 @@ async function writeFile(kind, id) {
         if (r.status === 200 || r.status === 201) { rec.sha = r.json.content.sha; store.saveError = ''; done(tries); return; }
       }
       // changed on GitHub since, or the branch moved under it. The app's copy is kept and written on the newest version.
-      if (r.status === 409 || r.status === 422) { const s = await currentSha(path); if (rec) rec.sha = s || undefined; continue; }
+      if (r.status === 409 || r.status === 422) { const s = await currentSha(path); if (s === undefined) throw new Error('GitHub could not say which version of the file is newest'); if (rec) rec.sha = s || undefined; continue; }
       if (isRateLimit(r)) { log('GitHub asked to slow down'); await ghPause(Math.min(60000, 1000 * (Number(r.headers && r.headers['retry-after']) || 10))); continue; }
       if (r.status >= 500) continue;   // GitHub could not write it just then, such as Could not create file
       if (r.status === 401) { store.saveError = KEY_PROBLEM; log('GitHub rejected the token'); }
@@ -1795,6 +1805,15 @@ async function askClaude(content, careful, extra) {
    for an educator to add with a tap or turn down. Nothing joins a thread without that tap. */
 const suggestWait = new Map(); const suggestTimes = []; let suggestRunning = false; const suggestQueue = [];
 const SUGGEST_PER_HOUR = Number(process.env.SUGGEST_PER_HOUR) || 120;
+// the hour the allowance is counted over, shorter only in the tests
+const SUGGEST_WINDOW_MS = Number(process.env.SUGGEST_WINDOW_MS) || 3600e3;
+// the sorts after an import use at most this share of the hourly allowance, so educators and the nightly passes keep room
+const SORT_SHARE = Math.min(SUGGEST_PER_HOUR, Math.max(1, Math.floor(SUGGEST_PER_HOUR * (Number(process.env.SORT_SHARE) || 0.6))));
+// 0 when there is room for one more request under the limit, or the time a request leaves the hour and room opens
+function suggestRoomAt(limit) {
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
+  return suggestTimes.length < limit ? 0 : suggestTimes[suggestTimes.length - limit] + SUGGEST_WINDOW_MS + 1000;
+}
 const SUGGEST_DELAY_MS = Number(process.env.SUGGEST_DELAY_MS) || 45000;
 function noticeGroupDocs(doc) {
   const out = [];
@@ -1871,7 +1890,7 @@ async function suggestThreadFor(id) {
   if (plan.carry) { writeThreadSuggest(docs, plan.wk, plan.asked, plan.keep); return; }
   const live = plan.ask; if (!live.length) return;
   if (!anthropicKey()) return;
-  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return; suggestTimes.push(now);
   const prompt = `An educator at a preschool kept this observation.\n<<<\n${words.slice(0, 1500)}\n>>>\n${shows ? `What the educator's photo shows, as TREE described it, to help read the words only.\n<<<\n${shows}\n>>>\n` : ''}These are the threads the team is following. A thread is a question or idea children keep returning to, written as the educators' hypothesis.\n${JSON.stringify(live)}\nSay whether the observation belongs to one or two of these threads. ${SUGGEST_FIT}\nFor each fit give the thread id and a short reason of six to fourteen words in plain educator language, about what the children did, using no colons and no dashes.\nReply with only JSON like {"threads":[{"id":"","why":""}]} and an empty list when none fits.`;
   let out = null;
@@ -1916,7 +1935,7 @@ async function nightlyThreadPass(force) {
       // the threads are the same for every observation that is in none and has declined none, so a batch shares one list
       for (let i = 0; i < groups.length; i += 10) {
         const batch = groups.slice(i, i + 10);
-        const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+        const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
         if (suggestTimes.length >= SUGGEST_PER_HOUR) { log('Nightly thread pass stopped at the hourly allowance'); break; } suggestTimes.push(now);
         const threadsById = new Map(); for (const g of batch) for (const t of g.live) threadsById.set(t.id, t);
         const obs = batch.map(g => ({ id: g.lead.id, words: g.words.slice(0, 1200), photo: g.shows || undefined, threads: g.live.map(t => t.id) }));
@@ -2013,7 +2032,7 @@ async function nightlyLensPass(force) {
       const byLens = new Map(); for (const c of take) { if (!byLens.has(c.lens.id)) byLens.set(c.lens.id, []); byLens.get(c.lens.id).push(c); }
       for (const [, list] of byLens) for (let i = 0; i < list.length; i += 20) {
         const batch = list.slice(i, i + 20), L = batch[0].lens;
-        const t = Date.now(); while (suggestTimes.length && t - suggestTimes[0] > 3600e3) suggestTimes.shift();
+        const t = Date.now(); while (suggestTimes.length && t - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
         if (suggestTimes.length >= SUGGEST_PER_HOUR) { log('Nightly lens pass stopped at the hourly allowance'); break; } suggestTimes.push(t);
         // the educators' words go as written, and nothing about a child is added to them
         const items = batch.map(c => Object.assign({ key: c.key, part: c.part, sentence: c.sentence, context: c.context }, c.photo ? { photo: c.photo } : {}));
@@ -2069,7 +2088,7 @@ const sortEnough = d => !!d && !String(d.wonder || '').trim() && sortSpans(d.not
 async function sortNoticed(text) {
   const spans = sortSpans(text); if (spans.length < 2) return null;
   if (!anthropicKey()) throw new Error('no key');
-  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) throw new Error('hourly allowance'); suggestTimes.push(now);
   const prompt = `An educator at a preschool wrote this observation in the box What I noticed. The form has a second box, What I wonder. Read each numbered sentence and say which ones belong in What I wonder.
 A sentence moves when it is the educator wondering, interpreting or planning. Signs are I wonder, maybe, perhaps, it seems, I think, could it be, might, next time we could, a question mark, and a sentence that interprets what a child meant or felt rather than describing what happened.
@@ -2102,19 +2121,26 @@ function writeSorted(id, d, r, why) {
   keepRecent(`notices/${id}.json`, d, 'TREE'); noteChange('notices', id); scheduleSave('notices', id);
 }
 // one queue for the sorts and offers asked after an import or a save, run one at a time, asked once more after a wait
-// when the model did not answer, and never more often than the hourly allowance
-const sortQueue = []; let sortRunning = false; const sortWait = new Map();
+// when the model did not answer. When the sorts have used their share of the hourly allowance, the queue waits until
+// room opens and goes on, so a large import is sorted in the end and nothing is dropped
+const sortQueue = []; let sortRunning = false, sortPause = null; const sortWait = new Map();
 const SORT_DELAY_MS = Number(process.env.SORT_DELAY_MS) || 20000;
 function queueSort(id, mode) {
   const r = store.recs.notices.get(id); if (!r || r.deleted || !r.doc) return;
   clearTimeout(sortWait.get(id));
-  sortWait.set(id, setTimeout(() => { sortWait.delete(id); sortQueue.push({ id, mode, tries: 0 }); runSortQueue(); }, mode === 'kaymbu' ? 0 : SORT_DELAY_MS));
+  sortWait.set(id, setTimeout(() => { sortWait.delete(id); if (!sortQueue.some(j => j.id === id)) sortQueue.push({ id, mode, tries: 0 }); runSortQueue(); }, mode === 'kaymbu' ? 0 : SORT_DELAY_MS));
 }
 async function runSortQueue() {
-  if (sortRunning) return; sortRunning = true;
-  try { while (sortQueue.length) { const job = sortQueue.shift();
+  if (sortRunning || sortPause) return; sortRunning = true;
+  try { while (sortQueue.length) {
+    const at = suggestRoomAt(SORT_SHARE);
+    if (at) { const ms = Math.max(1000, at - Date.now());
+      log('Sorting waits for room in the hourly allowance,', sortQueue.length, 'waiting, about', Math.ceil(ms / 60000), 'minutes');
+      sortPause = setTimeout(() => { sortPause = null; runSortQueue(); }, ms); break; }
+    const job = sortQueue.shift();
     try { await sortOne(job.id, job.mode); }
-    catch (e) { if (job.tries < 1) { job.tries++; setTimeout(() => { sortQueue.push(job); runSortQueue(); }, 30000); } else log('Sorting skipped for', job.id, e.message); } } }
+    catch (e) { if (/hourly allowance/.test(e.message)) { sortQueue.unshift(job); continue; }
+      if (job.tries < 1) { job.tries++; setTimeout(() => { sortQueue.push(job); runSortQueue(); }, 30000); } else log('Sorting skipped for', job.id, e.message); } } }
   finally { sortRunning = false; }
 }
 /* A post brought in straight from Kaymbu. Its photos share one caption, so the caption is sorted into noticed and wondered
@@ -2362,7 +2388,7 @@ async function suggestThreadsForProject(pid) {
   const keyNow = sha(JSON.stringify(about) + '|' + cands.map(c => c.id + ':' + c.quotes.length).join(',')).toString('hex').slice(0, 16);
   if (x.threadSuggestKey === keyNow) return { same: true, key: keyNow, suggest: x.threadSuggest || [] };
   if (!anthropicKey()) return { off: true };
-  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
   const prompt = `Educators at a preschool are following this project. A project is the team's reading of a deeper question children are working on.\n${JSON.stringify(about)}\nThese are threads the team follows that the project does not hold. A thread is a question children keep returning to, with the last words that joined it.\n${JSON.stringify(cands)}\nName only the threads whose children are pursuing what this project is about, so the project would read the thread as part of its question. A shared place or material alone is not enough, and a thread in another class can fit when the question is the same. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence, no colons and no dashes"}]}, and {"fits":[]} when none fit.`;
   let out = null;
@@ -2434,7 +2460,7 @@ async function gatherForInquiry(qid) {
   const keyNow = sha(JSON.stringify(about) + '|' + ask.map(c => c.id).join(',')).toString('hex').slice(0, 16);
   if (x.needKey === keyNow) return { same: true, key: keyNow };
   if (!anthropicKey()) return { off: true };
-  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
   const prompt = `Educators at a preschool are thinking through this team inquiry about a child's development and their own practice.\n${JSON.stringify(about)}\nThese observations carry words that may belong to one of the needs or the behavior the inquiry names. Each lists what matched.\n${JSON.stringify(ask.map(c => ({ id: c.id, words: c.words, matched: c.matched })))}\nName only the observations that show a child pursuing one of those needs, or the behavior, or a time it went well. A matching word used another way is not enough. Phrase any reading of a child's idea or behavior as a hypothesis, beginning with words such as Perhaps or It may be. Answer with JSON only, in the form {"fits":[{"id":"...","why":"one short plain sentence, no colons and no dashes"}]}, and {"fits":[]} when none fit.`;
   let out = null;
@@ -2536,7 +2562,7 @@ async function suggestForProject(pid, key) {
   const keyNow = sha(JSON.stringify(about) + '|' + ask.map(c => c.id + ':' + c.words.length).join(',')).toString('hex').slice(0, 16);
   if (key && key === keyNow) return { same: true, key: keyNow };
   if (!anthropicKey()) return { off: true };
-  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > 3600e3) suggestTimes.shift();
+  const now = Date.now(); while (suggestTimes.length && now - suggestTimes[0] > SUGGEST_WINDOW_MS) suggestTimes.shift();
   if (suggestTimes.length >= SUGGEST_PER_HOUR) return { busy: true }; suggestTimes.push(now);
   const tname = id => { const d = store.recs.threads.get(id); return d && d.doc ? String(d.doc.name || '').slice(0, 80) : ''; };
   // the team's notes on each thread say how the team approaches it, so the reading weighs them
