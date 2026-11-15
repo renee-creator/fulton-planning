@@ -7204,7 +7204,7 @@ function nlDrdpWords(codes){
     parts.push(`${v==="it"?"Infant and toddler view":"Preschool view"}, ${c} ${(DRDP_M[v][c]||{}).n||""}. Definition. ${m.def} Levels in order. ${Object.entries(m.levels||{}).map(([k,t])=>(DRDP_LV[k]||k)+", "+t).join(". ")}.`)}
     return parts.join("\n")}).filter(Boolean).join("\n");
 }
-const nlRules=(behavior)=>`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. ${behavior?"This topic is about a behavior or a challenge, so never name a child or describe a child so a family could tell who it is.":"Use children's first names as the educators wrote them when telling what children did. Never use a last name."} Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Whenever a professional term such as self-regulation, proprioception or expressive language is used, put the plain everyday words first and the professional term after it in parentheses, such as a steady adult to borrow calm from (co-regulation) or strong pushing and pulling for the muscles (proprioception), and never a professional term on its own. Say "research shows" only for findings that are well established in early childhood research. ${FULTON_TALK}`;
+const nlRules=(behavior)=>`Write for families of young children at Fulton Community School & Farm, a Reggio-inspired, nature-based early childhood program. Use warm, plain words a parent reads in a minute. Never use the words DRDP, measure, domain, level, toddler, or any code or abbreviation. Call the youngest children twos or two-year-olds. ${behavior?"This topic is about a behavior or a challenge, so never name a child or describe a child so a family could tell who it is.":"Use children's first names as the educators wrote them when telling what children did. Never use a last name."} Write every line as a complete sentence with a subject and a verb, never a list of fragments. Never use colons, semicolons, em dashes or en dashes. Never use analogies or "not this but that" framing. Say "educator", never "teacher". Whenever a professional term such as self-regulation, proprioception or expressive language is used, put the plain everyday words first and the professional term after it in parentheses, such as a steady adult to borrow calm from (co-regulation) or strong pushing and pulling for the muscles (proprioception), and never a professional term on its own. Say "research shows" only for findings that are well established in early childhood research. ${FULTON_TALK}`;
 
 async function nlFindTopics(x,btn){
   const obs=nlObs(x.month);
@@ -7423,7 +7423,7 @@ function nlBooksHtml(x,n){const L=x.books||[];
   const shared=nlSharedBooks(x);
   const opt=b=>`<option value="${esc(b.path)}" ${nlPick.bk===b.path?"selected":""}>${esc(b.title)}${(b.meta||{}).author?", "+esc(bagAuthor(b.meta.author)):""}${shared.has(b.path)?", shared in "+esc(shared.get(b.path)):""}</option>`;
   const bagL=all.filter(b=>inBag.has(b.path)),rest=all.filter(b=>!inBag.has(b.path));
-  return `<section class="card nlcard"><div class="nlstep">${n}</div><div class="head-row"><h3>Books to share</h3>${L.length?`<button class="btn small ghost" data-nlfits="1">Draft why each fits now</button>`:""}</div>
+  return `<section class="card nlcard"><div class="nlstep">${n}</div><div class="head-row"><h3>Books to share</h3>${L.length?`<button class="btn small ghost" data-nlfits="1">Draft why each fits now, in full sentences</button>`:""}</div>
     <p class="muted nlhint">One book or several from our collection. Each links to Sonoma County Library and to our Bookshop.org shop.</p>
     ${L.some(b=>b.fitsDraft)?`<p class="nldraft">Why it fits now is drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}
     ${L.map((b,j)=>`<div class="nlres" style="align-items:flex-start;gap:10px">${b.cover&&window.FP_ORIGINAL_URL?`<img src="${esc(window.FP_ORIGINAL_URL(b.cover))}" alt="" style="width:64px;border-radius:4px">`:""}<div style="flex:1;min-width:0"><b>${esc(b.title)}</b>${b.author?` <span class="muted">${esc(b.author)}</span>`:""}
@@ -7542,9 +7542,11 @@ Recent observations. ${obs.map(o=>o.noticed.replace(/\n+/g," ")).join(" / ").sli
 Books.
 ${L.map((b,i)=>{const it=bag.find(y=>y.path===b.path&&y.for);return `b${i+1}. ${b.title}${b.author?", "+b.author:""}. ${b.why}${it?" An educator chose it for "+it.for+".":""}`}).join("\n")}
 
-Return a JSON object with one key "fits", an array of objects with "book" (like "b2") and "text".`;
+Also rewrite each book's own description as one or two complete sentences for families, keeping its facts and adding nothing new.
+
+Return a JSON object with one key "fits", an array of objects with "book" (like "b2"), "text", the sentences on why it fits now, and "why", the description rewritten in complete sentences.`;
   const out=await nlAsk(prompt,btn,"Drafting");if(!out){renderNewsletter();return}
-  x=newsletters.get(x.id)||x;for(const f of Array.isArray(out.fits)?out.fits:[]){const i=Number(String(f?.book||"").replace(/\D/g,""))-1;const t=nlClean(f?.text);if(x.books[i]&&t){x.books[i].fits=t;x.books[i].fitsDraft=true}}
+  x=newsletters.get(x.id)||x;for(const f of Array.isArray(out.fits)?out.fits:[]){const i=Number(String(f?.book||"").replace(/\D/g,""))-1;const t=nlClean(f?.text),w=nlClean(f?.why);if(x.books[i]&&t){x.books[i].fits=t;x.books[i].fitsDraft=true}if(x.books[i]&&w)x.books[i].why=w}
   nlSave(x,true);toast("Why each book fits now is drafted. Rewrite it in your own voice.");renderNewsletter()}
 async function nlDraftNote(x,btn){if((x.note||"").trim()&&!confirm("Replace your note with a draft?"))return;
   const parts=[...(x.highlights||[]).map(h=>"Highlight. "+h.text),...(x.books||[]).map(b=>"Book. "+b.title+(b.fits?". "+b.fits:"")),x.home&&x.home.title?"Try at home. "+x.home.title:"",...(x.coming||[]).map(c=>"Coming up. "+(c.date?nlWhen(c)+". ":"")+c.text)].filter(Boolean);
@@ -7629,6 +7631,12 @@ Return only a JSON object with one key "sites", an array of objects with "farm",
   nlFarmBusy=false;renderNewsletter()}
 // what is chosen in a list stays chosen when the page is drawn again
 const nlPick={bk:"",hc:""};
+/* The director's note is headed with her name and ends with her sign-off (November 15, 2026), both hers to edit once
+   and kept with the newsletter library, so every newsletter and note carries them. */
+const nlSigner=()=>String(nlLib().signer||"Renee").trim()||"Renee";
+const nlSignoff=()=>String(nlLib().signoff!=null?nlLib().signoff:"Warmly,\nRenee").trim();
+const nlNoteHead=()=>"A note from "+nlSigner();
+const nlNoteText=x=>{const n=String(x.note||"").trim();if(!n)return "";const so=nlSignoff();return so?n+"\n\n"+so:n};
 let nlMail=null;
 function nlMailHtml(x){const sends=x.emails||[];
   const hist=sends.length?`<div class="nlsmall" style="margin-top:8px">${sends.map(e=>`${e.test?"Test email":"Emailed"} ${esc(fmtDate(iso(new Date(e.at))))} to ${e.sent} ${e.test?(e.sent===1?"tester":"testers"):e.sent===1?"family email":"family emails"}${e.classroom?", "+esc(e.classroom)+" class":""}${e.failed?`, ${e.failed} did not go`:""}.`).join("<br>")}</div>`:"";
@@ -7663,7 +7671,9 @@ function renderNewsletter(){
 
   // 1. the director's note
   h+=`<section class="card nlcard"><div class="nlstep">1</div>${mid?`<div class="head-row"><h3>A note from you</h3><button class="btn small ghost" data-nlmnote="1">Draft it for me</button></div>`:`<h3>A note from you</h3>`}${x.noteDraft?`<p class="nldraft">Drafted by TREE. Rewrite it in your own voice before this goes out.</p>`:""}<p class="muted nlhint">Your own words at the top. TREE leaves this space for you.</p>
-    <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea></section>`;
+    <textarea class="nlta" data-nlf="note" rows="4" placeholder="What you want families to know this month">${esc(x.note||"")}</textarea>
+    <div class="nlrow" style="margin-top:8px;align-items:flex-start"><label class="nll" style="flex:1">Heading, a note from<input id="nl-signer" value="${esc(nlSigner())}"></label><label class="nll" style="flex:1">Your sign-off<textarea class="nlta" id="nl-signoff" rows="2">${esc(nlSignoff())}</textarea></label></div>
+    <p class="muted nlhint">Your name and sign-off carry to every newsletter and note.</p></section>`;
 
   const step=mid?4:4+(x.topics||[]).length;
   if(!mid){
@@ -7761,7 +7771,7 @@ function nlArchiveHtml(k){
 // the newsletter as plain blocks, the way they go into the Kaymbu template
 function nlBlocks(x){
   const B=[];
-  if((x.note||"").trim())B.push({h:"A note from the director",text:x.note.trim()});
+  if((x.note||"").trim())B.push({h:nlNoteHead(),note:true,text:nlNoteText(x)});
   if(nlIsMid(x)&&((x.photos||[]).length||(x.highlights||[]).some(h=>String(h.text||"").trim())))B.push({h:"From the last two weeks",text:(x.highlights||[]).map(h=>String(h.text||"").trim()).filter(Boolean).join("\n\n"),photos:x.photos||[]});
   for(const t of x.topics||[]){
     const p=[t.title,"",t.happening,"","Why it matters",t.why,""];
@@ -7799,7 +7809,7 @@ document.addEventListener("input",e=>{
   if(el.tagName==="TEXTAREA")try{autoGrow(el)}catch(err){}
   nlSave(x);
 });
-document.addEventListener("input",e=>{if(view!=="newsletter"||!nlMail)return;const el=e.target;
+document.addEventListener("input",e=>{if(view!=="newsletter")return;const el=e.target;if(el.id==="nl-signer"||el.id==="nl-signoff"){const lib=nlLib();if(el.id==="nl-signer")lib.signer=el.value;else lib.signoff=el.value;nlSave(lib);return}if(!nlMail)return;
   if(el.id==="nlm-sub")nlMail.subject=el.value;else if(el.id==="nlm-me"){nlMail.me=el.value.trim();LS.set("tree.nlme",nlMail.me)}else if(el.id==="nlm-reply"){nlMail.replyTo=el.value.trim();LS.set("tree.nlreply",nlMail.replyTo)}});
 document.addEventListener("change",e=>{
   if(view!=="newsletter")return;const el=e.target;
@@ -7929,7 +7939,7 @@ async function nlWord(x){
   const ch=[];
   ch.push(P([r("FULTON COMMUNITY SCHOOL & FARM",{size:18,bold:true,color:MUTED,characterSpacing:40})],{spacing:{after:60}}));
   ch.push(new Paragraph({children:[r(nlTitle(x),{size:40,bold:true,color:MOSS})],spacing:{after:200}}));
-  if((x.note||"").trim()){ch.push(H("A note from the director",28));for(const para of x.note.trim().split(/\n\s*\n/))ch.push(P(para.replace(/\n/g," ")))}
+  if((x.note||"").trim()){ch.push(H(nlNoteHead(),28));for(const para of x.note.trim().split(/\n\s*\n/))ch.push(P(para.replace(/\n/g," ")));for(const l of nlSignoff().split("\n").filter(l=>l.trim()))ch.push(P(l,{spacing:{after:20}}))}
   for(const t of x.topics||[]){
     ch.push(rule());ch.push(H(t.title,30,{before:120}));ch.push(...photoRow(t.photos||[]));
     if(t.happening)ch.push(P(t.happening));
@@ -7991,7 +8001,7 @@ async function nlPdf(x){
     y+=rowH+capH+16};
   pfont(doc,"fs",8.5);mut();doc.setCharSpace(1);doc.text("FULTON COMMUNITY SCHOOL & FARM",L,y);doc.setCharSpace(0);y+=10;
   head(nlTitle(x),22);
-  if((x.note||"").trim()){head("A note from the director",14);for(const pp of x.note.trim().split(/\n\s*\n/))para(pp.replace(/\n/g," "))}
+  if((x.note||"").trim()){head(nlNoteHead(),14);for(const pp of x.note.trim().split(/\n\s*\n/))para(pp.replace(/\n/g," "));for(const l of nlSignoff().split("\n").filter(l=>l.trim()))para(l,{after:1})}
   for(const t of x.topics||[]){rule();head(t.title,17,photoH(t.photos));photos(t.photos||[]);if(t.happening)para(t.happening);
     if(t.why){sub("Why it matters");para(t.why)}
     if((t.grows||[]).length){sub("How it grows");for(const g of t.grows)bullet(g.age+".",g.text)}

@@ -117,11 +117,11 @@ test('The mid-month note drafts highlights, why each book fits, a note and a hom
   await s.p.click('[data-nlhomeart]');
   await s.p.click('[data-nlmnote]'); await s.p.waitForFunction(() => /busy two weeks/.test(document.querySelector('[data-nlf="note"]').value), null, { timeout: 20000 });
   const x = await s.p.evaluate(() => { const x = [...newsletters.values()].find(x => x.kind === 'mid'); return nlBlocks(x).map(b => b.h); });
-  assert.deepStrictEqual(x, ['A note from the director', 'From the last two weeks', 'Books to share', 'Try at home']);
+  assert.deepStrictEqual(x, ['A note from Renee', 'From the last two weeks', 'Books to share', 'Try at home']);
   await s.p.click('[data-nlmopen]'); await s.p.click('[data-nlmprev]');
   await s.p.waitForSelector('iframe[title="Preview of the email"]', { timeout: 20000 });
   const html = await s.p.$eval('iframe[title="Preview of the email"]', f => f.srcdoc);
-  assert.match(html, /feeding the goats/); assert.match(html, /Watch an animal together/); assert.match(html, /zerotothree\.org/);
+  assert.match(html, /feeding the goats/); assert.match(html, /Warmly,<br>Renee/); assert.match(html, /Watch an animal together/); assert.match(html, /zerotothree\.org/);
   assert.deepStrictEqual(s.errors, []);
 });
 
