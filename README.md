@@ -1108,3 +1108,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Until December 1, 2026, TREE's careful writing help uses Sonnet in place of Opus to save cost. It goes back to Opus by itself on December 1 (November 16, 2026).
 
 - Email photos trimmed to match keep the top of a tall photo and trim mostly from the bottom, so children's heads stay in (November 16, 2026).
+
+- Email photos side by side share a shape taken from the photos. All tall stay tall, all wide stay wide, and a mix is trimmed square, with tall photos keeping their tops (November 16, 2026).

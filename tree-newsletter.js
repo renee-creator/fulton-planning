@@ -319,7 +319,11 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
   const src=async (p,shape)=>{const im=nlIm(p);if(!im)return "";const k=(p.cover?"c:"+p.cover:"n:"+p.notice)+"|"+(shape||"");if(seen.has(k))return seen.get(k);const small=await nlSmall(im.url,shape);if(!small){seen.set(k,"");return ""}
     let out=small;if(forSend){const cid="p"+(images.length+1);images.push({cid,data:small.split(",")[1]});out="cid:"+cid}seen.set(k,out);return out};
   // photos, two to a row on a computer and stacked on a phone, each with its caption under it
-  const photos=async ps=>{const n=(ps||[]).filter(p=>nlIm(p)).length,L=[];for(const p of ps||[]){const im=nlIm(p);if(!im)continue;const s=await src(p,n>1?4/3:im.h>im.w*1.25?4/5:0);if(s)L.push({s,cap:p.cap||""})}if(!L.length)return "";
+  const photos=async ps=>{const ims=(ps||[]).map(p=>nlIm(p)).filter(Boolean),n=ims.length,L=[];
+    // photos side by side share one shape, taken from the photos themselves. All tall stay tall, all wide stay wide, and a
+    // mix is trimmed square, so little of any photo is lost (November 16, 2026)
+    const tall=ims.every(i=>!(i.w>0&&i.h>0)||i.h>=i.w),wide=ims.every(i=>!(i.w>0&&i.h>0)||i.w>=i.h),together=tall?3/4:wide?4/3:1;
+    for(const p of ps||[]){const im=nlIm(p);if(!im)continue;const s=await src(p,n>1?together:im.h>im.w*1.25?4/5:0);if(s)L.push({s,cap:p.cap||""})}if(!L.length)return "";
     const cell=q=>`<div class="ph" style="display:inline-block;vertical-align:top;width:${L.length>1?"48%":"100%"};margin:0 ${L.length>1?"1%":"0"} 12px"><img src="${q.s}" alt="" style="display:block;width:100%;height:auto;border-radius:10px">${q.cap?`<div style="font-size:13px;line-height:1.45;color:${NL_C.muted};margin-top:6px">${nlEsc(q.cap)}</div>`:""}</div>`;
     return `<div style="margin:4px 0 10px;font-size:0">${L.map(cell).join("")}</div>`};
   const B=nlBlocks(x),cards=[];
