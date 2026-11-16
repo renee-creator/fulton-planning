@@ -29,5 +29,12 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   await s.p.waitForFunction(() => (inquiries.get('q1').readings || []).length === 1);
   assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').readings[0].for), 'family');
   assert.match(await s.p.textContent('#iqreadings'), /Taming Transitions/);
+  // what the team has already tried, and a try moved there keeps its words and result
+  await s.p.evaluate(() => { const x = inquiries.get('q1'); x.tries = [{ id: 'tr1', text: 'Walk with a friend to lunch.', result: 'Two of three walked.', by: 'Dee', at: Date.now() }]; openInquiry('q1'); });
+  await s.p.waitForSelector('[data-iqtmove="tr1"]', { timeout: 15000 }); await s.p.click('[data-iqtmove="tr1"]');
+  await s.p.waitForFunction(() => (inquiries.get('q1').tried || []).length === 1 && !(inquiries.get('q1').tries || []).length);
+  assert.match(await s.p.textContent('#iqtried'), /What we have already tried/);
+  assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').tried[0].result), 'Two of three walked.');
+  assert.ok(await s.p.evaluate(() => JSON.stringify(inquiryDoc(inquiries.get('q1'), true).blocks).includes('What we have already tried')));
   assert.deepStrictEqual(s.errors, []);
 });
