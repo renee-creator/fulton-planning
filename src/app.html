@@ -1174,7 +1174,11 @@ async function boot(){
     db.collection("books").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v||!Array.isArray(v.pages))return;const mine=books.get(d.id);if(mine&&bkKeepLocal(d.id)){m.set(d.id,mine);return}v.id=v.id||d.id;m.set(d.id,v);bookBase.set(d.id,jclone(v))});for(const [id,x] of books)if(!m.has(id)&&bkKeepLocal(id))m.set(id,x);books=m;if(((view==="child"&&kidTab==="book")||view==="kidbooks")&&!BK.busy&&!document.activeElement?.closest?.("#main textarea,#main input"))renderMain()},()=>{});
     db.doc("settings/lulu").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&!BK.timers.has("lulu")){luluSet=v;if(view==="kidbooks"&&!document.activeElement?.closest?.("#main input,#main select"))renderMain()}},()=>{});
     db.doc("settings/book").onSnapshot(snap=>{const v=snap.exists?snap.data():null;if(v&&!BK.timers.has("set")){bookSet=Object.assign({signs:{}},v);if(view==="kidbooks"&&!document.activeElement?.closest?.("#main input"))renderMain()}},()=>{});
-    db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){m.set(d.id,v);inqBase.set(d.id,jclone(v))}});inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
+    // an inquiry being written on this device stays as it is here until its save has gone through, so a live update never
+    // puts back older words or drops an inquiry just started, and the page is not redrawn while words wait to save (November 16, 2026)
+    db.collection("inquiries").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(!v)return;const mine=inquiries.get(d.id);if(mine&&inqKeepLocal(mine,v)){m.set(d.id,mine);return}m.set(d.id,v);inqBase.set(d.id,jclone(v))});
+      for(const [id,x] of inquiries)if(!m.has(id)&&inqKeepLocal(x,null))m.set(id,x);
+      inquiries=m;if(["inquiries","moments","threads","projects","today","lens"].includes(view)&&!Object.keys(iqTimers).length&&!document.activeElement?.closest?.("#main"))renderMain();try{evSync()}catch(e){}},()=>{});
     db.collection("children").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});children=m;if((view==="children"||view==="child"||view==="today")&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
     db.collection("conferences").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v){v.id=d.id;m.set(d.id,v)}});conferences=m;if((view==="today"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();famSumFresh()},()=>{});
     db.collection("slides").onSnapshot(snap=>{const m=new Map();snap.docs.forEach(d=>{const v=d.data();if(v)m.set(d.id,v)});slides=m;if((view==="slides"||view==="child")&&!document.activeElement?.closest?.("#main"))renderMain();else if(view==="slide"&&!document.activeElement?.closest?.("#main"))renderMain()},()=>{});
@@ -11547,7 +11551,9 @@ function saveInquiry(x){x.updatedAt=Date.now();x.updatedBy=whoAmI();inquiries.se
   if(db)savePart("inquiries",inqBase,x,"inquiry");
   else LS.set("fps.inquiries",[...inquiries.values()])}
 const iqTimers={};
-function saveInquirySoon(x){inquiries.set(x.id,x);clearTimeout(iqTimers[x.id]);iqTimers[x.id]=setTimeout(()=>saveInquiry(x),700)}
+function saveInquirySoon(x){x.updatedAt=Date.now();inquiries.set(x.id,x);clearTimeout(iqTimers[x.id]);iqTimers[x.id]=setTimeout(()=>{delete iqTimers[x.id];saveInquiry(x)},700)}
+// this device's copy wins while its words wait to save, while it is newer than what the records sent, or for a few seconds after
+function inqKeepLocal(mine,v){return !!iqTimers[mine.id]||Date.now()-(mine.updatedAt||0)<8000||(!!v&&(mine.updatedAt||0)>(v.updatedAt||0))}
 // every educator opens and writes team inquiries, and only the director shares one beyond the team (November 6, 2026)
 const iqCan=()=>!(typeof isKitchenUser==="function"&&isKitchenUser());
 function newInquiry(extra){if(!isDirector())extra=Object.assign({startedBy:whoAmI(),display:false},extra||{});return Object.assign({id:uid(),name:"",room:myRoom()||"",status:"open",createdAt:Date.now(),createdBy:whoAmI(),
