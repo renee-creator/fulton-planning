@@ -298,9 +298,10 @@ function nlBooksHtml(x,n){const L=x.books||[];
 // the email, written from the same parts as the Family page copy, with the books laid out beside their covers
 const nlLink=u=>{let h="";try{const v=new URL(u);h=v.hostname.replace(/^www\./,"")}catch(e){}return `<a href="${esc(u)}" style="color:#245B78">${esc(h||u)}</a>`};
 const nlParas=t=>String(t||"").trim().split(/\n\s*\n/).map(p=>`<p style="margin:0 0 12px">${p.split("\n").map(l=>/^https?:\/\/\S+$/.test(l.trim())?nlLink(l.trim()):esc(l)).join("<br>")}</p>`).join("");
-// a photo made small for email. With a shape, such as 4/3, it is trimmed from the middle so photos side by side match
+// a photo made small for email. With a shape, such as 4/3, it is trimmed so photos side by side match. A wide photo is
+// trimmed from both sides. A tall one keeps its top and is trimmed mostly from the bottom, so children's heads stay in (November 16, 2026)
 function nlSmall(url,shape){return new Promise(ok=>{if(!url){ok("");return}const im=new Image();im.onload=()=>{let sx=0,sy=0,sw=im.width,sh=im.height;
-  if(shape){if(sw/sh>shape){const w=sh*shape;sx=(sw-w)/2;sw=w}else{const h=sw/shape;sy=(sh-h)/2;sh=h}}
+  if(shape){if(sw/sh>shape){const w=sh*shape;sx=(sw-w)/2;sw=w}else{const h=sw/shape;sy=(sh-h)*.12;sh=h}}
   const sc=Math.min(1,760/Math.max(sw,sh));const c=document.createElement("canvas");c.width=Math.round(sw*sc);c.height=Math.round(sh*sc);const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.82))};im.onerror=()=>ok("");im.src=url})}
 // The email families receive (redesigned November 15, 2026). One column, at most 600 wide, that fills a phone. Each part
 // is its own white card with a short coloured label, sixteen point words with room between lines, photos the full width

@@ -1106,3 +1106,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Finished Kaymbu jobs stay finished. Once the look back or the earlier-years DRDP reading is done, the server refuses to start it again and Settings shows only the finish line, with its date (November 15, 2026).
 
 - Until December 1, 2026, TREE's careful writing help uses Sonnet in place of Opus to save cost. It goes back to Opus by itself on December 1 (November 16, 2026).
+
+- Email photos trimmed to match keep the top of a tall photo and trim mostly from the bottom, so children's heads stay in (November 16, 2026).
