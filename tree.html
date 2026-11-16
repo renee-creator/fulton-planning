@@ -5268,7 +5268,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="f2d26b603516";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="3610f781af05";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -7196,7 +7196,8 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${typeof ibAgeHtml==="function"?ibAgeHtml(x):""}
     ${typeof scrInquiryHtml==="function"?scrInquiryHtml(x):""}
     ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea><div class="actions">${ibBusyMap[x.id+"dev"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-ibdevdraft="1">Draft from the evidence</button>`}</div>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}${IB_WHEEL}</section>`;
-  return `${triedHtml}${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
+  // the first steps from a behavior card show in the inquiry's What we have already tried, so they are not listed twice (November 16, 2026)
+  return `${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
     <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
     ${dir?`<div class="seg" role="group" aria-label="More or less"><button data-ibiqmode="seek" aria-pressed="${mode==="seek"}">Seeking more</button><button data-ibiqmode="avoid" aria-pressed="${mode==="avoid"}">Finding it too much</button></div>`:""}
@@ -12936,7 +12937,7 @@ function renderInquiry(x){
   // what the team has already done, with when and what happened, read before the team's ideas (November 16, 2026)
   h+=`<section class="card" id="iqtried"><div class="lbl">What we have already tried</div>
     <div class="hint">Strategies the team has already put in place, when, and what happened.</div>
-    ${(x.tried||[]).map(o=>`<div class="pdir"><textarea data-iqd="${o.id}|text" rows="2" placeholder="What we did">${esc(o.text||"")}</textarea>
+    ${(x.tried||[]).map(o=>{if(!o.id)o.id=uid();if(has(o.step)&&!has(o.text))o.text=o.step;if(has(o.happened)&&!has(o.result))o.result=o.happened;if(!has(o.when)&&(o.room||o.at))o.when=[o.room?o.room+" class":"",o.at?shortDate(o.at):""].filter(Boolean).join(", ");return o}).map(o=>`<div class="pdir"><textarea data-iqd="${o.id}|text" rows="2" placeholder="What we did">${esc(o.text||"")}</textarea>
       <input type="text" data-iqd="${o.id}|when" value="${esc(o.when||"")}" placeholder="When, and for how long. Ex. Every lunch for two weeks in October">
       <textarea data-iqd="${o.id}|result" rows="1" placeholder="What happened">${esc(o.result||"")}</textarea>
       <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqdrm="${esc(o.id)}">Remove</button></div></div>`).join("")||`<div class="cnt">Nothing written yet.</div>`}

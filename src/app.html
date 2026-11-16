@@ -11748,7 +11748,7 @@ function renderInquiry(x){
   // what the team has already done, with when and what happened, read before the team's ideas (November 16, 2026)
   h+=`<section class="card" id="iqtried"><div class="lbl">What we have already tried</div>
     <div class="hint">Strategies the team has already put in place, when, and what happened.</div>
-    ${(x.tried||[]).map(o=>`<div class="pdir"><textarea data-iqd="${o.id}|text" rows="2" placeholder="What we did">${esc(o.text||"")}</textarea>
+    ${(x.tried||[]).map(o=>{if(!o.id)o.id=uid();if(has(o.step)&&!has(o.text))o.text=o.step;if(has(o.happened)&&!has(o.result))o.result=o.happened;if(!has(o.when)&&(o.room||o.at))o.when=[o.room?o.room+" class":"",o.at?shortDate(o.at):""].filter(Boolean).join(", ");return o}).map(o=>`<div class="pdir"><textarea data-iqd="${o.id}|text" rows="2" placeholder="What we did">${esc(o.text||"")}</textarea>
       <input type="text" data-iqd="${o.id}|when" value="${esc(o.when||"")}" placeholder="When, and for how long. Ex. Every lunch for two weeks in October">
       <textarea data-iqd="${o.id}|result" rows="1" placeholder="What happened">${esc(o.result||"")}</textarea>
       <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqdrm="${esc(o.id)}">Remove</button></div></div>`).join("")||`<div class="cnt">Nothing written yet.</div>`}

@@ -325,7 +325,8 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${typeof ibAgeHtml==="function"?ibAgeHtml(x):""}
     ${typeof scrInquiryHtml==="function"?scrInquiryHtml(x):""}
     ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea><div class="actions">${ibBusyMap[x.id+"dev"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-ibdevdraft="1">Draft from the evidence</button>`}</div>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}${IB_WHEEL}</section>`;
-  return `${triedHtml}${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
+  // the first steps from a behavior card show in the inquiry's What we have already tried, so they are not listed twice (November 16, 2026)
+  return `${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
     <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
     ${dir?`<div class="seg" role="group" aria-label="More or less"><button data-ibiqmode="seek" aria-pressed="${mode==="seek"}">Seeking more</button><button data-ibiqmode="avoid" aria-pressed="${mode==="avoid"}">Finding it too much</button></div>`:""}
