@@ -5118,6 +5118,7 @@ function todayWaiting(){
     out.push({dot:"sky",t:sug.length&&!maybe?"Check who is in a Kaymbu photo":"Tag the children on a Kaymbu observation",s:[pv,why,many].filter(Boolean).map((t,i)=>i===0&&!/[.!?…]$/.test(t)?t+".":t).join(" "),pv,why,act:`data-nwedit="${n.id}"`,b:"Tag",q:"kay|"+n.id})}}
   // Farm to School pieces that are ready for the director, each opening the card on the Farm to School page
   out.push(...bagWaiting());
+  out.push(...iqAskWaiting());
   if(dir){const b=binCurrent(),bn=binNoteRec(b);if(bn&&bn.status==="draft")out.push({dot:"sky",t:"This week's bin note is ready",s:firstLine(bn.text,120),act:`data-tview="grant" data-gopen="made"`,b:"Read it"});
     const day=new Date().getDate(),pm=mShift(mNow(),-1);if(day<=10&&!farmPostMade(pm)&&farmOfMonth(pm).best)out.push({dot:"sky",t:"Farm of the month post",s:`${farmOfMonth(pm).best.farm}, for ${parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"})}.`,act:`data-gfom="${pm}"`,b:"Start it"});
     const qd=Math.floor((Date.now()-parseIso(quarterRange(quarterOf(iso(new Date()))).from).getTime())/864e5),lq=lastQuarter();
@@ -6576,6 +6577,10 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-baga
   if(d.bagstep){const [id,status]=d.bagstep.split("|");await bagCall("/api/staff/library/bag/status",{id,status},status==="ready"?"Marked ready to pick up.":"Marked returned.");return}
   if(d.bagdue){bagDue=d.bagdue;renderMain();return}
   if(d.bagduesave){const due=$("#bag-due")?.value||"";bagDue=null;await bagCall("/api/staff/library/bag/status",{id:d.bagduesave,status:"out",due},"Marked as picked up.");return}});
+// readings the team asked for on an inquiry wait on the director's Today until they are filled (November 16, 2026)
+function iqAskWaiting(){if(!isDirector()||VIEW_AS||isKitchenUser())return [];const L=inqAll().filter(x=>(x.readAsk||[]).some(r=>!r.done));if(!L.length)return [];
+  const n=L.reduce((a,x)=>a+(x.readAsk||[]).filter(r=>!r.done).length,0);
+  return [{dot:"sky",t:"Readings asked for",s:`${n} ${n===1?"request":"requests"} on ${L.map(x=>x.name||"an inquiry").slice(0,2).join(" and ")}${L.length>2?" and more":""}.`,act:`data-iqopen="${esc(L[0].id)}"`,b:"Open"}]}
 // what waits for the director on Today, books ready to pick up, books due within three days, and holds still to place
 function bagWaiting(){if(!isDirector()||VIEW_AS||isKitchenUser())return [];if(!libData){loadLibrary();return []}const {open,items}=bagData();if(!open)return [];const out=[];
   const late=items.filter(b=>b.status==="bag"&&Date.now()-(b.at||0)>36e5*26);
@@ -11999,6 +12004,8 @@ function iqReadingsHtml(x){const ages=iqAges(x),L=x.readings||[];
   return `<section class="card" id="iqreadings"><div class="lbl">Readings</div>
     <div class="hint">${ages?`Chosen for children ${ages.say}, the ages of ${esc(ages.from)}.`:"Chosen for what this inquiry is about."}</div>
     ${part("team","For the team")}${part("family","For families")}
+    ${(x.readAsk||[]).filter(r=>!r.done).map(r=>`<div class="ref" style="background:var(--sky-soft,#eef5f8)"><b>Asked for ${r.for==="family"?"families":r.for==="team"?"the team":"the team and families"}</b>${has(r.note)?`<div>${esc(r.note)}</div>`:""}<div class="actions" style="justify-content:space-between"><span class="cnt">${shortDate(r.at)}</span>${isDirector()?`<button class="linkbtn" data-iqaskdone="${esc(r.id)}">Mark filled</button>`:""}</div></div>`).join("")}
+    ${iqCan()?`<details style="margin-top:8px"><summary class="linkbtn">Ask for readings</summary><div class="hint">The director sees this on Today, and the readings are added here.</div><label class="cnt">For <select id="iqask-for" style="width:auto"><option value="both">the team and families</option><option value="team">the team</option><option value="family">families</option></select></label><label class="fld-label">What would help<input type="text" id="iqask-note" maxlength="300" placeholder="Ex. Something short for his family, in Spanish"></label><div class="actions"><button class="btn small" data-iqask="1">Ask</button></div></details>`:""}
     ${iqCan()?`<details style="margin-top:8px"><summary class="linkbtn">Add a reading</summary><label class="fld-label">Title<input type="text" id="iqrd-title"></label><label class="fld-label">Link<input type="url" id="iqrd-url" placeholder="https://"></label><label class="fld-label">Why it fits<input type="text" id="iqrd-why"></label><label class="cnt">For <select id="iqrd-for" style="width:auto"><option value="team">the team</option><option value="family">families</option></select></label><div class="actions"><button class="btn small" data-iqrdadd="1">Add it</button></div></details>`:""}</section>`}
 async function inquiriesClick(t){
   const d=t.dataset;
@@ -12037,6 +12044,8 @@ async function inquiriesClick(t){
   if(d.iqdrm){x.tried=(x.tried||[]).filter(o=>o.id!==d.iqdrm);saveInquiry(x);renderMain();return true}
   if(d.iqfam){const v=($("#iq-fam")?.value||"").trim();if(!v){toast("Write what was shared first.");return true}x.family=[...(x.family||[]),{id:uid(),text:v,conference:!!$("#iq-famconf")?.checked,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
   if(d.iqkidrm){if(!iqCan())return true;x.kids=(x.kids||[]).filter(id=>id!==d.iqkidrm);x.kidsSet="team";saveInquiry(x);renderMain();return true}
+  if(d.iqask){if(!iqCan())return true;const note=($("#iqask-note")?.value||"").trim(),f=$("#iqask-for")?.value||"both";x.readAsk=[...(x.readAsk||[]),{id:uid(),for:f,note,by:whoAmI(),at:Date.now()}];saveInquiry(x);renderMain();toast("Asked. It shows on the director's Today.");return true}
+  if(d.iqaskdone){if(!isDirector())return true;const o=(x.readAsk||[]).find(r=>r.id===d.iqaskdone);if(o){o.done=Date.now();saveInquiry(x);renderMain()}return true}
   if(d.iqrdkeep){if(!iqCan())return true;const [kind,j]=d.iqrdkeep.split("|");const r=iqLibMatch(x,kind)[+j];if(!r)return true;x.readings=[...(x.readings||[]),{id:uid(),for:kind,title:r.title,url:r.url,source:r.source,why:r.why,at:Date.now(),by:whoAmI()}];saveInquiry(x);renderMain();toast("Kept on the inquiry.");return true}
   if(d.iqrdrm!=null&&d.iqrdrm!==undefined){if(!iqCan())return true;const L=[...(x.readings||[])];L.splice(+d.iqrdrm,1);x.readings=L;saveInquiry(x);renderMain();toast("Taken out.");return true}
   if(d.iqrdadd){if(!iqCan())return true;const title=($("#iqrd-title")?.value||"").trim(),url=($("#iqrd-url")?.value||"").trim(),why=($("#iqrd-why")?.value||"").trim(),kind=$("#iqrd-for")?.value==="family"?"family":"team";

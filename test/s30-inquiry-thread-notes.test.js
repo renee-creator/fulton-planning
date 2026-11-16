@@ -42,5 +42,12 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   const order = await s.p.evaluate(() => inquiryDoc(inquiries.get('q1'), true).blocks.filter(b => b.t === 'sub').map(b => b.text || b.label));
   assert.ok(order.slice(0, 7).every((t, i) => String(t).startsWith((i + 1) + '. ')), JSON.stringify(order));
   assert.ok(await s.p.evaluate(() => [...document.querySelectorAll('.iqstep')].length >= 7));
+  // asking for readings waits on the director's Today until it is marked filled
+  await s.p.evaluate(() => { document.querySelectorAll('#iqreadings details').forEach(d => d.open = true); document.getElementById('iqask-note').value = 'Something for his family'; document.querySelector('[data-iqask]').click(); });
+  await s.p.waitForFunction(() => (inquiries.get('q1').readAsk || []).length === 1);
+  assert.strictEqual(await s.p.evaluate(() => iqAskWaiting().length), 1);
+  await s.p.click('[data-iqaskdone]');
+  await s.p.waitForFunction(() => !!inquiries.get('q1').readAsk[0].done);
+  assert.strictEqual(await s.p.evaluate(() => iqAskWaiting().length), 0);
   assert.deepStrictEqual(s.errors, []);
 });

@@ -1125,3 +1125,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 
 - Each inquiry has Who this is about at the top. A child named in the question is filled in once, and the team can add or take out children. Their ages feed age and stage, its draft, and Readings, before any observation is kept.
 - The inquiry page and its printout follow one numbered order, the way a team thinks it through. 1 What we see, and when and where. 2 Age and stage. 3 What we think is happening, with the needs and senses chosen. 4 Our relationship and the family. 5 What we have already tried. 6 Our plan, with the Idea bank ideas, what we will watch for and the date to look again. 7 When we looked again. 8 Readings. The printout's header gives the class, who it is about with ages, when it started and was last updated (November 16, 2026).
+
+- Ask for readings on an inquiry's Readings. An educator says who it is for and what would help, the request waits on the director's Today, and the director marks it filled once the readings are added (November 16, 2026).
