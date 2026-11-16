@@ -499,7 +499,7 @@ function nlFarmsHtml(x){const rg=nlRange(x),rn=nlRangeName(rg);let F=null;try{F=
   if(x.farms&&miss.length&&!nlFarmBusy&&sample){const ask=miss.filter(n=>!nlFarmAsked.has(n));if(ask.length){ask.forEach(n=>nlFarmAsked.add(n));setTimeout(()=>nlFarmFind(ask,true),0)}}
   return `<section class="card nlcard"><div class="nlstep">5</div><h3>From our farms</h3><p class="muted nlhint">Where our lunches and snacks came from, ${esc(rn)}.</p>
     ${F&&F.farms.length?`<label class="nlcheck"><input type="checkbox" data-nlfarms="1" ${x.farms?"checked":""}> Include where these two weeks' lunches and snacks came from</label>
-    ${x.farms?`<div class="nll" style="margin-top:10px">Highlight one farm or a few</div><p class="muted nlhint">Tick the farms to tell about. With none ticked, the part tells about all of them.</p>
+    ${x.farms?`<div class="nll" style="margin-top:10px">Highlight one farm or a few</div><p class="muted nlhint">Tick the farms to tell about. With none ticked, the part names the foods that were served most and where each came from.</p>
       <div class="nlrow" style="flex-wrap:wrap;gap:6px 14px">${names.map(n=>`<label class="nlcheck" style="margin:0"><input type="checkbox" data-nlfarmpick="${esc(n)}" ${pick.has(gKey(n))?"checked":""}> ${esc(n)}</label>`).join("")}</div>
       <label class="nll" style="margin-top:10px">The farm part, as families read it<textarea class="nlta" rows="6" data-nlf="farmText">${esc(ft)}</textarea></label>
       ${String(x.farmText||"").trim()?`<div class="actions"><span class="muted nlhint" style="margin:0">Your own words are kept.</span><button class="btn small ghost" data-nlfarmreset="1">Start over from TREE's version</button></div>`:""}`:""}`

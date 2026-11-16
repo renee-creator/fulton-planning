@@ -1100,3 +1100,4 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Email families, a switch on the Participation page, sends newsletters and notes to every parent email while the Family page stays in test mode. The email leaves out the Family page button until the page opens (November 15, 2026).
 - From our farms in the mid-month note can be rewritten by the director, and she can tick one farm or a few to highlight. TREE looks up each farm's site the first time it shows up and keeps the ones that open (November 15, 2026).
 - A note from you starts with What I want to say. Write it from my words keeps her points first, in her order, and adds a detail from the school only where it helps (November 15, 2026).
+- From our farms names the fruits and vegetables the children were served, with the count, and keeps the staples, FEED bin and educators' words when farms are highlighted (November 15, 2026).

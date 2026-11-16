@@ -7655,7 +7655,7 @@ function nlFarmsHtml(x){const rg=nlRange(x),rn=nlRangeName(rg);let F=null;try{F=
   if(x.farms&&miss.length&&!nlFarmBusy&&sample){const ask=miss.filter(n=>!nlFarmAsked.has(n));if(ask.length){ask.forEach(n=>nlFarmAsked.add(n));setTimeout(()=>nlFarmFind(ask,true),0)}}
   return `<section class="card nlcard"><div class="nlstep">5</div><h3>From our farms</h3><p class="muted nlhint">Where our lunches and snacks came from, ${esc(rn)}.</p>
     ${F&&F.farms.length?`<label class="nlcheck"><input type="checkbox" data-nlfarms="1" ${x.farms?"checked":""}> Include where these two weeks' lunches and snacks came from</label>
-    ${x.farms?`<div class="nll" style="margin-top:10px">Highlight one farm or a few</div><p class="muted nlhint">Tick the farms to tell about. With none ticked, the part tells about all of them.</p>
+    ${x.farms?`<div class="nll" style="margin-top:10px">Highlight one farm or a few</div><p class="muted nlhint">Tick the farms to tell about. With none ticked, the part names the foods that were served most and where each came from.</p>
       <div class="nlrow" style="flex-wrap:wrap;gap:6px 14px">${names.map(n=>`<label class="nlcheck" style="margin:0"><input type="checkbox" data-nlfarmpick="${esc(n)}" ${pick.has(gKey(n))?"checked":""}> ${esc(n)}</label>`).join("")}</div>
       <label class="nll" style="margin-top:10px">The farm part, as families read it<textarea class="nlta" rows="6" data-nlf="farmText">${esc(ft)}</textarea></label>
       ${String(x.farmText||"").trim()?`<div class="actions"><span class="muted nlhint" style="margin:0">Your own words are kept.</span><button class="btn small ghost" data-nlfarmreset="1">Start over from TREE's version</button></div>`:""}`:""}`
@@ -10816,15 +10816,18 @@ function kStapleGroups(list){const g=new Map();for(const x of list){const k=gKey
     e.f.push(String(x.food||"").trim().replace(/^organic\s+/i,m=>e.f.length&&/^organic\b/i.test(e.f[0])?"":m));g.set(k,e)}
   return [...g.values()].map(e=>({maker:e.maker,town:e.town,foods:kList(e.f)}))}
 function farmNewsletterText(month,rng,pick){const F=farmMonthData(month,rng);if(!F.farms.length)return "";
-  // the director can highlight one farm or a few, and the part then tells only about those
-  if(Array.isArray(pick)&&pick.length){const keys=new Set(pick.map(gKey)),on=F.farms.filter(f=>keys.has(gKey(f.farm)));if(on.length){
-    const out=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
-    for(const f of on){const foods=[...new Set(F.top.filter(t=>gKey(t.farm)===gKey(f.farm)).map(t=>String(t.food).toLowerCase()))].slice(0,5);
-      out.push(foods.length?`From ${f.farm}${f.town?" in "+f.town:""}, the children ate ${kList(foods)}.`:`${f.farm}${f.town?" in "+f.town:""} grew food for our meals.`)}
-    out.push(F2S_FUND);return out.join("\n\n")}}
+  const per=rng?"in these two weeks":"this month";
   const lines=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
-  const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
-  if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes ${rng?"in these two weeks":"this month"}.`);
+  // the director can highlight one farm or a few, and the part then tells what came from each of those
+  const keys=new Set((Array.isArray(pick)?pick:[]).map(gKey)),on=F.farms.filter(f=>keys.has(gKey(f.farm)));
+  if(on.length){for(const f of on){const foods=[...new Set(F.top.filter(t=>gKey(t.farm)===gKey(f.farm)).map(t=>String(t.food).toLowerCase()))].slice(0,6);
+      lines.push(foods.length?`From ${f.farm}${f.town?" in "+f.town:""}, the children ate ${kList(foods)}.`:`${f.farm}${f.town?" in "+f.town:""} grew food for our meals.`)}}
+  else{const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".")}
+  // what the children were served, by name, and the count with it
+  const fr=F.fruits.map(x=>String(x).toLowerCase()),vg=F.vegs.map(x=>String(x).toLowerCase());
+  if(fr.length)lines.push(`The fruits the children were served ${per} were ${kList(fr.slice(0,14))}${fr.length>14?`, and ${fr.length-14} more`:""}.`);
+  if(vg.length)lines.push(`The vegetables were ${kList(vg.slice(0,14))}${vg.length>14?`, and ${vg.length-14} more`:""}.`);
+  if(fr.length+vg.length||F.dishes)lines.push(`That is ${fr.length+vg.length} different fruits and vegetables and ${F.dishes} different dishes ${per}.`);
   if(F.staples.length)lines.push("Our staples are "+kList(kStapleGroups(F.staples).slice(0,6).map(x=>x.foods+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);
   {const fm=foodMoments(F.from,F.to).conf.find(n=>sentFit(momentBody(n),300).length>40);if(fm)lines.push("In the educators' words. "+shareScrub(sentFit(momentBody(fm),300)))}
   lines.push(F2S_FUND);return lines.join("\n\n")}

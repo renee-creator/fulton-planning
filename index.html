@@ -5264,7 +5264,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="bceefc425a75";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="ca1fec6dc6ad";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9820,7 +9820,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","b4e7a76435").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","3d5aea5fa6").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -12233,15 +12233,18 @@ function kStapleGroups(list){const g=new Map();for(const x of list){const k=gKey
     e.f.push(String(x.food||"").trim().replace(/^organic\s+/i,m=>e.f.length&&/^organic\b/i.test(e.f[0])?"":m));g.set(k,e)}
   return [...g.values()].map(e=>({maker:e.maker,town:e.town,foods:kList(e.f)}))}
 function farmNewsletterText(month,rng,pick){const F=farmMonthData(month,rng);if(!F.farms.length)return "";
-  // the director can highlight one farm or a few, and the part then tells only about those
-  if(Array.isArray(pick)&&pick.length){const keys=new Set(pick.map(gKey)),on=F.farms.filter(f=>keys.has(gKey(f.farm)));if(on.length){
-    const out=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
-    for(const f of on){const foods=[...new Set(F.top.filter(t=>gKey(t.farm)===gKey(f.farm)).map(t=>String(t.food).toLowerCase()))].slice(0,5);
-      out.push(foods.length?`From ${f.farm}${f.town?" in "+f.town:""}, the children ate ${kList(foods)}.`:`${f.farm}${f.town?" in "+f.town:""} grew food for our meals.`)}
-    out.push(F2S_FUND);return out.join("\n\n")}}
+  const per=rng?"in these two weeks":"this month";
   const lines=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
-  const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
-  if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes ${rng?"in these two weeks":"this month"}.`);
+  // the director can highlight one farm or a few, and the part then tells what came from each of those
+  const keys=new Set((Array.isArray(pick)?pick:[]).map(gKey)),on=F.farms.filter(f=>keys.has(gKey(f.farm)));
+  if(on.length){for(const f of on){const foods=[...new Set(F.top.filter(t=>gKey(t.farm)===gKey(f.farm)).map(t=>String(t.food).toLowerCase()))].slice(0,6);
+      lines.push(foods.length?`From ${f.farm}${f.town?" in "+f.town:""}, the children ate ${kList(foods)}.`:`${f.farm}${f.town?" in "+f.town:""} grew food for our meals.`)}}
+  else{const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".")}
+  // what the children were served, by name, and the count with it
+  const fr=F.fruits.map(x=>String(x).toLowerCase()),vg=F.vegs.map(x=>String(x).toLowerCase());
+  if(fr.length)lines.push(`The fruits the children were served ${per} were ${kList(fr.slice(0,14))}${fr.length>14?`, and ${fr.length-14} more`:""}.`);
+  if(vg.length)lines.push(`The vegetables were ${kList(vg.slice(0,14))}${vg.length>14?`, and ${vg.length-14} more`:""}.`);
+  if(fr.length+vg.length||F.dishes)lines.push(`That is ${fr.length+vg.length} different fruits and vegetables and ${F.dishes} different dishes ${per}.`);
   if(F.staples.length)lines.push("Our staples are "+kList(kStapleGroups(F.staples).slice(0,6).map(x=>x.foods+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);
   {const fm=foodMoments(F.from,F.to).conf.find(n=>sentFit(momentBody(n),300).length>40);if(fm)lines.push("In the educators' words. "+shareScrub(sentFit(momentBody(fm),300)))}
   lines.push(F2S_FUND);return lines.join("\n\n")}
