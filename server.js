@@ -1805,7 +1805,7 @@ function deepMerge(target, patch) {
 const QUICK_MODELS = [process.env.ANTHROPIC_MODEL, 'claude-haiku-5-5', 'claude-haiku-4-5-20251001', 'claude-sonnet-5-5'].map(m => (m || '').trim()).filter((m, i, a) => m && a.indexOf(m) === i);
 const CAREFUL_MODELS = [process.env.ANTHROPIC_CAREFUL_MODEL, 'claude-sonnet-5-5', 'claude-sonnet-4-6', 'claude-opus-4-5'].map(m => (m || '').trim()).filter((m, i, a) => m && a.indexOf(m) === i);
 const MODEL_SETTINGS = { 'claude-haiku-5-5': { max_tokens: 8000, output_config: { effort: 'low' } } };
-const modelAt = { quick: 0, careful: 0 };
+const modelAt = { quick: 0, careful: 0, saving: 0 };
 function postAnthropic(payload) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify(payload);
@@ -1819,8 +1819,12 @@ function postAnthropic(payload) {
 }
 // how TREE's writing help names the school in what it writes itself. Words it copies or quotes keep their own.
 const SCHOOL_NAME = 'When you write in your own words, call the school we and our in sentences, and Fulton Community School where a name is needed, such as in a title. Never call it Fulton on its own, and never Community School on its own. Text you copy, transcribe or quote keeps its own words.';
+const SAVE_UNTIL = Date.parse('2026-12-01T08:00:00Z');
+const SAVING_MODELS = ['claude-sonnet-5-5', 'claude-sonnet-4-6'];
 async function askClaude(content, careful, extra) {
-  const lane = careful ? 'careful' : 'quick'; const list = careful ? CAREFUL_MODELS : QUICK_MODELS;
+  // until December 1, 2026 the careful lane uses Sonnet in place of Opus, to save cost, then goes back by itself (November 16, 2026)
+  const saving = careful && Date.now() < SAVE_UNTIL;
+  const lane = saving ? 'saving' : careful ? 'careful' : 'quick'; const list = saving ? SAVING_MODELS : careful ? CAREFUL_MODELS : QUICK_MODELS;
   while (true) {
     const model = list[modelAt[lane]];
     // careful requests (finding threads, project stories, scans) can write long answers, so they get more room

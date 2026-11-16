@@ -1104,3 +1104,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Each book in a letter reads what it is about first, then why it fits now, which names the book's idea and where the children met it. The note is warmer, with one or two moments that show the director's point, and sits in its own warm card in the email (November 15, 2026).
 
 - Finished Kaymbu jobs stay finished. Once the look back or the earlier-years DRDP reading is done, the server refuses to start it again and Settings shows only the finish line, with its date (November 15, 2026).
+
+- Until December 1, 2026, TREE's careful writing help uses Sonnet in place of Opus to save cost. It goes back to Opus by itself on December 1 (November 16, 2026).
