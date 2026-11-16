@@ -100,7 +100,7 @@ test('The mid-month note drafts highlights, why each book fits, a note and a hom
     if (/one simple idea families can try/.test(body)) return reply(r, { title: 'Watch an animal together', text: 'Find a bird or a cat and notice it together.' });
     if (/Find 3 articles/.test(body)) return reply(r, { items: [{ title: 'Animals and children', url: 'https://www.zerotothree.org/animals', source: 'Zero to Three' }, { title: 'A broken page', url: 'https://www.naeyc.org/broken', source: 'NAEYC' }, { title: 'Elsewhere', url: 'https://example.com/x', source: 'Somewhere' }] });
     if (/Strengthen it and keep it hers/.test(body)) return reply(r, { note: 'We have had two full weeks with the goats.' });
-    if (/opening note for the mid-month note/.test(body)) return reply(r, { note: 'We have had a busy two weeks with the goats.' });
+    if (/from her own words below/.test(body) && /Goats all week/.test(body)) return reply(r, { note: 'We have had a busy two weeks with the goats.' });
     return reply(r, {}); }); });
   await new Promise(ok => ai.listen(0, '127.0.0.1', ok)); t.after(() => ai.close());
   const drive = await require('./mock-drive.js').start(); t.after(() => drive.close());
@@ -126,6 +126,7 @@ test('The mid-month note drafts highlights, why each book fits, a note and a hom
   assert.strictEqual(offers.length, 2, 'only trusted sites are offered');
   assert.match(offers[0], /Checked/); assert.match(offers[1], /Not checked/);
   await s.p.click('[data-nlhomeart]');
+  await s.p.fill('[data-nlf="noteIdea"]', 'Goats all week');
   await s.p.click('[data-nlmnote]'); await s.p.waitForFunction(() => /busy two weeks/.test(document.querySelector('[data-nlf="note"]').value), null, { timeout: 20000 });
   await s.p.click('[data-nlstrong]'); await s.p.waitForSelector('#nl-strong', { timeout: 20000 });
   assert.match(await s.p.textContent('.nlsbox'), /busy two weeks/, 'her own words sit beside the stronger version');

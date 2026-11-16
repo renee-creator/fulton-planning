@@ -5264,7 +5264,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="7a4767ef5758";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="bceefc425a75";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -9820,7 +9820,7 @@ function nlNameWarn(text){
 }
 // pages loaded only when opened. tools/build.py moves what only these pages use to their own files
 const LAZY_LOAD={};function lazyLoad(n,v){return LAZY_LOAD[n]=LAZY_LOAD[n]||loadScript("tree-"+n+".js?v="+v,"TreeLazy_"+n).catch(e=>{LAZY_LOAD[n]=null;throw e})}
-function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","40df177297").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderNewsletter(...a){const m=$("#main");if(m&&!window.TreeLazy_newsletter)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("newsletter","b4e7a76435").then(()=>renderNewsletter(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Conferences and the calendar, inside TREE ---------- */
 let embedRoute={conferences:"",calendar:""};
 function embedSrc(which){
@@ -12232,7 +12232,13 @@ function farmWallWeek(monday){const w=(kitchen.weeks||[]).find(x=>x.monday===mon
 function kStapleGroups(list){const g=new Map();for(const x of list){const k=gKey(x.maker||"")+"|"+(x.town||"");const e=g.get(k)||{maker:x.maker||"",town:x.town||"",f:[]};
     e.f.push(String(x.food||"").trim().replace(/^organic\s+/i,m=>e.f.length&&/^organic\b/i.test(e.f[0])?"":m));g.set(k,e)}
   return [...g.values()].map(e=>({maker:e.maker,town:e.town,foods:kList(e.f)}))}
-function farmNewsletterText(month,rng){const F=farmMonthData(month,rng);if(!F.farms.length)return "";
+function farmNewsletterText(month,rng,pick){const F=farmMonthData(month,rng);if(!F.farms.length)return "";
+  // the director can highlight one farm or a few, and the part then tells only about those
+  if(Array.isArray(pick)&&pick.length){const keys=new Set(pick.map(gKey)),on=F.farms.filter(f=>keys.has(gKey(f.farm)));if(on.length){
+    const out=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
+    for(const f of on){const foods=[...new Set(F.top.filter(t=>gKey(t.farm)===gKey(f.farm)).map(t=>String(t.food).toLowerCase()))].slice(0,5);
+      out.push(foods.length?`From ${f.farm}${f.town?" in "+f.town:""}, the children ate ${kList(foods)}.`:`${f.farm}${f.town?" in "+f.town:""} grew food for our meals.`)}
+    out.push(F2S_FUND);return out.join("\n\n")}}
   const lines=[`${rng?"Over the last two weeks":"In "+F.name}, our lunches and snacks came from ${F.farms.length} local farm${F.farms.length===1?"":"s"}, ${F.sonoma} of them in Sonoma County.`];
   const t=F.top.slice(0,6).map(x=>`${x.food} from ${x.farm}${x.town?" in "+x.town:""}`);if(t.length)lines.push(kCap(kList(t))+".");
   if(F.fruits.length+F.vegs.length||F.dishes)lines.push(`The children were served ${F.fruits.length+F.vegs.length} different fruits and vegetables and ${F.dishes} different dishes ${rng?"in these two weeks":"this month"}.`);
@@ -12246,6 +12252,9 @@ function famThanksText(month){const ls=ptLogs().filter(l=>!l.test&&!ptConf(l)&&S
   const mn=parseIso(month+"-01").toLocaleDateString("en-US",{month:"long"});
   return `Thank you to ${kList(fams)} for the time you gave the school in ${mn}${what.length?`, from ${kList(what)}`:""}. It makes our school the community it is.`}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.nlthanks&&view==="newsletter"){const x=nlDoc(nlCur());if(!x)return;x.thanks=t.checked;nlSave(x);renderNewsletter();return}});
+document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarmpick||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;
+  if(String(x.farmText||"").trim()&&!confirm("Your own words for the farm part will be replaced with TREE's version for the farms you tick. Go ahead?")){t.checked=!t.checked;return}
+  const n=t.dataset.nlfarmpick;const L=(x.farmPick||[]).filter(y=>gKey(y)!==gKey(n));if(t.checked)L.push(n);x.farmPick=L;x.farmText="";nlSave(x,true);renderNewsletter()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlrange||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x||!/^\d{4}-\d\d-\d\d$/.test(t.value))return;x[t.dataset.nlrange]=t.value;nlSave(x,true);renderNewsletter()});
 document.addEventListener("change",e=>{const t=e.target;if(!t.dataset||!t.dataset.nlfarms||view!=="newsletter")return;const x=nlDoc(nlCur());if(!x)return;x.farms=t.checked;nlSave(x);renderNewsletter()});
 /* ---------- Meals or education ----------

@@ -1098,3 +1098,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Coming up ends with a See the whole school calendar button in the email and on the Family page, linking to the school's Google Calendar (November 15, 2026).
 - Drafts are shorter, with one idea to a sentence and nothing that restates the obvious or what a nearby section says. The note is three or four sentences on the one or two moments that matter most, and a drafted sentence that runs long is split (November 15, 2026).
 - Email families, a switch on the Participation page, sends newsletters and notes to every parent email while the Family page stays in test mode. The email leaves out the Family page button until the page opens (November 15, 2026).
+- From our farms in the mid-month note can be rewritten by the director, and she can tick one farm or a few to highlight. TREE looks up each farm's site the first time it shows up and keeps the ones that open (November 15, 2026).
+- A note from you starts with What I want to say. Write it from my words keeps her points first, in her order, and adds a detail from the school only where it helps (November 15, 2026).
