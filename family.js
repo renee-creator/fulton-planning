@@ -348,12 +348,18 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
   /* who a newsletter or note emailed from TREE goes to (November 15, 2026). While test mode is on, only the testers,
      each once. Otherwise every parent email of every child at our school, or of one class, each address once with the
      first names of its children. The director can email families while the Family page is still in test mode. */
+  const CLASS_MAIL = { North: 'north@childfamilycommunity.com', South: 'south@childfamilycommunity.com', West: 'west@childfamilycommunity.com' };
+  const TEAM_MAIL = ['mentor@childfamilycommunity.com', 'studio@childfamilycommunity.com'];
   function mailList(classroom) { const c = cfg(); const out = new Map(); const tmail = c.test && !c.mailFamilies;
     const kidsOf = ids => (ids || []).map(id => store.recs.children.get(id)).filter(r => r && !r.deleted && r.doc && r.doc.status !== 'withdrawn').map(r => r.doc);
     if (tmail) { for (const t of c.testers) { const e = norm(t && t.email); if (!okEmail(e)) continue; const kids = kidsOf(t.children);
       if (classroom && !kids.some(k => k.classroom === classroom)) continue; out.set(e, kids.map(firstOf)); } }
     else for (const [, r] of store.recs.children) { const k = r.doc; if (r.deleted || !k || k.status === 'withdrawn' || (classroom && k.classroom !== classroom)) continue;
       for (const p of k.parents || []) { const e = norm(p && p.email); if (!okEmail(e)) continue; out.set(e, (out.get(e) || []).concat(firstOf(k))); } }
+    // a newsletter or note to families also goes to the classroom inboxes, the class's own for one class and all three
+    // for the whole school, and the mentor and studio inboxes with every send, so the team sees what families received. Test mode sends to testers only (November 16, 2026)
+    if (!tmail) { for (const [room, e] of Object.entries(CLASS_MAIL)) if (!classroom || classroom === room) if (!out.has(e)) out.set(e, []);
+      for (const e of TEAM_MAIL) if (!out.has(e)) out.set(e, []); }
     return { test: tmail, pageTest: c.test, list: [...out].map(([email, kids]) => ({ email, kids })) };
   }
   function contactList(f) {

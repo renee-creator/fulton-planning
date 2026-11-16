@@ -40,18 +40,18 @@ test('With Email families on, every parent gets the email while the Family page 
   t.after(() => fx.stop());
   const dee = (await fx.login('Dee', 'director-pass-1')).token;
   const r = await fx.as(dee, '/api/staff/newsletter/recipients', {});
-  assert.deepStrictEqual([r.body.test, r.body.pageTest, r.body.count], [false, true, 3]);
+  assert.deepStrictEqual([r.body.test, r.body.pageTest, r.body.count], [false, true, 8], 'three families, the three classroom inboxes, mentor and studio');
 });
 
 test('Once the Family page is open, every parent address gets one email, or one class', async t => {
   const { fx, drive } = await setup(t, false);
   const dee = (await fx.login('Dee', 'director-pass-1')).token;
-  assert.strictEqual((await fx.as(dee, '/api/staff/newsletter/recipients', {})).body.count, 3, 'each address once, and a child who left is left out');
-  assert.strictEqual((await fx.as(dee, '/api/staff/newsletter/recipients', { classroom: 'North' })).body.count, 2);
+  assert.strictEqual((await fx.as(dee, '/api/staff/newsletter/recipients', {})).body.count, 8, 'each address once, a child who left is left out, the three classroom inboxes, mentor and studio');
+  assert.strictEqual((await fx.as(dee, '/api/staff/newsletter/recipients', { classroom: 'North' })).body.count, 5, 'with the North classroom inbox, mentor and studio');
   const img = Buffer.from('a small picture').toString('base64');
   const s = await fx.as(dee, '/api/staff/newsletter/send', { classroom: 'West', subject: 'West news', html: '<img src="cid:p1">', text: 'x', images: [{ cid: 'p1', data: img }] });
-  assert.strictEqual(s.body.sent, 2);
-  assert.deepStrictEqual(drive.mails.map(m => m.to).sort(), ['ada@example.test', 'cy@example.test']);
+  assert.strictEqual(s.body.sent, 5);
+  assert.deepStrictEqual(drive.mails.map(m => m.to).sort(), ['ada@example.test', 'cy@example.test', 'mentor@childfamilycommunity.com', 'studio@childfamilycommunity.com', 'west@childfamilycommunity.com']);
   assert.ok(drive.mails.every(m => m.images.includes('p1')));
   assert.strictEqual((await fx.as(dee, '/api/staff/newsletter/send', { subject: '', html: '<p>x</p>' })).status, 400);
 });

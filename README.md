@@ -1120,3 +1120,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Each inquiry has Readings, for the team and for families, chosen for what it is about and for the children's ages (from the birth dates of the children in its observations, or its class). TREE offers matches from our reading library and the family articles kept from newsletters, at no cost, and the team keeps the ones that fit or adds its own (November 16, 2026).
 
 - Each inquiry has What we have already tried, before What we think is happening. Each strategy keeps what the team did, when and for how long, and what happened. Anything in What we will try moves there in one tap, keeping its words and result. It prints with the inquiry and TREE's writing help reads it (November 16, 2026).
+
+- A newsletter or note to families also goes to the classroom inboxes (north@, south@ and west@childfamilycommunity.com, only the class's own for a one-class send) and to mentor@ and studio@ with every send. Test mode still sends to testers only (November 16, 2026).
