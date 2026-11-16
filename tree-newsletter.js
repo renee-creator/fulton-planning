@@ -498,8 +498,7 @@ const nlFarmText=x=>{if(!x||!x.farms)return "";if(nlIsMid(x)&&String(x.farmText|
 let nlFarmFound={},nlFarmBusy=false;const nlFarmAsked=new Set();
 function nlFarmsHtml(x){const rg=nlRange(x),rn=nlRangeName(rg);let F=null;try{F=farmMonthData(x.month,rg)}catch(e){}const ft=nlFarmText(Object.assign({},x,{farms:true})),sites=nlFarmSites();
   const names=F?[...new Set(F.farms.map(f=>f.farm).filter(Boolean))]:[],pick=new Set((x.farmPick||[]).map(gKey)),miss=names.filter(n=>!sites[n]);
-  // farm sites are looked up once, the first time a farm shows up, and the ones that open are kept for every note
-  if(x.farms&&miss.length&&!nlFarmBusy&&sample){const ask=miss.filter(n=>!nlFarmAsked.has(n));if(ask.length){ask.forEach(n=>nlFarmAsked.add(n));setTimeout(()=>nlFarmFind(ask,true),0)}}
+  // farm sites are looked up only when the director presses Look again, so TREE's writing allowance is never spent on its own
   return `<section class="card nlcard"><div class="nlstep">5</div><h3>From our farms</h3><p class="muted nlhint">Where our lunches and snacks came from, ${esc(rn)}.</p>
     ${F&&F.farms.length?`<label class="nlcheck"><input type="checkbox" data-nlfarms="1" ${x.farms?"checked":""}> Include where these two weeks' lunches and snacks came from</label>
     ${x.farms?`<div class="nll" style="margin-top:10px">Highlight one farm or a few</div><p class="muted nlhint">Tick the farms to tell about. With none ticked, the part names the foods that were served most and where each came from.</p>
@@ -508,7 +507,7 @@ function nlFarmsHtml(x){const rg=nlRange(x),rn=nlRangeName(rg);let F=null;try{F=
       ${String(x.farmText||"").trim()?`<div class="actions"><span class="muted nlhint" style="margin:0">Your own words are kept.</span><button class="btn small ghost" data-nlfarmreset="1">Start over from TREE's version</button></div>`:""}`:""}`
     :`<p class="muted nlhint">No orders are kept for these dates, so there is nothing to show.</p>`}
     ${x.farms&&names.length?`<details class="nlown" style="margin-top:8px" ${miss.length&&!nlFarmBusy?"open":""}><summary>Farm websites, ${names.filter(n=>sites[n]).length} of ${names.length}${nlFarmBusy?", looking up the rest":""}</summary>
-      <p class="muted nlhint">Each farm's name links to its site in the email and on the Family page. TREE fills these in and keeps them. Change any that are wrong.</p>
+      <p class="muted nlhint">Each farm's name links to its site in the email and on the Family page. Saved sites are kept for every note. Type in any that are missing, or press Look again.</p>
       ${names.map(n=>{const v=sites[n]||(nlFarmFound[n]&&nlFarmFound[n].url)||"",f=nlFarmFound[n];return `<label class="nll">${esc(n)}<input data-nlfarmsite="${esc(n)}" value="${esc(v)}" placeholder="https://"></label>${f&&!sites[n]?`<div class="nlsmall">${f.ok?"Found and checked. It opens.":"Found, but it "+esc(f.checkWhy||"did not open")+". Check it yourself."}</div>`:""}`}).join("")}
       <div class="actions"><button class="btn small ghost" data-nlfarmfind="1" ${nlFarmBusy?"disabled":""}>${nlFarmBusy?"Looking":"Look again"}</button><button class="btn small" data-nlfarmsave="1">Save the farm sites</button></div></details>`:""}
     ${x.farms?nlFoodHtml(x):""}</section>`}
