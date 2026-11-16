@@ -10658,7 +10658,9 @@ function drdpReportDocs(room){const {rows,rooms}=drData();const doms=DR_ORDER.fi
 /* ---------- Food at Fulton, made for the school ----------
    Farm to School does work for the school from what TREE already holds. Each piece waits for the director before it
    leaves the school. Nothing here invents a farm, a number or a child's words. */
-const F2S_FUND="Our food is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
+const F2S_FUND="Fulton Community School & Farm's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
+// the same credit as the newsletter and mid-month note to families say it (November 16, 2026)
+const F2S_FUND_NL="Our food is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
 const mShift=(m,k)=>{const [y,mo]=m.split("-").map(Number);const d=new Date(y,mo-1+k,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
 const mNow=()=>iso(new Date()).slice(0,7);
 // food education in the observations, the ones the director marked Counts first, then everything the food words found
@@ -10837,7 +10839,7 @@ function farmNewsletterText(month,rng,pick){const F=farmMonthData(month,rng);if(
   if(fr.length+vg.length||F.dishes)lines.push(`That is ${fr.length+vg.length} different fruits and vegetables and ${F.dishes} different dishes ${per}.`);
   if(F.staples.length)lines.push("Our staples are "+kList(kStapleGroups(F.staples).slice(0,6).map(x=>x.foods+(x.maker?" from "+x.maker:"")))+".");if(has(kNote()))lines.push(kNote());if(F.met)lines.push(F.met);if(F.recipe)lines.push("Recipe of the month. "+F.recipe);
   {const fm=foodMoments(F.from,F.to).conf.find(n=>sentFit(momentBody(n),300).length>40);if(fm)lines.push("In the educators' words. "+shareScrub(sentFit(momentBody(fm),300)))}
-  lines.push(F2S_FUND);return lines.join("\n\n")}
+  lines.push(F2S_FUND_NL);return lines.join("\n\n")}
 // the families who logged time in the month, named by their children's family name, and what they gave
 function famThanksText(month){const ls=ptLogs().filter(l=>!l.test&&!ptConf(l)&&String(l.date||"").slice(0,7)===month);if(!ls.length)return "";
   const fams=[...new Set(ls.map(l=>{const c=children.get(l.childId);return c?(has(c.last)?"the "+c.last+" family":c.first+"'s family"):""}).filter(Boolean))].sort();
