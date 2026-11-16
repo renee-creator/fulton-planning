@@ -1112,3 +1112,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Email photos side by side share a shape taken from the photos. All tall stay tall, all wide stay wide, and a mix is trimmed square, with tall photos keeping their tops (November 16, 2026).
 
 - The family email is up to 760 wide on a computer and still fills a phone. The director's note sits on a white card with a green border; no cream anywhere in the email (November 16, 2026).
+
+- Book bag connections match on topic words only, at least two, and name the plan or observation each book fits, with its class, day and the words as written. The director can write or change how a book connects on its bag card, and the report prints her words first (November 16, 2026).

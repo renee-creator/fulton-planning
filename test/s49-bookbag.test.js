@@ -85,7 +85,11 @@ test('On a Monday the bag closes that day, and the director sees suggestions, th
   // the report, why it was chosen and how it connects
   const doc = await s.p.evaluate(() => bagReportDoc(libData.bag.items[0].week));
   assert.strictEqual(doc.title, 'Book bag, week of November 23');
-  assert.match(JSON.stringify(doc.blocks), /Goats eat hay/); assert.match(JSON.stringify(doc.blocks), /The goat pen/); assert.match(JSON.stringify(doc.blocks), /Shares goat/);
+  assert.match(JSON.stringify(doc.blocks), /Goats eat hay/); assert.match(JSON.stringify(doc.blocks), /The goat pen/); assert.match(JSON.stringify(doc.blocks), /Fits an observation from November 16, about goats and hay/);
+  // the director's own words take the place of TREE's line, and the report prints them
+  await s.p.evaluate(id => window.FP_API('/api/staff/library/bag/how', { id, how: 'Fits our goat feeding this week.' }).then(r => { libData.bag = r.bag; }), (await s.p.evaluate(() => libData.bag.items[0].id)));
+  const doc2 = await s.p.evaluate(() => bagReportDoc(libData.bag.items[0].week));
+  assert.match(JSON.stringify(doc2.blocks), /Fits our goat feeding this week/); assert.ok(!/Fits an observation/.test(JSON.stringify(doc2.blocks)));
   // a book that has waited in the bag over a day shows on Today
   await s.p.evaluate(() => { libData.bag.items[0].at = Date.now() - 2 * 864e5; goView('today'); });
   await s.p.waitForFunction(() => /Holds still to place/.test(document.body.textContent), null, { timeout: 15000 });

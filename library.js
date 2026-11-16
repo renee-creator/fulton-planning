@@ -147,7 +147,7 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     const items = bagAll().filter(x => books.has(x.path) && (x.status !== 'returned' || dir)).sort((a, b) => (b.at || 0) - (a.at || 0))
       .filter((x, i, L) => x.status !== 'returned' || L.filter(y => y.status === 'returned').indexOf(x) < 20)
       .map(x => { const b = books.get(x.path); return { id: x.id, path: x.path, bookId: b.id, title: b.title, author: String(b.meta.author || ''), cover: String(b.meta.cover || ''), draft: b.draft,
-        week: x.week, for: x.for || '', status: x.status, due: x.due || '', at: x.at || 0, mine: x.by === me }; });
+        week: x.week, for: x.for || '', how: x.how || '', status: x.status, due: x.due || '', at: x.at || 0, mine: x.by === me }; });
     const sync = (get(BAG) || {}).sync || null;
     return Object.assign({ open, items }, dir && sync ? { sync } : {});
   }
@@ -199,6 +199,11 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       if (all[i].status !== 'bag') { err(req, res, 400, 'The hold is placed. The director takes it out at the library.'); return; }
       if (!dir && all[i].by !== me) { err(req, res, 403, 'The educator who added it, or the director, takes it out.'); return; }
       all.splice(i, 1); bagSave(all); json(req, res, 200, { bag: bagOut(me) }); return; }
+    // the director's own words for how a book in the bag connects, which the book bag report prints (November 16, 2026)
+    if (P === 'library/bag/how') { if (!dir) { err(req, res, 403, 'The director writes how a book connects.'); return; }
+      const all = bagAll(); const y = all.find(z => z.id === String(body.id || '')); if (!y) { err(req, res, 404, 'That book is not in the bag.'); return; }
+      const t = String(body.how || '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400); if (t) y.how = t; else delete y.how;
+      bagSave(all); json(req, res, 200, { bag: bagOut(me) }); return; }
     if (P === 'library/bag/sync') { if (!dir) { err(req, res, 403, 'The director checks the library account.'); return; } bagSync(me, body || {}); json(req, res, 200, { bag: bagOut(me) }); return; }
     // the director moves one book, or several at once, to the next step, and a book picked up keeps its due date
     if (P === 'library/bag/status') { if (!dir) { err(req, res, 403, 'The director keeps track of the library books.'); return; }
