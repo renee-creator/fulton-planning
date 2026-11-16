@@ -36,5 +36,11 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   assert.match(await s.p.textContent('#iqtried'), /What we have already tried/);
   assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').tried[0].result), 'Two of three walked.');
   assert.ok(await s.p.evaluate(() => JSON.stringify(inquiryDoc(inquiries.get('q1'), true).blocks).includes('What we have already tried')));
+  // Who this is about, filled in from a child named in the question, and the printed inquiry in plan order
+  const kid = await s.p.evaluate(() => { const c = [...children.values()][0]; if (!c) return null; const x = inquiries.get('q1'); x.name = 'Why is ' + c.first + ' running?'; x.kids = []; delete x.kidsSet; openInquiry('q1'); return c.id; });
+  if (kid) { await s.p.waitForFunction(id => (inquiries.get('q1').kids || []).includes(id), kid, { timeout: 15000 }); assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').kidsSet), 'title'); }
+  const order = await s.p.evaluate(() => inquiryDoc(inquiries.get('q1'), true).blocks.filter(b => b.t === 'sub').map(b => b.text || b.label));
+  assert.ok(order.slice(0, 7).every((t, i) => String(t).startsWith((i + 1) + '. ')), JSON.stringify(order));
+  assert.ok(await s.p.evaluate(() => [...document.querySelectorAll('.iqstep')].length >= 7));
   assert.deepStrictEqual(s.errors, []);
 });

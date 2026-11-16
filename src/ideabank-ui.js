@@ -314,7 +314,7 @@ const ibPrintName=spec=>{const ids=String(spec).split("|")[1].split(",");const o
    pickers. What the child might need from us is the third, each choice with what it can look like. The first two are what the child might be trying to get and which senses or body systems might be asking for
    more or for less, saved with the inquiry. Possibilities to try lists matching cards with why each connects, and
    We'll try this adds the card's title and link to What we will try. Nothing is added unless the team chooses. */
-function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div class="lbl">Possibilities to try</div><div class="cnt"><span class="spin"></span> Opening the Idea bank</div></section>`}
+function ibInquiryHtml(x,part){if(!ib){ibLoad();if(part&&part!=="dev")return "";return `<section class="card"><div class="lbl">Possibilities to try</div><div class="cnt"><span class="spin"></span> Opening the Idea bank</div></section>`}
   const dir=(typeof iqCan==="function"?iqCan():isDirector())&&!VIEW_AS,needs=x.ibNeeds||[],sys=x.ibSys||{},mode=x.ibMode==="avoid"?"avoid":"seek";
   const sysLabel=n=>sys[n]?n+(sys[n]==="avoid"?", finding it too much":", seeking more"):n;
   const rows=ibMatch(needs,sys,mode,14);const tried=new Set((x.tries||[]).map(t=>t.idea).filter(Boolean));
@@ -326,7 +326,8 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     ${typeof scrInquiryHtml==="function"?scrInquiryHtml(x):""}
     ${dir?`<textarea data-ibiqdev="1" rows="3">${esc(x.ibDev||"")}</textarea><div class="actions">${ibBusyMap[x.id+"dev"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-ibdevdraft="1">Draft from the evidence</button>`}</div>`:has(x.ibDev)?`<p>${esc(x.ibDev)}</p>`:`<div class="cnt">The director writes this with the team.</div>`}${IB_WHEEL}</section>`;
   // the first steps from a behavior card show in the inquiry's What we have already tried, so they are not listed twice (November 16, 2026)
-  return `${devHtml}<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
+  // the parts sit in the inquiry where the team thinks them through. Age and stage, then the needs beside the guesses, then the ideas beside What we will try (November 16, 2026)
+  const needsHtml=`<section class="card"><div class="lbl">What might this child be trying to get?</div><div class="hint">Choose one or more. These are the team's hypotheses and can change as we learn.</div>
     <div class="chips">${(ib.needs||[]).map(n=>`<button class="chip ${needs.includes(n)?"on":""}" type="button" aria-pressed="${needs.includes(n)}" data-ibiqneed="${esc(n)}" ${dir?"":"disabled"}>${esc(n)}</button>`).join("")}</div>
     <div class="lbl" style="margin-top:12px">Which senses or body systems might be asking for more, or for less?</div><div class="hint">Also a hypothesis. We describe what we see and never label a child.</div>
     ${dir?`<div class="seg" role="group" aria-label="More or less"><button data-ibiqmode="seek" aria-pressed="${mode==="seek"}">Seeking more</button><button data-ibiqmode="avoid" aria-pressed="${mode==="avoid"}">Finding it too much</button></div>`:""}
@@ -334,9 +335,10 @@ function ibInquiryHtml(x){if(!ib){ibLoad();return `<section class="card"><div cl
     <div class="lbl" style="margin-top:12px">What might this child need from us?</div><div class="hint">Behavior often asks something of the adults. Choose what the team wonders about.</div>
     <div class="chips">${(ib.fromUs||[]).map(u=>`<button class="chip ${us.includes(u.name)?"on":""}" type="button" aria-pressed="${us.includes(u.name)}" data-ibiqus="${esc(u.name)}" ${dir?"":"disabled"}>${esc(u.name)}</button>`).join("")}</div>
     ${(ib.fromUs||[]).filter(u=>us.includes(u.name)).map(u=>`<p class="ibtip"><b>${esc(u.name)}.</b> ${esc(u.look)}</p>`).join("")}
-    ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>
-    ${typeof planResOk==="function"&&!planResOk()?"":`<section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
-    ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}`}
+    ${dir?"":`<div class="cnt">The director chooses these with the team.</div>`}</section>`;
+  const ideasHtml=`${typeof planResOk==="function"&&!planResOk()?"":`<section class="card"><div class="lbl">Possibilities to try</div><div class="hint">From the Idea bank, matched to what the team chose. Each shows why it connects. The team decides what to try, and what happens goes back into this inquiry.</div>
+    ${rows.map(r=>ibRowHtml(r,r=>tried.has(r.card.id)?`<span class="cnt">In What we will try</span>`:VIEW_AS?"":`<button class="btn small" data-ibiqtry="${esc(r.card.id)}">We'll try this</button>`)).join("")||`<div class="cnt">Choose what the child might be trying to get, or a sense, and matching cards show here.</div>`}</section>`}`;
+  if(part==="dev")return devHtml;if(part==="needs")return needsHtml;if(part==="ideas")return ideasHtml;return devHtml+needsHtml+ideasHtml}
 document.addEventListener("input",e=>{const t=e.target;if(!t.dataset||!t.dataset.ibiqdev||view!=="inquiries"||VIEW_AS||!(typeof iqCan==="function"?iqCan():isDirector()))return;const x=inqId&&inquiries.get(inqId);if(!x)return;x.ibDev=t.value;saveInquirySoon(x)});
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ibiqneed],[data-ibiqsys],[data-ibiqmode],[data-ibiqtry],[data-ibiqus]");if(!t||view!=="inquiries")return;const x=inqId&&inquiries.get(inqId);if(!x)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}

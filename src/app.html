@@ -424,6 +424,7 @@ details.drdom>summary{list-style:none;cursor:pointer}details.drdom>summary::-web
 .nwstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
 .nwstrip img{width:72px;height:90px;object-fit:cover;border-radius:6px;background:var(--bg);display:block}
 .iqobs{display:grid;gap:10px}
+.iqstep{display:flex;align-items:center;gap:10px;margin:22px 0 8px;font-family:var(--display);font-size:20px;color:var(--moss,#2B5A40)}.iqstep span{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--moss,#2B5A40);color:#fff;font-size:16px;flex:none}
 .iqob{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14.5px;background:var(--paper)}
 .iqob.nophoto{grid-template-columns:minmax(0,1fr)}
 .iqob img{width:84px;height:104px;object-fit:cover;border-radius:6px;background:var(--bg);display:block}
@@ -11579,7 +11580,18 @@ const inqOnDisplay=x=>x.display===true||(x.display!==false&&inqChildren(x).lengt
 const inqOpenHyps=x=>(x.hyps||[]).filter(h=>!h.aside&&has(h.text));
 const inqCurric=x=>(x.tries||[]).filter(t=>t.curriculum&&has(t.text));
 const inqScope=x=>x.room?x.room+" class":"School-wide";
-function inqChildren(x){const s=new Set();for(const n of inqNotices(x))(n.children||[]).forEach(id=>s.add(id));return [...s].map(id=>children.get(id)).filter(Boolean)}
+// the children an inquiry is about. Who this is about, when the team has named them, or else the children in its observations
+function inqChildren(x){if((x.kids||[]).length)return x.kids.map(id=>children.get(id)).filter(Boolean);const s=new Set();for(const n of inqNotices(x))(n.children||[]).forEach(id=>s.add(id));return [...s].map(id=>children.get(id)).filter(Boolean)}
+const iqKidOk=c=>c&&!c.deleted&&c.status!=="withdrawn"&&!c.left;
+// Who this is about. A child named in the inquiry's question is filled in once, and the team can change it (November 16, 2026)
+function iqKidsAuto(x){if(x.kidsSet||(x.kids||[]).length||!has(x.name))return;const t=" "+String(x.name).toLowerCase().replace(/[^a-z\u00c0-\u024f ]/g," ")+" ";
+  const hit=[...children.values()].filter(c=>iqKidOk(c)&&c.first&&(!x.room||c.classroom===x.room)&&t.includes(" "+String(c.first).toLowerCase()+" "));
+  if(hit.length){x.kids=hit.map(c=>c.id);x.kidsSet="title";saveInquiry(x)}}
+function iqWhoHtml(x){iqKidsAuto(x);const ks=(x.kids||[]).map(id=>children.get(id)).filter(Boolean);
+  const pool=[...children.values()].filter(c=>iqKidOk(c)&&!(x.kids||[]).includes(c.id)&&(!x.room||c.classroom===x.room)).sort((a,b)=>String(a.first).localeCompare(String(b.first)));
+  return `<div class="actions" style="align-items:center;flex-wrap:wrap"><span class="cnt"><b>Who this is about</b></span>${ks.map(c=>`<span class="chip on">${esc(c.first)}${kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""}${iqCan()?` <button class="linkbtn" data-iqkidrm="${esc(c.id)}" aria-label="Take out ${esc(c.first)}">×</button>`:""}</span>`).join("")||`<span class="cnt">The children in its observations</span>`}
+    ${iqCan()&&pool.length?`<select data-iqkidadd="1" style="width:auto"><option value="">Add a child</option>${pool.map(c=>`<option value="${esc(c.id)}">${esc(c.first)}${c.last?" "+esc(String(c.last).slice(0,1))+".":""}</option>`).join("")}</select>`:""}
+    ${x.kidsSet==="title"?`<span class="cnt">Filled in from the question.</span>`:""}</div>`}
 // when it happens, read from the times the observations were kept. Shown only when the times say something.
 function inqWhen(ns){const parts={"Early morning":0,"Morning":0,"Midday":0,"Afternoon":0},days={};let timed=0;
   for(const n of ns){if(!n.at)continue;const d=new Date(n.at),h=d.getHours(),m=d.getMinutes();if(h===0&&m===0)continue;timed++;
@@ -11715,24 +11727,26 @@ function renderInquiry(x){
     <label class="fld-label">What the team is wondering about<input type="text" data-iqf="name" value="${esc(x.name||"")}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="actions"><label class="cnt">Belongs to <select data-iqroomset="1" style="width:auto">${CLASSROOMS.map(r=>`<option value="${esc(r)}" ${x.room===r?"selected":""}>${esc(r)} class</option>`).join("")}<option value="" ${!x.room?"selected":""}>The whole school</option></select></label>
       <span class="cnt">Started ${shortDate(x.createdAt)}${x.createdBy?" by "+esc(x.createdBy):""}. It stays with the team, and its observations stay out of portfolios and walls.</span>${isDirector()?`<label class="cnt">Staff room display <select data-iqdisplay="1" style="width:auto"><option value="show" ${inqOnDisplay(x)?"selected":""}>Shows</option><option value="off" ${inqOnDisplay(x)?"":"selected"}>Stays off</option></select></label>`:""}</div>
+    ${iqWhoHtml(x)}
     <div id="iqplan-pick"></div></div>`;
 
+  const S={see:"",when:"",dev:"",hyp:"",needs:"",rel:"",fam:"",tried:"",try:"",ideas:"",watch:"",looks:"",read:"",conn:""};
   h+=`<div class="ref iqphil">${esc(IQ_PHIL)}${staffSubOk("stfh")?` <button class="linkbtn" data-fhopen="behavior-and-discipline">Behavior and Discipline, in the Family Handbook</button>`:""}</div>`;
-  h+=`<section class="card"><div class="lbl">What we see</div>
+  S.see+=`<section class="card"><div class="lbl">What we see</div>
     <div class="hint">What the team sees, in plain words and without judgment. The observations below hold the detail.</div>
     <textarea data-iqf="see" rows="2">${esc(x.see||"")}</textarea>${iqAssistHtml(x,"see")}
     <div id="iqsafe">${iqSafeHtml(x)}</div>
-    ${kids.length?`<div class="cnt">Children in these observations, ${kids.map(c=>`<button class="linkbtn" data-kid="${esc(c.id)}">${esc(c.first)}</button>`).join(", ")}</div>`:""}
+    ${(()=>{const ok=[...new Set(ns.flatMap(n=>n.children||[]))].map(id=>children.get(id)).filter(Boolean);return ok})().length?`<div class="cnt">Children in these observations, ${[...new Set(ns.flatMap(n=>n.children||[]))].map(id=>children.get(id)).filter(Boolean).map(c=>`<button class="linkbtn" data-kid="${esc(c.id)}">${esc(c.first)}</button>`).join(", ")}</div>`:""}
     <div class="chiprow-label" style="margin-top:6px">Observations, ${ns.length}</div>
     <div class="iqobs">${ns.slice(0,30).map(obRow).join("")||`<div class="empty" style="padding:10px">None yet. Add one below, or keep one for this inquiry from Observations.</div>`}</div>
     ${ns.length>30?`<div class="cnt">Showing the 30 most recent.</div>`:""}</section>${foundHtml("inquiry",x)}<section class="card">
     ${pool.length?`<label class="tlink">Add an observation<select data-iqaddobs="1"><option value="">Choose an observation</option>${pool.map(n=>`<option value="${esc(n.id)}">${esc(shortDate(n.at)+", "+firstLine(n.noticed,70))}</option>`).join("")}</select></label>`:""}</section>`;
 
-  h+=`<section class="card"><div class="lbl">Our relationship with the child</div>
+  S.rel+=`<section class="card"><div class="lbl">Our relationship with the child</div>
     <div class="hint">Connection comes before guidance. Who the child is most connected to, the child's cues, such as when they are tired, hungry, angry, hurt, content or need time alone, and how the team is building connection.</div>
     <textarea data-iqf="relation" rows="2">${esc(x.relation||"")}</textarea>${iqAssistHtml(x,"relation")}</section>`;
   const fam=[...(x.family||[])].sort((a,b)=>(b.at||0)-(a.at||0));
-  h+=`<section class="card"><div class="lbl">Working with the family</div>
+  S.fam+=`<section class="card"><div class="lbl">Working with the family</div>
     <div class="hint">Open communication with the family, so home and school offer the child the same care. What the family has shared, and how home and school are staying consistent.</div>
     <textarea data-iqf="home" rows="2">${esc(x.home||"")}</textarea>${iqAssistHtml(x,"home")}
     <div class="chiprow-label" style="margin-top:6px">Conversations with the family</div>
@@ -11740,20 +11754,20 @@ function renderInquiry(x){
     <label class="cnt"><input type="checkbox" id="iq-famconf"> This was a family conference</label>
     <div class="actions"><button class="btn small ghost" data-iqfam="1">Keep this conversation</button></div>
     ${fam.length?`<div class="evid">${fam.map(o=>`<div style="white-space:pre-line">${o.conference?`<b>Family conference.</b> `:""}${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}${isDirector()?` <button class="linkbtn" data-iqfamrm="${esc(o.id)}">Remove</button>`:""}</span></div>`).join("")}</div>`:""}</section>`;
-  h+=`<section class="card"><div class="lbl">When and where it happens</div>
+  S.when+=`<section class="card"><div class="lbl">When and where it happens</div>
     <div class="hint">The time of day and routine, such as arrival, meals, rest or a transition. The place, the people nearby, the materials, and how loud, bright or crowded it is. What comes just before, and what happens after.</div>
     <textarea data-iqf="whenwhere" rows="2">${esc(x.whenwhere||"")}</textarea>${iqAssistHtml(x,"whenwhere")}
     ${when?`<div class="cnt">${esc(when)}</div>`:""}</section>`;
 
   // what the team has already done, with when and what happened, read before the team's ideas (November 16, 2026)
-  h+=`<section class="card" id="iqtried"><div class="lbl">What we have already tried</div>
+  S.tried+=`<section class="card" id="iqtried"><div class="lbl">What we have already tried</div>
     <div class="hint">Strategies the team has already put in place, when, and what happened.</div>
     ${(x.tried||[]).map(o=>{if(!o.id)o.id=uid();if(has(o.step)&&!has(o.text))o.text=o.step;if(has(o.happened)&&!has(o.result))o.result=o.happened;if(!has(o.when)&&(o.room||o.at))o.when=[o.room?o.room+" class":"",o.at?shortDate(o.at):""].filter(Boolean).join(", ");return o}).map(o=>`<div class="pdir"><textarea data-iqd="${o.id}|text" rows="2" placeholder="What we did">${esc(o.text||"")}</textarea>
       <input type="text" data-iqd="${o.id}|when" value="${esc(o.when||"")}" placeholder="When, and for how long. Ex. Every lunch for two weeks in October">
       <textarea data-iqd="${o.id}|result" rows="1" placeholder="What happened">${esc(o.result||"")}</textarea>
       <div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqdrm="${esc(o.id)}">Remove</button></div></div>`).join("")||`<div class="cnt">Nothing written yet.</div>`}
     <div class="actions"><button class="btn small ghost" data-iqdadd="1">Add a strategy we tried</button></div></section>`;
-  h+=`<section class="card"><div class="lbl">What we think is happening</div>
+  S.hyp+=`<section class="card"><div class="lbl">What we think is happening</div>
     <div class="hint">The team's best guesses about what the child may be communicating or needing. When new observations change your thinking, set the old guess aside and write a new one. The old one stays, so you can see how your thinking changed.</div>
     ${hy.map(o=>`<div class="pdir"><textarea data-iqh="${esc(o.id)}" rows="2">${esc(o.text||"")}</textarea>${iqAssistHtml(x,"hyp:"+o.id)}<div class="actions" style="justify-content:space-between">${by(o)}<button class="linkbtn" data-iqhaside="${esc(o.id)}">Set aside</button></div></div>`).join("")}
     <div class="actions"><button class="btn small ghost" data-iqhadd="1">Add a guess</button></div>${iqAssistHtml(x,"hyp")}
@@ -11762,8 +11776,8 @@ function renderInquiry(x){
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
       <div class="actions">${iqCan()&&!VIEW_AS?(typeof ibBusyMap!=="undefined"&&ibBusyMap[x.id+"lens"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-iblensdraft="1">Draft from the evidence</button>`):""}<button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
-  h+=ibInquiryHtml(x);
-  h+=`<section class="card"><div class="lbl">What we will try</div>
+  S.dev+=ibInquiryHtml(x,"dev");S.needs+=ibInquiryHtml(x,"needs");S.ideas+=ibInquiryHtml(x,"ideas");
+  S.try+=`<section class="card"><div class="lbl">What we will try</div>
     <details class="helpme"><summary>What belongs here</summary><div class="hint">Guided by relationship-based, positive discipline. Connection first, such as time with an educator the child trusts. Changes the adults make, to a transition, the space, the warning, a role a child is given or who goes with them. Guiding with the children, through a meeting time conversation where they help decide an expectation and hear why it matters, or support for peers solving a problem together. Never a time-out or a punishment. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div></details>
     ${typeof ibSuggestHtml==="function"?ibSuggestHtml(x):""}
     ${(x.tries||[]).map(o=>`<div class="pdir"><textarea data-iqt="${o.id}|text" rows="2" placeholder="What we will try">${esc(o.text||"")}</textarea>${o.idea?`<div class="actions" style="margin:0"><button class="linkbtn" data-ibopen="${esc(o.idea)}">Open the card in the Idea bank</button></div>`:""}${iqAssistHtml(x,"try:"+o.id)}
@@ -11772,22 +11786,22 @@ function renderInquiry(x){
       <div class="actions" style="justify-content:space-between">${by(o)}<span>${has(o.text)?`<button class="linkbtn" data-iqtmove="${esc(o.id)}">Move to What we have tried</button> `:""}<button class="linkbtn" data-iqtrm="${esc(o.id)}">Remove</button></span></div></div>`).join("")}
     <div class="actions"><button class="btn small ghost" data-iqtadd="1">Add something to try</button></div>${iqAssistHtml(x,"try")}</section>`;
 
-  h+=`<section class="card"><div class="lbl">What we will watch for</div>
+  S.watch+=`<section class="card"><div class="lbl">What we will watch for</div>
     <div class="hint">Signs the team can see that would show whether a guess fits, or needs to change, and signs that the child is beginning to manage it on their own, such as using words, asking for help or solving a problem with a friend.</div>
     <textarea data-iqf="watch" rows="2">${esc(x.watch||"")}</textarea>${iqAssistHtml(x,"watch")}
     <label class="cnt">Look again on <input type="date" data-iqf="lookAgain" value="${esc(x.lookAgain||"")}" style="width:auto"></label>
     <div class="hint">On that day it appears on Today for the class, and for the director.</div></section>`;
 
   const looks=[...(x.looks||[])].sort((a,b)=>(b.at||0)-(a.at||0));
-  h+=`<section class="card"><div class="lbl">When we looked again</div>
+  S.looks+=`<section class="card"><div class="lbl">When we looked again</div>
     <div class="hint">What the team saw when it met again, at a staff meeting or after a week of trying. Each look is kept with its date.</div>
     <textarea id="iq-look" rows="2" placeholder="What we saw this time"></textarea>
     <div class="actions"><button class="btn small ghost" data-iqlook="1">Keep this look</button></div>
     ${looks.length?`<div class="evid">${looks.map(o=>`<div style="white-space:pre-line">${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}</span></div>`).join("")}</div>`:""}
     ${inqTimeline(x).length>2?`<details><summary class="chiprow-label" style="cursor:pointer">How our thinking has moved</summary><div class="evid" style="margin-top:8px">${inqTimeline(x).map(e=>`<div><span class="cnt">${esc(e.what)}</span><div style="white-space:pre-line">${esc(e.text)}</div><span class="src">${shortDate(e.at)}${e.by?" · "+esc(e.by):""}</span></div>`).join("")}</div></details>`:""}</section>`;
 
-  h+=iqReadingsHtml(x);
-  h+=`<section class="card"><div class="lbl">Connected work</div>
+  S.read+=iqReadingsHtml(x);
+  S.conn+=`<section class="card"><div class="lbl">Connected work</div>
     <div class="hint">What feeds this inquiry, and where it reaches.</div>
     <div class="chiprow-label">Threads</div>
     ${ths.length?ths.map(t=>`<div class="actions"><button class="linkbtn" data-tsee="${esc(t.id)}"><b>${esc(t.name)}</b></button><span class="cnt">${esc(t.classroom||"All classes")}${t.question?" · "+esc(firstLine(t.question,90)):""}</span><button class="linkbtn" data-iqthrm="${esc(t.id)}">Take out</button></div>${has(t.notes)?`<div class="iqtnotes"><div class="chiprow-label">Team notes on the thread</div><div style="white-space:pre-line">${esc(t.notes)}</div><button class="linkbtn" data-tsee="${esc(t.id)}">Edit on the thread</button></div>`:""}`).join(""):`<div class="cnt">None yet.</div>`}
@@ -11800,6 +11814,11 @@ function renderInquiry(x){
     ${ps.length?`<div class="evid">${ps.slice(0,12).map(p=>{const k=AFTER_KEY[p.type],after=k&&has(p.fields?.[k])?p.fields[k]:"";
       return `<div><button class="linkbtn" data-open="${esc(p.id)}">${esc(p.type==="classroom"?((p.classroom?p.classroom+" ":"")+"Classroom plan"):planTitle(p))}, week of ${esc(fmtDate(p.weekOf).replace(/, \d{4}$/,""))}</button>${(p.inquiries||[]).includes(x.id)?` <span class="cnt">written from this inquiry</span>`:""}
         ${after?`<div class="muted" style="white-space:pre-line">${esc(firstLine(after,240))}</div>`:""}</div>`}).join("")}</div>`:`<div class="cnt">No plans yet. Start one from this inquiry, or connect a thread that plans follow.</div>`}</section>`;
+  // the inquiry reads in the order the team thinks it through, the same order it prints in (November 16, 2026)
+  const step=(n,t)=>`<div class="iqstep"><span>${n}</span>${t}</div>`;
+  h+=step(1,"What we see, and when and where")+S.see+S.when+step(2,"Could this fit their age and stage")+S.dev+step(3,"What we think is happening")+S.hyp+S.needs
+    +step(4,"Our relationship and the family")+S.rel+S.fam+step(5,"What we have already tried")+S.tried+step(6,"Our plan")+S.try+S.ideas+S.watch
+    +step(7,"When we looked again")+S.looks+step(8,"Readings")+S.read+S.conn;
   if(isDirector())h+=`<div class="actions"><span id="iqdel"><button class="linkbtn" data-iqdel="1">Remove this inquiry</button></span></div>`;
   // every educator writes the inquiry, so no note says otherwise
   $("#main").innerHTML=h;sizeBoxes($("#main"));
@@ -11839,25 +11858,44 @@ function planFromInquiry(x,kind,wk,how){
 
 function inquiryDoc(x,long){
   const ns=inqNotices(x),hy=inqOpenHyps(x),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(b.at||0)-(a.at||0));
-  const blocks=[];
+  // the printed inquiry reads like a plan, in the order the team thinks it through, the same order as the page (November 16, 2026)
+  const blocks=[];const n1=(n,t)=>blocks.push(dSub(n+". "+t));
   blocks.push(dText("",IQ_PHIL));
+  n1(1,"What we see, and when and where");
   if(has(x.see))blocks.push(dLead("What we see",x.see));
-  if(has(x.relation))blocks.push(dText("Our relationship with the child",x.relation));
-  {const fam=[...(x.family||[])].sort((a,b)=>(b.at||0)-(a.at||0));if(has(x.home)||fam.length){blocks.push(dSub("Working with the family"));if(has(x.home))blocks.push(dText("",x.home));(long?fam:fam.slice(0,2)).forEach(f=>blocks.push(dQuote((f.conference?"Family conference. ":"")+f.text,f.by||"",shortDate(f.at),true)))}}
   if(has(x.whenwhere))blocks.push(dText("When and where it happens",x.whenwhere));
-  if(hy.length)blocks.push(dList("What we think is happening",hy.map(h=>h.text)));
-  {const td=(x.tried||[]).filter(t=>has(t.text));if(td.length)blocks.push(dList("What we have already tried",td.map(t=>t.text+(has(t.when)?". When. "+t.when:"")+(has(t.result)?". What happened. "+t.result:""))))}
+  if(!has(x.see)&&!has(x.whenwhere))blocks.push(dText("","Not written yet."));
+  n1(2,"Could this fit their age and stage");
+  {const ks=inqChildren(x).filter(c=>kidAgeText(c));if(ks.length)blocks.push(dText("Ages",ks.map(c=>c.first+", "+kidAgeText(c)).join(". ")+"."))}
+  blocks.push(dText("",has(x.ibDev)?x.ibDev:"Not written yet."));
+  n1(3,"What we think is happening");
+  if(hy.length)blocks.push(dList("Our guesses",hy.map(h=>h.text)));
+  if((x.ibNeeds||[]).length)blocks.push(dText("What the child might be trying to get",x.ibNeeds.join(", ")+"."));
+  {const sy=Object.entries(x.ibSys||{});if(sy.length)blocks.push(dText("Senses or body systems",sy.map(([k,v])=>k+(v==="avoid"?", finding it too much":", seeking more")).join(". ")+"."))}
+  if((x.ibUs||[]).length)blocks.push(dText("What the child might need from us",x.ibUs.join(", ")+"."));
+  {const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));a.forEach(q=>blocks.push(dText(L.name+". "+q,x.lensNotes[q])))}}
+  if(!hy.length&&!(x.ibNeeds||[]).length)blocks.push(dText("","Not written yet."));
+  n1(4,"Our relationship and the family");
+  if(has(x.relation))blocks.push(dText("Our relationship with the child",x.relation));
+  {const fam=[...(x.family||[])].sort((a,b)=>(b.at||0)-(a.at||0));if(has(x.home))blocks.push(dText("Working with the family",x.home));(long?fam:fam.slice(0,2)).forEach(f=>blocks.push(dQuote((f.conference?"Family conference. ":"")+f.text,f.by||"",shortDate(f.at),true)));if(!has(x.relation)&&!has(x.home)&&!fam.length)blocks.push(dText("","Not written yet."))}
+  n1(5,"What we have already tried");
+  {const td=(x.tried||[]).filter(t=>has(t.text||t.step));blocks.push(td.length?dList("",td.map(t=>(t.text||t.step)+(has(t.when)?". When. "+t.when:"")+(has(t.result||t.happened)?". What happened. "+(t.result||t.happened):""))):dText("","Nothing written yet."))}
+  n1(6,"Our plan");
   if(tries.length)blocks.push(dList("What we will try",tries.map(t=>t.text+(t.curriculum?" (in the curriculum)":"")+(has(t.result)?". What happened. "+t.result:""))));
   if(has(x.watch))blocks.push(dText("What we will watch for",x.watch));
-  const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));if(a.length){blocks.push(dSub("Read through "+L.name));a.forEach(q=>blocks.push(dText(q,x.lensNotes[q])))}}
-  if(looks.length){blocks.push(dSub("When we looked again"));(long?looks:looks.slice(0,2)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)))}
+  if(x.lookAgain)blocks.push(dText("We will look again on",fmtDate(x.lookAgain)));
+  if(!tries.length&&!has(x.watch))blocks.push(dText("","Not written yet."));
+  n1(7,"When we looked again");
+  if(looks.length)(long?looks:looks.slice(0,3)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)));else blocks.push(dText("","Not yet. Each time the team looks again, it is added here."));
+  {const rd=x.readings||[];if(rd.length){n1(8,"Readings");const one=r=>r.title+(r.source?", "+r.source:"")+". "+(r.why?r.why+" ":"")+r.url;
+    const tm=rd.filter(r=>r.for==="team"),fm=rd.filter(r=>r.for==="family");if(tm.length)blocks.push(dList("For the team",tm.map(one)));if(fm.length)blocks.push(dList("For families",fm.map(one)))}}
   const obs=long?ns:ns.slice(0,3);
   if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true));
       const w=whyText(((x.obsFound||{})[n.id]||{}).why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})})}
   for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))blocks.push(dText("Team notes from the thread "+t.name,t.notes))}
   if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",[shortDate(e.at)])))}}
-  const meta=[["Class",x.room||"Whole school"],["Started",shortDate(x.createdAt)],["Status",ISTATUS[x.status]||"Open"]];
-  if(x.lookAgain)meta.push(["Look again",fmtDate(x.lookAgain)]);
+  const meta=[["Class",x.room||"Whole school"]];{const ks=inqChildren(x);if((x.kids||[]).length&&ks.length)meta.push(["About",ks.map(c=>c.first+(kidAgeText(c)?", "+kidAgeText(c):"")).join("; ")])}
+  meta.push(["Started",shortDate(x.createdAt)],["Last updated",shortDate(x.updatedAt||x.createdAt)],["Status",ISTATUS[x.status]||"Open"]);
   const ths=(x.threads||[]).map(id=>threads.get(id)).filter(Boolean);if(ths.length)meta.push(["Threads",ths.map(t=>t.name).join(", ")]);
   const prs=(x.projects||[]).map(id=>projects.get(id)).filter(Boolean);if(prs.length)meta.push(["Projects",prs.map(p=>p.name).join(", ")]);
   if(!blocks.length)blocks.push(dText("","Nothing is written in this inquiry yet."));
@@ -11943,8 +11981,8 @@ function iqAssistUse(x,key){if(!iqCan())return;const sk=x.id+"|"+key,sg=iqSug[sk
    looks first in our own reading library and the family articles kept from newsletters, which costs nothing, and the
    team keeps the ones that fit. Kept readings stay on the inquiry with a line on why (November 16, 2026). */
 const IQ_AGE_SAY=m=>{const y=Math.floor(m/12),mo=m%12;return mo>=6?`${y} and a half`:`${y}`};
-function iqAges(x){const ms=[];for(const id of x.obs||[]){const n=notices.get(id);for(const cid of (n&&n.children)||[]){const m=kidMonths(children.get(cid));if(m!=null)ms.push(m)}}
-  let from="the children in this inquiry";
+function iqAges(x){const ms=[];for(const c of inqChildren(x)){const m=kidMonths(c);if(m!=null)ms.push(m)}
+  let from=(x.kids||[]).length?"who this is about":"the children in this inquiry";
   if(!ms.length){for(const c of children.values())if(!c.deleted&&!c.left&&(c.classroom===x.room)){const m=kidMonths(c);if(m!=null)ms.push(m)}from=x.room?`the ${x.room} class`:"the school"}
   if(!ms.length)return null;const lo=Math.min(...ms),hi=Math.max(...ms);
   return {lo,hi,from,say:IQ_AGE_SAY(lo)===IQ_AGE_SAY(hi)?`about ${IQ_AGE_SAY(lo)}`:`${IQ_AGE_SAY(lo)} to ${IQ_AGE_SAY(hi)}`}}
@@ -11998,6 +12036,7 @@ async function inquiriesClick(t){
   if(d.iqdadd){x.tried=[...(x.tried||[]),{id:uid(),text:"",when:"",result:"",by,at:now}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll('[data-iqd$="|text"]');if(ts.length)ts[ts.length-1].focus();return true}
   if(d.iqdrm){x.tried=(x.tried||[]).filter(o=>o.id!==d.iqdrm);saveInquiry(x);renderMain();return true}
   if(d.iqfam){const v=($("#iq-fam")?.value||"").trim();if(!v){toast("Write what was shared first.");return true}x.family=[...(x.family||[]),{id:uid(),text:v,conference:!!$("#iq-famconf")?.checked,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
+  if(d.iqkidrm){if(!iqCan())return true;x.kids=(x.kids||[]).filter(id=>id!==d.iqkidrm);x.kidsSet="team";saveInquiry(x);renderMain();return true}
   if(d.iqrdkeep){if(!iqCan())return true;const [kind,j]=d.iqrdkeep.split("|");const r=iqLibMatch(x,kind)[+j];if(!r)return true;x.readings=[...(x.readings||[]),{id:uid(),for:kind,title:r.title,url:r.url,source:r.source,why:r.why,at:Date.now(),by:whoAmI()}];saveInquiry(x);renderMain();toast("Kept on the inquiry.");return true}
   if(d.iqrdrm!=null&&d.iqrdrm!==undefined){if(!iqCan())return true;const L=[...(x.readings||[])];L.splice(+d.iqrdrm,1);x.readings=L;saveInquiry(x);renderMain();toast("Taken out.");return true}
   if(d.iqrdadd){if(!iqCan())return true;const title=($("#iqrd-title")?.value||"").trim(),url=($("#iqrd-url")?.value||"").trim(),why=($("#iqrd-why")?.value||"").trim(),kind=$("#iqrd-for")?.value==="family"?"family":"team";
@@ -12024,6 +12063,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqkidadd!=null){if(!t.value||!iqCan())return;x.kids=[...new Set([...(x.kids||[]),t.value])];x.kidsSet="team";saveInquiry(x);renderMain();return}
   if(d.iqdisplay!=null){x.display=t.value==="show";saveInquiry(x);renderMain();toast(x.display?"It shows on the staff room display while it is open.":"It stays off the staff room display.");return}
   if(d.iqlens!=null){x.lensId=t.value;saveInquiry(x);renderMain();return}
   if(d.iqtcur){const o=(x.tries||[]).find(v=>v.id===d.iqtcur);if(o){o.curriculum=t.checked;saveInquiry(x)}return}
