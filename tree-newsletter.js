@@ -309,7 +309,7 @@ function nlSmall(url,shape){return new Promise(ok=>{if(!url){ok("");return}const
 const NL_FAMILY_URL="https://renee-creator.github.io/fulton-planning/family.html";
 // the school calendar families already see on the Family page, linked under Coming up
 const NL_CAL_URL="https://calendar.google.com/calendar/embed?src=c_fb2e747462e605bde4e83259ffadf24b98a87617bb24eca797ad223dc34930d2%40group.calendar.google.com&ctz=America%2FLos_Angeles";
-const NL_C={ink:"#1B2920",moss:"#2B5A40",muted:"#5B6B61",line:"#DCE3DA",link:"#245B78",soft:"#F3F6F2",warm:"#FBF3E4",amber:"#9A5B07"};
+const NL_C={ink:"#1B2920",moss:"#2B5A40",muted:"#5B6B61",line:"#DCE3DA",link:"#245B78",soft:"#F3F6F2",warm:"#FFFFFF",amber:"#9A5B07"};
 const nlEP=(t,st)=>`<p style="margin:0 0 14px;${st||""}">${t}</p>`;
 const nlEsc=t=>esc(nlTxt(t));
 const nlEParas=t=>String(t||"").trim().split(/\n\s*\n/).filter(Boolean).map(p=>nlEP(p.split("\n").map(l=>/^https?:\/\/\S+$/.test(l.trim())?nlLink(l.trim()):nlEsc(l)).join("<br>"))).join("");
@@ -330,7 +330,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
   for(const b of B){let inner=`<h2 style="font-size:22px;line-height:1.25;color:${NL_C.moss};margin:0 0 12px">${nlEsc(b.h)}</h2>`;
     // the director's note reads as a personal letter, in its own warm card with her sign-off on its own lines
     if(b.note){const so=nlSignoff().split("\n").filter(l=>l.trim());const body=String(x.note||"").trim();
-      cards.push(`<tr><td class="pad" style="padding:0 16px 16px"><div class="card" style="background:${NL_C.warm};border:1px solid ${NL_C.line};border-radius:14px;padding:24px 24px 12px"><h2 style="font-size:22px;line-height:1.25;color:${NL_C.moss};margin:0 0 12px">${nlEsc(b.h)}</h2><div style="font-size:17px;line-height:1.65">${nlEParas(body)}</div><div style="font-size:17px;line-height:1.5;margin:6px 0 12px">${so.map(nlEsc).join("<br>")}</div></div></td></tr>`);continue}
+      cards.push(`<tr><td class="pad" style="padding:0 16px 16px"><div class="card" style="background:#ffffff;border:2px solid ${NL_C.moss};border-radius:14px;padding:24px 24px 12px"><h2 style="font-size:22px;line-height:1.25;color:${NL_C.moss};margin:0 0 12px">${nlEsc(b.h)}</h2><div style="font-size:17px;line-height:1.65">${nlEParas(body)}</div><div style="font-size:17px;line-height:1.5;margin:6px 0 12px">${so.map(nlEsc).join("<br>")}</div></div></td></tr>`);continue}
     if(b.topic){const t=b.topic;inner+=await photos(t.photos);if(t.happening)inner+=nlEParas(t.happening);
       if(t.why&&!short)inner+=nlESub("Why it matters")+nlEParas(t.why);
       if((t.grows||[]).length&&!short)inner+=nlESub("How it grows")+t.grows.map(g=>`<div style="margin:0 0 10px;padding:10px 12px;background:${NL_C.soft};border-radius:8px"><b style="color:${NL_C.moss}">${nlEsc(g.age)}.</b> ${nlEsc(g.text)}</div>`).join("");
@@ -354,7 +354,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
     @media (max-width:620px){.pad{padding:0 8px 12px!important}.card{padding:18px 16px 6px!important}.ph{width:100%!important;margin:0 0 12px!important}h1{font-size:26px!important}}
     a{color:${NL_C.link}}</style></head><body style="margin:0;padding:0;background:#ffffff">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff"><tr><td align="center">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;font-family:Andika,'Trebuchet MS',Verdana,Arial,sans-serif;color:${NL_C.ink};font-size:16px;line-height:1.6">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:760px;width:100%;font-family:Andika,'Trebuchet MS',Verdana,Arial,sans-serif;color:${NL_C.ink};font-size:16px;line-height:1.6">
     <tr><td class="pad" style="padding:28px 16px 18px"><div style="font-size:12px;letter-spacing:2px;color:${NL_C.muted};font-weight:bold">FULTON COMMUNITY SCHOOL &amp; FARM</div>
       <h1 style="font-size:30px;line-height:1.2;color:${NL_C.moss};margin:8px 0 0">${esc(title)}</h1>${toc}</td></tr>
     ${cards.join("")}
