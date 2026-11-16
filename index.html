@@ -5264,7 +5264,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="24d799b063c2";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="b707ecc6a479";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -12068,7 +12068,7 @@ function drdpReportDocs(room){const {rows,rooms}=drData();const doms=DR_ORDER.fi
 /* ---------- Food at Fulton, made for the school ----------
    Farm to School does work for the school from what TREE already holds. Each piece waits for the director before it
    leaves the school. Nothing here invents a farm, a number or a child's words. */
-const F2S_FUND="Fulton Community School & Farm's Farm to School work is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
+const F2S_FUND="Our food is made possible by the California Farm to School Incubator Grant Program of the California Department of Food and Agriculture, Office of Farm to Fork, through June 2027.";
 const mShift=(m,k)=>{const [y,mo]=m.split("-").map(Number);const d=new Date(y,mo-1+k,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")};
 const mNow=()=>iso(new Date()).slice(0,7);
 // food education in the observations, the ones the director marked Counts first, then everything the food words found
