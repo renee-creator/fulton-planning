@@ -357,6 +357,8 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     if (busy) throw new Error('TREE is reading Kaymbu right now. Try again in a few minutes.');
     const lb = stateDoc().lookback || {};
     if (['approved', 'running', 'paused'].includes(lb.status)) throw new Error('The look back has already started.');
+    // a finished look back stays finished, so it is never run and paid for twice (November 15, 2026)
+    if (lb.status === 'done') throw new Error('The look back is finished.');
     saveState({ lookback: Object.assign({}, lb, { since: lb.since || since(), status: 'counting', lastError: '' }) });
     estimate().catch(e => { saveState({ lookback: Object.assign({}, stateDoc().lookback, { status: 'none', lastError: String(e.message || e).slice(0, 300) }) }); log('The Kaymbu look back could not be counted', e.message); });
   }
@@ -377,6 +379,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const lb = stateDoc().lookback || {};
     if (!lb.estimate) throw new Error('Count the look back first.');
     if (lb.status === 'running' || lb.status === 'approved') return stateDoc();
+    if (lb.status === 'done') throw new Error('The look back is finished.');
     return saveState({ lookback: Object.assign({}, lb, { status: 'approved', approvedBy: by, approvedAt: Date.now(), done: blank(), cursor: 0 }) });
   }
   function pause(on) { const lb = stateDoc().lookback || {}; if (!['approved', 'running', 'paused'].includes(lb.status)) return stateDoc();
@@ -663,7 +666,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     return { status: d.status || 'none', photos: plan.length, left: left.length, done: plan.length - left.length, children: new Set(plan.flatMap(p => p.kids)).size,
       oldest: plan.length ? plan[0].day : '', newest: plan.length ? plan[plan.length - 1].day : '', perMonth: EARLY_PER_MONTH, startedAt: d.startedAt || 0, finishedAt: d.finishedAt || 0, found: d.found || 0 };
   }
-  function earlyStart(who) { const d = earlyDoc(); if (!earlyPlan().length) throw new Error('No earlier photos are kept yet. Keep them in Drive first.'); saveEarly(Object.assign(d, { status: 'reading', startedAt: d.startedAt || Date.now(), by: who || '' })); }
+  function earlyStart(who) { const d = earlyDoc(); if (d.status === 'done') throw new Error('The earlier years are read.'); if (!earlyPlan().length) throw new Error('No earlier photos are kept yet. Keep them in Drive first.'); saveEarly(Object.assign(d, { status: 'reading', startedAt: d.startedAt || Date.now(), by: who || '' })); }
   function earlyPause(on) { const d = earlyDoc(); if (d.status === 'reading' || d.status === 'paused') saveEarly(Object.assign(d, { status: on ? 'paused' : 'reading' })); }
   // the next photo to read, or none once every chosen photo is read
   // Each photo is handed to one computer at a time, for five minutes, so two computers open as the director never read

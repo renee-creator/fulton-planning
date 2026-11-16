@@ -1102,3 +1102,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - A note from you starts with What I want to say. Write it from my words keeps her points first, in her order, and adds a detail from the school only where it helps (November 15, 2026).
 - From our farms names the fruits and vegetables the children were served, with the count, and keeps the staples, FEED bin and educators' words when farms are highlighted (November 15, 2026).
 - Each book in a letter reads what it is about first, then why it fits now, which names the book's idea and where the children met it. The note is warmer, with one or two moments that show the director's point, and sits in its own warm card in the email (November 15, 2026).
+
+- Finished Kaymbu jobs stay finished. Once the look back or the earlier-years DRDP reading is done, the server refuses to start it again and Settings shows only the finish line, with its date (November 15, 2026).
