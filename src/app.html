@@ -11777,6 +11777,7 @@ function renderInquiry(x){
     ${looks.length?`<div class="evid">${looks.map(o=>`<div style="white-space:pre-line">${esc(o.text)}<span class="src">${shortDate(o.at)}${o.by?" · "+esc(o.by):""}</span></div>`).join("")}</div>`:""}
     ${inqTimeline(x).length>2?`<details><summary class="chiprow-label" style="cursor:pointer">How our thinking has moved</summary><div class="evid" style="margin-top:8px">${inqTimeline(x).map(e=>`<div><span class="cnt">${esc(e.what)}</span><div style="white-space:pre-line">${esc(e.text)}</div><span class="src">${shortDate(e.at)}${e.by?" · "+esc(e.by):""}</span></div>`).join("")}</div></details>`:""}</section>`;
 
+  h+=iqReadingsHtml(x);
   h+=`<section class="card"><div class="lbl">Connected work</div>
     <div class="hint">What feeds this inquiry, and where it reaches.</div>
     <div class="chiprow-label">Threads</div>
@@ -11927,6 +11928,29 @@ function iqAssistUse(x,key){if(!iqCan())return;const sk=x.id+"|"+key,sg=iqSug[sk
   else if(k==="try"){if(id){const o=(x.tries||[]).find(t=>t.id===id);if(o)o.text=v}else x.tries=[...(x.tries||[]),{id:uid(),text:v,by,at:now,curriculum:false,result:""}]}
   else x[k]=v;
   delete iqSug[sk];saveInquiry(x);renderMain();toast("Kept. Edit it into the team's words as you talk it through.")}
+/* Readings on an inquiry, for the team and for families, matched to what it is about and to the children's ages. TREE
+   looks first in our own reading library and the family articles kept from newsletters, which costs nothing, and the
+   team keeps the ones that fit. Kept readings stay on the inquiry with a line on why (November 16, 2026). */
+const IQ_AGE_SAY=m=>{const y=Math.floor(m/12),mo=m%12;return mo>=6?`${y} and a half`:`${y}`};
+function iqAges(x){const ms=[];for(const id of x.obs||[]){const n=notices.get(id);for(const cid of (n&&n.children)||[]){const m=kidMonths(children.get(cid));if(m!=null)ms.push(m)}}
+  let from="the children in this inquiry";
+  if(!ms.length){for(const c of children.values())if(!c.deleted&&!c.left&&(c.classroom===x.room)){const m=kidMonths(c);if(m!=null)ms.push(m)}from=x.room?`the ${x.room} class`:"the school"}
+  if(!ms.length)return null;const lo=Math.min(...ms),hi=Math.max(...ms);
+  return {lo,hi,from,say:IQ_AGE_SAY(lo)===IQ_AGE_SAY(hi)?`about ${IQ_AGE_SAY(lo)}`:`${IQ_AGE_SAY(lo)} to ${IQ_AGE_SAY(hi)}`}}
+function iqWords(x){return bagWords([x.name,x.see,x.whenwhere,x.relation,...(x.hyps||[]).map(h=>h.text)].filter(Boolean).join(" "))}
+function iqLibMatch(x,kind){const W=iqWords(x),kept=new Set((x.readings||[]).map(r=>r.url||r.title));
+  const pool=kind==="team"?(gsPd.readings||[]).map(r=>({title:r.title,url:r.url||"",source:r.source||"",why:r.why||r.supports||"",text:[r.title,r.supports,r.why,(r.areas||[]).join(" "),(r.modules||[]).join(" ")].join(" ")}))
+    :(((newsletters.get("library")||{}).items)||[]).map(i=>({title:i.title,url:i.url||"",source:i.source||"",why:i.why||i.note||"",text:[i.title,i.note,(i.tags||[]).join(" ")].join(" ")}));
+  return pool.filter(r=>r.title&&!kept.has(r.url||r.title)).map(r=>({r,n:[...bagWords(r.text)].filter(w=>W.has(w)).length})).filter(o=>o.n>=2).sort((a,b)=>b.n-a.n).slice(0,3).map(o=>o.r)}
+function iqReadingsHtml(x){const ages=iqAges(x),L=x.readings||[];
+  if(!gsPd.asked)gsPdLoad().then(()=>{if(view==="inquiries"&&inqId===x.id&&!document.activeElement?.closest?.("#main"))renderMain()});
+  const row=(r,i)=>`<div class="ref"><div><a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.title)}</b></a>${r.source?` <span class="cnt">${esc(r.source)}</span>`:""}</div>${r.why?`<div class="cnt">${esc(r.why)}</div>`:""}${iqCan()?`<div class="actions"><button class="linkbtn" data-iqrdrm="${i}">Take out</button></div>`:""}</div>`;
+  const lib=(kind)=>{const M=iqLibMatch(x,kind);return M.length&&iqCan()?`<div class="chiprow-label" style="margin-top:6px">From our library</div>${M.map((r,j)=>`<div class="actions"><span>${esc(r.title)}${r.source?` <span class="cnt">${esc(r.source)}</span>`:""}</span><button class="linkbtn" data-iqrdkeep="${kind}|${j}">Keep</button></div>`).join("")}`:""};
+  const part=(kind,label)=>{const mine=L.map((r,i)=>[r,i]).filter(([r])=>r.for===kind);return `<div class="chiprow-label" style="margin-top:8px">${label}</div>${mine.length?mine.map(([r,i])=>row(r,i)).join(""):`<div class="cnt">None kept yet.</div>`}${lib(kind)}`};
+  return `<section class="card" id="iqreadings"><div class="lbl">Readings</div>
+    <div class="hint">${ages?`Chosen for children ${ages.say}, the ages of ${esc(ages.from)}.`:"Chosen for what this inquiry is about."}</div>
+    ${part("team","For the team")}${part("family","For families")}
+    ${iqCan()?`<details style="margin-top:8px"><summary class="linkbtn">Add a reading</summary><label class="fld-label">Title<input type="text" id="iqrd-title"></label><label class="fld-label">Link<input type="url" id="iqrd-url" placeholder="https://"></label><label class="fld-label">Why it fits<input type="text" id="iqrd-why"></label><label class="cnt">For <select id="iqrd-for" style="width:auto"><option value="team">the team</option><option value="family">families</option></select></label><div class="actions"><button class="btn small" data-iqrdadd="1">Add it</button></div></details>`:""}</section>`}
 async function inquiriesClick(t){
   const d=t.dataset;
   if(d.iqopen){openInquiry(d.iqopen);return true}
@@ -11960,6 +11984,11 @@ async function inquiriesClick(t){
   if(d.iqtadd){x.tries=[...(x.tries||[]),{id:uid(),text:"",by,at:now,curriculum:false,result:""}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll('[data-iqt$="|text"]');if(ts.length)ts[ts.length-1].focus();return true}
   if(d.iqtrm){x.tries=(x.tries||[]).filter(o=>o.id!==d.iqtrm);saveInquiry(x);renderMain();return true}
   if(d.iqfam){const v=($("#iq-fam")?.value||"").trim();if(!v){toast("Write what was shared first.");return true}x.family=[...(x.family||[]),{id:uid(),text:v,conference:!!$("#iq-famconf")?.checked,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
+  if(d.iqrdkeep){if(!iqCan())return true;const [kind,j]=d.iqrdkeep.split("|");const r=iqLibMatch(x,kind)[+j];if(!r)return true;x.readings=[...(x.readings||[]),{id:uid(),for:kind,title:r.title,url:r.url,source:r.source,why:r.why,at:Date.now(),by:whoAmI()}];saveInquiry(x);renderMain();toast("Kept on the inquiry.");return true}
+  if(d.iqrdrm!=null&&d.iqrdrm!==undefined){if(!iqCan())return true;const L=[...(x.readings||[])];L.splice(+d.iqrdrm,1);x.readings=L;saveInquiry(x);renderMain();toast("Taken out.");return true}
+  if(d.iqrdadd){if(!iqCan())return true;const title=($("#iqrd-title")?.value||"").trim(),url=($("#iqrd-url")?.value||"").trim(),why=($("#iqrd-why")?.value||"").trim(),kind=$("#iqrd-for")?.value==="family"?"family":"team";
+    if(!title||!/^https:\/\//.test(url)){toast("Add a title and a link that starts with https.");return true}
+    x.readings=[...(x.readings||[]),{id:uid(),for:kind,title,url,source:(()=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch(e){return ""}})(),why,at:Date.now(),by:whoAmI()}];saveInquiry(x);renderMain();toast("Added.");return true}
   if(d.iqfamrm){if(!isDirector()||!confirm("Remove this conversation from the inquiry?"))return true;x.family=(x.family||[]).filter(f=>f.id!==d.iqfamrm);saveInquiry(x);renderMain();return true}
   if(d.iqlook){const v=($("#iq-look")?.value||"").trim();if(!v){toast("Write what the team saw first.");return true}x.looks=[...(x.looks||[]),{id:uid(),text:v,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
   if(d.iqobrm){x.obs=(x.obs||[]).filter(id=>id!==d.iqobrm);saveInquiry(x);renderMain();return true}

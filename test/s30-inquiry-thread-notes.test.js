@@ -22,5 +22,12 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   // one note, kept on the thread, so a change shows on the inquiry
   await s.p.evaluate(() => { const th = threads.get('t1'); th.notes = 'Changed on the thread.'; openInquiry('q1'); });
   await s.p.waitForFunction(() => /Changed on the thread\./.test((document.querySelector('.iqtnotes') || {}).textContent || ''));
+  // readings, for the team and for families, kept on the inquiry
+  await s.p.waitForSelector('#iqreadings', { timeout: 15000 });
+  assert.match(await s.p.textContent('#iqreadings'), /For the team[\s\S]*For families/);
+  await s.p.evaluate(() => { document.querySelector('#iqreadings details').open = true; document.getElementById('iqrd-title').value = 'Taming Transitions'; document.getElementById('iqrd-url').value = 'https://example.org/transitions'; document.getElementById('iqrd-for').value = 'family'; document.querySelector('[data-iqrdadd]').click(); });
+  await s.p.waitForFunction(() => (inquiries.get('q1').readings || []).length === 1);
+  assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').readings[0].for), 'family');
+  assert.match(await s.p.textContent('#iqreadings'), /Taming Transitions/);
   assert.deepStrictEqual(s.errors, []);
 });

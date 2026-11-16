@@ -1116,3 +1116,5 @@ Observe TREE is a small page only for taking an observation, at https://renee-cr
 - Book bag connections match on topic words only, at least two, and name the plan or observation each book fits, with its class, day and the words as written. The director can write or change how a book connects on its bag card, and the report prints her words first (November 16, 2026).
 
 - An inquiry being written stays as it is on that device until its words have saved. Live updates no longer put back older words or drop a newly started inquiry, and the page is not redrawn while words wait to save (November 16, 2026).
+
+- Each inquiry has Readings, for the team and for families, chosen for what it is about and for the children's ages (from the birth dates of the children in its observations, or its class). TREE offers matches from our reading library and the family articles kept from newsletters, at no cost, and the team keeps the ones that fit or adds its own (November 16, 2026).
