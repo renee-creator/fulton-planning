@@ -7479,6 +7479,9 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
     return `<div style="margin:4px 0 10px;font-size:0">${L.map(cell).join("")}</div>`};
   const B=nlBlocks(x),cards=[];
   for(const b of B){let inner=`<h2 style="font-size:22px;line-height:1.25;color:${NL_C.moss};margin:0 0 12px">${nlEsc(b.h)}</h2>`;
+    // the director's note reads as a personal letter, in its own warm card with her sign-off on its own lines
+    if(b.note){const so=nlSignoff().split("\n").filter(l=>l.trim());const body=String(x.note||"").trim();
+      cards.push(`<tr><td class="pad" style="padding:0 16px 16px"><div class="card" style="background:${NL_C.warm};border:1px solid ${NL_C.line};border-radius:14px;padding:24px 24px 12px"><h2 style="font-size:22px;line-height:1.25;color:${NL_C.moss};margin:0 0 12px">${nlEsc(b.h)}</h2><div style="font-size:17px;line-height:1.65">${nlEParas(body)}</div><div style="font-size:17px;line-height:1.5;margin:6px 0 12px">${so.map(nlEsc).join("<br>")}</div></div></td></tr>`);continue}
     if(b.topic){const t=b.topic;inner+=await photos(t.photos);if(t.happening)inner+=nlEParas(t.happening);
       if(t.why&&!short)inner+=nlESub("Why it matters")+nlEParas(t.why);
       if((t.grows||[]).length&&!short)inner+=nlESub("How it grows")+t.grows.map(g=>`<div style="margin:0 0 10px;padding:10px 12px;background:${NL_C.soft};border-radius:8px"><b style="color:${NL_C.moss}">${nlEsc(g.age)}.</b> ${nlEsc(g.text)}</div>`).join("");
@@ -7488,7 +7491,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
     else if(b.books){for(const bk of b.books){const s=bk.cover?await src({cover:bk.cover}):"";
       inner+=`<div style="margin:0 0 18px;padding:14px;background:${NL_C.soft};border-radius:10px;overflow:hidden">${s?`<img src="${s}" alt="" width="90" style="float:left;width:90px;height:auto;margin:0 14px 6px 0;border-radius:4px">`:""}
         <div style="font-size:18px;font-weight:bold;line-height:1.3">${esc(bk.title)}</div>${bk.author?`<div style="color:${NL_C.muted};margin:2px 0 8px">${esc(bk.author)}</div>`:""}
-        ${bk.fits?nlEP(esc(bk.fits)):""}${bk.why?nlEP(esc(bk.why)):""}${bk.wonder?nlEP(`<b>Wonder together.</b> ${esc(bk.wonder.replace(/\n+/g," "))}`):""}
+        ${bk.why?nlEP(esc(bk.why)):""}${bk.fits?nlEP(esc(bk.fits)):""}${bk.wonder?nlEP(`<b>Wonder together.</b> ${esc(bk.wonder.replace(/\n+/g," "))}`):""}
         <div style="clear:both">${nlEBtn(bk.lib,"Borrow from the library")}${nlEBtn(bk.shop,"Buy from our bookshop")}</div></div>`}}
     else if(b.h==="Try at home"&&(b.home||b.reading)){const hm=b.home;if(hm&&hm.text)inner+=`${hm.title?`<div style="font-size:18px;font-weight:bold;margin:0 0 8px">${nlEsc(hm.title)}</div>`:""}${nlEParas(hm.text)}`;
       for(const r of b.reading||[])inner+=nlEP(`<a href="${esc(r.url)}" style="color:${NL_C.link};font-weight:bold">${esc(r.title)}</a>${r.source?`<br><span style="color:${NL_C.muted};font-size:14px">${esc(r.source)}</span>`:""}`)}
@@ -7508,7 +7511,7 @@ async function nlEmail(x,forSend,short){await nlPhotos(x);const images=[],seen=n
     ${cards.join("")}
     <tr><td class="pad" style="padding:8px 16px 36px;font-size:14px;color:${NL_C.muted};text-align:center">${fam}${B.some(b=>b.books)?`<div style="margin-top:10px;font-size:13px">Our book links go to Bookshop.org, which supports independent bookstores. A small share of each purchase supports Fulton Community School &amp; Farm.</div>`:""}<div style="margin-top:10px">Fulton Community School &amp; Farm<br>1225 Fulton Road, Santa Rosa, CA 95401</div></td></tr>
     </table></td></tr></table></body></html>`;
-  const text=[title,"",...B.map(b=>b.coming?nlTxt(b.h)+"\n\n"+nlTxt(b.text)+"\n\nSee the whole school calendar.\n"+NL_CAL_URL:b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.fits,bk.why,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.h)+"\n\n"+nlTxt(b.text)),B.some(b=>b.books)?"Our book links go to Bookshop.org, which supports independent bookstores. A small share of each purchase supports Fulton Community School & Farm.":"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
+  const text=[title,"",...B.map(b=>b.coming?nlTxt(b.h)+"\n\n"+nlTxt(b.text)+"\n\nSee the whole school calendar.\n"+NL_CAL_URL:b.books?["Books to share",...b.books.map(bk=>[bk.title+(bk.author?", "+bk.author:""),bk.why,bk.fits,bk.wonder?"Wonder together. "+bk.wonder.replace(/\n+/g," "):"","Borrow it. "+bk.lib,"Buy it. "+bk.shop].filter(Boolean).join("\n"))].join("\n\n"):nlTxt(b.h)+"\n\n"+nlTxt(b.text)),B.some(b=>b.books)?"Our book links go to Bookshop.org, which supports independent bookstores. A small share of each purchase supports Fulton Community School & Farm.":"","Fulton Community School & Farm, 1225 Fulton Road, Santa Rosa, CA 95401"].join("\n\n");
   return {html,text,images}}
 // farm names in the farm part link to each farm's own site, from the director's list of farm sites
 function nlFarmLinks(h){const L=nlFarmSites();for(const [name,url] of Object.entries(L)){if(!name||!url)continue;const re=new RegExp("(^|[^\\w>])("+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")(?![^<]*</a>)","g");h=h.replace(re,(m,a,n)=>`${a}<a href="${esc(url)}" style="color:${NL_C.link}">${n}</a>`)}return h}
@@ -7555,7 +7558,7 @@ async function nlDraftFits(x,btn){const L=x.books||[];if(!L.length)return;const 
   const obs=(nlIsMid(x)?nlRecentObs(14,nlRange(x)):nlRecentObs(31)).slice(-40);
   const prompt=`${nlRules(false)}
 
-For each book below, write one or two sentences for families on why this book fits right now, connecting it to what the children have been exploring. Name the connection plainly, such as the goats, puddles or color mixing, and do not repeat the book's own description.
+For each book below, write one or two sentences for families on why this book fits right now. Start from the book's big idea, such as helping, sharing or keeping warm, and then tell plainly where the children met the same idea at school, with one specific moment. The reader should see the link in a single reading, such as "This story is about helping. At nature soup, children held the containers steady so a friend could pour." Never retell an observation without naming how it connects to the book, and do not repeat the book's own description.
 What is happening now. ${now.join(" / ")||"See the observations."}
 Recent observations. ${obs.map(o=>o.noticed.replace(/\n+/g," ")).join(" / ").slice(0,6000)}
 
@@ -7588,7 +7591,7 @@ async function nlDraftNote(x,btn){const idea=String(x.noteIdea||"").trim();if(!i
   const ctx=[...(x.highlights||[]).map(h=>h.text),...(x.topics||[]).map(t=>t.title+". "+(t.happening||""))].filter(Boolean);
   const prompt=`${nlRules(false)}
 
-Write the director's note to families from her own words below, in her voice, as "we" and "I" the way she wrote them. Her points come first, in her order, and every one of them stays. Keep her wording where it works and only make it clear and complete. Add a detail from what happened at school only where it makes one of her points clearer or more true, such as what the children found or did. Do not summarize the rest of the ${mid?"note":"newsletter"}, do not list books, ideas or dates, and do not add points she did not make. Three or four short sentences in all. Do not sign it.
+Write the director's note to families from her own words below, warm and personal, in her voice as "we" and "I" the way she wrote them. Open with her own point. Then add one or two specific moments from the last weeks that show what she means, what the children did, said or discovered, told with care so families can picture it. End with one warm line to families. Every point of hers stays, in her order, and her wording stays where it works. Do not summarize the rest of the ${mid?"note":"newsletter"}, do not list books, ideas or dates, and do not add points she did not make. Four or five short sentences in all. Do not sign it.
 
 Her words.
 ${idea}
@@ -7847,7 +7850,7 @@ function nlBlocks(x){
     if((t.tips||[]).length){p.push("Ideas to try at home");for(const tp of t.tips)p.push(nlTxt(`${tp.lead} ${tp.text}`).trim())}
     B.push({h:t.title,topic:t,text:p.join("\n").replace(/\n{3,}/g,"\n\n").trim(),photos:t.photos||[]});
   }
-  if((x.books||[]).length)B.push({h:"Books to share",books:x.books,text:x.books.map(b=>[b.title+(b.author?", "+b.author:""),b.fits,b.why,b.wonder?"Wonder together. "+b.wonder.replace(/\n+/g," "):"","Borrow it from Sonoma County Library.\n"+b.lib,"Buy it from our Bookshop.org shop.\n"+b.shop].filter(Boolean).join("\n")).join("\n\n"),photos:x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:b.title}))});
+  if((x.books||[]).length)B.push({h:"Books to share",books:x.books,text:x.books.map(b=>[b.title+(b.author?", "+b.author:""),b.why,b.fits,b.wonder?"Wonder together. "+b.wonder.replace(/\n+/g," "):"","Borrow it from Sonoma County Library.\n"+b.lib,"Buy it from our Bookshop.org shop.\n"+b.shop].filter(Boolean).join("\n")).join("\n\n"),photos:x.books.filter(b=>b.cover).map(b=>({cover:b.cover,cap:b.title}))});
   if(nlIsMid(x)&&(x.home&&String(x.home.text||"").trim()||(x.homeReading||[]).length))B.push({h:"Try at home",home:x.home||null,reading:x.homeReading||[],text:[x.home&&x.home.text?(x.home.title?x.home.title+"\n":"")+x.home.text:"",...(x.homeReading||[]).map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`)].filter(Boolean).join("\n\n")});
   if((x.reading||[]).length)B.push({h:"For families who want to read more",reading:x.reading,text:x.reading.map(r=>`${r.title}${r.source?", "+r.source:""}\n${r.url}`).join("\n\n")});
   const sch=(x.school||[]).map(s=>s.text.trim()).filter(Boolean);
