@@ -1279,6 +1279,7 @@ module.exports = function staffModule(o) {
     s69RecognizableFaces: ['code:once/s69-recognizable-faces.json', 'Photographing Documentation public rule becomes no recognizable faces, November 11, 2026'],
     s71DrdpAugust: ['code:once/s71-drdp-august.json', 'The DRDP (2025) links point to the state file of August 20, 2026, November 14, 2026'],
     s72PhotoOverview: ['code:once/s72-photo-overview.json', 'Photographing Documentation, a shorter Reading on the Overview tab, November 15, 2026'],
+    s73PlaySchemas: ['code:once/s73-play-schemas.json', 'Play schemas, two new Idea bank needs and cards, a visual in The Study of Play and three readings, November 17, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

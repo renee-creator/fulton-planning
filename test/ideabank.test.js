@@ -14,7 +14,7 @@ test('the records are seeded once from the approved file', async () => {
   const h = await loaded(PEOPLE);
   const r = await call(h.staff, 'Ann', 'ideabank');
   assert.strictEqual(r.status, 200); assert.strictEqual(r.body.cards.length, SEED.cards.length); assert.strictEqual(r.body.behaviors.length, 49);
-  assert.strictEqual(r.body.needs.length, 13); assert.strictEqual(r.body.supports.length, 13); assert.strictEqual(r.body.levels.length, 5);
+  assert.strictEqual(r.body.needs.length, 15); assert.strictEqual(r.body.supports.length, 13); assert.strictEqual(r.body.levels.length, 5);
   await wait(1500); assert.ok(h.writes.some(w => /staff\/library\/ideabank\/cards\.json$/.test(w)) && h.writes.some(w => /behaviors\.json$/.test(w)), 'both are written to the records');
   assert.strictEqual((await call(h.staff, 'Kit', 'ideabank')).status, 403, 'the kitchen does not receive it');
   // records already there are read as they are, and nothing is seeded over them
@@ -50,7 +50,7 @@ test('the director edits a card with history and Restore this version', async ()
   r = await call(h.staff, 'Dee', 'page/save', { path: P, item: 'clay', parts, note: 'Shorter', stamp: r.body.stamp });
   assert.strictEqual(r.status, 200); assert.strictEqual(r.body.page.history.length, 1);
   assert.strictEqual((await call(h.staff, 'Ann', 'ideabank')).body.cards.find(c => c.id === 'clay').summary, 'A block of clay for many hands.');
-  // what a card feeds keeps to the thirteen needs
+  // what a card feeds keeps to the fifteen needs
   const bad = r.body.page.parts.map(p => ({ body: p.body })); bad[r.body.page.parts.findIndex(p => /^What it feeds/.test(p.heading))].body = 'Being loud';
   const no = await call(h.staff, 'Dee', 'page/save', { path: P, item: 'clay', parts: bad, note: 'x', stamp: r.body.page.stamp });
   assert.strictEqual(no.status, 400); assert.match(no.body.error, /does not know/);

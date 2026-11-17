@@ -866,6 +866,9 @@ ONCE.push(['s69RecognizableFaces', () => staff.once.edits('s69RecognizableFaces'
 ONCE.push(['s71DrdpAugust', () => staff.once.edits('s71DrdpAugust', recsEdit)]);
 // Photographing Documentation, a shorter Reading on the Overview tab, with the full Reading kept in In depth, November 15, 2026
 ONCE.push(['s72PhotoOverview', () => staff.once.edits('s72PhotoOverview', recsEdit)]);
+// Play schemas, positioning and orientation join the Idea bank needs with a card each, a visual of the nine schemas in
+// The Study of Play, and three readings on schemas, November 17, 2026
+ONCE.push(['s73PlaySchemas', () => staff.once.edits('s73PlaySchemas', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
@@ -2497,6 +2500,8 @@ const NEED_WORDS = {
   'Carrying and moving things (transporting schema)': ['carry', 'carried', 'carrying', 'wagon', 'bucket', 'buckets', 'basket', 'wheelbarrow', 'transport', 'transported', 'hauled', 'hauling', 'moved', 'moving', 'load', 'loaded', 'loading'],
   'Joining and separating (connecting schema)': ['connect', 'connected', 'connecting', 'join', 'joined', 'joining', 'tie', 'tied', 'tying', 'tape', 'taped', 'glue', 'glued', 'attach', 'attached', 'link', 'linked', 'track', 'tracks', 'chain', 'apart', 'separate', 'separated'],
   'Spinning and rolling (rotation schema)': ['spin', 'spun', 'spinning', 'roll', 'rolled', 'rolling', 'twirl', 'twirled', 'twirling', 'wheel', 'wheels', 'turn', 'turned', 'turning', 'round', 'circle', 'circles'],
+  'Lining up and arranging (positioning schema)': ['line up', 'lined up', 'lining up', 'in a line', 'in a row', 'rows', 'arrange', 'arranged', 'arranging', 'sort', 'sorted', 'sorting', 'pattern', 'patterns', 'on top of', 'underneath'],
+  'Seeing from new angles (orientation schema)': ['upside down', 'hang', 'hanging', 'hung', 'flip', 'flipped', 'flipping', 'headstand', 'between their legs', 'between his legs', 'between her legs', 'look through', 'looked through', 'lying under', 'lay under', 'look down', 'looked down'],
   'Height and risk (risky play)': ['climb', 'climbed', 'climbing', 'jump', 'jumped', 'jumping', 'high', 'higher', 'tall', 'ladder', 'balance', 'balanced', 'balancing', 'edge', 'swing', 'swung', 'swinging', 'leap', 'leaped', 'risk'],
   'Power and being capable (competence)': ['myself', 'by myself', 'i can', 'i did it', 'strong', 'big kid', 'help', 'helped', 'helping', 'job', 'jobs', 'capable', 'proud', 'try again', 'tried again'],
   'Belonging and having a place (attachment and belonging)': ['friend', 'friends', 'together', 'join', 'belong', 'belongs', 'my turn', 'left out', 'alone', 'lonely', 'miss', 'missed', 'mama', 'mommy', 'daddy', 'papa', 'family', 'welcome', 'included'],

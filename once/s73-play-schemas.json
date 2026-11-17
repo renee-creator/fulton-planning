@@ -1,0 +1,394 @@
+{
+ "name": "s73PlaySchemas",
+ "note": "Play schemas, two new Idea bank needs and cards, a visual in The Study of Play and three readings, November 17, 2026",
+ "changes": [
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "add": "cards",
+   "value": {
+    "id": "lining-up-and-arranging",
+    "type": "interest",
+    "group": "Children's interests",
+    "title": "Lining up and arranging",
+    "summary": "Ideas for children who line things up, sort them and set them just so, with sets of loose parts, blocks, trays and garden finds.",
+    "sections": [
+     {
+      "h": "What it might look like",
+      "style": "text",
+      "text": "Children line up cars, animals or shoes in long rows. They set things on top of, under or beside each other, keep foods apart on the plate, and arrange the same objects again and again. A child may say \"Don't move it!\" Lining up is often a child exploring order, pattern and where things belong."
+     },
+     {
+      "h": "Invitations",
+      "style": "bullets",
+      "items": [
+       "Baskets of sets, such as shells, acorns, stones and wooden rings, with a long cloth or board to lay them out.",
+       "Unit blocks and planks for roads and long lines across the floor.",
+       "Muffin tins, egg cartons and ice cube trays with one spot for each object.",
+       "Leaves, petals and seed pods from the garden laid out in rows and circles.",
+       "A tray of loose parts that children arrange, photograph and arrange again (transient art).",
+       "Measuring with lines of objects, such as \"How many acorns long is the bench?\"",
+       "Real photos at children's eye level of rows in nature and in the garden."
+      ]
+     },
+     {
+      "h": "Together or alone",
+      "style": "text",
+      "text": "Both. Arranging is often focused solo work, and a long line across the floor can turn into a group project."
+     },
+     {
+      "h": "Good to know",
+      "style": "text",
+      "text": "An arrangement is the child's work. Ask before moving it, and help friends find room around it. When a change to an order is very hard for a child, notice it and talk it over as a team."
+     },
+     {
+      "h": "The child's role",
+      "style": "bullets",
+      "items": [
+       "Choose what goes in the line and where it ends.",
+       "Decide when it is finished.",
+       "Photograph the arrangement before it changes.",
+       "Invite a friend to add to it or start one beside it.",
+       "Put each set back in its basket."
+      ]
+     },
+     {
+      "h": "Closing it together",
+      "style": "text",
+      "text": "Children photograph their arrangement, then sort each set back into its basket, shells with shells and rings with rings. Sorting the sets away is part of the arranging, so the space closes as the work ends."
+     },
+     {
+      "h": "Your presence",
+      "style": "text",
+      "text": "Sit beside the line at the child's level and watch before you speak. Describe what you see without naming a right order."
+     },
+     {
+      "h": "Wondering alongside",
+      "style": "lines",
+      "items": [
+       "I wonder where your line is going.",
+       "What made you put this one here?",
+       "What do you see that makes you say that?"
+      ]
+     },
+     {
+      "h": "Ways it can grow",
+      "style": "numbered",
+      "items": [
+       "Offer more of the same objects for longer lines.",
+       "Add a second kind of object for patterns.",
+       "Make lines outdoors with sticks and stones.",
+       "Draw the line as a map.",
+       "Count and compare lines."
+      ]
+     }
+    ],
+    "feeds": [
+     "Lining up and arranging (positioning schema)",
+     "Steadying the body and feelings (self-regulation)",
+     "Power and being capable (competence)"
+    ],
+    "setting": {
+     "level": "Open to all",
+     "why": "Sets of loose parts, blocks and trays are open to everyone. Very small pieces stay away from the 2s."
+    },
+    "supports": [
+     "Seeing and judging space (visual-spatial)",
+     "Hand strength and grasp (fine motor)",
+     "Calming and alerting (self-regulation)"
+    ],
+    "seeks": "For a child who seeks more, offer bigger sets and longer spaces, such as a line of logs or tires across the yard, and heavy pieces to carry and place.",
+    "avoids": "For a child who finds it too much, offer a small tray with a few pieces and a quiet spot where the arrangement can stay untouched.",
+    "connected": [
+     "Loose parts",
+     "Loose parts on a cloth",
+     "Collecting and treasure",
+     "Building tall",
+     "Maps and journeys"
+    ],
+    "home": {
+     "title": "Lining up and arranging at Home",
+     "sections": [
+      {
+       "h": "What you need",
+       "style": "text",
+       "text": "Small things from around the house or yard, such as spoons, lids, buttons, stones, leaves or toy cars, and a muffin tin or egg carton."
+      },
+      {
+       "h": "Ways to try it",
+       "style": "bullets",
+       "items": [
+        "Line up toy cars or shoes along the hallway.",
+        "Sort buttons, lids or stones into a muffin tin.",
+        "Lay out leaves or stones from smallest to biggest.",
+        "Set the table together, one plate and one spoon for each person.",
+        "Make a pattern on the floor and take a photo before it changes."
+       ]
+      },
+      {
+       "h": "Your child's role",
+       "style": "text",
+       "text": "Your child chooses what to line up and when it is finished. Ask before moving it. Your child can put each set back in its own box or basket, which is sorting too."
+      },
+      {
+       "h": "Wonder together",
+       "style": "lines",
+       "items": [
+        "Where does your line end?",
+        "What could come next in your pattern?",
+        "I wonder how many spoons long the table is."
+       ]
+      },
+      {
+       "h": "What your child is learning",
+       "style": "text",
+       "text": "Your child is learning about order, pattern, sorting and where things belong, which are early math ideas. Arranging things just so can also help a child feel calm."
+      },
+      {
+       "h": "Bring it to school",
+       "style": "text",
+       "text": "Send a photo of something your child lined up or arranged. Clean lids, corks and buttons for our sets are welcome too. This counts toward your family participation hours."
+      },
+      {
+       "h": "Good to know",
+       "style": "text",
+       "text": "Keep very small pieces away from younger brothers and sisters."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "path": "staff/library/ideabank/cards.json",
+   "add": "cards",
+   "value": {
+    "id": "seeing-from-new-angles",
+    "type": "interest",
+    "group": "Children's interests",
+    "title": "Seeing from new angles",
+    "summary": "Ideas for children who hang upside down, look through their legs and climb up to look down, with mirrors, tubes, hammocks and lookouts.",
+    "sections": [
+     {
+      "h": "What it might look like",
+      "style": "text",
+      "text": "Children hang upside down from a low branch, look at the room through their legs, lie under tables and look up, and climb high to look down. They tilt their heads, peer through tubes and turn pictures sideways. A child may say \"Everything's upside down!\""
+     },
+     {
+      "h": "Invitations",
+      "style": "bullets",
+      "items": [
+       "A low bar or sturdy branch over soft ground for hanging and flipping.",
+       "Hammocks and the willow dome for lying back and looking up.",
+       "Mirrors at many angles, including on the floor and the ceiling of a den.",
+       "Cardboard tubes, viewfinders, magnifiers and colored film to look through.",
+       "A child-held camera, with the child choosing to shoot from up high or down low.",
+       "Drawing the yard or the room from above (a bird's-eye view map).",
+       "Lookouts on climbing structures with a clipboard to draw what they see."
+      ]
+     },
+     {
+      "h": "Together or alone",
+      "style": "text",
+      "text": "Both. Hanging and looking is often a quiet, solo study, and children love to call friends over to \"come see from here.\""
+     },
+     {
+      "h": "Good to know",
+      "style": "text",
+      "text": "Hanging and flipping need soft ground and an educator nearby. Children choose how high they go and when to come down. Some children seek being upside down to feel their body in space (vestibular input), so offer it freely."
+     },
+     {
+      "h": "The child's role",
+      "style": "bullets",
+      "items": [
+       "Choose the spot and the angle.",
+       "Decide how long to stay and when to come down.",
+       "Show a friend the view.",
+       "Take photos from their own angle.",
+       "Draw what they see from up high or down low."
+      ]
+     },
+     {
+      "h": "Closing it together",
+      "style": "text",
+      "text": "Children carry tubes, viewfinders and magnifiers back to their basket, hand the camera back, and lean mirrors where they are kept. An adult takes down anything hung high, so the space closes as part of the looking."
+     },
+     {
+      "h": "Your presence",
+      "style": "text",
+      "text": "Get down or up to the child's angle and look with them. Stay close and calm near bars and branches, letting the child lead."
+     },
+     {
+      "h": "Wondering alongside",
+      "style": "lines",
+      "items": [
+       "I wonder what changed when you turned upside down.",
+       "What can you see from up there that you can't see from here?",
+       "What do you see that makes you say that?"
+      ]
+     },
+     {
+      "h": "Ways it can grow",
+      "style": "numbered",
+      "items": [
+       "Photograph the same place from three angles and compare.",
+       "Build a mirror den.",
+       "Make maps from above.",
+       "Hang drawings upside down and talk about what is different."
+      ]
+     }
+    ],
+    "feeds": [
+     "Seeing from new angles (orientation schema)",
+     "Height and risk (risky play)",
+     "Seeking sensation (sensory seeking)"
+    ],
+    "setting": {
+     "level": "Educator nearby",
+     "why": "An educator stays close to bars, branches and lookouts and watches each child. Mirrors are unbreakable, and the camera stays in children's hands with an adult near."
+    },
+    "supports": [
+     "Movement and balance (vestibular)",
+     "Seeing and judging space (visual-spatial)",
+     "Whole-body strength and coordination (gross motor)"
+    ],
+    "seeks": "For a child who seeks more, offer hanging from a low bar, rolling and tumbling on soft ground, and the hammock with them choosing how much it swings. Offer heavy work such as pushing a wagon afterward.",
+    "avoids": "For a child who finds it too much, offer new angles with feet on the ground, such as a mirror on the floor, a tube to look through, or lying on a blanket to watch the clouds.",
+    "connected": [
+     "Climbing and high places",
+     "Heights and lookouts",
+     "Swinging, spinning and hanging",
+     "Hammocks",
+     "Mirrors",
+     "Photography"
+    ],
+    "home": {
+     "title": "Seeing from new angles at Home",
+     "sections": [
+      {
+       "h": "What you need",
+       "style": "text",
+       "text": "A hand mirror, cardboard tubes, a blanket, a camera or phone, and a safe low spot to climb or lie down."
+      },
+      {
+       "h": "Ways to try it",
+       "style": "bullets",
+       "items": [
+        "Lie on a blanket outside and watch the clouds or the leaves.",
+        "Look at the room through your legs together.",
+        "Look through a cardboard tube and guess what you are seeing.",
+        "Hold a mirror under your nose and walk slowly, looking at the ceiling.",
+        "Let your child take photos from very low or very high."
+       ]
+      },
+      {
+       "h": "Your child's role",
+       "style": "text",
+       "text": "Your child chooses where to look from and how long to stay. You stay close near anything high. Your child can roll up the blanket and put the tubes and mirror away."
+      },
+      {
+       "h": "Wonder together",
+       "style": "lines",
+       "items": [
+        "What looks different from down here?",
+        "What can you see from up there?",
+        "I wonder what a bird sees when it looks down at our house."
+       ]
+      },
+      {
+       "h": "What your child is learning",
+       "style": "text",
+       "text": "Your child is learning how a view changes with where you stand, which is early thinking about space, maps and perspective. Hanging and turning upside down also help the body learn balance."
+      },
+      {
+       "h": "Bring it to school",
+       "style": "text",
+       "text": "Send a photo your child took from a new angle. Clean cardboard tubes are welcome too. This counts toward your family participation hours."
+      },
+      {
+       "h": "Good to know",
+       "style": "text",
+       "text": "Choose soft ground for hanging and flipping, and stay close."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "path": "staff/pd/printables/play.md",
+   "from": "## I notice, I wonder in blocks and dramatic play",
+   "to": "## Play schemas, the patterns children repeat\n\nkind: visual\nChildren repeat one action across many materials to test an idea (play schemas). Several often show up together in one child's play. What idea might this child be testing again and again? (from The Study of Play)\n\n### Moving things through the air (trajectory schema)\n**You might see.** Throwing, dropping, kicking, jumping off, pouring from high up.\n**Finding out about.** Force, distance and speed.\n\n### Spinning and rolling (rotation schema)\n**You might see.** Twirling, rolling down slopes, turning wheels and lids, drawing circles.\n**Finding out about.** How things turn and balance.\n\n### Building an inside and an outside (enclosure schema)\n**You might see.** Fences around animals, block walls, borders around a picture, sitting in boxes.\n**Finding out about.** Inside, outside and edges.\n\n### Covering and wrapping (enveloping schema)\n**You might see.** Wrapping dolls, painting over a whole page, hiding under blankets.\n**Finding out about.** What is hidden and found again.\n\n### Carrying and moving things (transporting schema)\n**You might see.** Filling bags, buckets and wagons, then moving them somewhere else.\n**Finding out about.** Weight, full and empty, and how much.\n\n### Joining and separating (connecting schema)\n**You might see.** Taping, tying, linking trains, taking things apart.\n**Finding out about.** How things fit and come apart.\n\n### Lining up and arranging (positioning schema)\n**You might see.** Rows of cars, foods kept apart on the plate, things set on top of or under each other.\n**Finding out about.** Order, pattern and sorting.\n\n### Seeing from new angles (orientation schema)\n**You might see.** Hanging upside down, looking through their legs, lying under tables, climbing up to look down.\n**Finding out about.** How a view changes.\n\n### Knocking down and changing things (transformation schema)\n**You might see.** Mixing paint or mud, adding water to sand, crashing towers.\n**Finding out about.** Change, cause and effect.\n\nFooter. Adapted from Chris Athey, Extending Thought in Young Children (1990, second edition 2007), from the Froebel Early Education Project she directed, and from Cathy Nutbrown, Threads of Thinking, Schemas and Young Children's Learning (fourth edition 2011). Set-ups live in the Idea bank under the Children's interests cards.\n\n## I notice, I wonder in blocks and dramatic play"
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "ra-play-schemas-cp",
+    "kind": "article",
+    "title": "Recognizing Play Schemas Can Transform Your Early Learning Practice",
+    "author": "Heather Bernt-Santy",
+    "source": "Community Playthings",
+    "year": "2025",
+    "url": "https://www.communityplaythings.com/resources/articles/recognizing-play-schemas-can-transform-your-early-learning-practice",
+    "note": "A short introduction to Chris Athey's play schemas and how noticing them changes what we offer children.",
+    "modules": [
+     "play"
+    ],
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "by": "TREE",
+    "why": "Schemas help us see the idea behind play that can look like throwing, dumping or knocking down.",
+    "check": false,
+    "confirmed": "2026-11-17"
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-athey-extending-thought",
+    "kind": "book",
+    "title": "Extending Thought in Young Children, A Parent-Teacher Partnership",
+    "cite": "Athey, C. (2007). Extending thought in young children: A parent-teacher partnership (2nd ed.). SAGE.",
+    "source": "Chris Athey, SAGE, 2007",
+    "url": "https://in.sagepub.com/en-in/sas/extending-thought-in-young-children/book229014",
+    "supports": "The study of play schemas",
+    "modules": [
+     "play"
+    ],
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "by": "TREE",
+    "why": "The original research on schemas, built from two years of observing twenty children, with their families as partners.",
+    "check": false,
+    "confirmed": "2026-11-17"
+   }
+  },
+  {
+   "path": "staff/readings.json",
+   "add": "list",
+   "value": {
+    "id": "rl-nutbrown-threads",
+    "kind": "book",
+    "title": "Threads of Thinking, Schemas and Young Children's Learning",
+    "cite": "Nutbrown, C. (2011). Threads of thinking: Schemas and young children's learning (4th ed.). SAGE.",
+    "source": "Cathy Nutbrown, SAGE, 2011",
+    "url": "https://collegepublishing.sagepub.com/products/234420",
+    "supports": "The study of play schemas",
+    "modules": [
+     "play"
+    ],
+    "areas": [
+     "cur",
+     "obs"
+    ],
+    "by": "TREE",
+    "why": "Shows schemas in practice through close observation, with chapters on curriculum, assessment and working with parents.",
+    "check": false,
+    "confirmed": "2026-11-17"
+   }
+  }
+ ]
+}
