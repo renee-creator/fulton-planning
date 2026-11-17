@@ -174,7 +174,9 @@ module.exports = function createPantry(o) {
   /* ---------- closing ---------- */
   function closeCostco(by) {
     const c = cfg(), L = list(), wk = mondayOf(dayOf(Date.now()));
-    let n = 0; for (const ln of L.lines) if (ln.stage === 'collect' && !ln.late && ln.store === 'costco') { ln.stage = 'delivery'; n++; }
+    // an item marked In person only is not carried by Costco Business Delivery, so it stays for the shopper
+    const inPerson = ln => { const it = ln.item && c.items.find(i => i.id === ln.item); return !!(it && it.delivery === 'no'); };
+    let n = 0; for (const ln of L.lines) if (ln.stage === 'collect' && !ln.late && ln.store === 'costco' && !inPerson(ln)) { ln.stage = 'delivery'; n++; }
     L.closed.costco = wk; saveList(L); log('Kitchen TREE closed the Costco part', wk, n, 'lines', by || '');
     if (n) for (const d of directors()) pushTo(d, { title: 'Kitchen TREE', body: `The Costco list is ready to order, ${n} item${n === 1 ? '' : 's'}.`, url: 'kitchen.html?go=delivery', tag: 'kitchen-costco' }).catch(() => {});
     return n;
@@ -221,7 +223,7 @@ module.exports = function createPantry(o) {
   /* ---------- what a page receives ---------- */
   function boot(me) {
     const role = roleOf(me), c = cfg(), L = list(), now = Date.now(), today = dayOf(now);
-    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, also: Array.isArray(i.also) ? i.also : [], group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
+    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, also: Array.isArray(i.also) ? i.also : [], delivery: i.delivery || '', price: +i.price || 0, group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
     const lines = L.lines;
     const ahead = [0, 1, 2, 3].map(n => menuNeeds(c, L, shopMonday(today, n))), mn = ahead[0];
     const last = feedLast(today);
@@ -327,6 +329,8 @@ module.exports = function createPantry(o) {
 
     // the director closes a part by hand, such as when the clock time has not come yet
     if (P === 'close') { if (role !== 'director') return no('The director closes the list by hand.');
+      // the director skips delivery for a week, and the delivery list goes to the shopper
+      if (b.which === 'skipdelivery') { for (const x of L.lines) if (x.stage === 'delivery' && x.state !== 'ordered') { x.stage = L.trip && !L.trip.done ? 'trip' : 'collect'; x.state = ''; } saveList(L); done(); return; }
       if (b.which === 'costco') closeCostco(me); else await closeWeek(me); done(); return; }
 
     // the pantry's items and the menu words, by the director and the kitchen
@@ -335,7 +339,7 @@ module.exports = function createPantry(o) {
       const it = item(b.id) || (b.id ? null : { id: newId('i'), status: 'ok', by: me, at: Date.now() });
       if (!it) { err(req, res, 404, 'That item is not in the pantry.'); return; }
       const name = clip(b.name, 80); if (!name) { err(req, res, 400, 'Type the item\'s name.'); return; }
-      Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', group: c.groups.some(g => g.id === b.group) ? b.group : (it.group || guessGroup(name)), section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse, also: (Array.isArray(b.also) ? b.also : []).filter(x => storeOf(c, x) && x !== b.store && !isDirect(c, x)).slice(0, 2) });
+      Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', group: c.groups.some(g => g.id === b.group) ? b.group : (it.group || guessGroup(name)), section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse, delivery: ['yes', 'no'].includes(b.delivery) ? b.delivery : '', price: Math.max(0, Math.round((+b.price || 0) * 100) / 100), also: (Array.isArray(b.also) ? b.also : []).filter(x => storeOf(c, x) && x !== b.store && !isDirect(c, x)).slice(0, 2) });
       if (!c.items.includes(it)) c.items.push(it);
       // the item's open lines follow its new name and store, except what is already on the trip
       for (const x of L.lines) if (x.item === it.id && x.stage !== 'trip') { x.name = it.name; x.section = it.section; x.amount = it.amount; if (x.store !== it.store) { x.store = it.store; x.stage = isDirect(c, it.store) ? 'reorder' : (x.stage === 'reorder' ? 'collect' : x.stage); } }

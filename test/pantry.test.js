@@ -100,3 +100,11 @@ test('an item has one open line at a time, and a menu word matches whole words',
   r = await h.call('Ed', 'mark', { id: r.body.items.find(i => i.name === 'Eggs').id, status: 'out' }); assert.equal(eggs().length, 1); assert.equal(eggs()[0].why, 'weekly');
   r = await h.call('Dee', 'close', {}); assert.equal(eggs().length, 1);
 });
+test('Costco delivery takes only what delivery carries, and the director can skip it for a week', async () => {
+  const h = make(); let r = await h.call('Cook', 'boot'); const eggs = find(r.body, 'Eggs'), honey = find(r.body, 'Honey');
+  await h.call('Cook', 'item', Object.assign({}, eggs, { delivery: 'yes', price: 9.5 })); await h.call('Cook', 'item', Object.assign({}, honey, { delivery: 'no' }));
+  await h.call('Cook', 'mark', { id: eggs.id, status: 'out' }); await h.call('Cook', 'mark', { id: honey.id, status: 'out' });
+  r = await h.call('Dee', 'close', { which: 'costco' }); const st = n => r.body.lines.find(l => l.name === n).stage;
+  assert.equal(st('Eggs'), 'delivery'); assert.equal(st('Honey'), 'collect'); assert.equal(find(r.body, 'Eggs').price, 9.5);
+  r = await h.call('Dee', 'close', { which: 'skipdelivery' }); assert.equal(st('Eggs'), 'collect');
+});

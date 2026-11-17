@@ -218,7 +218,10 @@ function weekHtml(){
   if(mine.length)h.push(`<h2>Your facilities requests</h2><div class="card">${mine.map(r=>`<div class="row"><div class="n"><b>${esc(r.title)}</b><small>${r.done?"Done "+esc(stamp(r.doneAt)):"Waiting, sent "+esc(stamp(r.at))}</small></div></div>`).join("")}</div>`);
   // the Costco delivery, the director's part
   const del=stage("delivery");
-  if(B.role==="director"&&del.length)h.push(`<h2>Costco delivery to order</h2><div class="cnt">Mark each one after you place the order. Anything Costco does not have goes onto the shopper's Costco list.</div><div class="card">${del.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${l.state==="ordered"?`<small><b>Ordered</b></small>`:""}</div>
+  const delSum=del.reduce((t,l)=>t+((itemOf(l)||{}).price||0),0),delUnk=del.filter(l=>!((itemOf(l)||{}).price)).length;
+  if(B.role==="director"&&del.length)h.push(`<h2>Costco delivery to order</h2><div class="cnt">Mark each one after you place the order. Anything Costco does not have goes onto the shopper's Costco list.</div>
+    <div class="card ${delSum>=250?"mark":"warn"}"><b>About $${delSum.toFixed(2)} so far</b><div class="cnt">${delSum>=250?"Over $250.00, so there is no surcharge.":"Under $250.00, Costco adds a $25.00 surcharge. Add $"+(250-delSum).toFixed(2)+" more to remove it."}${delUnk?" "+delUnk+" item"+(delUnk===1?" has":"s have")+" no price yet.":""} Prices are from one look at the site and will drift.</div>
+      <div class="acts"><button class="btn quiet" type="button" data-close="skipdelivery">Skip delivery this week, send it all to the shopper</button></div></div><div class="card">${del.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${(itemOf(l)||{}).price?`<small>About $${itemOf(l).price.toFixed(2)}</small>`:""}${l.state==="ordered"?`<small><b>Ordered</b></small>`:""}</div>
       ${l.state==="ordered"?"":`<button class="btn" type="button" data-line="${l.id}" data-do="ordered">Ordered</button><button class="btn quiet" type="button" data-line="${l.id}" data-do="na">Not available</button>`}</div>`).join("")}</div>`);
   // lines with no store yet
   const pick=B.lines.filter(l=>!l.store&&l.stage!=="done");
@@ -251,7 +254,7 @@ function askHtml(){const f=U.askFor||{},fac=f.section==="facilities";
 /* ---------- Pantry ---------- */
 function itemRow(i){
   if(U.edit===i.id)return itemEdit(i);
-  const sub=[i.from,i.amount,i.weekly?"Every week":"",i.perUse?"Added when it is on the menu":"",(i.also||[]).length?"Also at "+i.also.map(storeName).join(" and "):""].filter(Boolean).join(", ");
+  const sub=[i.from,i.amount,i.weekly?"Every week":"",i.perUse?"Added when it is on the menu":"",(i.also||[]).length?"Also at "+i.also.map(storeName).join(" and "):"",i.store==="costco"&&i.delivery==="yes"?"Costco delivers it":i.store==="costco"&&i.delivery==="no"?"In person only":""].filter(Boolean).join(", ");
   return `<div class="row"><div class="n"><b>${esc(i.name)}</b>${sub?`<small>${esc(sub)}</small>`:""}${i.status!=="ok"&&i.markedBy?`<small>${i.status==="low"?"Low":"Out"}, marked by ${esc(i.markedBy)} on ${esc(stamp(i.markedAt))}</small>`:""}
     ${canSet()?`<button class="link" type="button" data-edit="${i.id}" style="padding:2px 0;min-height:30px">Change</button>`:""}</div>
     <button class="st low ${i.status==="low"?"on":""}" type="button" data-mark="${i.id}" data-to="${i.status==="low"?"ok":"low"}" aria-pressed="${i.status==="low"}">Low</button>
@@ -262,6 +265,8 @@ function itemEdit(i){const n=!i.id;
     <label class="fld">Store<select id="e-store">${storeOpts(i.store||"","Not chosen yet")}</select></label>
     <div class="two"><label class="fld">Also at<select id="e-also1">${storeOpts((i.also||[])[0]||"","No other store").replace(/<option value="direct"[^>]*>[^<]*<\/option>/,"")}</select></label>
     <label class="fld">And at<select id="e-also2">${storeOpts((i.also||[])[1]||"","No other store").replace(/<option value="direct"[^>]*>[^<]*<\/option>/,"")}</select></label></div>
+    <div class="two"><label class="fld">Costco delivery<select id="e-deliv">${[["","Not checked"],["yes","Delivers it"],["no","In person only"]].map(([v,t])=>`<option value="${v}" ${v===(i.delivery||"")?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label class="fld">About what it costs<input type="number" id="e-price" min="0" step="0.01" inputmode="decimal" value="${i.price||""}"></label></div>
     <label class="fld">Group in the store<select id="e-group">${groupOpts(i.group||B.groups[B.groups.length-1].id)}</select></label>
     <label class="fld">Kind<select id="e-sec">${Object.entries(B.sections).map(([k,v])=>`<option value="${k}" ${k===(i.section||"kitchen")?"selected":""}>${esc(v)}</option>`).join("")}</select></label>
     <label class="fld">The usual amount<input type="text" id="e-amount" value="${esc(i.amount||"")}"></label>
@@ -404,13 +409,13 @@ document.addEventListener("click",async ev=>{
   if(d.mark){send("mark",{id:d.mark,status:d.to},d.to==="ok"?"Marked as stocked.":"On the list.");return}
   if(d.sec){U.sec=d.sec;render();return}
   if(d.edit!=null){U.edit=d.edit;render();const c=$("#editcard");if(c)c.scrollIntoView({block:"center"});return}
-  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),also:[val("e-also1"),val("e-also2")].filter(Boolean),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
+  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),also:[val("e-also1"),val("e-also2")].filter(Boolean),delivery:val("e-deliv"),price:val("e-price"),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
   if(d.eremove){if(confirm("Take this item out of the pantry?")&&await send("item",{id:d.eremove,remove:true},"Taken out.")){U.edit="";render()}return}
   if(d.store){U.store=d.store;U.move="";render();return}
   if(d.line){const ok={got:"",undo:"",ordered:"Marked as ordered.",na:"Moved to the shopper's Costco list.",reordered:"Marked as reordered.",later:"Moved to next week.",remove:"Taken off the list."}[d.do];if(await send("line",{id:d.line,do:d.do},ok)){U.move="";render()}return}
   if(d.move!=null){U.move=d.move;render();return}
   if(d.doneshop!=null){send("doneshopping",{store:d.doneshop},"Stocked in the pantry.");return}
-  if(d.close){if(confirm(d.close==="costco"?"Close the Costco part now?":"Close the full list now and tell the shopper?"))send("close",{which:d.close},"Closed.");return}
+  if(d.close){if(confirm(d.close==="costco"?"Close the Costco part now?":d.close==="skipdelivery"?"Send the whole delivery list to the shopper this week?":"Close the full list now and tell the shopper?"))send("close",{which:d.close},"Closed.");return}
   // tasks
   if(d.tedit!=null){U.task=d.tedit;U.taskDone="";render();const c=$("#taskcard");if(c)c.scrollIntoView({block:"center"});return}
   if(d.tsave!=null){const title=val("t-title");if(!title){say("Type the task.","bad");return}
