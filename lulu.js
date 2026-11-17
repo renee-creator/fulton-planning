@@ -105,10 +105,14 @@ function make({ SECRET, log, request }) {
     if (!out.street2) delete out.street2; return out; }
   const level = v => { const s = String(v || 'GROUND').toUpperCase(); if (!LEVELS.includes(s)) throw Object.assign(new Error('That shipping choice is not one Lulu offers.'), { code: 400 }); return s; };
 
+  // the books of one order, each with its own files and page count, all the same size and paper
+  const lines = b => { const list = Array.isArray(b.items) && b.items.length ? b.items : [{ interior: b.interior, cover: b.cover, pages: b.pages, title: b.title, ref: b.ref }];
+    if (list.length > 200) throw Object.assign(new Error('That is more books than one order takes.'), { code: 400 }); return list.map(x => Object.assign({}, x, { pages: pages(x.pages) })); };
   // what the page asks for, by its path after /api/lulu/
   async function api(what, b, origin) {
     const e = env();
     if (what === 'status') return { connected: !!e.mode, mode: e.mode };
+    if (what === 'has') return { interior: has(b.interior), cover: has(b.cover) };
     if (what === 'part') return part(b);
     if (what === 'cover-size') { const r = await call('POST', '/cover-dimensions/', { pod_package_id: pod(b.pod), interior_page_count: pages(b.pages), unit: 'pt' }); return { width: Number(r.width), height: Number(r.height) }; }
     if (what === 'check') {
@@ -125,19 +129,20 @@ function make({ SECRET, log, request }) {
     // the shipping choices Lulu offers for this book to this address, each with its days and cost
     if (what === 'shipping') {
       const a = address(b.address);
-      const r = await call('POST', '/shipping-options/', { currency: 'USD', line_items: [{ page_count: pages(b.pages), pod_package_id: pod(b.pod), quantity: 1 }], shipping_address: { street1: a.street1, city: a.city, state: a.state_code, postcode: a.postcode, country: a.country_code } });
+      const p = pod(b.pod); const r = await call('POST', '/shipping-options/', { currency: 'USD', line_items: lines(b).map(x => ({ page_count: x.pages, pod_package_id: p, quantity: 1 })), shipping_address: { street1: a.street1, city: a.city, state: a.state_code, postcode: a.postcode, country: a.country_code } });
       const list = (Array.isArray(r) ? r : (r && r.results) || []).filter(o => o && LEVELS.includes(o.level));
       return { options: list.map(o => ({ level: o.level, cost: o.cost_excl_tax, from: o.min_delivery_date || '', to: o.max_delivery_date || '', business: !!o.business_only, home: !!o.home_only })) };
     }
     if (what === 'price') {
-      const r = await call('POST', '/print-job-cost-calculations/', { line_items: [{ page_count: pages(b.pages), pod_package_id: pod(b.pod), quantity: 1 }], shipping_address: address(b.address), shipping_option: level(b.level) });
-      return { currency: r.currency, total: r.total_cost_incl_tax, tax: r.total_tax, shipping: r.shipping_cost && r.shipping_cost.total_cost_incl_tax, book: r.line_item_costs && r.line_item_costs[0] && r.line_item_costs[0].total_cost_incl_tax };
+      const p = pod(b.pod); const r = await call('POST', '/print-job-cost-calculations/', { line_items: lines(b).map(x => ({ page_count: x.pages, pod_package_id: p, quantity: 1 })), shipping_address: address(b.address), shipping_option: level(b.level) });
+      const books = (r.line_item_costs || []).reduce((t, x) => t + (Number(x && x.total_cost_incl_tax) || 0), 0);
+      return { currency: r.currency, total: r.total_cost_incl_tax, tax: r.total_tax, shipping: r.shipping_cost && r.shipping_cost.total_cost_incl_tax, book: books ? books.toFixed(2) : '', count: (r.line_item_costs || []).length };
     }
     if (what === 'order') {
-      if (!has(b.interior) || !has(b.cover)) throw Object.assign(new Error('The print files are no longer on the server. Make them again.'), { code: 409 });
+      const items = lines(b); if (items.some(x => !has(x.interior) || !has(x.cover))) throw Object.assign(new Error('The print files for a book are no longer on the server. Make its print preview again.'), { code: 409 });
       const email = String(b.email || '').trim(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Object.assign(new Error('Lulu needs an email for questions about the order.'), { code: 400 });
       const r = await call('POST', '/print-jobs/', { contact_email: email, external_id: String(b.ref || '').slice(0, 60), production_delay: 120, shipping_level: level(b.level), shipping_address: address(b.address),
-        line_items: [{ title: String(b.title || 'Book').slice(0, 200), quantity: 1, printable_normalization: { pod_package_id: pod(b.pod), interior: { source_url: fileUrl(origin, b.interior) }, cover: { source_url: fileUrl(origin, b.cover) } } }] });
+        line_items: items.map(x => ({ title: String(x.title || 'Book').slice(0, 200), external_id: String(x.ref || '').slice(0, 60), quantity: 1, printable_normalization: { pod_package_id: pod(b.pod), interior: { source_url: fileUrl(origin, x.interior) }, cover: { source_url: fileUrl(origin, x.cover) } } })) });
       log('Lulu order made,', r.id, 'in', e.mode);
       return { id: r.id, status: r.status && r.status.name, mode: e.mode };
     }

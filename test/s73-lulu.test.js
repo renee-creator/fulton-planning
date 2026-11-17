@@ -76,36 +76,41 @@ test('without keys in Render, TREE says Lulu is not connected', async t => {
   assert.strictEqual((await fx.as(dee.token, '/api/lulu/cover-size', { pod: '1100X0850.FC.PRE.CW.080CW444.GXX', pages: 24 })).status, 503);
 });
 
-test('the Book tab makes the cover and the pages, has Lulu check them, shows the price and orders', async t => {
+test('the print preview keeps the files, and the ticked books go to Lulu in one order', async t => {
   const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
   const L = await fakeLulu(); t.after(() => L.srv.close());
-  const at = (m, d) => new Date(2026, m - 1, d, 10).getTime();
+  const page = id => ({ id, ym: '2026-09', year: '2026-27', room: 'West', title: 'The Beans', body: 'Watered the beans.', quote: '', see: '', photos: [], sources: [], edited: true, hidden: false });
   const fx = await start({ env: { LULU_SANDBOX_KEY: 'k1', LULU_SANDBOX_SECRET: 's1', LULU_API_BASE: L.base }, more: put => {
     put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', dob: '2022-03-01' });
-    put('books/pip.json', { id: 'pip', child: 'pip', readBy: { name: 'Dee', at: 1 }, letter: 'Dear Pip,\nThis book is for you.', pages: [
-      { id: 'p1', ym: '2026-09', year: '2026-27', room: 'West', title: 'The Beans', body: 'Pip watered the beans.', quote: '', see: '', photos: [], sources: [], edited: true, hidden: false }] });
+    put('children/ivy.json', { first: 'Ivy', last: 'Test', classroom: 'West', status: 'active', dob: '2022-05-01' });
+    for (const id of ['pip', 'ivy']) put(`books/${id}.json`, { id, child: id, readBy: { name: 'Dee', at: 1 }, letter: 'Dear friend,\nThis book is for you.', pages: [page('p1')] });
+    put('settings/book.json', { id: 'book', signs: { '2026-27 West': 'Ana, Bo and Cy' } });
     put('settings/lulu.json', { id: 'lulu', finish: 'M', email: 'office@example.com', address: { name: 'Our school', street1: '1 Test Road', city: 'Santa Rosa', state_code: 'CA', postcode: '95401', country_code: 'US', phone_number: '555-0100' } });
   } }); t.after(() => fx.stop());
   const br = await b.launch(); t.after(() => br.close());
   const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
-  await s.p.evaluate(() => { window.bkWait = () => Promise.resolve(); });
-  await s.p.evaluate(() => window.TREE_OPEN_KID('pip', 'book'));
-  await s.p.waitForSelector('[data-bklfiles]', { timeout: 15000 });
-  await s.p.evaluate(() => { bkWait = () => Promise.resolve(); });
-  await s.p.click('[data-bklfiles]'); await s.p.waitForSelector('select[data-bkllevel]', { timeout: 60000 });
-  assert.strictEqual(await s.p.inputValue('select[data-bkllevel]'), 'GROUND_BUS', 'ground to a business is chosen for the school');
-  assert.match(await s.p.innerText('select[data-bkllevel]'), /Ground, to a business, arrives .* \$7\.52/);
-  const ship = L.seen.find(x => x.path === '/shipping-options/').body; assert.strictEqual(ship.shipping_address.state, 'CA'); assert.strictEqual(ship.line_items[0].page_count, 24);
-  const cov = L.seen.find(x => x.path === '/cover-dimensions/').body;
-  assert.deepStrictEqual(cov, { pod_package_id: '1100X0850.FC.PRE.CW.080CW444.MXX', interior_page_count: 24, unit: 'pt' }, 'a matte cover, and the book padded to 24 pages');
-  assert.match(await s.p.innerText('#main'), /Lulu checked both files\. 24 pages, matte cover/);
-  await s.p.click('[data-bklprice]'); await s.p.waitForSelector('[data-bklorder]');
-  assert.match(await s.p.innerText('#main'), /Total \$27\.40/);
-  assert.strictEqual(L.seen.find(x => x.path === '/print-job-cost-calculations/').body.shipping_option, 'GROUND_BUS');
-  await s.p.click('[data-bklorder]'); await s.p.waitForFunction(() => (books.get('pip').lulu || []).length === 1);
-  assert.strictEqual(L.seen.find(x => x.path === '/print-jobs/' && x.method === 'POST').body.shipping_level, 'GROUND_BUS');
-  const ord = await s.p.evaluate(() => books.get('pip').lulu[0]); assert.strictEqual(ord.id, 501); assert.strictEqual(ord.mode, 'sandbox');
-  await s.p.click('[data-bkljob="501"]'); await s.p.waitForFunction(() => books.get('pip').lulu[0].status === 'UNPAID');
-  assert.match(await s.p.innerText('#main'), /Waiting to be paid in your Lulu account, \$27\.40/);
+  await s.p.evaluate(() => { bkWait = () => Promise.resolve(); saveFile = async () => {}; });
+  for (const id of ['pip', 'ivy']) {
+    await s.p.evaluate(k => window.TREE_OPEN_KID(k, 'book'), id); await s.p.waitForSelector('[data-bkpdf="proof"]:not([disabled])', { timeout: 15000 });
+    await s.p.click('[data-bkpdf="proof"]'); await s.p.waitForFunction(k => books.get(k).print && books.get(k).print.check, id, { timeout: 60000 });
+  }
+  const pr = await s.p.evaluate(() => books.get('pip').print); assert.strictEqual(pr.pod, '1100X0850.FC.PRE.CW.080CW444.MXX'); assert.strictEqual(pr.pages, 24);
+  assert.deepStrictEqual(await s.p.evaluate(() => bkSigns(books.get('pip'))), ['Ana, Bo and Cy'], 'each name once');
+  assert.match(await s.p.innerText('#main'), /Ready to print/);
+  // a change after the preview asks for a new one
+  await s.p.evaluate(() => { const b = books.get('ivy'); b.letter = 'Dear Ivy,\nChanged.'; });
+  assert.strictEqual(await s.p.evaluate(() => bkReady(children.get('ivy'), books.get('ivy'))), false);
+  await s.p.evaluate(() => { const b = books.get('ivy'); b.letter = 'Dear friend,\nThis book is for you.'; });
+  await s.p.evaluate(() => goView('kidbooks')); await s.p.waitForSelector('[data-bkoall]');
+  await s.p.click('[data-bkoall]'); await s.p.click('[data-bkoship]'); await s.p.waitForSelector('select[data-bkolevel]', { timeout: 60000 });
+  assert.strictEqual(await s.p.inputValue('select[data-bkolevel]'), 'GROUND_BUS');
+  assert.strictEqual(L.seen.find(x => x.path === '/shipping-options/').body.line_items.length, 2);
+  await s.p.click('[data-bkoprice]'); await s.p.waitForSelector('[data-bkoorder]');
+  assert.match(await s.p.innerText('#main'), /Total \$27\.40 for 2 books/);
+  await s.p.click('[data-bkoorder]'); await s.p.waitForFunction(() => (books.get('pip').lulu || []).length === 1 && (books.get('ivy').lulu || []).length === 1);
+  const job = L.seen.find(x => x.path === '/print-jobs/' && x.method === 'POST').body;
+  assert.strictEqual(job.line_items.length, 2, 'one order for both books'); assert.strictEqual(job.shipping_level, 'GROUND_BUS');
+  assert.deepStrictEqual(job.line_items.map(x => x.title).sort(), ['Ivy Test, book', 'Pip Test, book']);
+  assert.strictEqual(L.seen.filter(x => x.path === '/validate-interior/').length, 2, 'the files were made and checked once, at the preview');
   assert.deepStrictEqual(s.errors, []);
 });
