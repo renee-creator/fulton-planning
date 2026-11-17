@@ -3271,6 +3271,8 @@ async function handle(req, res) {
     if (path === '/family/code') { const r = await familyPage.sendCode(body.email, ip); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
     if (path === '/family/login') { const r = familyPage.signIn(body.email, body.code, ip); if (r.error) { err(req, res, 403, r.error); return; } json(req, res, 200, r); return; }
     const f = familyPage.readFamily(req); if (!f) { err(req, res, 401, 'Please sign in again.'); return; }
+    // the director's look at a family's page reads and never saves
+    if (f.view && !['/family/data', '/family/contacts', '/family/ideas', '/family/file', '/family/handbook', '/family/handbook/img'].includes(path)) { err(req, res, 403, 'Nothing is saved while you look at the Family page as a family.'); return; }
     let r;
     if (path === '/family/data') r = familyPage.familyView(f);
     else if (path === '/family/signup') r = familyPage.signUp(f, String(body.itemId || ''), body.on !== false, { who: body.who, adults: body.adults, children: body.children, answer: body.answer });
@@ -3406,6 +3408,7 @@ async function handle(req, res) {
   // reminders. A phone turns them on once, the director sees who receives them and can send a test
   if (path === '/api/push/key') { const a = accountFor(me.name); json(req, res, 200, { key: reminders.keys() ? reminders.keys().pub : '', phones: ((a && a.push) || []).length }); return; }
   if (path === '/api/push/subscribe') { if (!reminders.subscribe(me.name, body.sub, req.headers['user-agent'])) { err(req, res, 400, 'This phone could not turn reminders on.'); return; } json(req, res, 200, { ok: true }); return; }
+  if (path === '/api/family/viewas') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director looks at a family\'s page.'); return; } const r = familyPage.viewToken(String(body.childId || '')); if (r.error) { err(req, res, 400, r.error); return; } log('The director opened a look at a family page'); json(req, res, 200, r); return; }
   if (path === '/api/family/pacwelcome') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sends the welcome.'); return; } const r = await familyPage.pacWelcome(String(body.email || '')); if (r.error) { err(req, res, 400, r.error); return; } json(req, res, 200, r); return; }
   if (path === '/api/server-status') { if (!isDirector(me.name)) { err(req, res, 403, 'Only the director sees the server status.'); return; } json(req, res, 200, { lines: statusLines().map(([ok, text]) => ({ ok: !!ok, text })) }); return; }
   // the program watch. Any page reports its own errors and the trouble messages it showed, a few each minute at most,

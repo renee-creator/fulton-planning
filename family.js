@@ -228,7 +228,15 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     // a sign-in made in test mode ends when test mode ends, and a family's ends if test mode is turned back on
     if (!!s.t !== cfg().test) return null;
     const { kids, test } = childrenFor(s.fam); if (!kids.length) return null;
-    return { email: s.fam, kids, test };
+    return { email: s.fam, kids, test, view: !!s.view };
+  }
+  /* The director's look at the Family page as one family, asked for November 17, 2026. It is a sign-in for that child's
+     first parent email that lasts two hours and is marked as a look, so the server reads for it and saves nothing. */
+  function viewToken(childId) {
+    const r = store.recs.children.get(String(childId || '')); const k = r && !r.deleted && r.doc; if (!k || k.status === 'withdrawn') return { error: 'That child is not enrolled.' };
+    const p = (k.parents || []).find(x => x && okEmail(norm(x.email))); if (!p) return { error: 'No parent email is on this child, so there is no Family page to see yet.' };
+    const body = b64u(JSON.stringify({ fam: norm(p.email), e: Date.now() + 2 * 3600e3, t: cfg().test ? 1 : 0, view: 1 }));
+    return { token: body + '.' + sign('family|' + body), name: [k.first, k.last].filter(Boolean).join(' ') };
   }
 
   // ---------- what a family sees ----------
@@ -710,7 +718,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { mailList, childMail, learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { mailList, childMail, learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, viewToken, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;
