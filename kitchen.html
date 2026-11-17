@@ -1,0 +1,411 @@
+<!doctype html>
+<!-- Kitchen TREE. The school's pantry, the weekly shopping list by store, and the tasks the director shares with the
+     shopper. It is written by hand, not made by tools/build.py. It shares TREE's sign-in, and everything it keeps goes
+     through /api/pantry/ on TREE's server (pantry.js). It loads nothing else. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="tree-icons/observe-32.png" type="image/png">
+<link rel="apple-touch-icon" href="tree-icons/observe-apple-touch.png">
+<link rel="manifest" href="kitchen.webmanifest">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kitchen TREE">
+<title>Kitchen TREE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<style>
+:root{color-scheme:light;--paper:#fff;--ink:#1b2920;--muted:#46564c;--line:#c6d0c3;--moss:#2b5a40;--moss-soft:#dce9de;--clay:#984331;--amber:#8a5a00;--focus:#c47a06;
+  --body:"Andika","Segoe UI",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 90px)}
+[hidden]{display:none!important}
+main{max-width:640px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+header h1{font-size:18px;margin:0;color:var(--moss);font-weight:700}
+header .who{font-size:13px;color:var(--muted);text-align:right}
+button,input,select,textarea{font:inherit;color:inherit}
+h2{font-size:17px;margin:20px 0 6px;color:var(--moss)}
+h3{font-size:15px;margin:16px 0 4px}
+.cnt{font-size:13.5px;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;background:#fff}
+.card.mark{border-left:4px solid var(--moss)}
+.card.warn{border-left:4px solid var(--amber)}
+label.fld{display:block;font-weight:700;font-size:14px;margin:12px 0 0}
+input[type=text],input[type=password],input[type=search],input[type=email],input[type=date],input[type=time],input[type=number],select,textarea{display:block;width:100%;margin-top:5px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:16px;font-weight:400;min-height:44px}
+textarea{resize:vertical;min-height:64px}
+input:focus,select:focus,textarea:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.btn{border:1px solid var(--moss);background:#fff;color:var(--moss);border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;min-height:44px}
+.btn.go{background:var(--moss);color:#fff}
+.btn.big{display:block;width:100%;padding:14px;font-size:17px;min-height:54px;margin-top:14px}
+.btn.quiet{border-color:var(--line);color:var(--ink);font-weight:400}
+.btn:disabled{opacity:.55}
+.link{background:none;border:0;padding:8px 0;color:var(--moss);text-decoration:underline;cursor:pointer;font-size:14px;min-height:40px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer;font-size:15px}
+.chip.on{border-color:var(--moss);background:var(--moss-soft);color:var(--moss);font-weight:700}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .n{flex:1;min-width:0}
+.row .n b{display:block;font-weight:700;font-size:15.5px}
+.row .n small{display:block;color:var(--muted);font-size:13px}
+.st{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;min-height:40px;min-width:54px;cursor:pointer;font-size:14px}
+.st.low.on{border-color:var(--amber);background:#fff;color:var(--amber);font-weight:700;box-shadow:inset 0 0 0 1px var(--amber)}
+.st.out.on{border-color:var(--clay);background:#fff;color:var(--clay);font-weight:700;box-shadow:inset 0 0 0 1px var(--clay)}
+.check{width:44px;height:44px;border-radius:50%;border:2px solid var(--moss);background:#fff;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}
+.check.on{background:var(--moss)}
+.row.got .n b{text-decoration:line-through;color:var(--muted)}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12.5px;color:var(--muted);margin-right:4px}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--moss);font-size:15px;padding:8px 0;font-weight:700}
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 6px calc(env(safe-area-inset-bottom,0px) + 6px);z-index:5}
+nav button{flex:1;max-width:130px;border:0;background:none;padding:8px 2px;font-size:13.5px;color:var(--muted);cursor:pointer;min-height:48px;border-radius:10px}
+nav button.on{color:var(--moss);font-weight:700;background:var(--moss-soft)}
+nav button i{display:block;font-style:normal;font-size:12px;font-weight:700;color:var(--clay);min-height:14px}
+#status{min-height:22px;margin:0 0 4px;font-size:14px;color:var(--muted)}
+#status.good{color:var(--moss);font-weight:700}
+#status.bad{color:var(--clay);font-weight:700}
+#gate h2{font-size:20px;margin:18px 0 4px}
+#gate .msg{min-height:22px;margin-top:10px;font-size:14px;color:var(--clay);font-weight:700}
+.two{display:flex;gap:10px}.two>*{flex:1}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+img.ph{display:block;max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line);margin-top:6px}
+footer{margin-top:26px;display:flex;gap:18px;flex-wrap:wrap;font-size:14px}
+footer a{color:var(--moss)}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Kitchen TREE</h1><div class="who" id="who"></div></header>
+  <section id="gate" hidden></section>
+  <section id="app" hidden>
+    <div id="status" role="status" aria-live="polite"></div>
+    <div id="view"></div>
+    <footer><a href="tree.html" id="totree">Open TREE</a><button class="link" id="signout" type="button" style="padding:0">Sign out</button></footer>
+  </section>
+</main>
+<nav id="nav" hidden></nav>
+<script>
+(function(){
+"use strict";
+const qs=new URLSearchParams(location.search);
+const want=(qs.get("server")||"").replace(/\/+$/,"");
+const local=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(want);
+const SERVER=local?want:"https://fulton-planning.onrender.com";
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+// the sign-in is TREE's own, kept under the same names, so a phone signed in to TREE in this browser is signed in here
+const Auth={token:LS.get("fp-token"),name:LS.get("fp-name")};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const key=n=>String(n||"").trim().toLowerCase();
+const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const clock=hm=>{const [h,m]=String(hm||"0:0").split(":").map(Number);return ((h+11)%12+1)+":"+String(m).padStart(2,"0")+(h<12?" am":" pm")};
+const fullDate=d=>new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+const dayDate=d=>new Date(d+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+const stamp=t=>new Date(t).toLocaleDateString("en-US",{month:"long",day:"numeric"});
+
+let B=null, busy=false;
+let tab=qs.get("go")||LS.get("kt-tab")||"week";
+let U={q:"",sec:"all",store:"",edit:"",ask:false,askFor:null,move:"",task:"",taskDone:"",photo:"",open:{}};
+
+async function api(path,body){
+  if(!Auth.token&&path!=="/login")throw {code:"session",message:"Sign in to keep going."};
+  let r;try{r=await fetch(SERVER+path,{method:"POST",headers:{"Content-Type":"application/json",...(Auth.token&&path!=="/login"?{Authorization:"Bearer "+Auth.token}:{})},body:JSON.stringify(body||{})})}
+  catch(e){throw {code:"unavailable",message:"The TREE server could not be reached. Check the connection and try again."}}
+  let j={};try{j=await r.json()}catch(e){}
+  if(r.status===401&&path!=="/login"){signedOut(j.error||"Your sign-in ended. Sign in again to keep going.");throw {code:"session",message:j.error}}
+  if(!r.ok)throw {code:"refused",status:r.status,message:j.error||("The server answered "+r.status+".")};
+  return j;
+}
+function say(t,cls){const el=$("#status");if(!el)return;el.textContent=t||"";el.className=cls||"";clearTimeout(say.t);if(t)say.t=setTimeout(()=>{el.textContent="";el.className=""},5000)}
+// every change is sent at once and the server's answer is the new page, so nothing waits to be saved
+async function send(p,body,ok){if(busy)return false;busy=true;
+  try{B=await api("/api/pantry/"+p,body);if(ok)say(ok,"good");busy=false;render();return true}
+  catch(e){busy=false;if(e.code!=="session")say(e.message||"That did not save. Try again.","bad");return false}}
+
+/* ---------- sign-in ---------- */
+function gate(msg,setup){
+  $("#app").hidden=true;$("#nav").hidden=true;const g=$("#gate");g.hidden=false;$("#who").textContent="";
+  const nm=esc((setup&&setup.name)||LS.get("fp-name")||"");
+  g.innerHTML=setup
+    ?`<h2>Choose your passcode</h2><div class="cnt">Choose four numbers for ${nm}. This phone stays signed in.</div>
+      <label class="fld">Four numbers<input type="password" id="g-new" inputmode="numeric" autocomplete="new-password" maxlength="4"></label>
+      <label class="fld">The same four numbers again<input type="password" id="g-again" inputmode="numeric" autocomplete="new-password" maxlength="4"></label>
+      <button class="btn go big" id="g-set" type="button" data-name="${nm}">Save and sign in</button><div class="msg" id="g-msg">${esc(msg||"")}</div>`
+    :`<h2>Sign in</h2><div class="cnt">Use your first name and your four numbers. The first time, leave the passcode empty and you will choose your numbers.</div>
+      <label class="fld">First name<input type="text" id="g-name" autocomplete="username" autocapitalize="words" value="${nm}"></label>
+      <label class="fld">Passcode<input type="password" id="g-code" inputmode="numeric" autocomplete="current-password"></label>
+      <button class="btn go big" id="g-go" type="button">Sign in</button><div class="msg" id="g-msg">${esc(msg||"")}</div>`;
+}
+function took(j){Auth.token=j.token;Auth.name=j.name;LS.set("fp-token",j.token);LS.set("fp-name",j.name);LS.set("fp-director",j.director?"1":null);$("#gate").hidden=true;start()}
+async function signIn(){const name=$("#g-name").value.trim(),passcode=$("#g-code").value;const m=$("#g-msg");
+  if(!name){m.textContent="Type your first name.";return}
+  m.textContent="";$("#g-go").disabled=true;
+  try{const j=await api("/login",{name,passcode});if(j.setup){gate("",{name:j.name});return}took(j)}
+  catch(e){m.textContent=(e&&e.message)||"That did not work. Try again.";const b=$("#g-go");if(b)b.disabled=false}}
+async function setCode(){const b=$("#g-set"),m=$("#g-msg");b.disabled=true;m.textContent="";
+  try{took(await api("/login",{name:b.dataset.name,newCode:$("#g-new").value,again:$("#g-again").value}))}
+  catch(e){m.textContent=(e&&e.message)||"That did not work. Try again.";b.disabled=false}}
+function signedOut(why){Auth.token=null;LS.set("fp-token",null);B=null;gate(why||"")}
+
+async function start(){
+  if(!Auth.token){gate("");return}
+  try{B=await api("/api/pantry/boot",{})}catch(e){if(e.code==="session")return;gate(e.message||"");return}
+  $("#gate").hidden=true;$("#app").hidden=false;$("#nav").hidden=false;$("#who").textContent=B.me;
+  $("#totree").hidden=B.role==="shopper";
+  if(B.role==="shopper"&&!qs.get("go")&&!LS.get("kt-tab"))tab="list";
+  render();
+}
+async function refresh(){if(!B||busy||document.hidden)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+  try{B=await api("/api/pantry/boot",{});render()}catch(e){}}
+
+/* ---------- small helpers over what the server sent ---------- */
+const storeName=id=>(B.stores.find(s=>s.id===id)||{name:"Store not chosen yet"}).name;
+const isDirect=id=>!!(B.stores.find(s=>s.id===id)||{}).direct;
+const canSet=()=>B.role==="director"||B.role==="kitchen";
+const canShop=()=>B.role==="director"||B.role==="shopper";
+const canTasks=()=>B.role==="director"||B.role==="shopper";
+const tripOn=()=>!!(B.trip&&!B.trip.done);
+const stage=s=>B.lines.filter(l=>l.stage===s);
+const WHY={low:"Running low",out:"We are out",weekly:"Every week",menu:"For next week's menu",request:"Asked for",task:"For a task"};
+const storeOpts=(cur,none)=>`${none?`<option value="">${esc(none)}</option>`:""}${B.stores.map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.name)}</option>`).join("")}`;
+const fold=(id,title,inner)=>`<details data-fold="${id}" ${U.open[id]?"open":""}><summary>${title}</summary>${inner}</details>`;
+function lineInfo(l){const bits=[WHY[l.why]||"",l.by&&l.by!=="TREE"?"from "+esc(l.by):"",l.amount?esc(l.amount):""].filter(Boolean).join(", ");
+  return `<b>${esc(l.name)}${l.section==="sensory"?' <span class="tag">Sensory</span>':""}</b><small>${bits}</small>${l.note?`<small>${esc(l.note)}</small>`:""}`}
+
+/* ---------- This week ---------- */
+function weekHtml(){
+  const T=B.times,now=Date.now(),h=[];
+  const part=(closed,at,d,what)=>closed?`${what} closed for this week.`:`${what} closes ${DAYS[d.day]} at ${clock(d.at)}.`;
+  h.push(`<div class="card mark"><b>${tripOn()?"This week's list is ready for shopping.":B.trip&&B.trip.done?"This week's shopping is done.":"This week's list is being gathered."}</b>
+    ${T.costcoDelivery?`<div class="cnt">${part(T.closedCostco,T.costcoCloseAt,T.costcoClose,"The Costco part")}</div>`:""}
+    <div class="cnt">${part(T.closedWeek,T.closeAt,T.close,"The full list")}</div>
+    ${T.closedWeek?`<div class="cnt">Anything added now waits for next week.</div>`:""}</div>`);
+  h.push(`<button class="btn go big" type="button" data-ask="1">Ask for something</button>`);
+  if(U.ask)h.push(askHtml());
+  // the Costco delivery, the director's part
+  const del=stage("delivery");
+  if(B.role==="director"&&del.length)h.push(`<h2>Costco delivery to order</h2><div class="cnt">Mark each one after you place the order. Anything Costco does not have goes onto the shopper's Costco list.</div><div class="card">${del.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${l.state==="ordered"?`<small><b>Ordered</b></small>`:""}</div>
+      ${l.state==="ordered"?"":`<button class="btn" type="button" data-line="${l.id}" data-do="ordered">Ordered</button><button class="btn quiet" type="button" data-line="${l.id}" data-do="na">Not available</button>`}</div>`).join("")}</div>`);
+  // lines with no store yet
+  const pick=B.lines.filter(l=>!l.store&&l.stage!=="done");
+  if(pick.length)h.push(`<h2>Pick a store</h2><div class="card">${pick.map(l=>`<div class="row"><div class="n">${lineInfo(l)}</div>${canSet()?`<select data-pick="${l.id}" aria-label="Store for ${esc(l.name)}" style="width:auto;max-width:46%">${storeOpts("","Choose")}</select>`:`<span class="cnt">Waiting for a store</span>`}</div>`).join("")}</div>${canSet()?`<div class="cnt" style="margin-top:6px">The store you choose is kept for this item from now on.</div>`:""}`);
+  // ordered direct
+  const re=stage("reorder");
+  if(re.length)h.push(`<h2>To reorder</h2><div class="cnt">These come straight from the farm or maker and never go on the shopping trip.</div><div class="card">${re.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${l.from?`<small>${esc(l.from)}</small>`:""}</div>${canSet()?`<button class="btn" type="button" data-line="${l.id}" data-do="reordered">Reordered</button>`:""}</div>`).join("")}</div>`);
+  // by store
+  const open=B.lines.filter(l=>l.store&&!isDirect(l.store)&&l.stage!=="done"&&l.stage!=="reorder");
+  const by=B.stores.filter(s=>!s.direct).map(s=>({s,n:open.filter(l=>l.store===s.id).length})).filter(x=>x.n);
+  h.push(`<h2>On the list</h2>${by.length?`<div class="card">${by.map(x=>`<div class="row"><div class="n"><b>${esc(x.s.name)}</b></div><button class="link" type="button" data-gostore="${esc(x.s.id)}">${x.n} item${x.n===1?"":"s"}</button></div>`).join("")}</div>`:`<div class="cnt">Nothing is on the list yet.</div>`}`);
+  // next week's menu
+  const M=B.menu;
+  h.push(fold("menu",`Next week's menu, week of ${esc(fullDate(M.monday))}`,M.dishes.length?`<div class="card">${M.needs.length?`<b>The menu adds these when the list closes</b>${M.needs.map(n=>`<div class="row"><div class="n"><b>${esc(n.name)}</b><small>${esc(storeName(n.store))}. For ${esc(n.dishes.join(", "))}</small></div></div>`).join("")}`:`<div class="cnt">Nothing on next week's menu matches a menu word.</div>`}</div>
+    <div class="card"><b>The dishes</b>${[...new Set(M.dishes.map(d=>d.day))].map(d=>`<div class="row"><div class="n"><b>${esc(dayDate(d))}</b><small>${esc(M.dishes.filter(x=>x.day===d).map(x=>x.dish).join(", "))}</small></div></div>`).join("")}</div>`:`<div class="cnt">No menu is in TREE for that week yet.</div>`));
+  if(B.role==="director")h.push(fold("closenow","Close a part now",`<div class="cnt">The list closes by itself at the times in Settings. Use these only to close early.</div><div class="acts">${T.costcoDelivery?`<button class="btn quiet" type="button" data-close="costco">Close the Costco part now</button>`:""}<button class="btn quiet" type="button" data-close="week">Close the full list now</button></div>`));
+  return h.join("");
+}
+function askHtml(){const f=U.askFor||{};
+  return `<div class="card" id="askcard"><b>${f.task?"Supplies for the task":"What do we need?"}</b>
+    <label class="fld">Item<input type="text" id="a-name" list="a-items" autocomplete="off" value="${esc(f.name||"")}"></label>
+    <datalist id="a-items">${B.items.map(i=>`<option value="${esc(i.name)}">`).join("")}</datalist>
+    <div class="chips" role="group" aria-label="Kind">${Object.entries(B.sections).map(([k,v])=>`<button class="chip ${(f.section||"other")===k?"on":""}" type="button" data-asksec="${k}">${esc(v)}</button>`).join("")}</div>
+    <label class="fld">How much, or a note<input type="text" id="a-note" value="${esc(f.note||"")}"></label>
+    <div class="acts"><button class="btn go" type="button" data-asksend="1">Add to the list</button><button class="btn quiet" type="button" data-ask="0">Close</button></div></div>`}
+
+/* ---------- Pantry ---------- */
+function itemRow(i){
+  if(U.edit===i.id)return itemEdit(i);
+  const sub=[i.from,i.amount,i.weekly?"Every week":"",i.perUse?"Added when it is on the menu":""].filter(Boolean).join(", ");
+  return `<div class="row"><div class="n"><b>${esc(i.name)}</b>${sub?`<small>${esc(sub)}</small>`:""}${i.status!=="ok"&&i.markedBy?`<small>${i.status==="low"?"Low":"Out"}, marked by ${esc(i.markedBy)} on ${esc(stamp(i.markedAt))}</small>`:""}
+    ${canSet()?`<button class="link" type="button" data-edit="${i.id}" style="padding:2px 0;min-height:30px">Change</button>`:""}</div>
+    <button class="st low ${i.status==="low"?"on":""}" type="button" data-mark="${i.id}" data-to="${i.status==="low"?"ok":"low"}" aria-pressed="${i.status==="low"}">Low</button>
+    <button class="st out ${i.status==="out"?"on":""}" type="button" data-mark="${i.id}" data-to="${i.status==="out"?"ok":"out"}" aria-pressed="${i.status==="out"}">Out</button></div>`}
+function itemEdit(i){const n=!i.id;
+  return `<div class="card" id="editcard"><b>${n?"Add an item":"Change "+esc(i.name)}</b>
+    <label class="fld">Name<input type="text" id="e-name" value="${esc(i.name||"")}"></label>
+    <label class="fld">Store<select id="e-store">${storeOpts(i.store||"","Not chosen yet")}</select></label>
+    <label class="fld">Kind<select id="e-sec">${Object.entries(B.sections).map(([k,v])=>`<option value="${k}" ${k===(i.section||"kitchen")?"selected":""}>${esc(v)}</option>`).join("")}</select></label>
+    <label class="fld">The usual amount<input type="text" id="e-amount" value="${esc(i.amount||"")}"></label>
+    <label class="fld">Farm or maker, for items ordered direct<input type="text" id="e-from" value="${esc(i.from||"")}"></label>
+    <label style="display:flex;gap:10px;align-items:center;margin-top:12px;min-height:40px"><input type="checkbox" id="e-weekly" ${i.weekly?"checked":""} style="width:22px;height:22px"> Buy it every week</label>
+    <div class="acts"><button class="btn go" type="button" data-esave="${i.id||""}">Save</button><button class="btn quiet" type="button" data-edit="">Close</button>${n?"":`<button class="btn quiet" type="button" data-eremove="${i.id}">Take it out of the pantry</button>`}</div></div>`}
+function pantryHtml(){
+  const q=key(U.q);const its=B.items.filter(i=>(U.sec==="all"||i.section===U.sec)&&(!q||key(i.name).includes(q)));
+  const h=[`<input type="search" id="p-q" placeholder="Find an item" value="${esc(U.q)}" aria-label="Find an item">`,
+    `<div class="chips">${[["all","All"],...Object.entries(B.sections)].map(([k,v])=>`<button class="chip ${U.sec===k?"on":""}" type="button" data-sec="${k}">${esc(v)}</button>`).join("")}</div>`,`<div id="p-list">${pantryList(its)}</div>`];
+  if(canSet())h.push(U.edit==="new"?itemEdit({section:U.sec==="all"?"kitchen":U.sec}):`<button class="btn big" type="button" data-edit="new">Add an item</button>`);
+  else h.push(`<div class="cnt" style="margin-top:14px">Need something that is not here? Use Ask for something on This week.</div>`);
+  return h.join("")}
+function pantryList(its){
+  if(!its.length)return `<div class="cnt" style="margin-top:12px">No item matches.</div>`;
+  const groups=[...B.stores.map(s=>[s.id,s.name]),["","Store not chosen yet"]];
+  return groups.map(([id,name])=>{const g=its.filter(i=>(i.store||"")===id).sort((a,b)=>a.name.localeCompare(b.name));if(!g.length)return"";
+    return `<h3>${esc(name)}</h3><div class="card">${g.map(itemRow).join("")}</div>`}).join("")}
+
+/* ---------- The list ---------- */
+function listHtml(){
+  const on=tripOn(),h=[];
+  const all=B.lines.filter(l=>l.store&&!isDirect(l.store)&&(on?l.stage==="trip":(l.stage==="collect"||l.stage==="delivery")));
+  const late=on?B.lines.filter(l=>l.late&&l.stage==="collect"&&l.store&&!isDirect(l.store)):[];
+  const stores=B.stores.filter(s=>!s.direct&&(all.some(l=>l.store===s.id)||late.some(l=>l.store===s.id)));
+  if(!stores.some(s=>s.id===U.store))U.store=(stores[0]||{}).id||"";
+  h.push(`<div class="card mark"><b>${on?"The list for this trip":"Being gathered for this week"}</b><div class="cnt">${on?`${all.filter(l=>l.state!=="got").length} to buy, ${all.filter(l=>l.state==="got").length} in the cart.`:`The full list closes ${DAYS[B.times.close.day]} at ${clock(B.times.close.at)}. The menu and the weekly items join it then.`}</div></div>`);
+  if(!stores.length){h.push(`<div class="cnt" style="margin-top:12px">Nothing is on the list.</div>`);return h.join("")}
+  h.push(`<div class="chips" role="tablist">${stores.map(s=>{const n=all.filter(l=>l.store===s.id&&l.state!=="got").length;return `<button class="chip ${U.store===s.id?"on":""}" type="button" data-store="${esc(s.id)}">${esc(s.name)}${n?", "+n:""}</button>`}).join("")}</div>`);
+  const mine=all.filter(l=>l.store===U.store).sort((a,b)=>(a.state==="got")-(b.state==="got")||a.section.localeCompare(b.section)||a.name.localeCompare(b.name));
+  const row=l=>`<div class="row ${l.state==="got"?"got":""}">${on&&canShop()?`<button class="check ${l.state==="got"?"on":""}" type="button" data-line="${l.id}" data-do="${l.state==="got"?"undo":"got"}" aria-label="${l.state==="got"?"Take "+esc(l.name)+" back out of the cart":"Got "+esc(l.name)}" aria-pressed="${l.state==="got"}">✓</button>`:""}
+    <div class="n">${lineInfo(l)}${U.move===l.id?moveHtml(l):""}</div>
+    ${U.move===l.id?"":on&&canShop()&&l.state!=="got"?`<button class="link" type="button" data-move="${l.id}">Out here</button>`:(!on&&(canSet()||key(l.by)===key(B.me))?`<button class="link" type="button" data-line="${l.id}" data-do="remove">Take off</button>`:"")}</div>`;
+  h.push(mine.length?`<div class="card">${mine.map(row).join("")}</div>`:`<div class="cnt" style="margin-top:12px">Nothing left at this store.</div>`);
+  const lm=late.filter(l=>l.store===U.store);
+  if(lm.length)h.push(fold("late",`Added after the list closed, ${lm.length}`,`<div class="cnt">These wait for next week. If you can get one on this trip, check it off.</div><div class="card">${lm.map(l=>`<div class="row">${canShop()?`<button class="check" type="button" data-line="${l.id}" data-do="got" aria-label="Got ${esc(l.name)}">✓</button>`:""}<div class="n">${lineInfo(l)}</div></div>`).join("")}</div>`));
+  if(on&&canShop()){const got=all.filter(l=>l.state==="got"),gs=got.filter(l=>l.store===U.store);
+    h.push(`<button class="btn go big" type="button" data-doneshop="${esc(U.store)}" ${gs.length?"":"disabled"}>Done at ${esc(storeName(U.store))}</button><div class="cnt" style="margin-top:6px">Everything checked off here goes back to stocked in the pantry. What is not checked stays on the list.</div>`)}
+  return h.join("")}
+function moveHtml(l){return `<div class="acts"><select data-moveto="${l.id}" aria-label="Move ${esc(l.name)} to another store" style="width:auto">${`<option value="">Move to another store</option>`+B.stores.filter(s=>!s.direct&&s.id!==l.store).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
+  <button class="btn quiet" type="button" data-line="${l.id}" data-do="later">Next week</button><button class="btn quiet" type="button" data-move="">Close</button></div>`}
+
+/* ---------- Tasks ---------- */
+const repeatWords=r=>r?`Every ${r.every===1?"":r.every+" "}${r.unit}${r.every===1?"":"s"}`:"One time";
+function taskHtml(t){
+  if(U.task===t.id)return taskEdit(t);
+  const late=t.due&&t.due<B.today&&!t.closedAt,last=(t.done||[])[t.done.length-1];
+  return `<div class="card ${late?"warn":""}"><b>${esc(t.title)}</b>
+    <div class="cnt"><span class="tag">${esc(t.area)}</span><span class="tag">${esc(t.who==="Both"?"Both of us":t.who)}</span>${esc(repeatWords(t.repeat))}${t.due?`. ${late?"Was due":"Due"} ${esc(dayDate(t.due))}`:""}</div>
+    ${t.notes?`<div style="margin-top:6px">${esc(t.notes)}</div>`:""}
+    ${last?`<div class="cnt" style="margin-top:6px">Last done ${esc(stamp(last.at))} by ${esc(last.by)}${last.note?". "+esc(last.note):""}</div>${last.src?`<img class="ph" src="${esc(SERVER+last.src)}" alt="Photo from the last time this was done">`:""}`:""}
+    ${U.taskDone===t.id?`<label class="fld">A note, if there is one<input type="text" id="td-note"></label>
+      <label class="fld">A photo, if you like<input type="file" id="td-photo" accept="image/*" style="margin-top:5px"></label>
+      <div class="acts"><button class="btn go" type="button" data-tdsave="${t.id}">Mark it done</button><button class="btn quiet" type="button" data-tdone="">Close</button></div>`
+    :t.closedAt?`<div class="acts"><button class="btn quiet" type="button" data-topen="${t.id}">Open it again</button></div>`
+    :`<div class="acts"><button class="btn go" type="button" data-tdone="${t.id}">Done</button><button class="btn" type="button" data-tsup="${t.id}">Need supplies</button><button class="btn quiet" type="button" data-tedit="${t.id}">Change</button></div>`}</div>`}
+function taskEdit(t){const n=!t.id,r=t.repeat||{every:0,unit:"week"},people=["Both",...new Set([...B.people.directors,...B.people.shoppers])];
+  return `<div class="card" id="taskcard"><b>${n?"Add a task":"Change the task"}</b>
+    <label class="fld">Task<input type="text" id="t-title" value="${esc(t.title||"")}"></label>
+    <label class="fld">Notes<textarea id="t-notes">${esc(t.notes||"")}</textarea></label>
+    <div class="two"><label class="fld">Area<select id="t-area">${["Facilities","Garden","Farm"].map(a=>`<option ${a===(t.area||"Facilities")?"selected":""}>${a}</option>`).join("")}</select></label>
+    <label class="fld">Who<select id="t-who">${people.map(p=>`<option value="${esc(p)}" ${p===(t.who||"Both")?"selected":""}>${p==="Both"?"Both of us":esc(p)}</option>`).join("")}</select></label></div>
+    <label class="fld">Due<input type="date" id="t-due" value="${esc(t.due||"")}"></label>
+    <div class="two"><label class="fld">Repeats every<input type="number" id="t-every" min="0" max="365" inputmode="numeric" value="${r.every||""}" placeholder="Leave empty for one time"></label>
+    <label class="fld">&nbsp;<select id="t-unit" aria-label="Repeat unit">${[["day","days"],["week","weeks"],["month","months"],["year","years"]].map(([k,v])=>`<option value="${k}" ${k===r.unit?"selected":""}>${v}</option>`).join("")}</select></label></div>
+    <div class="acts"><button class="btn go" type="button" data-tsave="${t.id||""}">Save</button><button class="btn quiet" type="button" data-tedit="">Close</button>${n?"":`<button class="btn quiet" type="button" data-tremove="${t.id}">Remove the task</button>`}</div></div>`}
+function tasksHtml(){
+  const T=B.tasks||[],open=T.filter(t=>!t.closedAt).sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999")),shut=T.filter(t=>t.closedAt).sort((a,b)=>b.closedAt-a.closedAt);
+  const h=[U.task==="new"?taskEdit({}):`<button class="btn go big" type="button" data-tedit="new" style="margin-top:4px">Add a task</button>`];
+  if(U.ask)h.push(askHtml());
+  for(const a of ["Facilities","Garden","Farm"]){const g=open.filter(t=>t.area===a);if(g.length)h.push(`<h2>${a}</h2>${g.map(taskHtml).join("")}`)}
+  if(!open.length)h.push(`<div class="cnt" style="margin-top:12px">No tasks yet.</div>`);
+  if(shut.length)h.push(fold("shut",`Finished, ${shut.length}`,shut.slice(0,30).map(taskHtml).join("")));
+  return h.join("")}
+
+/* ---------- Settings ---------- */
+function settingsHtml(){
+  const T=B.times,h=[];
+  const when=(id,v)=>`<div class="two"><select id="${id}-day" aria-label="Day">${DAYS.map((d,i)=>`<option value="${i}" ${i===v.day?"selected":""}>${d}</option>`).join("")}</select><input type="time" id="${id}-at" value="${esc(v.at)}" aria-label="Time"></div>`;
+  if(B.starting)h.push(`<div class="card warn"><b>This is the starting pantry.</b><div class="cnt">Go through the Pantry tab and change any store, add what is missing and take out what we do not keep. Everything here can be changed at any time.</div></div>`);
+  h.push(`<h2>When the list closes</h2><div class="card">
+    <label class="fld">The full list closes</label>${when("s-close",T.close)}
+    <label style="display:flex;gap:10px;align-items:center;margin-top:14px;min-height:40px"><input type="checkbox" id="s-cd" ${T.costcoDelivery?"checked":""} style="width:22px;height:22px"> The director orders Costco delivery first</label>
+    <label class="fld">The Costco part closes</label>${when("s-cc",T.costcoClose)}
+    <label class="fld">Email the shopper when the list is ready<input type="email" id="s-mail" value="${esc(B.shopperEmail||"")}" placeholder="name@example.com"></label>
+    <div class="acts"><button class="btn go" type="button" data-ssave="1">Save</button></div></div>`);
+  if(B.role==="director")h.push(`<h2>The shopper's sign-in</h2><div class="card"><div class="cnt">This sign-in opens Kitchen TREE only. The first time, the shopper types their first name, leaves the passcode empty and chooses four numbers.</div>
+    ${(B.shopperAccounts||[]).map(a=>`<div class="row"><div class="n"><b>${esc(a.name)}</b><small>${a.hasCode?"Has chosen a passcode":"Has not signed in yet"}</small></div>${a.hasCode?`<button class="link" type="button" data-shreset="${esc(a.name)}">Clear passcode</button>`:""}<button class="link" type="button" data-shremove="${esc(a.name)}">Remove</button></div>`).join("")}
+    <label class="fld">First name<input type="text" id="sh-name" autocapitalize="words"></label><div class="acts"><button class="btn" type="button" data-shadd="1">Add the sign-in</button></div></div>`);
+  h.push(fold("stores","Stores",`<div class="card">${B.stores.map((s,i)=>`<div class="row"><div class="n"><input type="text" data-sname="${i}" value="${esc(s.name)}" aria-label="Store name" style="margin:0"></div>${s.direct?`<span class="cnt">Ordered direct</span>`:`<button class="link" type="button" data-sdel="${i}">Remove</button>`}</div>`).join("")}
+    <div class="acts"><button class="btn quiet" type="button" data-sadd="1">Add a store</button><button class="btn go" type="button" data-stsave="1">Save the stores</button></div></div>`));
+  h.push(fold("words","Menu words",`<div class="cnt">When a dish on next week's menu has the word, its items join the list. Staples kept on hand, such as flour and oil, are left to Low and Out.</div><div class="card">${(B.rules||[]).map((r,i)=>`<div class="row" style="align-items:flex-start"><div class="n"><input type="text" data-rword="${i}" value="${esc(r.word)}" aria-label="Word on the menu" style="margin:0">
+      <div class="chips">${r.items.map(id=>{const it=B.items.find(x=>x.id===id);return it?`<button class="chip on" type="button" data-rdrop="${i}" data-item="${id}" aria-label="Take ${esc(it.name)} off">${esc(it.name)} ✕</button>`:""}).join("")}
+      <select data-radd="${i}" aria-label="Add an item" style="width:auto;margin:0"><option value="">Add an item</option>${B.items.filter(x=>!r.items.includes(x.id)&&x.section==="kitchen").sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></div></div>
+      <button class="link" type="button" data-rdel="${i}">Remove</button></div>`).join("")}
+    <div class="acts"><button class="btn quiet" type="button" data-rnew="1">Add a word</button><button class="btn go" type="button" data-rsave="1">Save the menu words</button></div></div>`));
+  h.push(fold("hist","What was bought lately",B.history.length?`<div class="card">${B.history.map(l=>`<div class="row"><div class="n"><b>${esc(l.name)}</b><small>${esc(storeName(l.store))}, ${l.state==="ordered"?"ordered for delivery":l.state==="reordered"?"reordered":"bought"} ${esc(stamp(l.doneAt))}${l.doneBy?" by "+esc(l.doneBy):""}</small></div></div>`).join("")}</div>`:`<div class="cnt">Nothing yet.</div>`));
+  return h.join("")}
+
+/* ---------- drawing ---------- */
+function tabs(){const t=[["week","This week"],["pantry","Pantry"],["list","List"]];if(canTasks())t.push(["tasks","Tasks"]);if(canSet())t.push(["settings","Settings"]);return t}
+function render(){
+  if(!B)return;const T=tabs();if(!T.some(x=>x[0]===tab))tab=T[0][0];
+  const waiting=B.role==="director"?stage("delivery").filter(l=>l.state!=="ordered").length+(canSet()?B.lines.filter(l=>!l.store).length:0):canSet()?B.lines.filter(l=>!l.store).length+stage("reorder").length:0;
+  const toBuy=tripOn()?stage("trip").filter(l=>l.state!=="got").length:0;
+  const due=canTasks()?(B.tasks||[]).filter(t=>!t.closedAt&&t.due&&t.due<=B.today).length:0;
+  $("#nav").innerHTML=T.map(([k,v])=>`<button type="button" data-tab="${k}" class="${tab===k?"on":""}" aria-current="${tab===k?"page":"false"}">${v}<i>${k==="week"&&waiting?waiting:k==="list"&&toBuy&&canShop()?toBuy:k==="tasks"&&due?due:""}</i></button>`).join("");
+  const y=window.scrollY;
+  $("#view").innerHTML=tab==="week"?weekHtml():tab==="pantry"?pantryHtml():tab==="list"?listHtml():tab==="tasks"?tasksHtml():settingsHtml();
+  window.scrollTo(0,y);
+}
+function go(t){tab=t;LS.set("kt-tab",t);U.ask=false;U.edit="";U.move="";U.task="";U.taskDone="";window.scrollTo(0,0);render()}
+
+// a photo is made smaller on the phone before it is sent
+function shrink(file){return new Promise((ok,no)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",.82))};img.onerror=()=>{URL.revokeObjectURL(u);no(new Error("photo"))};img.src=u})}
+const val=id=>{const e=document.getElementById(id);return e?e.value.trim():""};
+const settingsDraft={stores:null,rules:null};
+function keepDrafts(){document.querySelectorAll("[data-sname]").forEach(e=>{B.stores[+e.dataset.sname].name=e.value});document.querySelectorAll("[data-rword]").forEach(e=>{B.rules[+e.dataset.rword].word=e.value})}
+
+document.addEventListener("click",async ev=>{
+  const t=ev.target.closest("button");if(!t)return;const d=t.dataset;
+  if(t.id==="g-go"){signIn();return} if(t.id==="g-set"){setCode();return}
+  if(t.id==="signout"){signedOut("");return}
+  if(d.tab){go(d.tab);return}
+  if(d.gostore){U.store=d.gostore;go("list");return}
+  if(d.ask!=null){U.ask=d.ask==="1";U.askFor=U.ask?{section:"other"}:null;render();if(U.ask)setTimeout(()=>{const e=$("#a-name");if(e){e.focus();e.scrollIntoView({block:"center"})}},30);return}
+  if(d.asksec){U.askFor=Object.assign(U.askFor||{},{name:val("a-name"),note:val("a-note"),section:d.asksec});render();return}
+  if(d.asksend){const name=val("a-name");if(!name){say("Type what is needed.","bad");return}const f=U.askFor||{};
+    if(await send("request",{name,section:f.section||"other",note:val("a-note"),task:!!f.task},name+" is on the list.")){U.ask=false;U.askFor=null;render()}return}
+  if(d.mark){send("mark",{id:d.mark,status:d.to},d.to==="ok"?"Marked as stocked.":"On the list.");return}
+  if(d.sec){U.sec=d.sec;render();return}
+  if(d.edit!=null){U.edit=d.edit;render();const c=$("#editcard");if(c)c.scrollIntoView({block:"center"});return}
+  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
+  if(d.eremove){if(confirm("Take this item out of the pantry?")&&await send("item",{id:d.eremove,remove:true},"Taken out.")){U.edit="";render()}return}
+  if(d.store){U.store=d.store;U.move="";render();return}
+  if(d.line){const ok={got:"",undo:"",ordered:"Marked as ordered.",na:"Moved to the shopper's Costco list.",reordered:"Marked as reordered.",later:"Moved to next week.",remove:"Taken off the list."}[d.do];if(await send("line",{id:d.line,do:d.do},ok)){U.move="";render()}return}
+  if(d.move!=null){U.move=d.move;render();return}
+  if(d.doneshop!=null){send("doneshopping",{store:d.doneshop},"Stocked in the pantry.");return}
+  if(d.close){if(confirm(d.close==="costco"?"Close the Costco part now?":"Close the full list now and tell the shopper?"))send("close",{which:d.close},"Closed.");return}
+  // tasks
+  if(d.tedit!=null){U.task=d.tedit;U.taskDone="";render();const c=$("#taskcard");if(c)c.scrollIntoView({block:"center"});return}
+  if(d.tsave!=null){const title=val("t-title");if(!title){say("Type the task.","bad");return}
+    if(await send("task",{id:d.tsave,title,notes:val("t-notes"),area:val("t-area"),who:val("t-who"),due:val("t-due"),every:val("t-every"),unit:val("t-unit")},"Saved.")){U.task="";render()}return}
+  if(d.tremove){if(confirm("Remove this task?")&&await send("task",{id:d.tremove,remove:true},"Removed.")){U.task="";render()}return}
+  if(d.tdone!=null){U.taskDone=d.tdone;U.task="";render();return}
+  if(d.tdsave){const f=$("#td-photo"),file=f&&f.files&&f.files[0];let photo="";t.disabled=true;
+    if(file){say("Getting the photo ready.");try{photo=await shrink(file)}catch(e){say("That photo could not be read. Try another, or mark it done without one.","bad");t.disabled=false;return}}
+    if(await send("taskdone",{id:d.tdsave,note:val("td-note"),photo},"Marked done.")){U.taskDone="";render()}else t.disabled=false;return}
+  if(d.topen){send("taskopen",{id:d.topen},"Opened again.");return}
+  if(d.tsup){const tk=(B.tasks||[]).find(x=>x.id===d.tsup);U.ask=true;U.askFor={section:"other",task:true,note:tk?"For "+tk.title:""};render();const c=$("#askcard");if(c){c.scrollIntoView({block:"center"});$("#a-name").focus()}return}
+  // settings
+  if(d.ssave){send("settings",{close:{day:+val("s-close-day"),at:val("s-close-at")},costcoClose:{day:+val("s-cc-day"),at:val("s-cc-at")},costcoDelivery:$("#s-cd").checked,shopperEmail:val("s-mail")},"Saved.");return}
+  if(d.shadd){const name=val("sh-name");if(!name){say("Type the first name.","bad");return}send("shopper",{name},"The sign-in is added.");return}
+  if(d.shreset){if(confirm("Clear the passcode so new numbers are chosen at the next sign-in?"))send("shopper",{name:d.shreset,reset:true},"Cleared.");return}
+  if(d.shremove){if(confirm("Remove this sign-in?"))send("shopper",{name:d.shremove,remove:true},"Removed.");return}
+  if(d.sadd){keepDrafts();B.stores.splice(B.stores.length-1,0,{id:"",name:""});render();return}
+  if(d.sdel!=null){keepDrafts();const s=B.stores[+d.sdel];const n=B.items.filter(i=>i.store===s.id).length;if(s.id&&n&&!confirm(n+" pantry items come from "+s.name+". They will wait in Pick a store. Remove it?"))return;B.stores.splice(+d.sdel,1);render();return}
+  if(d.stsave){keepDrafts();send("settings",{stores:B.stores},"Stores saved.");return}
+  if(d.rnew){keepDrafts();B.rules.push({id:"",word:"",items:[]});render();return}
+  if(d.rdel!=null){keepDrafts();B.rules.splice(+d.rdel,1);render();return}
+  if(d.rdrop!=null){keepDrafts();const r=B.rules[+d.rdrop];r.items=r.items.filter(x=>x!==d.item);render();return}
+  if(d.rsave){keepDrafts();send("rules",{rules:B.rules},"Menu words saved.");return}
+});
+document.addEventListener("change",ev=>{const t=ev.target,d=t.dataset||{};
+  if(d.pick&&t.value){send("line",{id:d.pick,do:"store",store:t.value,keep:true},"Store chosen.");return}
+  if(d.moveto&&t.value){send("line",{id:d.moveto,do:"store",store:t.value},"Moved to "+storeName(t.value)+".").then(()=>{U.move="";render()});return}
+  if(d.radd!=null&&t.value){keepDrafts();B.rules[+d.radd].items.push(t.value);render();return}
+});
+document.addEventListener("input",ev=>{const t=ev.target;
+  if(t.id==="p-q"){U.q=t.value;const q=key(U.q);$("#p-list").innerHTML=pantryList(B.items.filter(i=>(U.sec==="all"||i.section===U.sec)&&(!q||key(i.name).includes(q))))}});
+document.addEventListener("toggle",ev=>{const t=ev.target;if(t.dataset&&t.dataset.fold)U.open[t.dataset.fold]=t.open},true);
+document.addEventListener("keydown",ev=>{if(ev.key!=="Enter")return;const id=ev.target.id;
+  if(id==="g-name"||id==="g-code"){ev.preventDefault();signIn()}else if(id==="g-again"){ev.preventDefault();setCode()}else if(id==="a-name"||id==="a-note"){ev.preventDefault();const b=document.querySelector("[data-asksend]");if(b)b.click()}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+setInterval(refresh,60000);
+start();
+})();
+</script>
+</body>
+</html>

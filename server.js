@@ -61,7 +61,8 @@ const forViewer = (kind, doc, director, office) => {
   return doc;
 };
 // the settings records kept from everyone but the director, in what each page receives and in the changes sent after
-const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch', 'backuppics', 'lulu'];
+// the three pantry records belong to Kitchen TREE (pantry.js) and reach a page only through /api/pantry/
+const DIRECTOR_SETTINGS = ['display', 'keeping', 'saves', 'readable', 'staffnotes', 'watch', 'backuppics', 'lulu', 'pantry', 'pantrylist', 'pantrytasks'];
 const directorSetting = (kind, id) => kind === 'settings' && DIRECTOR_SETTINGS.includes(id);
 const DIRECTOR_FIELDS = ['feedback', 'feedbackBy', 'feedbackAt', 'reviewedAt', 'reviewedBy', 'byDirector'];
 // every box on the Individual and Classroom plans has writing before a plan is sent to the director, except Final remarks
@@ -1001,6 +1002,10 @@ const staff = require('./staff.js')({ newsMail: (P, b, m, q, r, h) => newsMail.h
   checkPasscode, nameBlocked, calendarEvents: (f, t) => calendar.events(f, t), spaces: () => calendar.spaces(), setSetting, roleNames: () => [...roles.directors, ...roles.office, ...DIRECTORS] });
 staff.useRecsEdit(recsEdit);
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
+// Kitchen TREE, the pantry, the weekly shopping list by store and the shared tasks, on its own page kitchen.html (pantry.js)
+const pantry = require('./pantry.js')({ store, log, setSetting, settingDoc: id => settingDoc(id), isDirector, isKitchen, accountFor, accounts, saveAccounts: n => saveAccounts(n), nameKey, cleanName: n => cleanName(n), okName: n => okName(n), mailText,
+  pushTo: (n, m) => reminders.sendTo(n, m), keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), photoSrc: id => photoSrc(id),
+  menuDays: d => { const r = store.recs.menus.get(d.slice(0, 7)); return r && !r.deleted && r.doc && r.doc.days ? r.doc.days[d] : null; } });
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
 const KEY_NO_WRITE = 'GitHub will not let the access key save changes. On GitHub, edit the Planning records token and set Contents to Read and write.';
@@ -3346,6 +3351,14 @@ async function handle(req, res) {
   if (!me) { log('Sign-in refused,', sessionWhy(req), 'on', path); err(req, res, 401, 'Please sign in again.'); return; }
   if (!store.ready) { await loadAll(); if (!store.ready) { err(req, res, 503, store.error || 'Records are still loading. Try again in a moment.'); return; } }
 
+  // Kitchen TREE. A shopper sign-in reaches Kitchen TREE and its own passcode, and nothing else in TREE.
+  if (pantry.isShopper(me.name) && !isDirector(me.name) && !path.startsWith('/api/pantry/') && !['/api/me/passcode', '/api/push/key', '/api/push/subscribe', '/api/watch/page', '/api/watch/usage'].includes(path)) { log('Shopper sign-in refused', me.name, path); err(req, res, 403, 'This sign-in opens Kitchen TREE only.'); return; }
+  if (path.startsWith('/api/pantry/')) {
+    if (staff.isNewHire(me.name)) { err(req, res, 403, 'This opens once the director turns on full access.'); return; }
+    if (stopping) { err(req, res, 503, 'The server is restarting. Try again in a minute.'); return; }
+    if (store.saveError && path !== '/api/pantry/boot') { err(req, res, 503, store.saveError + ' Your last change was not saved.'); return; }
+    await pantry.handle(path.slice('/api/pantry/'.length), body, me.name, req, res, { json, err }); return;
+  }
   // a kitchen sign-in reaches only what the Kitchen page needs, and the server refuses the rest
   const kitchenOnly = isKitchen(me.name);
   if (kitchenOnly) {
