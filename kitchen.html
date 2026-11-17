@@ -112,7 +112,7 @@ const stamp=t=>new Date(t).toLocaleDateString("en-US",{month:"long",day:"numeric
 
 let B=null, busy=false;
 let tab=qs.get("go")||LS.get("kt-tab")||"week";
-let U={q:"",sec:"all",store:"",edit:"",ask:false,askFor:null,move:"",task:"",taskDone:"",photo:"",open:{}};
+let U={q:"",sec:"all",store:"",edit:"",ask:false,askFor:null,move:"",task:"",taskDone:"",photo:"",open:{},tick:{}};
 
 async function api(path,body){
   if(!Auth.token&&path!=="/login")throw {code:"session",message:"Sign in to keep going."};
@@ -186,6 +186,20 @@ const fold=(id,title,inner)=>`<details data-fold="${id}" ${U.open[id]?"open":""}
 const SEARCH={amazon:"https://www.amazon.com/s?k=",costco:"https://www.costcobusinessdelivery.com/s?keyword=",blick:"https://www.dickblick.com/search/?q=",dss:"https://www.discountschoolsupply.com/search?q="};
 const linkFor=(it,store,name)=>{const st=store||(it&&it.store)||"";if(st==="costco"&&B.role!=="director")return "";if(it&&it.link&&st===it.store)return it.link;return SEARCH[st]?SEARCH[st]+encodeURIComponent(name||(it&&it.name)||""):""};
 const openBtn=(it,store,name)=>{const u=linkFor(it,store,name);if(!u||!["director","kitchen","shopper"].includes(B.role))return "";const st=store||(it&&it.store);return `<a class="link" href="${esc(u)}" target="_blank" rel="noopener" style="display:inline-block;padding:2px 0;min-height:30px">${it&&it.link&&st===it.store&&!/[?&](k|keyword|q)=/.test(it.link)?"Open":"Find"} at ${esc(storeName(st))}</a>`};
+// tick boxes on what is ordered online, so several can be opened, added to a cart or marked at once
+const ONLINE=l=>!!SEARCH[l.store]&&["director","kitchen"].includes(B.role);
+const tickBox=l=>ONLINE(l)?`<input type="checkbox" data-tick="${l.id}" ${U.tick[l.id]?"checked":""} aria-label="Tick ${esc(l.name)}" style="width:24px;height:24px;flex:none;margin:2px 10px 0 0">`:"";
+const asin=l=>{const it=itemOf(l),m=it&&it.link&&it.link.match(/amazon\.com\/(?:dp|gp\/product)\/([A-Z0-9]{10})/);return m?m[1]:""};
+function tickBar(lines,done){const on=lines.filter(ONLINE);if(!on.length)return "";
+  return [...new Set(on.map(l=>l.store))].map(st=>{const L=on.filter(l=>l.store===st),T=L.filter(l=>U.tick[l.id]),ids=L.map(l=>l.id).join(","),all=T.length===L.length;
+    let b=`<button class="btn quiet" type="button" data-tickall="${ids}" data-on="${all?"":"1"}">${all?"Untick":"Tick all"} ${esc(storeName(st))}</button>`;
+    if(T.length){
+      if(st==="amazon"){const A=T.map(asin).filter(Boolean),miss=T.length-A.length;
+        if(A.length)b+=`<a class="btn go" href="https://www.amazon.com/gp/aws/cart/add.html?${A.map((a,i)=>`ASIN.${i+1}=${a}&Quantity.${i+1}=1`).join("&")}" target="_blank" rel="noopener" style="text-decoration:none">Add ${A.length} to the Amazon cart</a>`;
+        if(miss)b+=`<button class="btn" type="button" data-tickopen="${T.filter(l=>!asin(l)).map(l=>l.id).join(",")}">Open the other ${miss}</button>`}
+      else b+=`<button class="btn go" type="button" data-tickopen="${T.map(l=>l.id).join(",")}">Open ${T.length} at ${esc(storeName(st))}</button>`;
+      b+=`<button class="btn" type="button" data-tickdone="${T.map(l=>l.id).join(",")}" data-do="${done}">Mark ${T.length} ${done==="ordered"?"ordered":"reordered"}</button>`}
+    return `<div class="acts" style="margin:8px 0">${b}</div>`}).join("")}
 function lineInfo(l){const bits=[WHY[l.why]||"",l.by&&l.by!=="TREE"?"from "+esc(l.by):"",l.amount?esc(l.amount):""].filter(Boolean).join(", ");
   const it=itemOf(l),also=it?(it.also||[]).filter(x=>x!==l.store&&B.stores.some(y=>y.id===x)):[];
   return `<b>${esc(l.name)}${l.section==="sensory"?' <span class="tag">Sensory</span>':""}</b><small>${bits}</small>${l.note?`<small>${esc(l.note)}</small>`:""}${also.length?`<small>Also at ${esc(also.map(storeName).join(" and "))}</small>`:""}${openBtn(it,l.store,l.name)}`}
@@ -225,14 +239,14 @@ function weekHtml(){
   const delSum=del.reduce((t,l)=>t+((itemOf(l)||{}).price||0),0),delUnk=del.filter(l=>!((itemOf(l)||{}).price)).length;
   if(B.role==="director"&&del.length)h.push(`<h2>Costco delivery to order</h2><div class="cnt">Mark each one after you place the order. Anything Costco does not have goes onto the shopper's Costco list.</div>
     <div class="card ${delSum>=250?"mark":"warn"}"><b>About $${delSum.toFixed(2)} so far</b><div class="cnt">${delSum>=250?"Over $250.00, so there is no surcharge.":"Under $250.00, Costco adds a $25.00 surcharge. Add $"+(250-delSum).toFixed(2)+" more to remove it."}${delUnk?" "+delUnk+" item"+(delUnk===1?" has":"s have")+" no price yet.":""} Prices are from one look at the site and will drift.</div>
-      <div class="acts"><button class="btn quiet" type="button" data-close="skipdelivery">Skip delivery this week, send it all to the shopper</button></div></div><div class="card">${del.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${(itemOf(l)||{}).price?`<small>About $${itemOf(l).price.toFixed(2)}</small>`:""}${l.state==="ordered"?`<small><b>Ordered</b></small>`:""}</div>
+      <div class="acts"><button class="btn quiet" type="button" data-close="skipdelivery">Skip delivery this week, send it all to the shopper</button></div></div>${tickBar(del.filter(l=>l.state!=="ordered"),"ordered")}<div class="card">${del.map(l=>`<div class="row">${l.state==="ordered"?"":tickBox(l)}<div class="n">${lineInfo(l)}${(itemOf(l)||{}).price?`<small>About $${itemOf(l).price.toFixed(2)}</small>`:""}${l.state==="ordered"?`<small><b>Ordered</b></small>`:""}</div>
       ${l.state==="ordered"?"":`<button class="btn" type="button" data-line="${l.id}" data-do="ordered">Ordered</button><button class="btn quiet" type="button" data-line="${l.id}" data-do="na">Not available</button>`}</div>`).join("")}</div>`);
   // lines with no store yet
   const pick=B.lines.filter(l=>!l.store&&l.stage!=="done");
   if(pick.length)h.push(`<h2>Pick a store</h2><div class="card">${pick.map(l=>`<div class="row" style="align-items:flex-start"><div class="n">${lineInfo(l)}</div>${canSet()?`<div style="width:46%"><select data-pickstore="${l.id}" aria-label="Store for ${esc(l.name)}" style="margin:0">${storeOpts("","Store")}</select><select data-pickgroup="${l.id}" aria-label="Group for ${esc(l.name)}" style="margin-top:6px">${groupOpts(groupOf(l))}</select><button class="btn" type="button" data-place="${l.id}" style="margin-top:6px;width:100%">Place it</button></div>`:`<span class="cnt">Waiting for a store</span>`}</div>`).join("")}</div>${canSet()?`<div class="cnt" style="margin-top:6px">The store and group you choose are kept for this item from now on.</div>`:""}`);
   // ordered direct
   const re=stage("reorder");
-  if(re.length)h.push(`<h2>To reorder</h2><div class="cnt">These are ordered online or straight from the farm or maker. They never go on the shopping trip.</div><div class="card">${re.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${l.from?`<small>${esc(l.from)}</small>`:""}</div>${canSet()?`<button class="btn" type="button" data-line="${l.id}" data-do="reordered">Reordered</button>`:""}</div>`).join("")}</div>`);
+  if(re.length)h.push(`<h2>To reorder</h2><div class="cnt">These are ordered online or straight from the farm or maker. They never go on the shopping trip.</div>${canSet()?tickBar(re,"reordered"):""}<div class="card">${re.map(l=>`<div class="row">${canSet()?tickBox(l):""}<div class="n">${lineInfo(l)}${l.from?`<small>${esc(l.from)}</small>`:""}</div>${canSet()?`<button class="btn" type="button" data-line="${l.id}" data-do="reordered">Reordered</button>`:""}</div>`).join("")}</div>`);
   // by store
   const open=B.lines.filter(l=>l.store&&!isDirect(l.store)&&l.stage!=="done"&&l.stage!=="reorder");
   const by=B.stores.filter(s=>!s.direct).map(s=>({s,n:open.filter(l=>l.store===s.id).length})).filter(x=>x.n);
@@ -417,6 +431,9 @@ document.addEventListener("click",async ev=>{
   if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),also:[val("e-also1"),val("e-also2")].filter(Boolean),delivery:val("e-deliv"),price:val("e-price"),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),link:val("e-link"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
   if(d.eremove){if(confirm("Take this item out of the pantry?")&&await send("item",{id:d.eremove,remove:true},"Taken out.")){U.edit="";render()}return}
   if(d.store){U.store=d.store;U.move="";render();return}
+  if(d.tickall!=null){for(const id of d.tickall.split(",")){if(d.on)U.tick[id]=1;else delete U.tick[id]}render();return}
+  if(d.tickopen){for(const id of d.tickopen.split(",")){const l=B.lines.find(x=>x.id===id);const u=l&&linkFor(itemOf(l),l.store,l.name);if(u)window.open(u,"_blank","noopener")}return}
+  if(d.tickdone){let n=0;for(const id of d.tickdone.split(",")){if(await send("line",{id,do:d.do},""))n++;delete U.tick[id]}say(n+" marked.","good");render();return}
   if(d.line){const ok={got:"",undo:"",ordered:"Marked as ordered.",na:"Moved to the shopper's Costco list.",reordered:"Marked as reordered.",later:"Moved to next week.",remove:"Taken off the list."}[d.do];if(await send("line",{id:d.line,do:d.do},ok)){U.move="";render()}return}
   if(d.move!=null){U.move=d.move;render();return}
   if(d.doneshop!=null){send("doneshopping",{store:d.doneshop},"Stocked in the pantry.");return}
@@ -455,6 +472,7 @@ document.addEventListener("click",async ev=>{
   if(d.rsave){keepDrafts();send("rules",{rules:B.rules},"Menu words saved.");return}
 });
 document.addEventListener("change",ev=>{const t=ev.target,d=t.dataset||{};
+  if(d.tick){if(t.checked)U.tick[d.tick]=1;else delete U.tick[d.tick];render();return}
   if(d.fstore!=null&&t.value){const A=B.ahead[0],f=A.fresh.find(x=>x.key===d.fstore);if(f)send("fresh",{week:A.monday,name:f.name,do:"store",store:t.value,note:"For "+f.dishes.join(", ")},f.name+" is on the list for "+storeName(t.value)+".");return}
   if(d.moveto&&t.value){send("line",{id:d.moveto,do:"store",store:t.value},"Moved to "+storeName(t.value)+".").then(()=>{U.move="";render()});return}
   if(d.radd!=null&&t.value){keepDrafts();B.rules[+d.radd].items.push(t.value);render();return}
