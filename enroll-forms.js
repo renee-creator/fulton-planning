@@ -8,6 +8,58 @@ const LICO={name:"Community Care Licensing, Santa Rosa Child Care Regional Offic
 const mdy=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[2]}/${m[3]}/${m[1]}`:String(s||"")};
 const splitStreet=s=>{const m=String(s||"").trim().match(/^(\d+[A-Za-z]?)\s+(.*)$/);return m?[m[1],m[2]]:["",String(s||"").trim()]};
 const splitPhone=s=>{const d=String(s||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"");return d.length===10?[d.slice(0,3),d.slice(3,6)+"-"+d.slice(6)]:["",String(s||"")]};
+// the admission agreement as a boxed sheet, the same look as the curriculum plan form
+async function drawAgreement(out, PDFLib, c) {
+  const F = await out.embedFont(PDFLib.StandardFonts.Helvetica), B = await out.embedFont(PDFLib.StandardFonts.HelveticaBold);
+  const rgb = (r, g, b) => PDFLib.rgb(r / 255, g / 255, b / 255);
+  const ink = rgb(34, 48, 40), green = rgb(47, 90, 67), tint = rgb(234, 242, 236), line = rgb(205, 215, 208), gray = rgb(110, 122, 114);
+  const M = 40, W = 532, STRIP = 18, PAD = 10; let pg, y, n = 0; const pages = [];
+  const wrap = (t, f, sz, w) => { const o = []; let l = ''; for (const w0 of String(t || '').split(/\s+/).filter(Boolean)) { const tt = l ? l + ' ' + w0 : w0; if (f.widthOfTextAtSize(tt, sz) <= w) l = tt; else { if (l) o.push(l); l = w0; } } if (l) o.push(l); return o; };
+  const page = () => { pg = out.addPage([612, 792]); pages.push(pg); n++; y = 752;
+    pg.drawText(c.school, { x: M, y, size: n === 1 ? 15 : 11, font: B, color: green });
+    const t = 'Admission Tuition Agreement' + (n > 1 ? ', continued' : ''); const yr = c.year ? c.year + ' school year' : '';
+    if (n === 1) { y -= 17; pg.drawText(t, { x: M, y, size: 12, font: F, color: ink }); if (yr) pg.drawText(yr, { x: M + W - F.widthOfTextAtSize(yr, 10.5), y, size: 10.5, font: F, color: gray }); }
+    else { const s = t + (yr ? ', ' + yr : ''); pg.drawText(s, { x: M + W - F.widthOfTextAtSize(s, 9.5), y, size: 9.5, font: F, color: gray }); }
+    y -= 8; pg.drawLine({ start: { x: M, y }, end: { x: M + W, y }, thickness: 1.2, color: green }); y -= 12; };
+  // a box with a label strip. It is drawn as its top, then its rows, then closed, so a long one can run onto the next page.
+  let top = 0, label = '';
+  const open = (l, note) => { label = l; top = y; pg.drawRectangle({ x: M, y: y - STRIP, width: W, height: STRIP, color: tint });
+    pg.drawText(l.toUpperCase(), { x: M + PAD, y: y - 12.3, size: 7.3, font: B, color: green, characterSpacing: .8 });
+    if (note) pg.drawText(note, { x: M + W - PAD - F.widthOfTextAtSize(note, 7.5), y: y - 12.3, size: 7.5, font: F, color: gray }); y -= STRIP; };
+  const close = () => { pg.drawRectangle({ x: M, y, width: W, height: top - y, borderColor: line, borderWidth: .8 }); y -= 9; };
+  const rule = (x0, x1, yy) => pg.drawLine({ start: { x: x0, y: yy }, end: { x: x1, y: yy }, thickness: .5, color: line });
+  const vline = (x, y0, y1) => pg.drawLine({ start: { x, y: y0 }, end: { x, y: y1 }, thickness: .5, color: line });
+  // a row of cells, each with a small label and the answer under it
+  const cells = (cs, h, first) => { if (!first) rule(M, M + W, y); let x = M; cs.forEach(([l, v, w], i) => { const cw = W * w; if (i) vline(x, y, y - h);
+    pg.drawText(l, { x: x + PAD, y: y - 10, size: 7.2, font: F, color: gray }); if (v) { let sz = 10.5; const t = String(v); while (sz > 7 && F.widthOfTextAtSize(t, sz) > cw - 2 * PAD) sz -= .5; pg.drawText(t, { x: x + PAD, y: y - h + 7, size: sz, font: F, color: ink }); } x += cw; }); y -= h; };
+  const tick = (x, yy, on) => { pg.drawRectangle({ x, y: yy - 1.5, width: 9, height: 9, borderColor: ink, borderWidth: .8 }); if (on) { pg.drawLine({ start: { x: x + 1.7, y: yy + 3 }, end: { x: x + 3.9, y: yy + .3 }, thickness: 1.2, color: ink }); pg.drawLine({ start: { x: x + 3.9, y: yy + .3 }, end: { x: x + 7.8, y: yy + 6.6 }, thickness: 1.2, color: ink }); } };
+
+  page();
+  open('Child and family'); const f = c.fields || {};
+  cells([["Child's name", f.child, .56], ['Sex', f.sex, .14], ['Date of birth', f.dob, .30]], 27, true);
+  cells([['Parent or guardian names', f.parents, 1]], 27);
+  cells([['Address', f.address, .52], ['City', f.city, .30], ['Zip', f.zip, .18]], 27);
+  cells([['Email', f.email, .44], ['Home phone', f.home, .28], ['Cell phone', f.cell, .28]], 27); close();
+  open('Program', 'Check one'); y -= 5; c.programs.forEach(([l, on]) => { y -= 13; tick(M + PAD, y, on); pg.drawText(l, { x: M + PAD + 16, y, size: 9.5, font: F, color: ink }); }); y -= 8; close();
+  if (c.addons.length) { open('Early care and after care', 'Check any that apply'); y -= 5; c.addons.forEach(([l, on]) => { y -= 13; tick(M + PAD, y, on); pg.drawText(l, { x: M + PAD + 16, y, size: 9.5, font: F, color: ink }); }); y -= 8; close(); }
+  // the terms, each with a place for initials on the left
+  const IW = 46, SZ = 9.3, LH = 11.8; let ai = 0;
+  const termsHead = cont => { open('Tuition agreement' + (cont ? ', continued' : ''), 'Please read carefully and initial each line'); };
+  termsHead(false); let colTop = y; const endCol = () => vline(M + IW, colTop, y);
+  for (const t of c.terms) { const ls = wrap(t, F, SZ, W - IW - 2 * PAD), h = ls.length * LH + 9;
+    if (y - h < 54) { endCol(); close(); page(); termsHead(true); colTop = y; } else if (y !== colTop) rule(M, M + W, y);
+    const ag = c.ag; if (ag && ag.initials && (ag.ticks || [])[ai]) pg.drawText(String(ag.initials).toUpperCase().slice(0, 4), { x: M + 12, y: y - h / 2 - 3.5, size: 10, font: B, color: ink });
+    else rule(M + 9, M + IW - 9, y - h + 8);
+    ls.forEach((l, i) => pg.drawText(l, { x: M + IW + PAD, y: y - 13 - i * LH, size: SZ, font: F, color: ink })); y -= h; ai++; }
+  endCol(); close();
+  // the statement and the signatures stay together
+  const st = wrap(c.statement, B, 10, W - 2 * PAD), need = STRIP + st.length * 13.5 + 16 + 9 + STRIP + 2 * 40 + (c.signedNote ? 30 : 0) + 20;
+  if (y - need < 40) page();
+  open('Agreement'); y -= 6; st.forEach(l => { y -= 13.5; pg.drawText(l, { x: M + PAD, y, size: 10, font: B, color: ink }); }); y -= 10; close();
+  open('Signatures'); (c.signs || [{}, {}]).forEach((s, i) => cells([['Signature of parent or guardian', s.sig || '', .44], ['Printed name', s.name || '', .34], ['Date', s.date || '', .22]], 40, i === 0)); close();
+  if (c.signedNote) wrap(c.signedNote, F, 8.5, W).forEach(l => { y -= 11; pg.drawText(l, { x: M, y, size: 8.5, font: F, color: gray }); });
+  pages.forEach((p, i) => { const s = 'Page ' + (i + 1) + ' of ' + pages.length; p.drawText(s, { x: M + W - F.widthOfTextAtSize(s, 8), y: 28, size: 8, font: F, color: gray }); p.drawText(c.school, { x: M, y: 28, size: 8, font: F, color: gray }); });
+}
 async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const base=o.base||"";
   // the agreement's wording comes from the records, passed in as o.agreementWords
   if(!window.TREE_WORDS)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=base+"wording.js";sc.onload=ok;sc.onerror=()=>no(new Error("The agreement could not be loaded."));document.head.appendChild(sc)});
@@ -52,33 +104,17 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
   if(o.blank){for(const f of ["PUB515","WaterLead2026"])await fill(f,()=>{})}
   };if(!justAg)await forms();
   // Fulton's admission agreement, as the school wrote it, with what TREE knows filled in. The family initials each line and signs at the visit.
-  {const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);const M=54,W=504;let pg,y;
-    const yr=o.aa||{};const md=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return "";return new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})};
-    const yearTitle=yr.start?`${yr.start.slice(0,4)}-${Number(yr.start.slice(0,4))+1}`:"";
-    const wrap=(t,f,sz,w)=>{const out=[];let line="";for(const w0 of String(t||"").split(/\s+/).filter(Boolean)){const tt=line?line+" "+w0:w0;if(f.widthOfTextAtSize(tt,sz)<=w)line=tt;else{if(line)out.push(line);line=w0}}if(line)out.push(line);return out};
-    const page=()=>{pg=out.addPage([612,792]);y=748;pg.drawText(FAC.name,{x:M,y,size:12,font:B,color:ink});y-=16;pg.drawText("Admission Agreement"+(yearTitle?" "+yearTitle+" school year":""),{x:M,y,size:11,font:F,color:ink});y-=26};
-    const field=(l,v,x,w)=>{pg.drawText(l,{x,y,size:8.5,font:F,color:gray});const lx=x+F.widthOfTextAtSize(l,8.5)+4;pg.drawLine({start:{x:lx,y:y-2},end:{x:x+w,y:y-2},thickness:.5,color:gray});if(v)pg.drawText(String(v).slice(0,60),{x:lx+2,y,size:10,font:F,color:ink})};
-    const ag=o.agreement||null;let ai=0;
-    const item=t=>{const ls=wrap(t,F,9.5,W-40);pg.drawLine({start:{x:M,y:y-1},end:{x:M+26,y:y-1},thickness:.5,color:gray});if(ag&&ag.initials&&(ag.ticks||[])[ai])pg.drawText(String(ag.initials).toUpperCase(),{x:M+2,y,size:9,font:B,color:ink});ai++;ls.forEach((l,i)=>{pg.drawText(l,{x:M+34,y,size:9.5,font:F,color:ink});y-=12.5});y-=3.5};
-    const box=(on,t)=>{pg.drawRectangle({x:M,y:y-1.5,width:8,height:8,borderColor:ink,borderWidth:.7});if(on){pg.drawLine({start:{x:M+1.5,y:y+2.5},end:{x:M+3.5,y:y},thickness:1.1,color:ink});pg.drawLine({start:{x:M+3.5,y},end:{x:M+7,y:y+6},thickness:1.1,color:ink})}pg.drawText(t,{x:M+14,y,size:9.5,font:F,color:ink});y-=15};
-    const A=window.FultonAgreement;if(o.agreementWords)A.use(o.agreementWords);const g=ag&&ag.fields?ag:null;const gf=g?g.fields:{};
+  // It is a boxed sheet, the look of the curriculum plan form, chosen November 17, 2026. The words all come from the records.
+  {const yr=o.aa||{};const yearTitle=yr.start?`${yr.start.slice(0,4)}-${Number(yr.start.slice(0,4))+1}`:"";
+    const ag=o.agreement||null;const A=window.FultonAgreement;if(o.agreementWords)A.use(o.agreementWords);const g=ag&&ag.fields?ag:null;const gf=g?g.fields:{};
     const prog=g?g.program:o.blank||(justAg&&!o.schedule)?"":A.programFor(o.schedule);const T=A.terms(g&&g.aa&&g.aa.start?g.aa:yr,prog);
-    page();
-    field("Child's name",g?gf.child:nm("c_"),M,300);field("Sex",g?gf.sex:v("c_sex"),M+310,80);field("DOB",g?gf.dob:mdy(v("c_dob")),M+400,104);y-=20;
-    field("Parent(s) name(s)",g?gf.parents:[nm("p1_"),nm("p2_")].filter(Boolean).join(" and "),M,W);y-=20;
-    field("Address",g?gf.address:v("c_street"),M,290);field("City",g?gf.city:v("c_city"),M+300,120);field("Zip",g?gf.zip:v("c_zip"),M+430,74);y-=20;
-    field("Email",g?gf.email:(o.email||""),M,230);field("Home",g?gf.home:(v("c_phone")||v("p1_home")),M+240,130);field("Cell",g?gf.cell:"",M+380,124);y-=26;
-    A.PROGRAMS.forEach(([key,l])=>box(prog===key,l));A.ADDONS.forEach(([key,l])=>box(!!(g&&(g.addons||[]).includes(key)),l));y-=6;
-    pg.drawText("TUITION AGREEMENT (Please read carefully, initial and sign)",{x:M,y,size:10.5,font:B,color:ink});y-=17;
-    T.page1.forEach(item);
-    pg.drawText("See other side",{x:M+W-60,y:40,size:8.5,font:F,color:gray});
-    page();
-    T.page2.forEach(item);
-    y-=8;for(const l of wrap(A.STATEMENT,F,10,W)){pg.drawText(l,{x:M,y,size:10,font:F,color:ink});y-=13.5}
     const signed=!!(ag&&ag.done);const sd=signed?new Date(ag.signedAt).toLocaleDateString("en-US",{month:"2-digit",day:"2-digit",year:"numeric"}):"";
-    y-=30;for(let i=0;i<2;i++){const sg=signed?(i===0?ag.sign1:ag.sign2)||{}:{};const pn=g?(i===0?(ag.sign1||{}).name:(ag.sign2||{}).name):(i===0?nm("p1_"):nm("p2_"));
-      field("Signature",sg.name?"/s/ "+sg.name:"",M,230);field("Name",pn||"",M+240,170);field("Date",sg.name?sd:"",M+420,84);y-=34}
-    if(signed){pg.drawText(`Signed electronically on the Family page on ${sd} by ${[ag.sign1&&ag.sign1.name,ag.sign2&&ag.sign2.name].filter(Boolean).join(" and ")}${ag.by?", "+ag.by:""}.`,{x:M,y,size:8.5,font:F,color:gray})}}
+    const signs=[0,1].map(i=>{const sg=signed?(i===0?ag.sign1:ag.sign2)||{}:{};const pn=g?(i===0?(ag.sign1||{}).name:(ag.sign2||{}).name):(i===0?nm("p1_"):nm("p2_"));return {sig:sg.name?"/s/ "+sg.name:"",name:pn||"",date:sg.name?sd:""}});
+    await drawAgreement(out,PDFLib,{school:FAC.name,year:yearTitle,
+      fields:{child:g?gf.child:nm("c_"),sex:g?gf.sex:v("c_sex"),dob:g?gf.dob:mdy(v("c_dob")),parents:g?gf.parents:[nm("p1_"),nm("p2_")].filter(Boolean).join(" and "),address:g?gf.address:v("c_street"),city:g?gf.city:v("c_city"),zip:g?gf.zip:v("c_zip"),email:g?gf.email:(o.email||""),home:g?gf.home:(v("c_phone")||v("p1_home")),cell:g?gf.cell:""},
+      programs:A.PROGRAMS.map(([key,l])=>[l,prog===key]),addons:A.ADDONS.map(([key,l])=>[l,!!(g&&(g.addons||[]).includes(key))]),
+      terms:T.page1.concat(T.page2),statement:A.STATEMENT,ag,signs,
+      signedNote:signed?`Signed electronically on the Family page on ${sd} by ${[ag.sign1&&ag.sign1.name,ag.sign2&&ag.sign2.name].filter(Boolean).join(" and ")}${ag.by?", "+ag.by:""}.`:""})}
   // the school's own page, the food allergy and dietary information, signed at the visit with the state forms
   if(!justAg){const pg=out.addPage([612,792]);const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);
     let y=740;const M=60,W=492;
