@@ -918,7 +918,7 @@ The mid-month note also has Photos from the last two weeks, up to four from obse
 
 ## The Family page
 
-The enrollment packet prints with nothing filled in from Children, Participation, under Enrollment packet to print, and the admission agreement prints alone there and on a child's Getting started card. The blank packet holds LIC 700, 702, 627, 701, 995, 995E, 613A and 9221, PUB 515, the lead in water notice, the agreement and the food allergy page. enroll-forms.js makes all of them, with o.blank for the blank packet and o.only set to agreement for the agreement alone.
+The enrollment packet prints with nothing filled in from Children, Participation, in the card at the top of the page, and the admission agreement prints alone there and on a child's Getting started card. The blank packet holds LIC 700, 702, 627, 701, 995, 995E, 613A and 9221, PUB 515, the lead in water notice, the agreement and the food allergy page. enroll-forms.js makes all of them, with o.blank for the blank packet and o.only set to agreement for the agreement alone.
 
 The director can see the Family page as one family. On Family participation, under The Family page is open to families, choose a child and See their Family page. It opens that family's page with no code for two hours, shows a line across the top saying whose page it is, and saves nothing. The server answers /api/family/viewas for the director only and refuses every save made from that look. The rule is tested in test/s74-family-viewas.test.js.
 
