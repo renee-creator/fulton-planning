@@ -11,8 +11,12 @@
      Any time   an item marked Low or Out, an educator's request, a task's supplies, all wait as lines being gathered.
                 A line for a store marked Ordered direct goes to the director and kitchen to reorder, never the shopper.
      Thursday   at the Costco closing time, with Costco delivery on, the Costco lines wait for the director to order.
-     Friday     at the closing time, the standing weekly items and what next week's menu needs join the list, every
-                gathered line and any Costco line not ordered go to the shopper's trip, and the shopper is told.
+     Sunday     at the closing time, the standing weekly items and what the coming shopping week's menu needs join the
+                list, every gathered line and any Costco line not ordered go to the shopper's trip, and the shopper is
+                told. The shopper shops on Monday for Tuesday through the following Monday (November 16, 2026).
+     Fresh      a dish's ingredients that are not kept on hand are checked against that week's FEED order and against
+                what the kitchen marked as left from the last one. What FEED is not bringing waits for the kitchen to
+                send to a store or to mark as added to the FEED order. It never goes to the shopper by itself.
      After      a line added after the close waits for next week, and the shopper sees it in its own fold.
      Done       Done shopping marks every item checked off as stocked and keeps the trip in the history.
 
@@ -26,6 +30,7 @@ const crypto = require('crypto');
 
 module.exports = function createPantry(o) {
   const { store, log, setSetting, settingDoc, isDirector, isKitchen, accountFor, accounts, saveAccounts, nameKey, cleanName, okName, mailText, pushTo, keepOriginal, photoSrc, menuDays } = o;
+  const feedOrders = o.feedOrders || (() => []);
   const newId = p => p + crypto.randomBytes(5).toString('hex');
   const clip = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n || 120);
   const IDS = ['pantry', 'pantrylist', 'pantrytasks'];
@@ -83,14 +88,24 @@ module.exports = function createPantry(o) {
     ['tofu', ['Tofu']], ['cream cheese', ['Cream cheese']], ['rice cake', ['Rice cakes']], ['yogurt', ['Plain yogurt']],
     ['pasta', ['Pasta']], ['spaghetti', ['Pasta']], ['macaroni', ['Pasta']], ['pho', ['Rice noodles']], ['japchae', ['Glass noodles']], ['jap chae', ['Glass noodles']],
     ['ramen', ['Ramen noodles']], ['miso', ['Miso']], ['stir fry', ['Stir fry noodles']], ['sticky rice', ['Sweet rice (khao niao)']], ['seaweed', ['Seaweed (nori)']]];
-  const startingRules = items => RULES.map(([word, names]) => ({ id: newId('r'), word, items: names.map(n => (items.find(i => i.name === n && i.section === 'kitchen') || {}).id).filter(Boolean) }));
+  // words in a dish, and the fresh ingredients it needs that are not kept on hand. A best first guess for the kitchen to change.
+  const FRESH = [['kale', ['Kale']], ['potato soup', ['Potatoes', 'Onions']], ['minestrone', ['Carrots', 'Celery', 'Zucchini']], ['tomato soup', ['Tomatoes']], ['pesto', ['Basil']], ['lentil', ['Carrots', 'Onions']],
+    ['pho', ['Bok choy', 'Green onions']], ['japchae', ['Spinach', 'Carrots']], ['jap chae', ['Spinach', 'Carrots']], ['fried rice', ['Carrots', 'Green onions']], ['bibimbap', ['Spinach', 'Carrots', 'Cucumbers']],
+    ['apple', ['Apples']], ['blueberry', ['Blueberries']], ['strawberry', ['Strawberries']], ['lemon', ['Lemons']], ['carrot raisin', ['Carrots']], ['pumpkin', ['Pumpkin']], ['sweet potato', ['Sweet potatoes']], ['zucchini', ['Zucchini']],
+    ['broccoli', ['Broccoli']], ['cucumber', ['Cucumbers']], ['orange tofu', ['Oranges']], ['lemongrass', ['Lemongrass']]];
+  const startingRules = items => { const out = RULES.map(([word, names]) => ({ id: newId('r'), word, items: names.map(n => (items.find(i => i.name === n && i.section === 'kitchen') || {}).id).filter(Boolean), fresh: [] }));
+    for (const [word, fresh] of FRESH) { const r = out.find(x => x.word === word); if (r) r.fresh = fresh; else out.push({ id: newId('r'), word, items: [], fresh }); } return out; };
+  const addFresh = rules => { for (const [word, fresh] of FRESH) { const r = rules.find(x => x.word === word); if (r) { if (!Array.isArray(r.fresh)) r.fresh = fresh; } else rules.push({ id: newId('r'), word, items: [], fresh }); } for (const r of rules) if (!Array.isArray(r.fresh)) r.fresh = []; return rules; };
   function cfg() {
     const d = settingDoc('pantry');
-    if (d && Array.isArray(d.items)) { if (!Array.isArray(d.groups) || !d.groups.length) d.groups = GROUPS; const ok = new Set(d.groups.map(g => g.id)); for (const i of d.items) if (!ok.has(i.group)) i.group = ok.has(guessGroup(i.name)) ? guessGroup(i.name) : d.groups[d.groups.length - 1].id; return d; }
+    if (d && Array.isArray(d.items)) { if (!Array.isArray(d.groups) || !d.groups.length) d.groups = GROUPS; const ok = new Set(d.groups.map(g => g.id)); for (const i of d.items) if (!ok.has(i.group)) i.group = ok.has(guessGroup(i.name)) ? guessGroup(i.name) : d.groups[d.groups.length - 1].id;
+      // November 16, 2026, the director chose a Sunday 6:00 pm close and fresh ingredients checked against FEED. Done once.
+      if (!d.v2) { d.v2 = true; d.close = { day: 0, at: '18:00' }; d.rules = addFresh(Array.isArray(d.rules) ? d.rules : []); }
+      return d; }
     const items = startingItems(); for (const i of items) i.group = guessGroup(i.name);
-    return { groups: GROUPS, stores: STORES, items, rules: startingRules(items), costcoDelivery: true, costcoClose: { day: 4, at: '18:00' }, close: { day: 5, at: '14:00' }, shopperEmail: '', starting: true };
+    return { groups: GROUPS, stores: STORES, items, rules: startingRules(items), costcoDelivery: true, costcoClose: { day: 4, at: '18:00' }, close: { day: 0, at: '18:00' }, shopperEmail: '', starting: true, v2: true };
   }
-  const list = () => { const d = settingDoc('pantrylist'); return { lines: Array.isArray(d.lines) ? d.lines : [], history: Array.isArray(d.history) ? d.history : [], closed: d.closed || {}, trip: d.trip || null }; };
+  const list = () => { const d = settingDoc('pantrylist'); return { lines: Array.isArray(d.lines) ? d.lines : [], history: Array.isArray(d.history) ? d.history : [], closed: d.closed || {}, trip: d.trip || null, left: d.left || null, fresh: d.fresh || {} }; };
   const tasks = () => { const d = settingDoc('pantrytasks'); return { list: Array.isArray(d.list) ? d.list : [] }; };
   const saveCfg = c => { delete c.starting; setSetting('pantry', c); };
   const saveList = l => { l.history = l.history.slice(-400); setSetting('pantrylist', l); };
@@ -125,22 +140,34 @@ module.exports = function createPantry(o) {
   function restock(c, ln) { const it = ln.item && c.items.find(i => i.id === ln.item); if (it) { it.status = 'ok'; it.at = Date.now(); } }
 
   /* ---------- the menu ---------- */
-  // the dishes of the school week after a day, Monday to Friday, read from TREE's monthly menus
-  function nextWeekDishes(fromDay) {
-    const mon = addDays(mondayOf(fromDay), 7), out = [];
-    for (let i = 0; i < 5; i++) { const d = addDays(mon, i), x = menuDays(d); if (!x || x.closed) continue;
-      for (const k of ['am', 'lunch', 'pm']) { const t = clip(x[k], 120); if (t) out.push({ day: d, meal: k, dish: t }); } }
-    return { monday: mon, dishes: out };
+  /* The shopper shops on Monday for Tuesday through the following Monday. A shopping week is named by its shopping
+     Monday. From any day, the coming one is the Monday after this week, and the ones after follow by sevens. */
+  const shopMonday = (fromDay, n) => addDays(mondayOf(fromDay), 7 * (1 + (n || 0)));
+  function weekDishes(shopMon) {
+    const out = []; let snacks = 0, lunches = 0;
+    for (let i = 1; i <= 7; i++) { const d = addDays(shopMon, i), x = menuDays(d); if (!x || x.closed) continue;
+      for (const k of ['am', 'lunch', 'pm']) { const t = clip(x[k], 120); if (!t) continue; out.push({ day: d, meal: k, dish: t }); if (k === 'lunch') lunches++; else snacks++; } }
+    return { dishes: out, snacks, lunches };
   }
   const WEEKDAY = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-  // what next week's dishes need, by the menu words, each item once with the dishes that need it
-  function menuNeeds(c, fromDay) {
-    const { monday, dishes } = nextWeekDishes(fromDay), need = new Map();
+  const stem = n => { const t = String(n || '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim(); return t.replace(/ies$/, '').replace(/oes$/, 'o').replace(/s$/, ''); };
+  // the kitchen's FEED order delivered at the start of a shopping week, Tuesday or Wednesday, and the last one delivered by a day
+  const feedFor = shopMon => feedOrders().filter(o => o.fulfilled >= shopMon && o.fulfilled <= addDays(shopMon, 3)).sort((a, b) => String(b.fulfilled).localeCompare(a.fulfilled))[0] || null;
+  const feedLast = day => feedOrders().filter(o => o.fulfilled <= day).sort((a, b) => String(b.fulfilled).localeCompare(a.fulfilled))[0] || null;
+  const feedFoods = o => (o && o.items || []).filter(x => x.use !== 'education' && !/FEED\s*Bin/i.test(x.item || '')).map(x => clip(String(x.item || '').replace(/^OG\s+/, ''), 80));
+  const onOrder = (o, name) => { const k = stem(name); return !!k && feedFoods(o).some(f => (' ' + stem(f) + ' ').includes(k) || f.toLowerCase().includes(k)); };
+  // what a shopping week's dishes need. Pantry items by the menu words, and fresh ingredients checked against FEED.
+  function menuNeeds(c, L, shopMon) {
+    const W = weekDishes(shopMon), need = new Map(), fresh = new Map();
     for (const r of c.rules || []) { const w = String(r.word || '').trim().toLowerCase(); if (!w) continue;
-      for (const x of dishes) { if (!x.dish.toLowerCase().includes(w)) continue;
-        for (const id of r.items || []) { const it = c.items.find(i => i.id === id); if (!it) continue;
-          const e = need.get(id) || { item: it, dishes: [] }; const lab = x.dish + ' (' + WEEKDAY(x.day) + ')'; if (!e.dishes.includes(lab)) e.dishes.push(lab); need.set(id, e); } } }
-    return { monday, dishes, needs: [...need.values()] };
+      for (const x of W.dishes) { if (!x.dish.toLowerCase().includes(w)) continue; const lab = x.dish + ' (' + WEEKDAY(x.day) + ')';
+        for (const id of r.items || []) { const it = c.items.find(i => i.id === id); if (!it) continue; const e = need.get(id) || { item: it, dishes: [] }; if (!e.dishes.includes(lab)) e.dishes.push(lab); need.set(id, e); }
+        for (const n of r.fresh || []) { const k = stem(n); if (!k) continue; const e = fresh.get(k) || { key: k, name: clip(n, 60), dishes: [] }; if (!e.dishes.includes(lab)) e.dishes.push(lab); fresh.set(k, e); } } }
+    const order = feedFor(shopMon), left = L && L.left && L.left.week === mondayOf(dayOf(Date.now())) ? L.left.names || [] : [], first = shopMon === shopMonday(dayOf(Date.now()), 0);
+    const chosen = (L && L.fresh && L.fresh[shopMon]) || {};
+    for (const e of fresh.values()) e.status = chosen[e.key] ? chosen[e.key] : order && onOrder(order, e.name) ? 'feed' : first && left.some(n => stem(n).includes(e.key)) ? 'left' : order ? 'none' : 'noorder';
+    return { monday: shopMon, from: addDays(shopMon, 1), to: addDays(shopMon, 7), dishes: W.dishes, snacks: W.snacks, lunches: W.lunches, needs: [...need.values()], fresh: [...fresh.values()],
+      feed: order ? { order: order.order, fulfilled: order.fulfilled, foods: feedFoods(order) } : null };
   }
 
   /* ---------- closing ---------- */
@@ -159,7 +186,8 @@ module.exports = function createPantry(o) {
     for (const ln of L.lines) if (ln.late) delete ln.late;
     L.trip = null;
     for (const it of c.items) if (it.weekly && !isDirect(c, it.store)) lineFor(c, L, it, 'weekly', 'TREE', '');
-    const mn = menuNeeds(c, today);
+    const mn = menuNeeds(c, L, shopMonday(today, 0));
+    for (const k of Object.keys(L.fresh)) if (k < mn.monday) delete L.fresh[k];
     for (const e of mn.needs) { const ln = lineFor(c, L, e.item, 'menu', 'TREE', 'For ' + e.dishes.join(', ')); if (ln.why !== 'menu' && ln.why !== 'out') ln.why = 'menu'; }
     let n = 0; for (const ln of L.lines) if (ln.stage === 'collect' || (ln.stage === 'delivery' && ln.state !== 'ordered')) { if (ln.stage === 'delivery') ln.state = ''; ln.stage = 'trip'; n++; }
     for (const ln of L.lines.filter(x => x.stage === 'delivery' && x.state === 'ordered')) { restock(c, ln); finish(L, ln, 'ordered', ln.orderedBy || ''); }
@@ -192,15 +220,17 @@ module.exports = function createPantry(o) {
   /* ---------- what a page receives ---------- */
   function boot(me) {
     const role = roleOf(me), c = cfg(), L = list(), now = Date.now(), today = dayOf(now);
-    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
+    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, also: Array.isArray(i.also) ? i.also : [], group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
     const lines = L.lines;
-    const mn = menuNeeds(c, today);
+    const ahead = [0, 1, 2, 3].map(n => menuNeeds(c, L, shopMonday(today, n))), mn = ahead[0];
+    const last = feedLast(today);
     const out = {
       me, role, today, stores: c.stores, groups: c.groups, sections: SECTIONS, items, lines,
       trip: L.trip, history: L.history.slice(-60).reverse(),
       times: { costcoDelivery: !!c.costcoDelivery, costcoClose: c.costcoClose, close: c.close,
         costcoCloseAt: closeAt(today, c.costcoClose.day, c.costcoClose.at), closeAt: closeAt(today, c.close.day, c.close.at), closedCostco: L.closed.costco === mondayOf(today), closedWeek: L.closed.week === mondayOf(today) },
-      menu: { monday: mn.monday, dishes: mn.dishes, needs: mn.needs.map(e => ({ item: e.item.id, name: e.item.name, store: e.item.store, dishes: e.dishes })) },
+      ahead: ahead.map(a => Object.assign({}, a, { needs: a.needs.map(e => ({ item: e.item.id, name: e.item.name, store: e.item.store, dishes: e.dishes })) })),
+      feedLast: last ? { fulfilled: last.fulfilled, foods: feedFoods(last), left: L.left && L.left.week === mondayOf(today) ? L.left.names || [] : [] } : null,
       people: { shoppers: shoppers(), directors: directors() },
     };
     if (canSetStores(role)) { out.rules = c.rules || []; out.shopperEmail = c.shopperEmail || ''; out.starting = !!c.starting; }
@@ -271,6 +301,21 @@ module.exports = function createPantry(o) {
       else { err(req, res, 400, 'That is not something a line can do.'); return; }
       saveCfg(c); saveList(L); done(); return; }
 
+    // what is still on hand from the last FEED delivery, tapped by the kitchen. It counts for this week only.
+    if (P === 'left') { if (!canSetStores(role)) return no(); const wk = mondayOf(dayOf(Date.now())); const name = clip(b.name, 80); if (!name) { err(req, res, 400, 'Choose a food.'); return; }
+      const cur = L.left && L.left.week === wk ? L.left.names || [] : []; L.left = { week: wk, names: b.on ? [...new Set([...cur, name])] : cur.filter(n => n !== name) }; saveList(L); done(); return; }
+    // a fresh ingredient FEED is not bringing. The kitchen sends it to a store, or marks it added to the FEED order or on hand.
+    if (P === 'fresh') { if (!canSetStores(role)) return no(); const wkM = /^\d{4}-\d{2}-\d{2}$/.test(b.week || '') ? b.week : ''; const k = stem(b.name); if (!wkM || !k) { err(req, res, 400, 'That ingredient is not on the list.'); return; }
+      const m = L.fresh[wkM] || (L.fresh[wkM] = {});
+      if (b.do === 'undo') delete m[k];
+      else if (b.do === 'feed' || b.do === 'have') m[k] = b.do === 'feed' ? 'added' : 'have';
+      else if (b.do === 'store') { const st = storeOf(c, b.store); if (!st || st.direct) { err(req, res, 400, 'Choose a store.'); return; } m[k] = 'store';
+        const ln0 = lineFor(c, L, null, 'menu', me, clip(b.note, 200), { name: clip(b.name, 60), section: 'kitchen', store: st.id }); ln0.group = c.groups.some(g => g.id === 'produce') ? 'produce' : guessGroup(b.name);
+        // a line for a shopping week further out waits for that week's list
+        if (wkM > shopMonday(dayOf(Date.now()), 0)) { ln0.late = true; } }
+      else { err(req, res, 400, 'That is not a choice here.'); return; }
+      saveList(L); done(); return; }
+
     // Done shopping, for the whole trip or one store
     if (P === 'doneshopping') { if (!(role === 'shopper' || role === 'director')) return no('The shopper marks the trip done.');
       const one = b.store && storeOf(c, b.store) ? b.store : '';
@@ -288,13 +333,13 @@ module.exports = function createPantry(o) {
       const it = item(b.id) || (b.id ? null : { id: newId('i'), status: 'ok', by: me, at: Date.now() });
       if (!it) { err(req, res, 404, 'That item is not in the pantry.'); return; }
       const name = clip(b.name, 80); if (!name) { err(req, res, 400, 'Type the item\'s name.'); return; }
-      Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', group: c.groups.some(g => g.id === b.group) ? b.group : (it.group || guessGroup(name)), section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse });
+      Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', group: c.groups.some(g => g.id === b.group) ? b.group : (it.group || guessGroup(name)), section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse, also: (Array.isArray(b.also) ? b.also : []).filter(x => storeOf(c, x) && x !== b.store && !isDirect(c, x)).slice(0, 2) });
       if (!c.items.includes(it)) c.items.push(it);
       // the item's open lines follow its new name and store, except what is already on the trip
       for (const x of L.lines) if (x.item === it.id && x.stage !== 'trip') { x.name = it.name; x.section = it.section; x.amount = it.amount; if (x.store !== it.store) { x.store = it.store; x.stage = isDirect(c, it.store) ? 'reorder' : (x.stage === 'reorder' ? 'collect' : x.stage); } }
       saveCfg(c); saveList(L); done(); return; }
     if (P === 'rules') { if (!canSetStores(role)) return no();
-      c.rules = (Array.isArray(b.rules) ? b.rules : []).slice(0, 200).map(r => ({ id: /^r[a-f0-9]{10}$/.test(r.id) ? r.id : newId('r'), word: clip(r.word, 40).toLowerCase(), items: (Array.isArray(r.items) ? r.items : []).filter(id => item(id)).slice(0, 12) })).filter(r => r.word);
+      c.rules = (Array.isArray(b.rules) ? b.rules : []).slice(0, 200).map(r => ({ id: /^r[a-f0-9]{10}$/.test(r.id) ? r.id : newId('r'), word: clip(r.word, 40).toLowerCase(), items: (Array.isArray(r.items) ? r.items : []).filter(id => item(id)).slice(0, 12), fresh: (Array.isArray(r.fresh) ? r.fresh : []).map(n => clip(n, 60)).filter(Boolean).slice(0, 12) })).filter(r => r.word);
       saveCfg(c); done(); return; }
     if (P === 'settings') { if (!canSetStores(role)) return no();
       const t = (v, d) => ({ day: Number.isInteger(+v.day) && +v.day >= 0 && +v.day <= 6 ? +v.day : d.day, at: /^\d{2}:\d{2}$/.test(String(v.at || '')) ? v.at : d.at });

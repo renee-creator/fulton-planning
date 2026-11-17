@@ -181,7 +181,26 @@ const grouped=(rows,gid,draw)=>B.groups.map(g=>{const r=rows.filter(x=>gid(x)===
 const storeOpts=(cur,none)=>`${none?`<option value="">${esc(none)}</option>`:""}${B.stores.map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.name)}</option>`).join("")}`;
 const fold=(id,title,inner)=>`<details data-fold="${id}" ${U.open[id]?"open":""}><summary>${title}</summary>${inner}</details>`;
 function lineInfo(l){const bits=[WHY[l.why]||"",l.by&&l.by!=="TREE"?"from "+esc(l.by):"",l.amount?esc(l.amount):""].filter(Boolean).join(", ");
-  return `<b>${esc(l.name)}${l.section==="sensory"?' <span class="tag">Sensory</span>':""}</b><small>${bits}</small>${l.note?`<small>${esc(l.note)}</small>`:""}`}
+  const it=itemOf(l),also=it?(it.also||[]).filter(x=>x!==l.store&&B.stores.some(y=>y.id===x)):[];
+  return `<b>${esc(l.name)}${l.section==="sensory"?' <span class="tag">Sensory</span>':""}</b><small>${bits}</small>${l.note?`<small>${esc(l.note)}</small>`:""}${also.length?`<small>Also at ${esc(also.map(storeName).join(" and "))}</small>`:""}`}
+
+/* ---------- the menu, fresh ingredients and FEED ---------- */
+const FRESH={feed:"Coming from FEED",left:"Left from the last FEED delivery",none:"Not on the FEED order",noorder:"No FEED order in TREE yet",added:"Added to the FEED order",have:"We have it",store:"Sent to the shopping list"};
+const itemOf=l=>l.item&&B.items.find(i=>i.id===l.item);
+function freshRow(a,f,act){const open=f.status==="none"||f.status==="noorder",picked=["added","have","store"].includes(f.status);
+  return `<div class="row" style="align-items:flex-start"><div class="n"><b>${esc(f.name)}</b><small>${esc(FRESH[f.status]||"")}. For ${esc(f.dishes.join(", "))}</small>
+    ${act&&canSet()&&open?`<div class="acts"><select data-fstore="${esc(f.key)}" aria-label="Store for ${esc(f.name)}" style="width:auto;margin:0">${`<option value="">Send to a store</option>`+B.stores.filter(x=>!x.direct).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>
+      <button class="btn quiet" type="button" data-fdo="feed" data-fname="${esc(f.name)}" data-fweek="${a.monday}">Added to FEED</button><button class="btn quiet" type="button" data-fdo="have" data-fname="${esc(f.name)}" data-fweek="${a.monday}">We have it</button></div>`:""}
+    ${act&&canSet()&&picked?`<button class="link" type="button" data-fdo="undo" data-fname="${esc(f.name)}" data-fweek="${a.monday}" style="padding:2px 0;min-height:30px">Change</button>`:""}</div></div>`}
+function aheadHtml(a,i){
+  const h=[];
+  h.push(`<div class="card"><b>${a.feed?"FEED order for "+esc(dayDate(a.feed.fulfilled)):"No FEED order in TREE yet for this week"}</b>${a.feed?`<div class="cnt">${esc(a.feed.foods.join(", "))||"No food lines."}</div>`:""}
+    <div class="cnt" style="margin-top:6px">Sides are not on the menu. This week has fruit for ${a.snacks} snack${a.snacks===1?"":"s"}, and salad and vegetables for ${a.lunches} lunch${a.lunches===1?"":"es"}.</div></div>`);
+  if(a.fresh.length)h.push(`<div class="card"><b>Fresh ingredients the dishes need</b>${a.fresh.map(f=>freshRow(a,f,i===0)).join("")}</div>`);
+  if(a.needs.length)h.push(`<div class="card"><b>The menu adds these to the list</b>${a.needs.map(n=>`<div class="row"><div class="n"><b>${esc(n.name)}</b><small>${esc(storeName(n.store))}. For ${esc(n.dishes.join(", "))}</small></div></div>`).join("")}</div>`);
+  h.push(a.dishes.length?`<div class="card"><b>The dishes</b>${[...new Set(a.dishes.map(d=>d.day))].map(d=>`<div class="row"><div class="n"><b>${esc(dayDate(d))}</b><small>${esc(a.dishes.filter(x=>x.day===d).map(x=>x.dish).join(", "))}</small></div></div>`).join("")}</div>`:`<div class="cnt">No menu is in TREE for this week yet.</div>`);
+  return h.join("")}
+const aheadTitle=a=>`${esc(dayDate(a.from))} to ${esc(dayDate(a.to))}`;
 
 /* ---------- This week ---------- */
 function weekHtml(){
@@ -209,10 +228,11 @@ function weekHtml(){
   const open=B.lines.filter(l=>l.store&&!isDirect(l.store)&&l.stage!=="done"&&l.stage!=="reorder");
   const by=B.stores.filter(s=>!s.direct).map(s=>({s,n:open.filter(l=>l.store===s.id).length})).filter(x=>x.n);
   h.push(`<h2>On the list</h2>${by.length?`<div class="card">${by.map(x=>`<div class="row"><div class="n"><b>${esc(x.s.name)}</b></div><button class="link" type="button" data-gostore="${esc(x.s.id)}">${x.n} item${x.n===1?"":"s"}</button></div>`).join("")}</div>`:`<div class="cnt">Nothing is on the list yet.</div>`}`);
-  // next week's menu
-  const M=B.menu;
-  h.push(fold("menu",`Next week's menu, week of ${esc(fullDate(M.monday))}`,M.dishes.length?`<div class="card">${M.needs.length?`<b>The menu adds these when the list closes</b>${M.needs.map(n=>`<div class="row"><div class="n"><b>${esc(n.name)}</b><small>${esc(storeName(n.store))}. For ${esc(n.dishes.join(", "))}</small></div></div>`).join("")}`:`<div class="cnt">Nothing on next week's menu matches a menu word.</div>`}</div>
-    <div class="card"><b>The dishes</b>${[...new Set(M.dishes.map(d=>d.day))].map(d=>`<div class="row"><div class="n"><b>${esc(dayDate(d))}</b><small>${esc(M.dishes.filter(x=>x.day===d).map(x=>x.dish).join(", "))}</small></div></div>`).join("")}</div>`:`<div class="cnt">No menu is in TREE for that week yet.</div>`));
+  // what FEED is not bringing for the coming shopping week waits for the kitchen
+  const A0=B.ahead[0],wait=A0.fresh.filter(f=>f.status==="none"||f.status==="noorder");
+  if(canSet()&&wait.length)h.push(`<h2>${A0.feed?"Not on the FEED order":"Fresh ingredients waiting on the FEED order"}</h2><div class="cnt">For ${aheadTitle(A0)}. Send each one to a store for the shopper, or mark it once it is on the FEED order or on hand.</div><div class="card">${wait.map(f=>freshRow(A0,f,true)).join("")}</div>`);
+  if(canSet()&&B.feedLast&&B.feedLast.foods.length)h.push(fold("left",`Left from FEED, delivered ${esc(stamp(B.feedLast.fulfilled+"T12:00:00"))}`,`<div class="cnt">Tap what is still on hand. It counts as covered for the coming week, and clears itself after that.</div><div class="chips">${B.feedLast.foods.map(f=>`<button class="chip ${B.feedLast.left.includes(f)?"on":""}" type="button" data-left="${esc(f)}" aria-pressed="${B.feedLast.left.includes(f)}">${esc(f)}</button>`).join("")}</div>`));
+  h.push(fold("menu",`The coming shopping week, ${aheadTitle(A0)}`,aheadHtml(A0,0)));
   if(B.role==="director")h.push(fold("closenow","Close a part now",`<div class="cnt">The list closes by itself at the times in Settings. Use these only to close early.</div><div class="acts">${T.costcoDelivery?`<button class="btn quiet" type="button" data-close="costco">Close the Costco part now</button>`:""}<button class="btn quiet" type="button" data-close="week">Close the full list now</button></div>`));
   return h.join("");
 }
@@ -229,7 +249,7 @@ function askHtml(){const f=U.askFor||{},fac=f.section==="facilities";
 /* ---------- Pantry ---------- */
 function itemRow(i){
   if(U.edit===i.id)return itemEdit(i);
-  const sub=[i.from,i.amount,i.weekly?"Every week":"",i.perUse?"Added when it is on the menu":""].filter(Boolean).join(", ");
+  const sub=[i.from,i.amount,i.weekly?"Every week":"",i.perUse?"Added when it is on the menu":"",(i.also||[]).length?"Also at "+i.also.map(storeName).join(" and "):""].filter(Boolean).join(", ");
   return `<div class="row"><div class="n"><b>${esc(i.name)}</b>${sub?`<small>${esc(sub)}</small>`:""}${i.status!=="ok"&&i.markedBy?`<small>${i.status==="low"?"Low":"Out"}, marked by ${esc(i.markedBy)} on ${esc(stamp(i.markedAt))}</small>`:""}
     ${canSet()?`<button class="link" type="button" data-edit="${i.id}" style="padding:2px 0;min-height:30px">Change</button>`:""}</div>
     <button class="st low ${i.status==="low"?"on":""}" type="button" data-mark="${i.id}" data-to="${i.status==="low"?"ok":"low"}" aria-pressed="${i.status==="low"}">Low</button>
@@ -238,6 +258,8 @@ function itemEdit(i){const n=!i.id;
   return `<div class="card" id="editcard"><b>${n?"Add an item":"Change "+esc(i.name)}</b>
     <label class="fld">Name<input type="text" id="e-name" value="${esc(i.name||"")}"></label>
     <label class="fld">Store<select id="e-store">${storeOpts(i.store||"","Not chosen yet")}</select></label>
+    <div class="two"><label class="fld">Also at<select id="e-also1">${storeOpts((i.also||[])[0]||"","No other store").replace(/<option value="direct"[^>]*>[^<]*<\/option>/,"")}</select></label>
+    <label class="fld">And at<select id="e-also2">${storeOpts((i.also||[])[1]||"","No other store").replace(/<option value="direct"[^>]*>[^<]*<\/option>/,"")}</select></label></div>
     <label class="fld">Group in the store<select id="e-group">${groupOpts(i.group||B.groups[B.groups.length-1].id)}</select></label>
     <label class="fld">Kind<select id="e-sec">${Object.entries(B.sections).map(([k,v])=>`<option value="${k}" ${k===(i.section||"kitchen")?"selected":""}>${esc(v)}</option>`).join("")}</select></label>
     <label class="fld">The usual amount<input type="text" id="e-amount" value="${esc(i.amount||"")}"></label>
@@ -264,20 +286,22 @@ function listHtml(){
   const late=on?B.lines.filter(l=>l.late&&l.stage==="collect"&&l.store&&!isDirect(l.store)):[];
   const stores=B.stores.filter(s=>!s.direct&&(all.some(l=>l.store===s.id)||late.some(l=>l.store===s.id)));
   if(!stores.some(s=>s.id===U.store))U.store=(stores[0]||{}).id||"";
-  h.push(`<div class="card mark"><b>${on?"The list for this trip":"Being gathered for this week"}</b><div class="cnt">${on?`${all.filter(l=>l.state!=="got").length} to buy, ${all.filter(l=>l.state==="got").length} in the cart.`:`The full list closes ${DAYS[B.times.close.day]} at ${clock(B.times.close.at)}. The menu and the weekly items join it then.`}</div></div>`);
-  if(!stores.length){h.push(`<div class="cnt" style="margin-top:12px">Nothing is on the list.</div>`);return h.join("")}
+  h.push(`<div class="card mark"><b>${on?"The list for this trip":"Being gathered for this week"}</b><div class="cnt">${on?`${all.filter(l=>l.state!=="got").length} to buy, ${all.filter(l=>l.state==="got").length} in the cart.`:`The full list closes ${DAYS[B.times.close.day]} at ${clock(B.times.close.at)}. The menu's items and the weekly items join it then.`}</div></div>`);
+  const aheadAll=()=>`<h2>The weeks ahead</h2><div class="cnt">Each shopping week runs Tuesday through Monday. The menu's items join the list when it closes.</div>${B.ahead.map((a,i)=>fold("ahead"+i,aheadTitle(a),aheadHtml(a,i))).join("")}`;
+  if(!stores.length){h.push(`<div class="cnt" style="margin-top:12px">Nothing is on the list.</div>`);h.push(aheadAll());return h.join("")}
   h.push(`<div class="chips" role="tablist">${stores.map(s=>{const n=all.filter(l=>l.store===s.id&&l.state!=="got").length;return `<button class="chip ${U.store===s.id?"on":""}" type="button" data-store="${esc(s.id)}">${esc(s.name)}${n?", "+n:""}</button>`}).join("")}</div>`);
   const mine=all.filter(l=>l.store===U.store).sort((a,b)=>(a.state==="got")-(b.state==="got")||a.name.localeCompare(b.name));
   const row=l=>`<div class="row ${l.state==="got"?"got":""}">${on&&canShop()?`<button class="check ${l.state==="got"?"on":""}" type="button" data-line="${l.id}" data-do="${l.state==="got"?"undo":"got"}" aria-label="${l.state==="got"?"Take "+esc(l.name)+" back out of the cart":"Got "+esc(l.name)}" aria-pressed="${l.state==="got"}">✓</button>`:""}
     <div class="n">${lineInfo(l)}${U.move===l.id?moveHtml(l):""}</div>
-    ${U.move===l.id?"":on&&canShop()&&l.state!=="got"?`<button class="link" type="button" data-move="${l.id}">Out here</button>`:(!on&&(canSet()||key(l.by)===key(B.me))?`<button class="link" type="button" data-line="${l.id}" data-do="remove">Take off</button>`:"")}</div>`;
+    ${U.move===l.id?"":on&&canShop()&&l.state!=="got"?`<button class="link" type="button" data-move="${l.id}">Out here</button>`:(!on&&(canSet()||key(l.by)===key(B.me))?`${canSet()?`<button class="link" type="button" data-move="${l.id}">Move</button>`:""}<button class="link" type="button" data-line="${l.id}" data-do="remove">Take off</button>`:"")}</div>`;
   h.push(mine.length?grouped(mine,groupOf,row):`<div class="cnt" style="margin-top:12px">Nothing left at this store.</div>`);
   const lm=late.filter(l=>l.store===U.store);
   if(lm.length)h.push(fold("late",`Added after the list closed, ${lm.length}`,`<div class="cnt">These wait for next week. If you can get one on this trip, check it off.</div><div class="card">${lm.map(l=>`<div class="row">${canShop()?`<button class="check" type="button" data-line="${l.id}" data-do="got" aria-label="Got ${esc(l.name)}">✓</button>`:""}<div class="n">${lineInfo(l)}</div></div>`).join("")}</div>`));
   if(on&&canShop()){const got=all.filter(l=>l.state==="got"),gs=got.filter(l=>l.store===U.store);
     h.push(`<button class="btn go big" type="button" data-doneshop="${esc(U.store)}" ${gs.length?"":"disabled"}>Done at ${esc(storeName(U.store))}</button><div class="cnt" style="margin-top:6px">Everything checked off here goes back to stocked in the pantry. What is not checked stays on the list.</div>`)}
+  h.push(aheadAll());
   return h.join("")}
-function moveHtml(l){return `<div class="acts"><select data-moveto="${l.id}" aria-label="Move ${esc(l.name)} to another store" style="width:auto">${`<option value="">Move to another store</option>`+B.stores.filter(s=>!s.direct&&s.id!==l.store).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
+function moveHtml(l){return `<div class="acts"><select data-moveto="${l.id}" aria-label="Move ${esc(l.name)} to another store" style="width:auto">${`<option value="">Move to another store</option>`+(()=>{const it=itemOf(l),al=it?it.also||[]:[];return B.stores.filter(s=>!s.direct&&s.id!==l.store).sort((x,y)=>al.includes(y.id)-al.includes(x.id)).map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")})()}</select>
   <button class="btn quiet" type="button" data-line="${l.id}" data-do="later">Next week</button><button class="btn quiet" type="button" data-move="">Close</button></div>`}
 
 /* ---------- Tasks ---------- */
@@ -332,9 +356,11 @@ function settingsHtml(){
     <div class="acts"><button class="btn quiet" type="button" data-sadd="1">Add a store</button><button class="btn go" type="button" data-stsave="1">Save the stores</button></div></div>`));
   h.push(fold("groups","Groups inside a store",`<div class="cnt">Like items sit together on each store's list, in this order.</div><div class="card">${B.groups.map((g,i)=>`<div class="row"><div class="n"><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Group name" style="margin:0"></div>${i?`<button class="link" type="button" data-gup="${i}">Move up</button>`:""}${B.groups.length>1?`<button class="link" type="button" data-gdel="${i}">Remove</button>`:""}</div>`).join("")}
     <div class="acts"><button class="btn quiet" type="button" data-gadd="1">Add a group</button><button class="btn go" type="button" data-gsave="1">Save the groups</button></div></div>`));
-  h.push(fold("words","Menu words",`<div class="cnt">When a dish on next week's menu has the word, its items join the list. Staples kept on hand, such as flour and oil, are left to Low and Out.</div><div class="card">${(B.rules||[]).map((r,i)=>`<div class="row" style="align-items:flex-start"><div class="n"><input type="text" data-rword="${i}" value="${esc(r.word)}" aria-label="Word on the menu" style="margin:0">
+  h.push(fold("words","Menu words",`<div class="cnt">When a dish on the menu has the word, its pantry items join the list, and its fresh ingredients are checked against the FEED order. Staples kept on hand, such as flour and oil, are left to Low and Out.</div><div class="card">${(B.rules||[]).map((r,i)=>`<div class="row" style="align-items:flex-start"><div class="n"><input type="text" data-rword="${i}" value="${esc(r.word)}" aria-label="Word on the menu" style="margin:0">
       <div class="chips">${r.items.map(id=>{const it=B.items.find(x=>x.id===id);return it?`<button class="chip on" type="button" data-rdrop="${i}" data-item="${id}" aria-label="Take ${esc(it.name)} off">${esc(it.name)} ✕</button>`:""}).join("")}
-      <select data-radd="${i}" aria-label="Add an item" style="width:auto;margin:0"><option value="">Add an item</option>${B.items.filter(x=>!r.items.includes(x.id)&&x.section==="kitchen").sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></div></div>
+      <select data-radd="${i}" aria-label="Add a pantry item" style="width:auto;margin:0"><option value="">Add a pantry item</option>${B.items.filter(x=>!r.items.includes(x.id)&&x.section==="kitchen").sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></div>
+      <div class="cnt" style="margin-top:8px">Fresh, checked against FEED</div><div class="chips">${(r.fresh||[]).map((n,k)=>`<button class="chip on" type="button" data-fdrop="${i}" data-k="${k}" aria-label="Take ${esc(n)} off">${esc(n)} ✕</button>`).join("")}
+      <input type="text" data-fnew="${i}" placeholder="Add a fresh ingredient" aria-label="Add a fresh ingredient" style="width:auto;margin:0;flex:1;min-width:150px"><button class="btn quiet" type="button" data-fadd="${i}">Add</button></div></div>
       <button class="link" type="button" data-rdel="${i}">Remove</button></div>`).join("")}
     <div class="acts"><button class="btn quiet" type="button" data-rnew="1">Add a word</button><button class="btn go" type="button" data-rsave="1">Save the menu words</button></div></div>`));
   h.push(fold("hist","What was bought lately",B.history.length?`<div class="card">${B.history.map(l=>`<div class="row"><div class="n"><b>${esc(l.name)}</b><small>${esc(storeName(l.store))}, ${l.state==="ordered"?"ordered for delivery":l.state==="reordered"?"reordered":"bought"} ${esc(stamp(l.doneAt))}${l.doneBy?" by "+esc(l.doneBy):""}</small></div></div>`).join("")}</div>`:`<div class="cnt">Nothing yet.</div>`));
@@ -376,7 +402,7 @@ document.addEventListener("click",async ev=>{
   if(d.mark){send("mark",{id:d.mark,status:d.to},d.to==="ok"?"Marked as stocked.":"On the list.");return}
   if(d.sec){U.sec=d.sec;render();return}
   if(d.edit!=null){U.edit=d.edit;render();const c=$("#editcard");if(c)c.scrollIntoView({block:"center"});return}
-  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
+  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),also:[val("e-also1"),val("e-also2")].filter(Boolean),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
   if(d.eremove){if(confirm("Take this item out of the pantry?")&&await send("item",{id:d.eremove,remove:true},"Taken out.")){U.edit="";render()}return}
   if(d.store){U.store=d.store;U.move="";render();return}
   if(d.line){const ok={got:"",undo:"",ordered:"Marked as ordered.",na:"Moved to the shopper's Costco list.",reordered:"Marked as reordered.",later:"Moved to next week.",remove:"Taken off the list."}[d.do];if(await send("line",{id:d.line,do:d.do},ok)){U.move="";render()}return}
@@ -407,12 +433,17 @@ document.addEventListener("click",async ev=>{
   if(d.gup!=null){keepDrafts();const i=+d.gup;B.groups.splice(i-1,0,B.groups.splice(i,1)[0]);render();return}
   if(d.gsave){keepDrafts();send("settings",{groups:B.groups},"Groups saved.");return}
   if(d.place){const st=document.querySelector(`[data-pickstore="${d.place}"]`).value,gr=document.querySelector(`[data-pickgroup="${d.place}"]`).value;if(!st){say("Choose a store first.","bad");return}send("line",{id:d.place,do:"store",store:st,group:gr,keep:true},"Placed.");return}
-  if(d.rnew){keepDrafts();B.rules.push({id:"",word:"",items:[]});render();return}
+  if(d.rnew){keepDrafts();B.rules.push({id:"",word:"",items:[],fresh:[]});render();return}
+  if(d.fadd!=null){keepDrafts();const e=document.querySelector(`[data-fnew="${d.fadd}"]`),v=e?e.value.trim():"";if(v){const r=B.rules[+d.fadd];r.fresh=(r.fresh||[]).concat([v]);render()}return}
+  if(d.fdrop!=null){keepDrafts();B.rules[+d.fdrop].fresh.splice(+d.k,1);render();return}
+  if(d.left!=null){send("left",{name:d.left,on:t.getAttribute("aria-pressed")!=="true"});return}
+  if(d.fdo){send("fresh",{week:d.fweek,name:d.fname,do:d.fdo},d.fdo==="undo"?"":"Marked.");return}
   if(d.rdel!=null){keepDrafts();B.rules.splice(+d.rdel,1);render();return}
   if(d.rdrop!=null){keepDrafts();const r=B.rules[+d.rdrop];r.items=r.items.filter(x=>x!==d.item);render();return}
   if(d.rsave){keepDrafts();send("rules",{rules:B.rules},"Menu words saved.");return}
 });
 document.addEventListener("change",ev=>{const t=ev.target,d=t.dataset||{};
+  if(d.fstore!=null&&t.value){const A=B.ahead[0],f=A.fresh.find(x=>x.key===d.fstore);if(f)send("fresh",{week:A.monday,name:f.name,do:"store",store:t.value,note:"For "+f.dishes.join(", ")},f.name+" is on the list for "+storeName(t.value)+".");return}
   if(d.moveto&&t.value){send("line",{id:d.moveto,do:"store",store:t.value},"Moved to "+storeName(t.value)+".").then(()=>{U.move="";render()});return}
   if(d.radd!=null&&t.value){keepDrafts();B.rules[+d.radd].items.push(t.value);render();return}
 });

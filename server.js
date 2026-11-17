@@ -1005,6 +1005,7 @@ setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators co
 // Kitchen TREE, the pantry, the weekly shopping list by store and the shared tasks, on its own page kitchen.html (pantry.js)
 const pantry = require('./pantry.js')({ store, log, setSetting, settingDoc: id => settingDoc(id), isDirector, isKitchen, accountFor, accounts, saveAccounts: n => saveAccounts(n), nameKey, cleanName: n => cleanName(n), okName: n => okName(n), mailText,
   pushTo: (n, m) => reminders.sendTo(n, m), keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), photoSrc: id => photoSrc(id),
+  feedOrders: () => { const out = []; for (const r of store.recs.grant.values()) { const d = r && !r.deleted && r.doc; if (d && d.kind === 'order' && /feed cooperative/i.test(d.distributor || '') && d.fulfilled) out.push(d); } return out; },
   menuDays: d => { const r = store.recs.menus.get(d.slice(0, 7)); return r && !r.deleted && r.doc && r.doc.days ? r.doc.days[d] : null; } });
 const menuIntake = require('./menu-intake.js')({ keepFile: (id, b, t, m) => keepOriginal(id, b, t, m), store, log, askClaude, anthropicKey, noteChange: (k, id) => noteChange(k, id), scheduleSave: (k, id) => scheduleSave(k, id) });
 setInterval(() => menuIntake.run().catch(e => log('Menus from the Kitchen Digest could not be read', e.message)), 30 * 60000).unref();
