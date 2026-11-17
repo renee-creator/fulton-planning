@@ -91,3 +91,12 @@ test('fresh ingredients are checked against the FEED order and what is left, and
   r = await h.call('Dee', 'close', {}); assert.ok(!r.body.lines.some(l => l.name === 'Onions' || l.name === 'Basil')); assert.ok(r.body.lines.some(l => l.name === 'Potatoes' && l.stage === 'trip'));
   assert.equal(r.body.times.close.day, 0); assert.equal(r.body.ahead.length, 4);
 });
+test('an item has one open line at a time, and a menu word matches whole words', async () => {
+  const la = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+  const day = n => { const x = new Date(la + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7) + n); return x.toISOString().slice(0, 10); };
+  const h = make({ [day(8)]: { lunch: 'Lemongrass tofu and brown rice', pm: 'Rice cakes with cream cheese' } });
+  let r = await h.call('Cook', 'boot'); assert.deepEqual(r.body.ahead[0].fresh.map(f => f.name), ['Lemongrass']); assert.ok(r.body.ahead[0].needs.some(n => n.name === 'Rice cakes'));
+  r = await h.call('Dee', 'close', {}); const eggs = () => r.body.lines.filter(l => l.name === 'Eggs'); assert.equal(eggs().length, 1);
+  r = await h.call('Ed', 'mark', { id: r.body.items.find(i => i.name === 'Eggs').id, status: 'out' }); assert.equal(eggs().length, 1); assert.equal(eggs()[0].why, 'weekly');
+  r = await h.call('Dee', 'close', {}); assert.equal(eggs().length, 1);
+});

@@ -124,8 +124,8 @@ module.exports = function createPantry(o) {
   const isDirect = (c, id) => !!(storeOf(c, id) || {}).direct;
   const active = l => l.stage !== 'done';
   function lineFor(c, L, item, why, by, note, extra) {
-    if (item && L.lines.some(x => active(x) && x.item === item.id && x.stage !== 'trip')) {
-      const have = L.lines.find(x => active(x) && x.item === item.id && x.stage !== 'trip');
+    const have = item && L.lines.find(x => active(x) && x.item === item.id && x.state !== 'got' && x.state !== 'ordered');
+    if (have) {
       if (why === 'out' && have.why === 'low') have.why = 'out';
       if (note && !String(have.note || '').includes(note)) have.note = [have.note, note].filter(Boolean).join('. ');
       return have;
@@ -160,7 +160,8 @@ module.exports = function createPantry(o) {
   function menuNeeds(c, L, shopMon) {
     const W = weekDishes(shopMon), need = new Map(), fresh = new Map();
     for (const r of c.rules || []) { const w = String(r.word || '').trim().toLowerCase(); if (!w) continue;
-      for (const x of W.dishes) { if (!x.dish.toLowerCase().includes(w)) continue; const lab = x.dish + ' (' + WEEKDAY(x.day) + ')';
+      const re = new RegExp('(^|[^a-z])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(s|es)?($|[^a-z])', 'i');
+      for (const x of W.dishes) { if (!re.test(x.dish)) continue; const lab = x.dish + ' (' + WEEKDAY(x.day) + ')';
         for (const id of r.items || []) { const it = c.items.find(i => i.id === id); if (!it) continue; const e = need.get(id) || { item: it, dishes: [] }; if (!e.dishes.includes(lab)) e.dishes.push(lab); need.set(id, e); }
         for (const n of r.fresh || []) { const k = stem(n); if (!k) continue; const e = fresh.get(k) || { key: k, name: clip(n, 60), dishes: [] }; if (!e.dishes.includes(lab)) e.dishes.push(lab); fresh.set(k, e); } } }
     const order = feedFor(shopMon), left = L && L.left && L.left.week === mondayOf(dayOf(Date.now())) ? L.left.names || [] : [], first = shopMon === shopMonday(dayOf(Date.now()), 0);
@@ -274,6 +275,7 @@ module.exports = function createPantry(o) {
         T.list.push({ id, title: name, notes: clip(b.note, 600), area: 'Facilities', who: 'Both', due: '', repeat: null, by: me, at: Date.now(), done: [], request: true, photo });
         saveTasks(T); log('Kitchen TREE facilities request from', me);
         for (const n of new Set([...shoppers(), ...directors()])) if (nameKey(n) !== nameKey(me)) pushTo(n, { title: 'Kitchen TREE', body: 'Facilities request from ' + me + '. ' + name, url: 'kitchen.html?go=tasks', tag: 'kitchen-fac-' + id }).catch(() => {});
+        if (c.shopperEmail && !isShopper(me)) mailText(c.shopperEmail, 'Facilities request from ' + me, `${me} sent a facilities request.\n\n${name}${clip(b.note, 600) ? '\n' + clip(b.note, 600) : ''}${photo ? '\n\nA photo is with it.' : ''}\n\nOpen it under Tasks.\nhttps://renee-creator.github.io/fulton-planning/kitchen.html?go=tasks\n\nFulton Community School`).catch(e => log('Kitchen TREE could not email the facilities request', e.message));
         done(); return;
       }
       const section = SECTIONS[b.section] ? b.section : 'other';

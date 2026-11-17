@@ -162,7 +162,9 @@ async function start(){
   if(B.role==="shopper"&&!qs.get("go")&&!LS.get("kt-tab"))tab="list";
   render();
 }
-async function refresh(){if(!B||busy||document.hidden)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
+// the page is not redrawn under a form someone is filling in, such as a request with a photo just taken
+const formOpen=()=>U.ask||U.edit||U.move||U.task||U.taskDone||tab==="settings"||[...document.querySelectorAll("#view input[type=text],#view select[data-pickstore],#view select[data-fstore]")].some(e=>e.id!=="p-q"&&e.value);
+async function refresh(){if(!B||busy||document.hidden||formOpen())return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
   try{B=await api("/api/pantry/boot",{});render()}catch(e){}}
 
 /* ---------- small helpers over what the server sent ---------- */
@@ -209,7 +211,7 @@ function weekHtml(){
   h.push(`<div class="card mark"><b>${tripOn()?"This week's list is ready for shopping.":B.trip&&B.trip.done?"This week's shopping is done.":"This week's list is being gathered."}</b>
     ${T.costcoDelivery?`<div class="cnt">${part(T.closedCostco,T.costcoCloseAt,T.costcoClose,"The Costco part")}</div>`:""}
     <div class="cnt">${part(T.closedWeek,T.closeAt,T.close,"The full list")}</div>
-    ${T.closedWeek?`<div class="cnt">Anything added now waits for next week.</div>`:""}</div>`);
+    ${T.closedWeek||tripOn()?`<div class="cnt">Anything added now waits for the next list.</div>`:""}</div>`);
   h.push(`<button class="btn go big" type="button" data-ask="1">Ask for something</button>`);
   if(U.ask)h.push(askHtml());
   const mine=B.myRequests||[];
@@ -371,7 +373,7 @@ function tabs(){const t=[["week","This week"],["pantry","Pantry"],["list","List"
 function render(){
   if(!B)return;const T=tabs();if(!T.some(x=>x[0]===tab))tab=T[0][0];
   const waiting=B.role==="director"?stage("delivery").filter(l=>l.state!=="ordered").length+(canSet()?B.lines.filter(l=>!l.store).length:0):canSet()?B.lines.filter(l=>!l.store).length+stage("reorder").length:0;
-  const toBuy=tripOn()?stage("trip").filter(l=>l.state!=="got").length:0;
+  const toBuy=tripOn()?stage("trip").filter(l=>l.state!=="got"&&l.store&&!isDirect(l.store)).length:0;
   const due=canTasks()?(B.tasks||[]).filter(t=>!t.closedAt&&t.due&&t.due<=B.today).length:0;
   $("#nav").innerHTML=T.map(([k,v])=>`<button type="button" data-tab="${k}" class="${tab===k?"on":""}" aria-current="${tab===k?"page":"false"}">${v}<i>${k==="week"&&waiting?waiting:k==="list"&&toBuy&&canShop()?toBuy:k==="tasks"&&due?due:""}</i></button>`).join("");
   const y=window.scrollY;
