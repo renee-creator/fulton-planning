@@ -144,14 +144,14 @@ function ibShareMenu(c,home,dir){const id=esc((home?"home":"edu")+"|"+c.id),full
     ${dir&&c.home?`<button class="linkbtn" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families, take it off":"Highlight for families"}</button><button class="linkbtn" data-ibshare="${esc(c.id)}">Share</button>`:""}</div></details>`}
 // photos on a card, each one of our own kept observations. Educators flag one that does not fit, and the director changes them.
 const ibCap=s=>{s=String(s||"").split("\n")[0].trim();if(s.length<=44)return s;const t=s.slice(0,44),i=t.lastIndexOf(" ");return (i>20?t.slice(0,i):t).replace(/[,.;]+$/,"")+"…"};
-function ibPhotosHtml(c){if(!ib||typeof notices==="undefined")return "";const dir=ibDir(),L=((ib.photos||{})[c.id]||[]).map(p=>({p,n:p.stock?{stock:p.stock,noticed:p.cap||""}:notices.get(p.obs)})).filter(x=>x.n&&(x.n.stock||(x.n.photo&&!x.n.deleted)));
+function ibPhotosHtml(c,home){if(!ib||typeof notices==="undefined")return "";const dir=!home&&ibDir(),L=((ib.photos||{})[c.id]||[]).map(p=>({p,n:p.stock?{stock:p.stock,noticed:p.cap||""}:notices.get(p.obs)})).filter(x=>x.n&&(x.n.stock||(!home&&x.n.photo&&!x.n.deleted)));
   const flags=(ib.photoFlags||[]).filter(f=>f.card===c.id);const pick=ibSt.photoPick===c.id;
   if(!L.length&&!dir)return "";
   const cell=({p,n})=>{const fl=flags.filter(f=>f.obs===p.obs);const full=String(n.noticed||"").split("\n")[0].trim(),title=ibCap(full),src=n.stock?"img/ideabank/"+n.stock:photoSrc(n);
     return `<figure class="ibph"><a href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(n.stock?src:photoThumb(n))}" alt="${esc(full||"A photo")}" loading="lazy"></a>
       <figcaption class="cnt"><span class="ibphcap" title="${esc(full)}">${esc(title)}</span>${fl.length?`<b>Flagged${dir?" by "+esc(fl.map(f=>f.by).join(", ")):""}</b>${dir&&fl[0].why?". "+esc(fl[0].why):""}`:""}
       <span class="actions" style="margin-top:2px">${dir?`<button class="linkbtn" data-ibph="remove|${esc(c.id)}|${esc(p.obs)}">Take off</button>${L[0].p!==p?`<button class="linkbtn" data-ibph="first|${esc(c.id)}|${esc(p.obs)}">Make first</button>`:""}${fl.length?`<button class="linkbtn" data-ibph="unflag|${esc(c.id)}|${esc(p.obs)}">Keep it</button>`:""}`
-        :VIEW_AS||fl.length?"":`<button class="linkbtn" data-ibph="flag|${esc(c.id)}|${esc(p.obs)}">This photo does not fit</button>`}</span></figcaption></figure>`};
+        :home||VIEW_AS||fl.length?"":`<button class="linkbtn" data-ibph="flag|${esc(c.id)}|${esc(p.obs)}">This photo does not fit</button>`}</span></figcaption></figure>`};
   let picker="";
   if(dir&&pick){const q=(ibSt.photoQ||"").trim().toLowerCase(),have=new Set(L.map(x=>x.p.obs));
     const found=q.length<3?[]:[...notices.values()].filter(n=>n&&n.photo&&!n.deleted&&!have.has(n.id)&&((n.noticed||"")+" "+(n.wonder||"")).toLowerCase().includes(q)).sort((a,b)=>(+b.at||0)-(+a.at||0)).slice(0,18);
@@ -163,7 +163,7 @@ function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=
   const used=plan&&(plan.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id);const fl=ibFields(c);
   return `<section class="card ibcardv"><span class="eyebrow">${esc(IB_KIND[c.type]||"")} · ${esc(c.group)}</span><h2 style="margin:4px 0 6px">${esc(home?c.home.title:c.title)}</h2>
     <p>${esc(home?"For families to try at home.":c.summary||"")}</p>
-    ${home?"":ibPhotosHtml(c)}
+    ${ibPhotosHtml(c,home)}
     ${!home&&c.setting&&c.setting.level?`<div class="ibset"><b>${esc(c.setting.level)}</b>${has(c.setting.why)?` <span>${esc(c.setting.why)}</span>`:""}</div>`:""}
     ${c.home?`<div class="seg" role="group" aria-label="Card version"><button data-ibside="edu" aria-pressed="${!home}">For educators</button><button data-ibside="home" aria-pressed="${home}">At home</button></div>`:""}
     <div class="actions">${ibShareMenu(c,home,dir)}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
