@@ -98,12 +98,17 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   await s.p.click(`[data-bkahide="${ac.id}"]`); await s.p.waitForFunction(id => books.get('pip').across.find(a => a.id === id).hidden, ac.id);
   // the pages in print order, and the files
   const made = await s.p.evaluate(async () => { const c = children.get('pip'), b = books.get('pip'); const out = []; const keep = saveFile; saveFile = async (blob, name) => { out.push([name, blob.size]); };
-    b.letter = 'Dear Pip,\nYou learned how to water the beans.'; await bkPdf(c, true); await bkPdf(c, false); await bkWord(c); saveFile = keep; const wordLib = await TREE_KIT.word().then(() => true, () => false); return { sheets: bkSheets(c, b).map(x => x.t), out, wordLib }; });
+    b.letter = 'Dear Pip,\nYou learned how to water the beans.';
+    // a photo that will not load stops the file and names its page
+    const toasts = []; const keepToast = toast; toast = m => toasts.push(m); await bkPreview(c); toast = keepToast;
+    const realBmp = bkBmp; bkBmp = async () => { const cv = document.createElement('canvas'); cv.width = 40; cv.height = 30; return cv; };
+    await bkPreview(c); await bkPdf(c, false); await bkWord(c); bkBmp = realBmp; out.unshift(['toast', toasts.join(' ')]); saveFile = keep; const wordLib = await TREE_KIT.word().then(() => true, () => false); return { sheets: bkSheets(c, b).map(x => x.t), out, wordLib }; });
   assert.deepStrictEqual(made.sheets, ['cover', 'year', 'page', 'year', 'page', 'across', 'last']);
   // the Word tool comes from a public library address, which a closed sandbox cannot reach
   if (!made.wordLib) t.diagnostic('The Word tool could not be fetched here, so the Word file was not checked');
-  assert.strictEqual(made.out.length, made.wordLib ? 2 : 1, 'the proof and the Word file are made, and the print file waits for the reading');
-  assert.match(made.out[0][0], /^Pip Test book proof .*\.pdf$/); assert.ok(made.out[0][1] > 3000); if (made.wordLib) assert.match(made.out[1][0], /\.docx$/);
+  assert.match(made.out[0][1], /The photo on pages? [\d, ]+ could not be loaded/, 'a missing photo stops the preview and names the page');
+  assert.strictEqual(made.out.length, made.wordLib ? 3 : 2, 'the preview and the Word file are made, and the print file waits for the reading');
+  assert.match(made.out[1][0], /^Pip Test book print preview .*\.pdf$/); assert.ok(made.out[1][1] > 3000); if (made.wordLib) assert.match(made.out[2][0], /\.docx$/);
   // kept in the records
   await s.p.waitForTimeout(2500);
   const kept = rec(fx, 'books/pip.json'); assert.ok(kept && kept.pages.length === 2 && kept.child === 'pip');

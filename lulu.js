@@ -20,7 +20,7 @@ const os = require('os');
 const DIR = process.env.LULU_FILES_DIR || path.join(os.tmpdir(), 'tree-lulu');
 const KEEP_MS = 7 * 864e5;
 const PART_MAX = 12 * 1024 * 1024, FILE_MAX = 300 * 1024 * 1024;
-const LEVELS = ['MAIL', 'PRIORITY_MAIL', 'GROUND', 'EXPEDITED', 'EXPRESS'];
+const LEVELS = ['MAIL', 'PRIORITY_MAIL', 'GROUND_HD', 'GROUND_BUS', 'GROUND', 'EXPEDITED', 'EXPRESS'];
 const ID_RE = /^[a-z0-9]{8,40}$/;
 const POD_RE = /^\d{4}X\d{4}\.(FC|BW)\.(PRE|STD)\.[A-Z]{2}\.\d{3}[A-Z]{2}\d{3}\.[GM][A-Z][A-Z]$/;
 
@@ -121,6 +121,13 @@ function make({ SECRET, log, request }) {
     if (what === 'checked') {
       const i = await call('GET', '/validate-interior/' + Number(b.interior) + '/'), c = await call('GET', '/validate-cover/' + Number(b.cover) + '/');
       return { interior: { status: i.status, errors: i.errors || null, pages: i.page_count }, cover: { status: c.status, errors: c.errors || null } };
+    }
+    // the shipping choices Lulu offers for this book to this address, each with its days and cost
+    if (what === 'shipping') {
+      const a = address(b.address);
+      const r = await call('POST', '/shipping-options/', { currency: 'USD', line_items: [{ page_count: pages(b.pages), pod_package_id: pod(b.pod), quantity: 1 }], shipping_address: { street1: a.street1, city: a.city, state: a.state_code, postcode: a.postcode, country: a.country_code } });
+      const list = (Array.isArray(r) ? r : (r && r.results) || []).filter(o => o && LEVELS.includes(o.level));
+      return { options: list.map(o => ({ level: o.level, cost: o.cost_excl_tax, from: o.min_delivery_date || '', to: o.max_delivery_date || '', business: !!o.business_only, home: !!o.home_only })) };
     }
     if (what === 'price') {
       const r = await call('POST', '/print-job-cost-calculations/', { line_items: [{ page_count: pages(b.pages), pod_package_id: pod(b.pod), quantity: 1 }], shipping_address: address(b.address), shipping_option: level(b.level) });

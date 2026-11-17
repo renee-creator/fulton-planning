@@ -25,6 +25,7 @@ function fakeLulu() {
     }
     if (req.url === '/validate-interior/11/') return out(200, { id: 11, status: 'NORMALIZED', page_count: 24 });
     if (req.url === '/validate-cover/22/') return out(200, { id: 22, status: 'NORMALIZED' });
+    if (req.url === '/shipping-options/') return out(200, [{ level: 'MAIL', cost_excl_tax: '4.10', min_delivery_date: '2026-11-25', max_delivery_date: '2026-12-02' }, { level: 'GROUND_HD', cost_excl_tax: '7.00', home_only: true }, { level: 'GROUND_BUS', cost_excl_tax: '7.52', business_only: true, min_delivery_date: '2026-11-21', max_delivery_date: '2026-11-24' }, { level: 'EXPRESS', cost_excl_tax: '31.00' }]);
     if (req.url === '/print-job-cost-calculations/') return out(201, { currency: 'USD', total_cost_incl_tax: '27.40', total_tax: '1.60', shipping_cost: { total_cost_incl_tax: '7.52' }, line_item_costs: [{ total_cost_incl_tax: '18.28' }] });
     if (req.url === '/print-jobs/' && req.method === 'POST') return out(201, { id: 501, status: { name: 'CREATED' } });
     if (req.url === '/print-jobs/501/') return out(200, { id: 501, status: { name: 'UNPAID', message: 'needs to be paid' }, costs: { total_cost_incl_tax: '27.40' }, estimated_shipping_dates: { arrival_max: '2026-11-30' } });
@@ -91,13 +92,18 @@ test('the Book tab makes the cover and the pages, has Lulu check them, shows the
   await s.p.evaluate(() => window.TREE_OPEN_KID('pip', 'book'));
   await s.p.waitForSelector('[data-bklfiles]', { timeout: 15000 });
   await s.p.evaluate(() => { bkWait = () => Promise.resolve(); });
-  await s.p.click('[data-bklfiles]'); await s.p.waitForSelector('[data-bklprice]', { timeout: 60000 });
+  await s.p.click('[data-bklfiles]'); await s.p.waitForSelector('select[data-bkllevel]', { timeout: 60000 });
+  assert.strictEqual(await s.p.inputValue('select[data-bkllevel]'), 'GROUND_BUS', 'ground to a business is chosen for the school');
+  assert.match(await s.p.innerText('select[data-bkllevel]'), /Ground, to a business, arrives .* \$7\.52/);
+  const ship = L.seen.find(x => x.path === '/shipping-options/').body; assert.strictEqual(ship.shipping_address.state, 'CA'); assert.strictEqual(ship.line_items[0].page_count, 24);
   const cov = L.seen.find(x => x.path === '/cover-dimensions/').body;
   assert.deepStrictEqual(cov, { pod_package_id: '1100X0850.FC.PRE.CW.080CW444.MXX', interior_page_count: 24, unit: 'pt' }, 'a matte cover, and the book padded to 24 pages');
   assert.match(await s.p.innerText('#main'), /Lulu checked both files\. 24 pages, matte cover/);
   await s.p.click('[data-bklprice]'); await s.p.waitForSelector('[data-bklorder]');
   assert.match(await s.p.innerText('#main'), /Total \$27\.40/);
+  assert.strictEqual(L.seen.find(x => x.path === '/print-job-cost-calculations/').body.shipping_option, 'GROUND_BUS');
   await s.p.click('[data-bklorder]'); await s.p.waitForFunction(() => (books.get('pip').lulu || []).length === 1);
+  assert.strictEqual(L.seen.find(x => x.path === '/print-jobs/' && x.method === 'POST').body.shipping_level, 'GROUND_BUS');
   const ord = await s.p.evaluate(() => books.get('pip').lulu[0]); assert.strictEqual(ord.id, 501); assert.strictEqual(ord.mode, 'sandbox');
   await s.p.click('[data-bkljob="501"]'); await s.p.waitForFunction(() => books.get('pip').lulu[0].status === 'UNPAID');
   assert.match(await s.p.innerText('#main'), /Waiting to be paid in your Lulu account, \$27\.40/);
