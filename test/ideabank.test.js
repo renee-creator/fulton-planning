@@ -400,7 +400,9 @@ test('the training step adds the PD day and the hours once', async () => {
 test('photos on the cards are seeded once, flagged by educators and changed by the director', async () => {
   const h = await loaded(PEOPLE); const SEEDP = require('../once/ideabank-photos.json');
   let r = await call(h.staff, 'Ann', 'ideabank'); const ids = Object.keys(r.body.photos);
-  assert.strictEqual(ids.length, Object.keys(SEEDP.map).filter(id => true).length); const card = ids.find(id => r.body.cards.some(c => c.id === id)), obs = r.body.photos[card][0].obs;
+  const STOCK = require('../once/ideabank-stock.json'); assert.strictEqual(ids.length, new Set(Object.keys(SEEDP.map).concat(Object.keys(STOCK.map))).size);
+  const sc = Object.keys(STOCK.map)[0]; assert.strictEqual(r.body.photos[sc][0].stock, STOCK.map[sc][0].stock, 'stock photos come first'); assert.ok(r.body.photos[sc].length <= 4);
+  const card = ids.find(id => r.body.cards.some(c => c.id === id) && r.body.photos[id].length < 4), obs = r.body.photos[card][0].obs;
   assert.ok(card && obs);
   assert.strictEqual((await call(h.staff, 'Ann', 'ideabank/photo', { do: 'remove', card, obs })).status, 400, 'an educator does not take a photo off');
   r = await call(h.staff, 'Ann', 'ideabank/photo', { do: 'flag', card, obs, why: 'This is paint' }); assert.strictEqual(r.body.photoFlags.length, 1);

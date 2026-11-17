@@ -29,9 +29,20 @@ module.exports = function ideabank(o) {
   const PHO = 'staff/library/ideabank/photos.json', PHO_SEED = path.join(__dirname, 'once', 'ideabank-photos.json');
   const photos = () => Object.assign({ map: {}, flags: [] }, get(PHO) || {});
   function seedPhotos() {
-    if (S.files.has(PHO)) return; let d; try { d = JSON.parse(fs.readFileSync(PHO_SEED, 'utf8')); } catch (e) { return; }
+    seedStock(); if (S.files.has(PHO)) return; let d; try { d = JSON.parse(fs.readFileSync(PHO_SEED, 'utf8')); } catch (e) { return; }
     const map = {}; for (const [id, L] of Object.entries(d.map || {})) map[id] = (L || []).slice(0, 4).map(obs => ({ obs: String(obs), by: 'TREE', at: Date.now() }));
-    put(PHO, { id: 'ideabank-photos', seededAt: Date.now(), map, flags: [] }); log('Idea bank photos seeded for', Object.keys(map).length, 'cards');
+    put(PHO, { id: 'ideabank-photos', seededAt: Date.now(), map, flags: [] }); log('Idea bank photos seeded for', Object.keys(map).length, 'cards'); seedStock();
+  }
+  /* Photos from our own stock library, asked for November 17, 2026. The files are kept with the site in img/ideabank and
+     named on the card with a short caption. They are added once, ahead of the observation photos, and a card still holds four. */
+  const STOCK_SEED = path.join(__dirname, 'once', 'ideabank-stock.json');
+  function seedStock() {
+    const P = get(PHO); if (!P || P.stockSeeded) return; let d; try { d = JSON.parse(fs.readFileSync(STOCK_SEED, 'utf8')); } catch (e) { return; }
+    const map = Object.assign({}, P.map); let n = 0;
+    for (const [id, L] of Object.entries(d.map || {})) { const old = (map[id] || []).filter(x => !x.stock);
+      const add = (L || []).filter(x => x && /^[a-z0-9-]{1,50}\.jpg$/.test(x.stock || '')).map(x => ({ obs: 'stk_' + x.stock.replace(/\.jpg$/, ''), stock: x.stock, cap: String(x.cap || '').slice(0, 60), by: 'TREE', at: Date.now() }));
+      if (add.length) { map[id] = add.concat(old).slice(0, 4); n++; } }
+    put(PHO, Object.assign({}, P, { map, stockSeeded: Date.now() })); log('Idea bank stock photos added to', n, 'cards');
   }
   function photoChange(me, b) {
     const c = cards().find(y => y.id === b.card); if (!c) return { error: 'That card is not here.' };
