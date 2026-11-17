@@ -39,7 +39,13 @@ module.exports = function newsMail(o) {
       const testTo = /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/i.test(String(body.testTo || '').trim()) ? String(body.testTo).trim().toLowerCase() : '';
       if (!testTo && !w.parents) { err(req, res, 400, 'No parent email is on file for this child.'); return; }
       const to = testTo ? [testTo] : w.list;
-      let r; try { r = await drive.ask({ op: 'mail', to, subject, html, text, images: [], name: 'Fulton Community School', replyTo: w.replyTo }, 120000); }
+      // our plan, as a PDF with the letter. The mailbox script is asked first whether it can attach a file, so a letter
+      // never goes out with its plan missing (November 17, 2026)
+      const at = body.attach && /^[A-Za-z0-9+/=]+$/.test(String(body.attach.data || '')) && String(body.attach.data).length < 4e6 ? { name: one(body.attach.name, 120).replace(/[^\w .,'&-]/g, ' ').replace(/\s+/g, ' ').trim().replace(/(\.pdf)?$/i, '.pdf'), type: 'application/pdf', data: String(body.attach.data) } : null;
+      if (body.attach && !at) { err(req, res, 400, 'The plan could not be attached, so nothing was sent.'); return; }
+      if (at) { let caps = null; try { caps = await drive.ask({ op: 'mailcaps' }, 30000); } catch (e) { caps = null; }
+        if (!caps || !caps.attach) { err(req, res, 400, 'The TREE mailbox script needs its update before it can attach a file. Nothing was sent.'); return; } }
+      let r; try { r = await drive.ask({ op: 'mail', to, subject, html, text, images: [], attachments: at ? [at] : [], name: 'Fulton Community School', replyTo: w.replyTo }, 120000); }
       catch (e) { log('Family letter did not go out,', e.message); err(req, res, 502, 'The TREE mailbox did not send it. ' + e.message); return; }
       log('Family letter sent', subject, 'to', r.sent, 'of', to.length, testTo ? '(test)' : '', 'by', me);
       json(req, res, 200, { sent: Number(r.sent) || 0, failed: Array.isArray(r.failed) ? r.failed.length : 0, test: !!testTo, count: to.length, parents: w.parents, at: Date.now() }); return;

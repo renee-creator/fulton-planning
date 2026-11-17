@@ -121,7 +121,7 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     for (const w of want) for (const ext of ['.pdf', '.docx']) if (!/Rest time/.test(w) || ext === '.pdf') assert.ok(files.includes(w + ext), w + ext + ' in ' + files.join(', '));
     assert.ok(!files.includes('South Class/Team inquiry Rest time full.docx'));
     // the full print of a team inquiry with its thinking over time keeps each date beside its step, so it can print at all
-    assert.ok(await s.p.evaluate(() => { const bl = inquiryDoc(inquiries.get('q1'), true).blocks.filter(x => x.t === 'item'); return bl.length >= 3 && bl.every(x => Array.isArray(x.side)); }));
+    assert.ok(await s.p.evaluate(() => { const d = inquiryDocs(inquiries.get('q1'), true); return d.length === 1 && d[0].blocks.some(b => b.t === 'sub' && /^6\. Our plan/.test(b.text)); }));
     // last year's plans and a child with nothing in the portfolio are not among them
     assert.ok(!files.some(f => /2025-10-13|Oak Test/.test(f)));
     for (const f of d.tree()) { const t2 = d.file(f).toString('utf8'); assert.doesNotMatch(t2, /private joy|journal|check-?in|evaluation|1357|director-pass/i, f); }

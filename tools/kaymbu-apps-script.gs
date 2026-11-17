@@ -174,6 +174,8 @@ function doPost(e) {
     return reply_({ data: Utilities.base64Encode(file.getBlob().getBytes()), type: file.getMimeType() });
   }
   // the newsletter and notes TREE emails to families, one email to each address (November 15, 2026)
+  // what this copy of the script can do with email, asked before a letter with a file is sent (November 17, 2026)
+  if (body.op === 'mailcaps') return reply_({ attach: true });
   if (body.op === 'mail') return reply_(familyMail_(body));
   // video clips, read by TREE in pieces, their Drive thumbnail, and their sharing for signed-in school accounts
   if (/^video-/.test(String(body.op || ''))) return reply_(videoOp_(body));
@@ -491,11 +493,14 @@ function familyMail_(b) {
   if (!b.subject || !b.html) return { error: 'The email has no subject or words' };
   const inline = {};
   (Array.isArray(b.images) ? b.images : []).forEach(i => { if (i && i.cid && i.data) inline[i.cid] = Utilities.newBlob(Utilities.base64Decode(i.data), 'image/jpeg', i.cid + '.jpg'); });
+  // a PDF sent with the email, such as our plan with a letter to one family
+  const files = (Array.isArray(b.attachments) ? b.attachments : []).slice(0, 3).filter(f => f && f.data && f.name).map(f => Utilities.newBlob(Utilities.base64Decode(f.data), 'application/pdf', String(f.name)));
   let sent = 0; const failed = [];
   to.forEach(t => {
     try {
       const o = { to: t, subject: String(b.subject), htmlBody: String(b.html), body: String(b.text || ''), name: String(b.name || 'Fulton Community School'), inlineImages: inline };
       if (ok(b.replyTo)) o.replyTo = b.replyTo;
+      if (files.length) o.attachments = files;
       MailApp.sendEmail(o); sent++;
     } catch (e) { failed.push(t); }
   });

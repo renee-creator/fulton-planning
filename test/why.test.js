@@ -46,8 +46,7 @@ test('the why stays with what TREE offered', async t => {
   await s.p.click('[data-fdadd="inquiry|q1|w1"]'); await s.p.waitForTimeout(400);
   assert.strictEqual(await s.p.evaluate(() => inquiries.get('q1').obsFound.w1.why), 'Perhaps the child was looking for shade.');
   assert.match(await txt(), /Why TREE offered it\. Perhaps the child was looking for shade\./);
-  const idoc = await s.p.evaluate(() => JSON.stringify(inquiryDoc(inquiries.get('q1'), true).blocks.filter(b => b.quiet).map(b => b.text)));
-  assert.match(idoc, /Why TREE offered it\. Perhaps the child was looking for shade\./);
+  // the why stays on the page for the team. The printed inquiry leaves it out (November 17, 2026)
   // a thread suggested on an observation keeps its why on the thread's evidence, shown on the thread and the observation card
   await s.p.evaluate(() => goView('moments')); await s.p.waitForSelector('[data-tsadd="w0|t2"]', { state: 'attached' }); await open();
   await s.p.click('[data-tsadd="w0|t2"]'); await s.p.waitForTimeout(400);

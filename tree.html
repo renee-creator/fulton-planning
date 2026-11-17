@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4d6f8ff92994";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="81d84cf7ad55";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -10380,6 +10380,9 @@ function layoutPlan(doc,p,pageAcc,countOnly){
       if(h>PG.bottom-PG.topN){b.cols.forEach(c=>blocks.splice(bi+1,0,{t:"sec",label:c.label,text:c.text,w:b.w}));continue}
       if(h>avail())flush();
       page.items.push({t:"cols",cols:b.cols.map((c,i)=>({label:c.label,lines:ls[i],w:ws[i],hint:c.hint})),h:b.underWeb?Math.max(h,natH(3,blank)):h,w:b.underWeb?1:filled&&!ls.some(l=>l.length)?0:b.w});continue}
+    // an observation on the form, its photo beside its words in one box (November 17, 2026)
+    if(b.t==="obs"){const im=b.key&&photoCache.get(b.key);const phh=im?Math.min(150,118*im.h/im.w):0,pw=im?phh*im.w/im.h:0;const ls=wrap(doc,b.text,CW-22-(im?pw+12:0));
+      const h=Math.max(natH(ls.length,blank),im?PG.strip+10+phh+10:0);if(h>avail()&&page.items.length)flush();page.items.push({t:"obs",label:b.label,lines:ls,h,w:0,im,pw,phh});continue}
     let lines=wrap(doc,b.text,CW-22),cont=false;
     while(true){const h=natH(Math.max(lines.length,cont?0:(b.min||0)),blank);const a=avail();
       if(b.tail&&h>a&&page.items.length)break;
@@ -10404,6 +10407,8 @@ function layoutPlan(doc,p,pageAcc,countOnly){
       else if(it.t==="cols"){let x=M;it.cols.forEach(c=>{box(doc,x,y,c.w,it.h,c.label,c.lines,A,false,c.hint);x+=c.w+PG.gap})}
       else if(it.t==="sub"){doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(34,51,42);doc.text(clean(it.text),M,y+11);doc.setDrawColor(...A.c);doc.setLineWidth(1.2);doc.line(M,y+15,M+28,y+15)}
       else if(it.t==="web")webBox(doc,M,y,CW,it.h,it.web,it.blank,A);
+      else if(it.t==="obs"){box(doc,M,y,CW,it.h,it.label,[],A,false);if(it.im){try{doc.addImage(it.im.url,"JPEG",M+11,y+PG.strip+10,it.pw,it.phh)}catch(e){}}
+        doc.setFont("helvetica","normal");doc.setFontSize(PG.fs);doc.setTextColor(34,48,40);const tx=M+11+(it.im?it.pw+12:0);it.lines.forEach((l,i)=>doc.text(l,tx,y+PG.strip+PG.padT+i*PG.lh))}
       y+=it.h+PG.gap;
     }
   });
@@ -13089,7 +13094,7 @@ function planFromInquiry(x,kind,wk,how){
    Numbered sections in the order the team thinks it through. Written sections fill their boxes, empty ones are left
    out, and What we will try, What we will watch for and When we looked again stretch to fill the page so the team has
    room to write at a meeting. Readings, with links, and the observations with their photos follow on their own page. */
-function inquiryForm(x){const ks=inqChildren(x),hy=(x.hyps||[]).filter(h=>has(h.text)&&!h.aside),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(a.at||0)-(b.at||0));
+function inquiryForm(x,long){const ks=inqChildren(x),hy=(x.hyps||[]).filter(h=>has(h.text)&&!h.aside),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(a.at||0)-(b.at||0));
   const B=[],sub=t=>B.push({t:"sub",text:t}),sec=(label,text,w=0,min=0)=>B.push({t:"sec",label,text:text||"",w,min}),cols=cs=>B.push({t:"cols",cols:cs,w:0});
   const dot=L=>L.map(t=>"• "+String(t).trim()).join("\n");
   if(has(x.see)||has(x.whenwhere)){sub("1. What we see, and when and where");if(has(x.see)&&has(x.whenwhere))cols([{label:"What we see",text:x.see,w:.5},{label:"When and where it happens",text:x.whenwhere,w:.5}]);else if(has(x.see))sec("What we see",x.see);else sec("When and where it happens",x.whenwhere)}
@@ -13105,16 +13110,14 @@ function inquiryForm(x){const ks=inqChildren(x),hy=(x.hyps||[]).filter(h=>has(h.
   sec("What we will try",tries.length?dot(tries.map(t=>t.text+(t.curriculum?" (in the curriculum)":"")+(has(t.result)?". What happened. "+t.result:""))):"",1,4);
   cols([{label:"What we will watch for",text:x.watch||"",w:.68},{label:"We will look again on",text:x.lookAgain?fmtDate(x.lookAgain):"",w:.32}]);B[B.length-1].w=.6;B[B.length-1].min=3;
   sub("7. When we looked again");sec("What we saw, and what we will do next",looks.length?looks.map(l=>shortDate(l.at)+". "+l.text).join("\n"):"",1,4);
-  return {type:"inquiry",acc:"classroom",title:x.name||"Team inquiry",meta:[["Class",x.room||"Whole school"],["About",ks.length?ks.map(c=>c.first+(kidAgeText(c)?", "+kidAgeText(c):"")).join("; "):"The children in its observations"],["Started",shortDate(x.createdAt)]],blocks:B}}
-function inquiryAppendix(x,long){const ns=inqNotices(x).sort((a,b)=>(b.at||0)-(a.at||0));const blocks=[];const rd=(x.readings||[]).filter(r=>has(r.title));
-  if(rd.length){blocks.push(dSub("8. Readings"));const put=(lab,L)=>{if(L.length)blocks.push(Object.assign(dList(lab,L.map(r=>r.title+(r.source?". "+r.source:"")+"\n"+(r.why||""))),{links:L.map(r=>r.url||"")}))};
-    put("For the team",rd.filter(r=>r.for==="team"));put("For families",rd.filter(r=>r.for==="family"))}
-  const obs=long?ns:ns.slice(0,4);
-  if(obs.length){blocks.push(dSub("The observations"));obs.forEach(n=>{if(n.photo)blocks.push(dPhoto(n,150,false));blocks.push(dText(shortDate(n.at),noticeText(n)))})}
-  for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))blocks.push(dText("Team notes from the thread "+t.name,t.notes))}
-  if(!blocks.length)return null;
-  return {display:true,type:"report",acc:"smallgroup",title:(x.name||"Team inquiry"),meta:[],blocks}}
-function inquiryDocs(x,long){return [inquiryForm(x),inquiryAppendix(x,long)].filter(Boolean)}
+  // readings and the observations sit on the same form, so the whole inquiry reads as one sheet
+  const rd=(x.readings||[]).filter(r=>has(r.title)),one=r=>"\u2022 "+r.title+(r.source?". "+r.source:"")+"."+(has(r.why)?" "+r.why:"");
+  {const tm=rd.filter(r=>r.for==="team"),fm=rd.filter(r=>r.for==="family");if(rd.length){sub("8. Readings");if(tm.length&&fm.length)cols([{label:"For the team",text:tm.map(one).join("\n"),w:.5},{label:"For families",text:fm.map(one).join("\n"),w:.5}]);else sec(tm.length?"For the team":"For families",(tm.length?tm:fm).map(one).join("\n"))}}
+  const ns=inqNotices(x).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,long?12:4),photos=[];
+  if(ns.length){sub("The observations");ns.forEach(n=>{if(n.photo)photos.push({key:n.id,src:photoSrc(n)});B.push({t:"obs",label:shortDate(n.at)+(n.classroom?", "+n.classroom+" class":""),text:noticeText(n),key:n.photo?n.id:"",w:0})})}
+  for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))sec("Team notes from the thread "+t.name,t.notes)}
+  return {type:"inquiry",acc:"classroom",long:!!long,photos,title:x.name||"Team inquiry",meta:[["Class",x.room||"Whole school"],["About",ks.length?ks.map(c=>c.first+(kidAgeText(c)?", "+kidAgeText(c):"")).join("; "):"The children in its observations"],["Started",shortDate(x.createdAt)]],blocks:B}}
+function inquiryDocs(x,long){return [inquiryForm(x,long)]}
 function inquiryDoc(x,long){
   const ns=inqNotices(x),hy=inqOpenHyps(x),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(b.at||0)-(a.at||0));
   // the printed inquiry reads like a plan, numbered in the order the team thinks it through, the same order as the page.
@@ -13274,14 +13277,29 @@ function iqLetterOutline(x){const ks=inqChildren(x),nm=ks.length===1?ks[0].first
     "Please reply to this email, or let us know a time that works for a conversation.","Warmly,\nRenee Whitlock-Hemsouvanh\nDirector"].filter(Boolean).join("\n\n")}
 // the letter as email. A paragraph's short first sentence is its heading, set in bold. Lines starting with a dash or a
 // number are a list. Readings become links.
-function iqLetterHtml_(x){const L=x.letter||{};const links=new Map((x.readings||[]).map(r=>[r.title,r.url]));
-  const par=t=>{const lines=t.split("\n");if(lines.every(l=>/^(- |\d+\. )/.test(l.trim()))||lines.slice(1).length&&lines.slice(1).every(l=>/^(- |\d+\. )/.test(l.trim()))){
-      const head=/^(- |\d+\. )/.test(lines[0].trim())?"":lines.shift();const num=/^\d+\. /.test((lines[0]||"").trim());
-      return (head?`<p style="margin:16px 0 4px"><b>${esc(head)}</b></p>`:"")+`<${num?"ol":"ul"} style="margin:4px 0 12px;padding-left:22px">${lines.map(l=>{const v=l.trim().replace(/^(- |\d+\. )/,"");const ti=[...links.keys()].find(k=>v.startsWith(k));return `<li style="margin:4px 0">${ti&&links.get(ti)?`<a href="${esc(links.get(ti))}" style="color:#245B78">${esc(ti)}</a>${esc(v.slice(ti.length))}`:esc(v)}</li>`}).join("")}</${num?"ol":"ul"}>`}
-    const m=t.match(/^([^.\n]{2,60}\.)\s+([\s\S]*)$/);if(m&&m[1].split(/\s+/).length<=6&&!/^Dear /.test(t))return `<p style="margin:0 0 12px"><b>${esc(m[1])}</b> ${esc(m[2]).replace(/\n/g,"<br>")}</p>`;
-    return `<p style="margin:0 0 12px">${esc(t).replace(/\n/g,"<br>")}</p>`};
-  const body=String(L.body||"").trim().split(/\n\s*\n/).map(par).join("");
-  return `<div style="background:#ffffff;padding:20px 12px"><div style="max-width:640px;margin:0 auto;font-family:Andika,Arial,sans-serif;font-size:16px;line-height:1.55;color:#1B2920"><div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#5B6B61;margin-bottom:14px">Fulton Community School</div>${body}</div></div>`}
+// the letter as email. A plain message, as if typed in Gmail. No header, no card, no set width or typeface, so it fills
+// the window the way any personal email does. Headings are bold, lists are lists, readings are links (November 17, 2026)
+function iqLetterHtml_(x){const L=x.letter||{};const rd=(x.readings||[]).filter(r=>has(r.title));
+  const isLi=l=>/^(- |\d+\. )/.test(l.trim()),li=l=>l.trim().replace(/^(- |\d+\. )/,"");
+  const par=t=>{const lines=t.split("\n");
+    if(lines.length>1&&lines.slice(1).every(isLi)){const num=/^\d+\. /.test(lines[1].trim());
+      return `<div><b>${esc(lines[0])}</b></div><${num?"ol":"ul"}>${lines.slice(1).map(li).map(v=>{const r=rd.find(r=>v.startsWith(r.title));return `<li>${r&&r.url?`<a href="${esc(r.url)}">${esc(r.title)}</a>${esc(v.slice(r.title.length))}`:esc(v)}</li>`}).join("")}</${num?"ol":"ul"}>`}
+    const m=t.match(/^([^.\n]{2,60}\.)\s+([\s\S]*)$/);if(m&&m[1].split(/\s+/).length<=6&&!/^Dear /.test(t))return `<div><b>${esc(m[1])}</b> ${esc(m[2]).replace(/\n/g,"<br>")}</div><br>`;
+    return `<div>${esc(t).replace(/\n/g,"<br>")}</div><br>`};
+  return `<div dir="ltr">${String(L.body||"").trim().split(/\n\s*\n/).map(par).join("")}${L.attach?`<div>Our plan is attached as a PDF.</div>`:""}</div>`}
+/* Our plan, the family's copy. One sheet on the plan form, in the director's own words, that goes with the letter as a
+   PDF. It holds what we are observing, what we are doing at school and what we will try together, with room for the
+   family to write what they see at home. The team's thinking stays on the team's inquiry (November 17, 2026) */
+function iqFamPlanStart(x){const dot=L=>L.map(t=>String(t).trim()).filter(Boolean).join("\n");
+  return {seeing:[x.see,x.whenwhere].filter(has).join(" "),doing:dot((x.tried||[]).filter(t=>has(t.text||t.step)).map(t=>t.text||t.step)),plan:dot([...(x.tries||[]).filter(t=>has(t.text)).map(t=>t.text),has(x.watch)?"We will watch for. "+x.watch:""])}}
+function iqFamPlanDoc(x){const F=x.famPlan||{},ks=inqChildren(x),rd=(x.readings||[]).filter(r=>r.for==="family"&&has(r.title));
+  const B=[],sec=(label,text,w=0,min=0)=>B.push({t:"sec",label,text:text||"",w,min});
+  if(has(F.seeing))sec("What we are observing",F.seeing);
+  if(has(F.doing))sec("What we are doing at school",F.doing);
+  sec("What we will try together",F.plan||"",1,4);
+  sec("What you are seeing at home","",1,4);
+  B.push({t:"cols",cols:[{label:"Readings for your family",text:rd.map(r=>r.title+(r.source?", "+r.source:"")).join("\n"),w:.66},{label:"We will talk again on",text:x.lookAgain?fmtDate(x.lookAgain):"",w:.34}],w:.4,min:2});
+  return {type:"inquiry",acc:"classroom",title:"Our plan together"+(ks.length?" for "+ks.map(c=>c.first).join(" and "):""),meta:[["Class",x.room||""],["Date",shortDate(Date.now())]],blocks:B}}
 function iqLetterDoc(x){const L=x.letter||{};const links=new Map((x.readings||[]).map(r=>[r.title,r.url]));const blocks=[];
   for(const t of String(L.body||"").trim().split(/\n\s*\n/)){const lines=t.split("\n");
     if(lines.length>1&&lines.slice(1).every(l=>/^(- |\d+\. )/.test(l.trim()))){const items=lines.slice(1).map(l=>l.trim().replace(/^(- |\d+\. )/,""));blocks.push(Object.assign(dList(lines[0].replace(/\.\s*$/,""),items,/^\d+\. /.test(lines[1].trim())),{links:items.map(v=>{const ti=[...links.keys()].find(k=>v.startsWith(k));return ti?links.get(ti):""})}));continue}
@@ -13294,6 +13312,12 @@ function iqLetterHtml(x){if(!isDirector())return "";const L=x.letter||{};const s
     <label class="fld-label">Subject<input type="text" data-iqletter="subject" value="${esc(L.subject||"")}" placeholder="Ex. Supporting ${esc(ks[0]?ks[0].first:"your child")} at school and at home"></label>
     <label class="fld-label">The letter<textarea data-iqletter="body" rows="10">${esc(L.body||"")}</textarea></label>
     <div class="cnt">A blank line starts a new paragraph. A short first sentence, such as "Our approach at school.", becomes the heading. Lines starting with a dash or a number become a list.</div>
+    <label class="cnt" style="display:block;margin-top:8px"><input type="checkbox" data-iqattach="1" ${L.attach?"checked":""}> Attach our plan as a PDF</label>
+    ${L.attach?`<div class="pdir"><div class="hint">The family's copy of the plan, one page, in your words. The team's guesses and notes stay with the team.</div>
+      <label class="fld-label">What we are observing<textarea data-iqfam="seeing" rows="2">${esc((x.famPlan||{}).seeing||"")}</textarea></label>
+      <label class="fld-label">What we are doing at school<textarea data-iqfam="doing" rows="2">${esc((x.famPlan||{}).doing||"")}</textarea></label>
+      <label class="fld-label">What we will try together<textarea data-iqfam="plan" rows="2" placeholder="Leave empty to write it with the family.">${esc((x.famPlan||{}).plan||"")}</textarea></label>
+      <div class="actions"><button class="btn small ghost" data-print="iqfamplan" data-id="${esc(x.id)}">See the plan</button></div></div>`:""}
     <div class="actions" style="flex-wrap:wrap">${has(L.body)?"":`<button class="btn small ghost" data-iqletterstart="1">Start from the outline</button>`}
       <button class="btn small ghost" data-print="iqletter" data-id="${esc(x.id)}">Print for the family</button>
       <button class="btn small ghost" data-iqlettermail="test">Send me a test</button><button class="btn small" data-iqlettermail="send">Email the family</button></div>
@@ -13306,8 +13330,10 @@ async function iqLetterSend(x,test){const L=x.letter||{};const msg=$("#iqletter-
   if(!test){if(!who.parents){say(`<span class="nudge">No parent email is on file for ${esc((who.kids||[]).join(" and ")||"this child")}.</span>`);return}
     if(!confirm(`Email this letter to ${who.parents} ${who.parents===1?"parent":"parents"} of ${(who.kids||[]).join(" and ")}, with the classroom inbox copied?`))return}
   say(`<span class="spin"></span> Sending`);
-  try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:inqChildren(x).map(c=>c.id),subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):""});
-    L.sends=[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test}];x.letter=L;
+  let attach=null;if(L.attach){try{const blob=await makePdf([iqFamPlanDoc(x)],"plan","quiet");const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
+    attach={name:safeFile("Our plan together "+inqChildren(x).map(c=>c.first).join(" and "))+".pdf",data}}catch(e){say(`<span class="nudge">The plan could not be made into a PDF, so nothing was sent.</span>`);return}}
+  try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:inqChildren(x).map(c=>c.id),subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):"",attach});
+    L.sends=[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test,plan:!!attach,subject:L.subject}];x.letter=L;
     if(!r.test&&has(L.body))x.family=[...(x.family||[]),{id:uid(),text:"Letter emailed to the family. "+L.subject,by:whoAmI(),at:Date.now()}];
     saveInquiry(x);renderMain();toast(r.test?"Test sent to you.":"Sent to the family, with the classroom inbox copied.")}
   catch(e){say(`<span class="nudge">${esc(e.message||"It did not send.")}</span>`)}}
@@ -13370,6 +13396,7 @@ document.addEventListener("input",e=>{const t=e.target;if(view!=="inquiries")ret
   if(!iqCan())return;
   if(d.iqf&&t.type!=="date"){x[d.iqf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);if(d.iqf==="see"||d.iqf==="whenwhere"){const el=$("#iqsafe");if(el)el.innerHTML=iqSafeHtml(x)}return}
   if(d.iqh){const o=(x.hyps||[]).find(h=>h.id===d.iqh);if(o){o.text=t.value;autoGrow(t);saveInquirySoon(x)}return}
+  if(d.iqfam){if(!isDirector())return;x.famPlan={...(x.famPlan||{}),[d.iqfam]:t.value};if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
   if(d.iqletter){if(!isDirector())return;x.letter={...(x.letter||{}),[d.iqletter]:t.value};if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
   if(d.iqd){const [id,k]=d.iqd.split("|");const o=(x.tried||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqt){const [id,k]=d.iqt.split("|");const o=(x.tries||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(k==="result"){o.resultAt=Date.now();o.resultBy=whoAmI()}autoGrow(t);saveInquirySoon(x)}return}
@@ -13379,6 +13406,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqattach!=null){if(!isDirector())return;x.letter={...(x.letter||{}),attach:t.checked};if(t.checked&&!x.famPlan)x.famPlan=iqFamPlanStart(x);saveInquiry(x);renderMain();return}
   if(d.iqdevasked!=null){x.devAsked=t.checked?Date.now():0;saveInquiry(x);renderMain();return}
   if(d.iqkidadd!=null){if(!t.value||!iqCan())return;x.kids=[...new Set([...(x.kids||[]),t.value])];x.kidsSet="team";saveInquiry(x);renderMain();return}
   if(d.iqdisplay!=null){x.display=t.value==="show";saveInquiry(x);renderMain();toast(x.display?"It shows on the staff room display while it is open.":"It stays off the staff room display.");return}
@@ -16263,6 +16291,7 @@ async function printsClick(t){
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out(inquiryDocs(x,long),`Team inquiry ${x.name||""}`);return true}
+  if(kind==="iqfamplan"){const x=inquiries.get(t.dataset.id);if(x)out([iqFamPlanDoc(x)],`Our plan together ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
   if(kind==="iqletter"){const x=inquiries.get(t.dataset.id);if(x)out([iqLetterDoc(x)],`Letter to the family ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
@@ -17802,6 +17831,13 @@ function kidDrdpOf(c,kind,id){const its=kidDrdpItems(c).filter(x=>x.src&&x.src.k
   return codes.length?`<span class="drchips">${codes.map(k=>`<span class="drchip" title="${esc(DRDP[k]||"")}">${esc(k)}</span>`).join("")}</span>`:""}
 function pfToggle(c,kind,id,tagged){if(!tagged)return `<span class="pfstate muted">Not tagged, so not in the portfolio</span>`;const on=kidInPortfolio(c,kind,id);
   return `<button class="pfstate ${on?"on":""}" data-pftoggle="${kind}|${id}" aria-pressed="${on}">${on?"In the portfolio":"Not in the portfolio"}</button>`}
+// the team inquiries that name this child in Who this is about, on the child's page, with each letter sent to the
+// family. For the team only. It stays out of the portfolio and the Book, as inquiries do (November 17, 2026)
+function kidInquiriesHtml(c){const L=inqAll().filter(x=>(x.kids||[]).includes(c.id)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));if(!L.length)return "";
+  return `<section class="card" id="kidinq"><div class="secthead"><h3 style="font-size:17px">Team inquiries</h3><span class="cnt">For the team only</span></div>
+    <div class="tlist">${L.map(x=>{const sent=((x.letter||{}).sends||[]).filter(z=>!z.test);return `<div class="ref"><div class="actions" style="justify-content:space-between"><b>${esc(x.name||"A team inquiry")}</b><button class="btn small ghost" data-iqopen="${esc(x.id)}">Open</button></div>
+      <div class="cnt">${esc(ISTATUS[x.status]||"Open")}. Started ${shortDate(x.createdAt)}.${x.lookAgain?` We look again on ${esc(fmtDate(x.lookAgain))}.`:""}</div>
+      ${sent.map(z=>`<div class="cnt">Letter emailed to the family ${shortDate(z.at)}${z.plan?", with our plan attached":""}.</div>`).join("")}</div>`}).join("")}</div></section>`}
 function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
   return `<div class="kmwrap">${kidMomentRow0(c,n,open)}${pfToggle(c,"notices",n.id,kidTagged(c,n))}</div>`}
 function kidMomentRow0(c,n,open){
@@ -17825,6 +17861,7 @@ function renderChild(){
         <button class="stat press" data-ktab="confs"><b class="wordval">${nextConf?esc(shortDate(parseIso(nextConf.confDate).getTime())):"None"}</b><span>${nextConf?"next family conference":"conference scheduled"}</span></button>
         <button class="stat press" data-ktab="details"><b class="wordval">${esc(nx&&NEXTPLAN[nx]?NEXTPLAN[nx]:"Not set")}</b><span>${nx&&NEXTPLAN[nx]?"":"next year"}</span></button></div>
       ${wait?`<section class="card"><div class="secthead"><h3 style="font-size:17px">Waiting for review</h3><button class="btn small" data-ktab="drdp">Review ${wait}</button></div><div class="cnt">DRDP suggestions from ${esc(c.first)}'s documentation wait for an educator to accept, change or set aside.</div></section>`:""}
+      ${kidInquiriesHtml(c)}
       <section class="card"><div class="secthead"><h3 style="font-size:17px">Most recent</h3>${ms.length>3?`<button class="linkbtn" data-ktab="docs">All ${ms.length}</button>`:""}</div>
         ${ms.length?`<div class="kmlist">${ms.slice(0,3).map(n=>kidMomentRow(c,n)).join("")}</div>`:`<div class="empty">No observations tag or name ${esc(c.first)} yet. <button class="btn small" data-newfor="${esc(c.id)}">Keep an observation for ${esc(c.first)}</button></div>`}</section>`;
   }else if(kidTab==="docs"){

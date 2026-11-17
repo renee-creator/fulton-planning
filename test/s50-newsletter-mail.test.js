@@ -176,3 +176,16 @@ test('A letter about one child goes to that child\'s parents and the classroom i
   const tt = await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1'], subject: 'Supporting Wren', html: '<p>x</p>', text: 'x', testTo: 'dee@example.test' });
   assert.deepStrictEqual([tt.body.test, drive.mails.map(m => m.to)], [true, ['dee@example.test']]);
 });
+
+test('Our plan goes with a family letter as a PDF, and only when the mailbox script can attach it', async t => {
+  const { fx, drive } = await setup(t, true);
+  const dee = (await fx.login('Dee', 'director-pass-1')).token;
+  const pdf = Buffer.from('%PDF-1.4 test').toString('base64');
+  const s = await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1'], subject: 'Supporting Wren', html: '<p>Dear family</p>', text: 'Dear family', attach: { name: 'Our plan together Wren.pdf', data: pdf } });
+  assert.strictEqual(s.status, 200);
+  assert.strictEqual(drive.mails.length, 3); assert.ok(drive.mails.every(m => m.files.length === 1 && /Our plan together Wren\.pdf/.test(m.files[0])), JSON.stringify(drive.mails.map(m => m.files)));
+  // a file that is not a PDF in base64 is refused and nothing goes out
+  drive.mails.length = 0;
+  const bad = await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1'], subject: 'Supporting Wren', html: '<p>x</p>', text: 'x', attach: { name: 'x.pdf', data: '<script>' } });
+  assert.strictEqual(bad.status, 400); assert.strictEqual(drive.mails.length, 0);
+});

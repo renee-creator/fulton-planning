@@ -35,7 +35,7 @@ function start(opt) {
       getFoldersByName: nm => folderObj(root).getFoldersByName(nm), createFolder: nm => folderObj(root).createFolder(nm) },
     Utilities: { base64Decode: s => Buffer.from(String(s), 'base64'), base64Encode: b => Buffer.from(b).toString('base64'), newBlob: (b, t, nm) => blob(b, t, nm), sleep: () => {}, formatDate: () => '' },
     // the family email the newsletter sends, kept here so a test can read what each family received
-    MailApp: { sendEmail: o => { mails.push({ to: o.to, subject: o.subject, html: o.htmlBody, text: o.body, name: o.name, replyTo: o.replyTo || '', images: Object.keys(o.inlineImages || {}) }); }, getRemainingDailyQuota: () => 1500 },
+    MailApp: { sendEmail: o => { mails.push({ to: o.to, subject: o.subject, html: o.htmlBody, text: o.body, name: o.name, replyTo: o.replyTo || '', images: Object.keys(o.inlineImages || {}), files: (o.attachments || []).map(f => f.name || (f.getName && f.getName()) || 'file') }); }, getRemainingDailyQuota: () => 1500 },
     ScriptApp: { getOAuthToken: () => 'token', getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({}) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ text: t, setMimeType() { return this; } }) },
     // Drive's own resumable upload, the way the readable copies send a large file in pieces
