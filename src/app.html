@@ -6579,7 +6579,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-baga
   if(d.bagdue){bagDue=d.bagdue;renderMain();return}
   if(d.bagduesave){const due=$("#bag-due")?.value||"";bagDue=null;await bagCall("/api/staff/library/bag/status",{id:d.bagduesave,status:"out",due},"Marked as picked up.");return}});
 // readings the team asked for on an inquiry wait on the director's Today until they are filled (November 16, 2026)
-function iqAskWaiting(){if(!isDirector()||VIEW_AS||isKitchenUser())return [];const L=inqAll().filter(x=>(x.readAsk||[]).some(r=>!r.done));if(!L.length)return [];
+function iqAskWaiting(){if(!isDirector()||VIEW_AS||isKitchenUser())return [];const L=inqAll().filter(x=>(x.status||"open")!=="closed"&&(x.readAsk||[]).some(r=>!r.done));if(!L.length)return [];
   const n=L.reduce((a,x)=>a+(x.readAsk||[]).filter(r=>!r.done).length,0);
   return [{dot:"sky",t:"Readings asked for",s:`${n} ${n===1?"request":"requests"} on ${L.map(x=>x.name||"an inquiry").slice(0,2).join(" and ")}${L.length>2?" and more":""}.`,act:`data-iqopen="${esc(L[0].id)}"`,b:"Open"}]}
 // what waits for the director on Today, books ready to pick up, books due within three days, and holds still to place
@@ -11600,9 +11600,17 @@ const iqKidOk=c=>c&&!c.deleted&&c.status!=="withdrawn"&&!c.left;
 function iqKidsAuto(x){if(x.kidsSet||(x.kids||[]).length||!has(x.name))return;const t=" "+String(x.name).toLowerCase().replace(/[^a-z\u00c0-\u024f ]/g," ")+" ";
   const hit=[...children.values()].filter(c=>iqKidOk(c)&&c.first&&(!x.room||c.classroom===x.room)&&t.includes(" "+String(c.first).toLowerCase()+" "));
   if(hit.length){x.kids=hit.map(c=>c.id);x.kidsSet="title";saveInquiry(x)}}
+// when a child leaves, an inquiry about only that child, or only children who have all left, closes itself with a dated
+// line under When we looked again, and its open requests for readings are cleared. An inquiry that is also about children
+// still here stays open, and the child stays named in it as having left. Nothing is deleted, and the director can
+// reopen it from Status if the child comes back (November 17, 2026)
+function inqChildLeft(c,date,st){for(const x of inqAll()){if(!(x.kids||[]).includes(c.id)||(x.status||"open")==="closed")continue;
+  const ks=x.kids.map(id=>children.get(id)).filter(Boolean);if(ks.some(k=>kidAt(k)))continue;
+  x.status="closed";x.closedFor=c.id;x.looks=[...(x.looks||[]),{id:uid(),text:`Closed when ${c.first} ${st==="moved"?"moved on to kindergarten":"left our school"}.`,by:whoAmI(),at:parseIso(date).getTime()||Date.now()}];
+  (x.readAsk||[]).forEach(r=>{if(!r.done)r.done=Date.now()});saveInquiry(x)}}
 function iqWhoHtml(x){iqKidsAuto(x);const ks=(x.kids||[]).map(id=>children.get(id)).filter(Boolean);
   const pool=[...children.values()].filter(c=>iqKidOk(c)&&!(x.kids||[]).includes(c.id)&&(!x.room||c.classroom===x.room)).sort((a,b)=>String(a.first).localeCompare(String(b.first)));
-  return `<div class="actions" style="align-items:center;flex-wrap:wrap"><span class="cnt"><b>Who this is about</b></span>${ks.map(c=>`<span class="chip on">${esc(c.first)}${kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""}${iqCan()?` <button class="linkbtn" data-iqkidrm="${esc(c.id)}" aria-label="Take out ${esc(c.first)}">×</button>`:""}</span>`).join("")||`<span class="cnt">The children in its observations</span>`}
+  return `<div class="actions" style="align-items:center;flex-wrap:wrap"><span class="cnt"><b>Who this is about</b></span>${ks.map(c=>`<span class="chip on">${esc(c.first)}${kidAt(c)?(kidAgeText(c)?`, ${esc(kidAgeText(c))}`:""):`, left our school${kidLeftDay(c)?" "+esc(shortDate(parseIso(kidLeftDay(c)).getTime())):""}`}${iqCan()?` <button class="linkbtn" data-iqkidrm="${esc(c.id)}" aria-label="Take out ${esc(c.first)}">×</button>`:""}</span>`).join("")||`<span class="cnt">The children in its observations</span>`}
     ${iqCan()&&pool.length?`<select data-iqkidadd="1" style="width:auto"><option value="">Add a child</option>${pool.map(c=>`<option value="${esc(c.id)}">${esc(c.first)}${c.last?" "+esc(String(c.last).slice(0,1))+".":""}</option>`).join("")}</select>`:""}
     ${x.kidsSet==="title"?`<span class="cnt">Filled in from the question.</span>`:""}</div>`}
 // when it happens, read from the times the observations were kept. Shown only when the times say something.
@@ -16933,7 +16941,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.kstatus){const c=children.get(t.dataset.id);if(!c)return;const st=t.dataset.kstatus;
     const date=st==="at"?iso(new Date()):($("#kdate-"+CSS.escape(c.id))?.value||iso(new Date()));
     if(st==="at"){c.status="active";delete c.leftAs;delete c.leftOn;delete c.withdrawnAt;kidNote(c,"At our school again",{date})}
-    else{c.status="withdrawn";c.leftAs=st;c.leftOn=date;c.withdrawnAt=parseIso(date).toISOString();kidNote(c,st==="moved"?"Moved on to kindergarten":"Left our school",{date})}
+    else{c.status="withdrawn";c.leftAs=st;c.leftOn=date;c.withdrawnAt=parseIso(date).toISOString();kidNote(c,st==="moved"?"Moved on to kindergarten":"Left our school",{date});inqChildLeft(c,date,st)}
     saveKid(c);toast(st==="at"?`${c.first} is back on the roster.`:`${c.first} is now with Former children.`);renderMain();return}
   if(t.dataset.kmvopen){const r=kRoom!=="All"?kRoom:CLASSROOMS[0];kMove={by:"room",val:r,ticked:new Set(),room:r,group:"",review:false};kAdding=false;renderChildren();formTop($("#kmove"));return}
   if(kMove&&t.dataset.kmvclose){kMove=null;renderChildren();return}

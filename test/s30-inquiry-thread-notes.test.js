@@ -49,5 +49,9 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   await s.p.click('[data-iqaskdone]');
   await s.p.waitForFunction(() => !!inquiries.get('q1').readAsk[0].done);
   assert.strictEqual(await s.p.evaluate(() => iqAskWaiting().length), 0);
+  // when the only child an inquiry is about leaves, it closes itself with a dated line, and nothing is deleted
+  const closed = await s.p.evaluate(() => { const c = [...children.values()][0]; if (!c) return null; const x = inquiries.get('q1'); x.kids = [c.id]; x.status = 'open'; x.readAsk = [{ id: 'a9', for: 'both', at: Date.now() }]; const n = (x.looks || []).length;
+    c.status = 'withdrawn'; inqChildLeft(c, '2026-11-17', 'left'); const y = inquiries.get('q1'); return [y.status, (y.looks || []).length - n, /left our school/.test(y.looks[y.looks.length - 1].text), !!y.readAsk[0].done, iqAskWaiting().length]; });
+  if (closed) assert.deepStrictEqual(closed, ['closed', 1, true, true, 0]);
   assert.deepStrictEqual(s.errors, []);
 });
