@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="4b2773144ff8";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="4d6f8ff92994";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -6913,6 +6913,7 @@ const IB_STANCE_LEAD="Every card in the Idea bank begins with us. Children read 
 .ibg[aria-current="true"]{background:var(--moss-soft,#e3ece2);font-weight:700}.ibrow{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:10px;margin:0 0 6px}
 .ibrow[aria-current="true"]{border-color:var(--moss,#2f5d50)}.ibrow input{margin-top:4px}.ibrow button{flex:1;text-align:left;background:none;border:0;cursor:pointer;font:inherit;color:inherit;padding:0}
 .ibcardv{max-width:760px;line-height:1.6}.ibcardv h3{font-size:17px;margin:0 0 6px;color:var(--moss,#2f5d50)}.ibcardv p{margin:0 0 10px}.ibcardv ul,.ibcardv ol{margin:4px 0;padding-left:22px}.ibcardv li{margin:0 0 8px}
+.ibphs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:10px 0 4px}.ibph{margin:0;min-width:0}.ibph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line)}.ibph figcaption{margin-top:4px;font-size:12.5px;overflow-wrap:anywhere}@media print{.ibphwrap{display:none}}
 .ibsec{background:var(--moss-soft,#f1f6ef);border-radius:10px;padding:12px 14px;margin:12px 0}.ibsec p:last-child,.ibsec li:last-child{margin-bottom:0}.ibset{border-left:4px solid var(--moss,#2f5d50);padding:6px 10px;margin:8px 0;background:var(--moss-soft,#f1f6ef);border-radius:6px}
 .ibtip{font-size:14px;margin-top:4px}.ibtop{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.iblines span{display:block;font-style:italic;border-left:3px solid var(--moss,#2f5d50);padding:2px 0 2px 10px;margin:0 0 10px}
 .planres{margin-top:4px}.planres>summary{cursor:pointer}.planres .subrow{margin-top:4px}
@@ -7015,10 +7016,27 @@ function ibShareMenu(c,home,dir){const id=esc((home?"home":"edu")+"|"+c.id),full
     <button class="linkbtn" data-print="ibcards" data-id="${id}">Print this card</button><button class="linkbtn" data-print="ibcards" data-id="${id}" data-word="1">This card in Word</button>
     <button class="linkbtn" data-print="ibcards" data-id="${full}">Print the whole card</button><button class="linkbtn" data-print="ibcards" data-id="${full}" data-word="1">The whole card in Word</button>
     ${dir&&c.home?`<button class="linkbtn" data-ibhigh="${esc(c.id)}|${ibHigh(c.id)?0:1}">${ibHigh(c.id)?"Highlighted for families, take it off":"Highlight for families"}</button><button class="linkbtn" data-ibshare="${esc(c.id)}">Share</button>`:""}</div></details>`}
+// photos on a card, each one of our own kept observations. Educators flag one that does not fit, and the director changes them.
+function ibPhotosHtml(c){if(!ib||typeof notices==="undefined")return "";const dir=ibDir(),L=((ib.photos||{})[c.id]||[]).map(p=>({p,n:notices.get(p.obs)})).filter(x=>x.n&&x.n.photo&&!x.n.deleted);
+  const flags=(ib.photoFlags||[]).filter(f=>f.card===c.id);const pick=ibSt.photoPick===c.id;
+  if(!L.length&&!dir)return "";
+  const cell=({p,n})=>{const fl=flags.filter(f=>f.obs===p.obs);const title=String(n.noticed||"").split("\n")[0].slice(0,80);
+    return `<figure class="ibph"><a href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="${esc(title||"A photo from an observation")}" loading="lazy"></a>
+      <figcaption class="cnt">${esc(title)}${fl.length?`<br><b>Flagged${dir?" by "+esc(fl.map(f=>f.by).join(", ")):""}</b>${dir&&fl[0].why?". "+esc(fl[0].why):""}`:""}
+      <span class="actions" style="margin-top:2px">${dir?`<button class="linkbtn" data-ibph="remove|${esc(c.id)}|${esc(p.obs)}">Take off</button>${L[0].p!==p?`<button class="linkbtn" data-ibph="first|${esc(c.id)}|${esc(p.obs)}">Make first</button>`:""}${fl.length?`<button class="linkbtn" data-ibph="unflag|${esc(c.id)}|${esc(p.obs)}">Keep it</button>`:""}`
+        :VIEW_AS||fl.length?"":`<button class="linkbtn" data-ibph="flag|${esc(c.id)}|${esc(p.obs)}">This photo does not fit</button>`}</span></figcaption></figure>`};
+  let picker="";
+  if(dir&&pick){const q=(ibSt.photoQ||"").trim().toLowerCase(),have=new Set(L.map(x=>x.p.obs));
+    const found=q.length<3?[]:[...notices.values()].filter(n=>n&&n.photo&&!n.deleted&&!have.has(n.id)&&((n.noticed||"")+" "+(n.wonder||"")).toLowerCase().includes(q)).sort((a,b)=>(+b.at||0)-(+a.at||0)).slice(0,18);
+    picker=`<div class="kfields" style="margin-top:8px"><label>Find one of our observations by a word<input type="text" id="ib-phq" value="${esc(ibSt.photoQ||"")}" placeholder="such as clay"></label></div>
+      <div class="actions"><button class="btn small" data-ibphfind="${esc(c.id)}">Find</button><button class="linkbtn" data-ibphpick="">Close</button></div>
+      ${q.length>=3?(found.length?`<div class="ibphs">${found.map(n=>`<figure class="ibph"><button type="button" data-ibph="add|${esc(c.id)}|${esc(n.id)}" style="border:0;padding:0;background:none;cursor:pointer"><img src="${esc(photoThumb(n))}" alt="" loading="lazy"></button><figcaption class="cnt">${esc(String(n.noticed||"").split("\n")[0].slice(0,70))}</figcaption></figure>`).join("")}</div><div class="cnt">Tap a photo to add it.</div>`:`<div class="cnt">No observation with a photo has that word.</div>`):""}`}
+  return `<div class="ibphwrap">${L.length?`<div class="ibphs">${L.map(cell).join("")}</div>`:""}${dir&&!pick&&L.length<4?`<div class="actions"><button class="linkbtn" data-ibphpick="${esc(c.id)}">Add a photo</button></div>`:""}${picker}</div>`}
 function ibCardHtml(c){const home=ibSt.side==="home"&&!!c.home,dir=ibDir(),plan=ibSt.fromPlan&&plans.get(ibSt.fromPlan);
   const used=plan&&(plan.attached||[]).some(a=>a.kind==="idea"&&a.id===c.id);const fl=ibFields(c);
   return `<section class="card ibcardv"><span class="eyebrow">${esc(IB_KIND[c.type]||"")} · ${esc(c.group)}</span><h2 style="margin:4px 0 6px">${esc(home?c.home.title:c.title)}</h2>
     <p>${esc(home?"For families to try at home.":c.summary||"")}</p>
+    ${home?"":ibPhotosHtml(c)}
     ${!home&&c.setting&&c.setting.level?`<div class="ibset"><b>${esc(c.setting.level)}</b>${has(c.setting.why)?` <span>${esc(c.setting.why)}</span>`:""}</div>`:""}
     ${c.home?`<div class="seg" role="group" aria-label="Card version"><button data-ibside="edu" aria-pressed="${!home}">For educators</button><button data-ibside="home" aria-pressed="${home}">At home</button></div>`:""}
     <div class="actions">${ibShareMenu(c,home,dir)}${plan?(used?`<span class="cnt">In the plan</span>`:`<button class="btn small" data-ibuse="${esc(c.id)}">Use in plan</button>`):""}
@@ -7135,6 +7153,12 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-ibop
     try{ib=await window.FP_API("/api/staff/ideabank/tried",{behavior:d.ibtry,room:myRoom()||"",step,happened});ibIndex=null;ibSt.tryOpen="";toast("Saved. The team can see what was tried.");renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
   if(d.ibuntry){if(!confirm("Remove this try?"))return;try{ib=await window.FP_API("/api/staff/ideabank/untried",{id:d.ibuntry});ibIndex=null;renderMain()}catch(er){toast(er&&er.message||"That did not save.")}return}
   const call=async(path,body,ok)=>{try{ib=await window.FP_API("/api/staff/ideabank/"+path,body);ibIndex=null;if(ok)toast(ok);renderMain();return ib}catch(er){toast(er&&er.message||"That did not save.");return null}};
+  if(d.ibphpick!=null){ibSt.photoPick=d.ibphpick;ibSt.photoQ="";renderMain();return}
+  if(d.ibphfind){ibSt.photoQ=($("#ib-phq")||{}).value||"";renderMain();return}
+  if(d.ibph){const [act,card,obs]=d.ibph.split("|");let why="";
+    if(act==="flag"){why=prompt("What is off about this photo? A few words help.")||"";}
+    if(act==="remove"&&!confirm("Take this photo off the card? The observation stays as it is."))return;
+    await call("photo",{do:act,card,obs,why},act==="flag"?"Flagged. The director will look.":act==="add"?"Added.":act==="remove"?"Taken off.":"");return}
   if(d.ibfamily!=null){await call("family",{on:d.ibfamily==="1"},d.ibfamily==="1"?"Families see Ideas to try at home now.":"Ideas to try at home is hidden from families.");return}
   if(d.ibhigh){const [id,on]=d.ibhigh.split("|");await call("highlight",{id,on:on==="1"},on==="1"?"Highlighted. Families see it first.":"Taken off the highlights.");return}
   if(d.ibremove){if(!confirm("Remove this card? It waits under Removed cards, where you can put it back."))return;const id=d.ibremove;if(await call("remove",{id},"Removed. It waits under Removed cards.")){ibSt.sel="";renderMain()}return}

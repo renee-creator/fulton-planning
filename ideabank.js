@@ -21,6 +21,32 @@ module.exports = function ideabank(o) {
   const CARDS = 'staff/library/ideabank/cards.json', BEH = 'staff/library/ideabank/behaviors.json';
   const SET = 'staff/library/ideabank/settings.json', SUG = 'staff/library/ideabank/suggestions.json', TRIED = 'staff/library/ideabank/tried.json';
   const SEED = path.join(__dirname, 'once', 'ideabank.json');
+  /* Photos on the cards, asked for November 16, 2026. Each is one of our own kept observations with a photo, named by its
+     id, so the photo and its words stay in one place and nothing is copied. They show on the educator side only. They are
+     kept apart from the cards, in staff/library/ideabank/photos.json, so the card editor and its history are untouched.
+     The first matches are seeded once from once/ideabank-photos.json. The director adds, removes and orders them, and
+     any educator flags one that does not fit, which waits for the director. */
+  const PHO = 'staff/library/ideabank/photos.json', PHO_SEED = path.join(__dirname, 'once', 'ideabank-photos.json');
+  const photos = () => Object.assign({ map: {}, flags: [] }, get(PHO) || {});
+  function seedPhotos() {
+    if (S.files.has(PHO)) return; let d; try { d = JSON.parse(fs.readFileSync(PHO_SEED, 'utf8')); } catch (e) { return; }
+    const map = {}; for (const [id, L] of Object.entries(d.map || {})) map[id] = (L || []).slice(0, 4).map(obs => ({ obs: String(obs), by: 'TREE', at: Date.now() }));
+    put(PHO, { id: 'ideabank-photos', seededAt: Date.now(), map, flags: [] }); log('Idea bank photos seeded for', Object.keys(map).length, 'cards');
+  }
+  function photoChange(me, b) {
+    const c = cards().find(y => y.id === b.card); if (!c) return { error: 'That card is not here.' };
+    const P = photos(), map = Object.assign({}, P.map), L = (map[c.id] || []).slice(), obs = one(b.obs, 60); let flags = (P.flags || []).slice();
+    if (b.do === 'flag') { if (!L.some(x => x.obs === obs)) return { error: 'That photo is not on the card.' };
+      flags = flags.filter(f => !(f.card === c.id && f.obs === obs && nameKey(f.by) === nameKey(me))).concat([{ card: c.id, obs, by: one(me, 80), at: Date.now(), why: one(b.why, 300) }]).slice(-300); }
+    else if (!isDirector(me)) return { error: 'The director makes this change. You can flag the photo instead.' };
+    else if (b.do === 'add') { if (!/^[A-Za-z0-9_-]{6,60}$/.test(obs)) return { error: 'Choose an observation with a photo.' }; if (L.some(x => x.obs === obs)) return { error: 'That photo is already on the card.' }; if (L.length >= 4) return { error: 'A card holds four photos. Take one off first.' }; L.push({ obs, by: one(me, 80), at: Date.now() }); }
+    else if (b.do === 'remove') { const i = L.findIndex(x => x.obs === obs); if (i < 0) return { error: 'That photo is not on the card.' }; L.splice(i, 1); flags = flags.filter(f => !(f.card === c.id && f.obs === obs)); }
+    else if (b.do === 'first') { const i = L.findIndex(x => x.obs === obs); if (i < 0) return { error: 'That photo is not on the card.' }; L.unshift(L.splice(i, 1)[0]); }
+    else if (b.do === 'unflag') flags = flags.filter(f => !(f.card === c.id && f.obs === obs));
+    else return { error: 'That is not something a photo can do.' };
+    if (L.length) map[c.id] = L; else delete map[c.id];
+    put(PHO, Object.assign({}, P, { id: 'ideabank-photos', map, flags })); return { ok: true };
+  }
   // the thirteen needs a card can feed, the thirteen senses and body systems it can support, and the five settings
   const NEEDS = ['Moving things through the air (trajectory schema)', 'Knocking down and changing things (transformation schema)', 'Heavy work and strong force (proprioceptive input)', 'Enclosing and hiding (enclosure and enveloping schemas)', 'Carrying and moving things (transporting schema)', 'Joining and separating (connecting schema)', 'Spinning and rolling (rotation schema)', 'Height and risk (risky play)', 'Power and being capable (competence)', 'Belonging and having a place (attachment and belonging)', 'Seeking sensation (sensory seeking)', 'Avoiding sensation (sensory sensitivity)', 'Steadying the body and feelings (self-regulation)'];
   const SUPPORTS = ['Touch (tactile)', 'Body pressure and heavy work (proprioception)', 'Movement and balance (vestibular)', 'Noticing body signals (interoception)', 'Listening and sound (auditory)', 'Smell (olfactory)', 'Seeing and judging space (visual-spatial)', 'Both hands working together (bilateral coordination)', 'Crossing the middle of the body (midline crossing)', 'Hand strength and grasp (fine motor)', 'Whole-body strength and coordination (gross motor)', 'Planning a new movement (motor planning)', 'Calming and alerting (self-regulation)'];
@@ -92,6 +118,7 @@ module.exports = function ideabank(o) {
   const canOpen = (behavior, room) => !!behaviors().find(b => b.id === behavior) && triedOf(behavior, room).length > 0;
   // the approved cards and behaviors, written into the records the first time they hold none, and never again
   function seed() {
+    seedPhotos();
     if (S.files.has(CARDS) && S.files.has(BEH)) return false;
     let d; try { d = JSON.parse(fs.readFileSync(SEED, 'utf8')); } catch (e) { log('The Idea bank seed could not be read', e.message); return false; }
     if (!S.files.has(CARDS)) put(CARDS, { id: 'ideabank-cards', seeded: d.version || '', seededAt: Date.now(), cards: d.cards || [], removed: [], sources: d.sources || [] });
@@ -129,6 +156,7 @@ module.exports = function ideabank(o) {
     const dir = isDirector(me), st = settings(), sg = sugs();
     const mine = x => dir || nameKey(x.by) === nameKey(me);
     return { cards: cards(), behaviors: behaviors(), highlights: Object.keys(st.highlights || {}).filter(id => st.highlights[id]),
+      photos: photos().map, photoFlags: (photos().flags || []).filter(f => dir || nameKey(f.by) === nameKey(me)),
       needs: NEEDS, supports: SUPPORTS, levels: LEVELS, types: Object.fromEntries(Object.entries(TYPES).map(([k, v]) => [k, v.groups])),
       suggestions: (sg.list || []).filter(x => x && x.status === 'waiting' && mine(x)),
       decided: dir ? [] : (sg.list || []).filter(x => x && x.status !== 'waiting' && mine(x) && x.decidedAt && Date.now() - x.decidedAt < 30 * 864e5),
@@ -243,6 +271,7 @@ module.exports = function ideabank(o) {
     if (P === 'ideabank') { json(req, res, 200, list(me)); return; }
     if (P === 'ideabank/suggest') { done(suggest(me, body || {})); return; }
     if (P === 'ideabank/tried') { done(tried(me, body || {})); return; }
+    if (P === 'ideabank/photo') { done(photoChange(me, body || {})); return; }
     if (P === 'ideabank/untried') { done(untried(me, String((body || {}).id || ''))); return; }
     if (!dir) { err(req, res, 403, 'The director makes this change. You can suggest it instead.'); return; }
     if (P === 'ideabank/add') { done(addCard(me, body || {})); return; }

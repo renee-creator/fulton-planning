@@ -396,3 +396,17 @@ test('the training step adds the PD day and the hours once', async () => {
   assert.strictEqual(d['staff/people/hannah.json'].hours.length, 1); assert.strictEqual(d['staff/people/hannah.json'].hours[0].hours, 3);
   const again = JSON.stringify(h.staff.dump()); await h.staff.once.edits('s25Training', () => false); assert.strictEqual(JSON.stringify(h.staff.dump()), again);
 });
+
+test('photos on the cards are seeded once, flagged by educators and changed by the director', async () => {
+  const h = await loaded(PEOPLE); const SEEDP = require('../once/ideabank-photos.json');
+  let r = await call(h.staff, 'Ann', 'ideabank'); const ids = Object.keys(r.body.photos);
+  assert.strictEqual(ids.length, Object.keys(SEEDP.map).filter(id => true).length); const card = ids.find(id => r.body.cards.some(c => c.id === id)), obs = r.body.photos[card][0].obs;
+  assert.ok(card && obs);
+  assert.strictEqual((await call(h.staff, 'Ann', 'ideabank/photo', { do: 'remove', card, obs })).status, 400, 'an educator does not take a photo off');
+  r = await call(h.staff, 'Ann', 'ideabank/photo', { do: 'flag', card, obs, why: 'This is paint' }); assert.strictEqual(r.body.photoFlags.length, 1);
+  assert.strictEqual((await call(h.staff, 'Bo', 'ideabank')).body.photoFlags.length, 0, 'another educator does not see who flagged');
+  r = await call(h.staff, 'Dee', 'ideabank'); assert.strictEqual(r.body.photoFlags[0].by, 'Ann');
+  r = await call(h.staff, 'Dee', 'ideabank/photo', { do: 'add', card, obs: 'nabc123456' }); assert.ok(r.body.photos[card].some(p => p.obs === 'nabc123456'));
+  r = await call(h.staff, 'Dee', 'ideabank/photo', { do: 'first', card, obs: 'nabc123456' }); assert.strictEqual(r.body.photos[card][0].obs, 'nabc123456');
+  r = await call(h.staff, 'Dee', 'ideabank/photo', { do: 'remove', card, obs }); assert.ok(!r.body.photos[card].some(p => p.obs === obs)); assert.strictEqual(r.body.photoFlags.length, 0);
+});
