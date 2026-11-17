@@ -1053,7 +1053,7 @@ async function doLoadGraph() {
   noteMissing(missing);
   if (drdpSha) { try { DRDP_DESC = JSON.parse(small.get(drdpSha)); } catch (e) { DRDP_DESC = null; } }
   if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 15 * 60000); }
-  store.ready = true; store.error = ''; store.loadedAt = Date.now();
+  store.ready = true; store.error = ''; store.loadedAt = Date.now(); settleSoon();
   try { linkPlansToObservations(); } catch (e) { log('Plans could not be linked to their observations', e.message); }
   try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
   try { ensureDirectorSignIns(); } catch (e) { log('The director sign-in could not be made', e.message); }
@@ -1107,7 +1107,7 @@ async function doLoad() {
       noteMissing(missing); }
     await loadDrdp();
     if (!store.recheckSet) { store.recheckSet = true; setTimeout(() => recheckRecords().catch(e => log('Could not read the records again', e.message)), 75000); }
-    store.ready = true; store.error = ''; store.loadedAt = Date.now();
+    store.ready = true; store.error = ''; store.loadedAt = Date.now(); settleSoon();
     // a former educator comes off the lists as soon as the records are read, as the GraphQL path does
     try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); }
     try { ensureDirectorSignIns(); } catch (e) { log('The director sign-in could not be made', e.message); }
@@ -1377,9 +1377,22 @@ function backupBundle(saved) {
       photos: { total: photos.length, inDrive: photos.filter(p => p.drive).length, list: photos },
       left: 'Sign-ins, access/accounts.json, are not in the backup because they hold passcodes. The director and office names, access/roles.json, are. Photos are listed by id and Drive id, and the photo files stay in Google Drive and the records.' }, files };
 }
+/* Settling after a start (November 17, 2026). For a few minutes after a change goes live the server this one replaced is
+   still running and saving. Twelve minutes after this one has read the records, they are read again from GitHub, and
+   only then do the nightly passes run, so readings the earlier server finished are found and not paid for twice. A
+   check GitHub turns away is tried again five minutes later. */
+const SETTLE_MS = Number(process.env.SETTLE_MS) || 12 * 60000;
+function settleSoon(wait) {
+  if (store.settleTimer) return;
+  store.settleTimer = setTimeout(async () => { store.settleTimer = null;
+    let ok = false; try { ok = await recheckRecords(); } catch (e) { log('Could not read the records again', e.message); }
+    if (ok) { store.settledAt = Date.now(); log('Records read again after the start, so the nightly passes can run'); } else settleSoon(5 * 60000);
+  }, wait == null ? SETTLE_MS : wait);
+  if (store.settleTimer.unref) store.settleTimer.unref();
+}
 async function recheckRecords() {
   const tree = await gh('GET', `/repos/${RECORDS_REPO}/git/trees/${encodeURIComponent(store.branch)}?recursive=1&fresh=${Date.now()}`);
-  if (tree.status !== 200) return;
+  if (tree.status !== 200) return false;
   let n = 0;
   for (const f of (tree.json.tree || [])) {
     const m = f.type === 'blob' && f.path.match(KIND_RE); if (!m) continue;
@@ -1405,6 +1418,7 @@ async function recheckRecords() {
     const unread = (tree.json.tree || []).filter(f => { const m = f.type === 'blob' && f.path.match(KIND_RE); return m && !store.recs[m[1]].has(m[2]); });
     if (!unread.length) { store.partial = false; log('Every record is read now, so the one-time steps can run'); runOnce(); }
   }
+  return true;
 }
 
 /* ---------- FEED orders, for the Farm to School grant ----------
@@ -1825,11 +1839,13 @@ function postAnthropic(payload) {
 }
 // how TREE's writing help names the school in what it writes itself. Words it copies or quotes keep their own.
 const SCHOOL_NAME = 'When you write in your own words, call the school we and our in sentences, and Fulton Community School where a name is needed, such as in a title. Never call it Fulton on its own, and never Community School on its own. Text you copy, transcribe or quote keeps its own words.';
-const SAVE_UNTIL = Date.parse('2026-12-01T08:00:00Z');
+// the careful lane uses Sonnet to save cost (November 16, 2026), with no end date since November 17. The director
+// moves it back to the careful models by setting CAREFUL_USE_OPUS to yes on Render.
+const CAREFUL_SAVING = !/^(yes|on|true|1)$/i.test(String(process.env.CAREFUL_USE_OPUS || '').trim());
 const SAVING_MODELS = ['claude-sonnet-5-5', 'claude-sonnet-4-6'];
 async function askClaude(content, careful, extra) {
-  // until December 1, 2026 the careful lane uses Sonnet in place of Opus, to save cost, then goes back by itself (November 16, 2026)
-  const saving = careful && Date.now() < SAVE_UNTIL;
+  // the careful lane uses Sonnet to save cost until the director chooses otherwise on Render
+  const saving = careful && CAREFUL_SAVING;
   const lane = saving ? 'saving' : careful ? 'careful' : 'quick'; const list = saving ? SAVING_MODELS : careful ? CAREFUL_MODELS : QUICK_MODELS;
   while (true) {
     const model = list[modelAt[lane]];
@@ -2000,18 +2016,24 @@ async function nightlyThreadPass(force) {
           const picks = mergePicks(g.plan.keep, fresh);
           writeThreadSuggest(g.docs, g.plan.wk, [...g.plan.asked, ...g.live.map(t => t.id)], picks); if (fresh.length) counts.suggested++; else counts.none++;
         }
+        // each batch is saved to GitHub as soon as it is read, so a restart part way never reads it again
+        for (const g of batch) for (const d of g.docs) flushPath(`notices/${d.id}.json`);
       }
     }
     log(`Nightly thread pass, ${counts.looked} observations in no thread, ${counts.unchanged || 0} already read against every open thread, ${counts.asked} read in ${counts.batches} batches, ${counts.suggested} with a thread suggested, ${counts.none} fit none, ${counts.placed} given a place`);
     const cur = store.recs.settings.get('nightly'); const doc = cur && !cur.deleted && cur.doc ? cur.doc : {};
     setSetting('nightly', Object.assign({}, doc, { lastDay: laDayOf(Date.now()), lastAt: Date.now(), counts }));
+    flushPath('settings/nightly.json');
   } finally { nightlyBusy = false; }
   return counts;
 }
 function nightlyDue() {
   if (!store.ready || store.partial) return false;
   const cur = store.recs.settings.get('nightly'); const last = cur && !cur.deleted && cur.doc ? cur.doc.lastDay : '';
-  return laHourNow() === NIGHTLY_HOUR && last !== laDayOf(Date.now());
+  // after a start the nightly passes wait until the records have been read again from GitHub, once the server this one
+  // replaced has saved its last changes, so a reading that server already paid for is never read again (November 17, 2026)
+  if (!store.settledAt) return false;
+  const h = laHourNow(); return (h === NIGHTLY_HOUR || h === (NIGHTLY_HOUR + 1) % 24) && last !== laDayOf(Date.now());
 }
 /* The nightly lens pass. The Lens page finds a sentence by a word of the lens, and a word alone misleads, so "wait in
    line" lands under Graphic Languages. Each night every candidate sentence not yet read goes to the careful lane with
@@ -2102,6 +2124,9 @@ ${JSON.stringify(items)}`;
           next[c.key] = { lens: L.id, planId: c.planId, kept: a.keep, why: lensWhyClean(a.why), at: now, by: 'TREE' };
           counts.read++; if (a.keep) counts.kept++; else counts.aside++;
         }
+        // each batch is saved to GitHub as soon as it is read, so a restart part way never reads it again
+        const live0 = lensPassages(); for (const k of Object.keys(live0)) if (live0[k] && live0[k].byHand) next[k] = live0[k];
+        if (counts.read) { saveLensPassages(Object.assign({}, next)); flushPath('lens/passages.json'); }
       }
       // what was read is kept, and a by-hand entry made while the model was answering stays
       const live = lensPassages(); for (const k of Object.keys(live)) if (live[k] && live[k].byHand) next[k] = live[k];
@@ -3938,7 +3963,16 @@ async function handle(req, res) {
     let drdpUsed;
     if (body.purpose === 'drdp' && body.drdp && (body.drdp.view === 'ptk' || body.drdp.view === 'it')) {
       await ensureDrdp(); const block = drdpBlock(body.drdp.view, body.drdp.codes); drdpUsed = !!block;
-      for (const b of content) if (b.type === 'text') b.text = b.text.includes('[[DRDP_DESCRIPTORS]]') ? b.text.replace('[[DRDP_DESCRIPTORS]]', block) : b.text;
+      /* The official wording is the same in every DRDP reading, about 18,000 tokens, so it goes first and is marked for
+         Anthropic's prompt cache. A reading within five minutes of the last one pays about a tenth for it (November 17,
+         2026). The photos follow it, then the rest of the request, as before. */
+      const ti = content.findIndex(b => b.type === 'text' && b.text.includes('[[DRDP_DESCRIPTORS]]'));
+      if (block && ti >= 0) {
+        const [head, ...tail] = content[ti].text.split('[[DRDP_DESCRIPTORS]]');
+        const rest = content.filter((b, i) => i !== ti);
+        content.length = 0;
+        content.push({ type: 'text', text: head + block, cache_control: { type: 'ephemeral' } }, ...rest, { type: 'text', text: tail.join(block).replace(/^\s+/, '') });
+      } else for (const b of content) if (b.type === 'text') b.text = b.text.includes('[[DRDP_DESCRIPTORS]]') ? b.text.replace('[[DRDP_DESCRIPTORS]]', block) : b.text;
     }
     const kb = Math.round(JSON.stringify(content).length / 1024);
     try {
@@ -3948,7 +3982,7 @@ async function handle(req, res) {
       if (r.status !== 200) { log('Claude answered', r.status, 'for', me.name, kb + ' KB sent', r.text.slice(0, 300)); err(req, res, r.status === 429 || r.status === 529 ? 429 : 502, r.status === 429 || r.status === 529 ? 'TREE\'s writing help is busy. Wait a minute and try again.' : 'TREE\'s writing help could not answer just now. Try again in a minute.'); return; }
       const msg = JSON.parse(r.text);
       const text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-      log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out` : '', msg.stop_reason === 'max_tokens' ? 'ANSWER CUT OFF' : '');
+      log('Claude request for', me.name, msg.model, kb + ' KB sent', msg.usage ? `${msg.usage.input_tokens} in, ${msg.usage.output_tokens} out${msg.usage.cache_read_input_tokens ? `, ${msg.usage.cache_read_input_tokens} from the cache` : ''}${msg.usage.cache_creation_input_tokens ? `, ${msg.usage.cache_creation_input_tokens} put in the cache` : ''}` : '', msg.stop_reason === 'max_tokens' ? 'ANSWER CUT OFF' : '');
       json(req, res, 200, { text, model: msg.model, truncated: msg.stop_reason === 'max_tokens', drdp: drdpUsed, ...(body.purpose === 'drdp' && !drdpUsed && drdpWaiting() ? { drdpWait: true } : {}) });
     } catch (e) { log('Could not reach Claude for', me.name, kb + ' KB sent', e.message); err(req, res, 502, 'TREE\'s writing help could not be reached just now. Check the connection and try again.'); }
     finally { readsRunning--; }
