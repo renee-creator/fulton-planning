@@ -62,3 +62,11 @@ test('tasks repeat, and only the director and the shopper see them', async () =>
   assert.equal((await h.call('Cook', 'boot')).body.tasks, undefined);
   assert.equal((await h.call('Kai', 'item', { name: 'x' })).status, 403);
 });
+test('a facilities request with a photo becomes a task for the director and the shopper, and the asker sees only their own', async () => {
+  const h = make(); await h.call('Dee', 'shopper', { name: 'Kai' });
+  let r = await h.call('Ed', 'request', { name: 'Gate latch is loose', section: 'facilities', note: 'Goat yard', photo: 'data:image/jpeg;base64,' + Buffer.from('abc').toString('base64') });
+  assert.equal(r.status, 200); assert.equal(r.body.tasks, undefined); assert.equal(r.body.lines.length, 0); assert.deepEqual(r.body.myRequests.map(x => [x.title, x.done]), [['Gate latch is loose', false]]);
+  assert.ok(h.sent.some(s => s.n === 'Kai') && h.sent.some(s => s.n === 'Dee'));
+  r = await h.call('Kai', 'boot'); const t = r.body.tasks[0]; assert.equal(t.area, 'Facilities'); assert.equal(t.by, 'Ed'); assert.match(t.src, /^\/original\/kt-/); assert.equal(r.body.myRequests.length, 0);
+  await h.call('Kai', 'taskdone', { id: t.id }); r = await h.call('Ed', 'boot'); assert.equal(r.body.myRequests[0].done, true);
+});

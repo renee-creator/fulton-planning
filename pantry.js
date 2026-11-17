@@ -197,8 +197,16 @@ module.exports = function createPantry(o) {
     };
     if (canSetStores(role)) { out.rules = c.rules || []; out.shopperEmail = c.shopperEmail || ''; out.starting = !!c.starting; }
     if (role === 'director') out.shopperAccounts = accounts.list.filter(a => a.shopper).map(a => ({ name: a.name, hasCode: !!a.code }));
-    if (canTasks(role)) out.tasks = tasks().list.map(t => Object.assign({}, t, { done: (t.done || []).slice(-6).map(d => Object.assign({}, d, d.photo ? { src: photoSrc(d.photo) } : {})) }));
+    // everyone sees their own facilities requests, waiting or done, and nothing else of the tasks
+    out.myRequests = tasks().list.filter(t => t.request && nameKey(t.by) === nameKey(me) && (!t.closedAt || now - t.closedAt < 14 * 864e5)).slice(-12).reverse().map(t => ({ id: t.id, title: t.title, at: t.at, done: !!t.closedAt, doneAt: t.closedAt || 0 }));
+    if (canTasks(role)) out.tasks = tasks().list.map(t => Object.assign({}, t, t.photo ? { src: photoSrc(t.photo) } : {}, { done: (t.done || []).slice(-6).map(d => Object.assign({}, d, d.photo ? { src: photoSrc(d.photo) } : {})) }));
     return out;
+  }
+
+  // a photo sent from a phone, kept with TREE's other files
+  async function keepPhoto(data, tag) {
+    const buf = Buffer.from(String(data).replace(/^data:image\/\w+;base64,/, ''), 'base64'); if (!buf.length) throw new Error('empty'); if (buf.length > 6e6) { const e = new Error('big'); e.big = true; throw e; }
+    const id = 'kt-' + tag + '-' + Date.now().toString(36) + '.jpg'; await keepOriginal(id, buf, 'image/jpeg', 'Kitchen TREE photo'); return id;
   }
 
   /* ---------- requests ---------- */
@@ -220,7 +228,16 @@ module.exports = function createPantry(o) {
       saveCfg(c); saveList(L); done(); return; }
 
     // a request for something, matched to a pantry item when it is one, or a line of its own for the kitchen to place
-    if (P === 'request') { const name = clip(b.name, 80); if (!name) { err(req, res, 400, 'Type what is needed.'); return; }
+    if (P === 'request') { const name = clip(b.name, 120); if (!name) { err(req, res, 400, 'Type what is needed.'); return; }
+      // a facilities request, something to fix or look at, becomes a task for the director and the shopper, with its photo
+      if (b.section === 'facilities') {
+        const T = tasks(), id = newId('t'); let photo = '';
+        if (b.photo && typeof b.photo === 'string') { try { photo = await keepPhoto(b.photo, id); } catch (e) { log('Kitchen TREE photo not kept', e.message); err(req, res, e.big ? 413 : 502, e.big ? 'That photo is too large.' : 'The photo could not be kept, so the request is not sent yet. Try again.'); return; } }
+        T.list.push({ id, title: name, notes: clip(b.note, 600), area: 'Facilities', who: 'Both', due: '', repeat: null, by: me, at: Date.now(), done: [], request: true, photo });
+        saveTasks(T); log('Kitchen TREE facilities request from', me);
+        for (const n of new Set([...shoppers(), ...directors()])) if (nameKey(n) !== nameKey(me)) pushTo(n, { title: 'Kitchen TREE', body: 'Facilities request from ' + me + '. ' + name, url: 'kitchen.html?go=tasks', tag: 'kitchen-fac-' + id }).catch(() => {});
+        done(); return;
+      }
       const section = SECTIONS[b.section] ? b.section : 'other';
       const it = c.items.find(i => nameKey(i.name) === nameKey(name) && (i.section === section || !b.section)) || c.items.find(i => nameKey(i.name) === nameKey(name));
       if (it) { it.status = 'out'; it.markedBy = me; it.markedAt = Date.now(); lineFor(c, L, it, 'request', me, clip(b.note, 200)); }
@@ -305,7 +322,7 @@ module.exports = function createPantry(o) {
       if (P === 'taskdone') { if (!t) { err(req, res, 404, 'That task is not here.'); return; }
         let photo = '';
         if (b.photo && typeof b.photo === 'string') { const buf = Buffer.from(b.photo.replace(/^data:image\/\w+;base64,/, ''), 'base64'); if (buf.length > 6e6) { err(req, res, 413, 'That photo is too large.'); return; }
-          photo = 'kt-' + t.id + '-' + Date.now().toString(36) + '.jpg'; try { await keepOriginal(photo, buf, 'image/jpeg', 'Kitchen TREE task photo'); } catch (e) { log('Kitchen TREE photo not kept', e.message); err(req, res, 502, 'The photo could not be kept. The task is not marked done yet. Try again.'); return; } }
+          try { photo = await keepPhoto(b.photo, t.id + 'd'); } catch (e) { log('Kitchen TREE photo not kept', e.message); err(req, res, 502, 'The photo could not be kept. The task is not marked done yet. Try again.'); return; } }
         t.done = (t.done || []).concat([{ at: Date.now(), by: me, note: clip(b.note, 300), photo }]).slice(-30);
         if (t.repeat) { const step = { day: 1, week: 7 }[t.repeat.unit]; let d = t.due || dayOf(Date.now());
           const bump = x => step ? addDays(x, step * t.repeat.every) : (() => { const z = new Date(x + 'T12:00:00Z'); if (t.repeat.unit === 'month') z.setUTCMonth(z.getUTCMonth() + t.repeat.every); else z.setUTCFullYear(z.getUTCFullYear() + t.repeat.every); return z.toISOString().slice(0, 10); })();

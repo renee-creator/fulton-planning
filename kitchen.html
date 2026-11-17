@@ -189,6 +189,8 @@ function weekHtml(){
     ${T.closedWeek?`<div class="cnt">Anything added now waits for next week.</div>`:""}</div>`);
   h.push(`<button class="btn go big" type="button" data-ask="1">Ask for something</button>`);
   if(U.ask)h.push(askHtml());
+  const mine=B.myRequests||[];
+  if(mine.length)h.push(`<h2>Your facilities requests</h2><div class="card">${mine.map(r=>`<div class="row"><div class="n"><b>${esc(r.title)}</b><small>${r.done?"Done "+esc(stamp(r.doneAt)):"Waiting, sent "+esc(stamp(r.at))}</small></div></div>`).join("")}</div>`);
   // the Costco delivery, the director's part
   const del=stage("delivery");
   if(B.role==="director"&&del.length)h.push(`<h2>Costco delivery to order</h2><div class="cnt">Mark each one after you place the order. Anything Costco does not have goes onto the shopper's Costco list.</div><div class="card">${del.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${l.state==="ordered"?`<small><b>Ordered</b></small>`:""}</div>
@@ -210,13 +212,15 @@ function weekHtml(){
   if(B.role==="director")h.push(fold("closenow","Close a part now",`<div class="cnt">The list closes by itself at the times in Settings. Use these only to close early.</div><div class="acts">${T.costcoDelivery?`<button class="btn quiet" type="button" data-close="costco">Close the Costco part now</button>`:""}<button class="btn quiet" type="button" data-close="week">Close the full list now</button></div>`));
   return h.join("");
 }
-function askHtml(){const f=U.askFor||{};
-  return `<div class="card" id="askcard"><b>${f.task?"Supplies for the task":"What do we need?"}</b>
-    <label class="fld">Item<input type="text" id="a-name" list="a-items" autocomplete="off" value="${esc(f.name||"")}"></label>
-    <datalist id="a-items">${B.items.map(i=>`<option value="${esc(i.name)}">`).join("")}</datalist>
-    <div class="chips" role="group" aria-label="Kind">${Object.entries(B.sections).map(([k,v])=>`<button class="chip ${(f.section||"other")===k?"on":""}" type="button" data-asksec="${k}">${esc(v)}</button>`).join("")}</div>
-    <label class="fld">How much, or a note<input type="text" id="a-note" value="${esc(f.note||"")}"></label>
-    <div class="acts"><button class="btn go" type="button" data-asksend="1">Add to the list</button><button class="btn quiet" type="button" data-ask="0">Close</button></div></div>`}
+function askHtml(){const f=U.askFor||{},fac=f.section==="facilities";
+  const kinds=[...Object.entries(B.sections),...(f.task?[]:[["facilities","Facilities"]])];
+  return `<div class="card" id="askcard"><b>${f.task?"Supplies for the task":fac?"What needs fixing or looking at?":"What do we need?"}</b>
+    <div class="chips" role="group" aria-label="Kind">${kinds.map(([k,v])=>`<button class="chip ${(f.section||"other")===k?"on":""}" type="button" data-asksec="${k}">${esc(v)}</button>`).join("")}</div>
+    <label class="fld">${fac?"What it is":"Item"}<input type="text" id="a-name" ${fac?"":'list="a-items"'} autocomplete="off" value="${esc(f.name||"")}"></label>
+    ${fac?"":`<datalist id="a-items">${B.items.map(i=>`<option value="${esc(i.name)}">`).join("")}</datalist>`}
+    <label class="fld">${fac?"Where it is, and anything to know":"How much, or a note"}<input type="text" id="a-note" value="${esc(f.note||"")}"></label>
+    ${fac?`<label class="fld">A photo, if it helps<input type="file" id="a-photo" accept="image/*" style="margin-top:5px"></label>`:""}
+    <div class="acts"><button class="btn go" type="button" data-asksend="1">${fac?"Send to facilities":"Add to the list"}</button><button class="btn quiet" type="button" data-ask="0">Close</button></div></div>`}
 
 /* ---------- Pantry ---------- */
 function itemRow(i){
@@ -279,6 +283,7 @@ function taskHtml(t){
   return `<div class="card ${late?"warn":""}"><b>${esc(t.title)}</b>
     <div class="cnt"><span class="tag">${esc(t.area)}</span><span class="tag">${esc(t.who==="Both"?"Both of us":t.who)}</span>${esc(repeatWords(t.repeat))}${t.due?`. ${late?"Was due":"Due"} ${esc(dayDate(t.due))}`:""}</div>
     ${t.notes?`<div style="margin-top:6px">${esc(t.notes)}</div>`:""}
+    ${t.request?`<div class="cnt" style="margin-top:6px">Asked by ${esc(t.by)} on ${esc(stamp(t.at))}</div>${t.src?`<img class="ph" src="${esc(SERVER+t.src)}" alt="Photo sent with the request">`:""}`:""}
     ${last?`<div class="cnt" style="margin-top:6px">Last done ${esc(stamp(last.at))} by ${esc(last.by)}${last.note?". "+esc(last.note):""}</div>${last.src?`<img class="ph" src="${esc(SERVER+last.src)}" alt="Photo from the last time this was done">`:""}`:""}
     ${U.taskDone===t.id?`<label class="fld">A note, if there is one<input type="text" id="td-note"></label>
       <label class="fld">A photo, if you like<input type="file" id="td-photo" accept="image/*" style="margin-top:5px"></label>
@@ -357,6 +362,9 @@ document.addEventListener("click",async ev=>{
   if(d.ask!=null){U.ask=d.ask==="1";U.askFor=U.ask?{section:"other"}:null;render();if(U.ask)setTimeout(()=>{const e=$("#a-name");if(e){e.focus();e.scrollIntoView({block:"center"})}},30);return}
   if(d.asksec){U.askFor=Object.assign(U.askFor||{},{name:val("a-name"),note:val("a-note"),section:d.asksec});render();return}
   if(d.asksend){const name=val("a-name");if(!name){say("Type what is needed.","bad");return}const f=U.askFor||{};
+    if(f.section==="facilities"){const fi=$("#a-photo"),file=fi&&fi.files&&fi.files[0];let photo="";t.disabled=true;
+      if(file){say("Getting the photo ready.");try{photo=await shrink(file)}catch(e){say("That photo could not be read. Try another, or send it without one.","bad");t.disabled=false;return}}
+      if(await send("request",{name,section:"facilities",note:val("a-note"),photo},"Sent to facilities.")){U.ask=false;U.askFor=null;render()}else t.disabled=false;return}
     if(await send("request",{name,section:f.section||"other",note:val("a-note"),task:!!f.task},name+" is on the list.")){U.ask=false;U.askFor=null;render()}return}
   if(d.mark){send("mark",{id:d.mark,status:d.to},d.to==="ok"?"Marked as stocked.":"On the list.");return}
   if(d.sec){U.sec=d.sec;render();return}
