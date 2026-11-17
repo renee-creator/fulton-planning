@@ -25,6 +25,8 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     const T=(n,val)=>{if(val==null||val==="")return;try{const f=form.getTextField(n);let t=String(val);if(/^[\s()+.\d-]{10,16}$/.test(t))t=ph(t);const max=f.getMaxLength();if(max)t=t.slice(0,max);
       const w=f.acroField.getWidgets()[0];const r=w&&w.getRectangle();if(r&&!f.isMultiline()){let sz=10;while(sz>6&&font.widthOfTextAtSize(t,sz)>r.width-4)sz-=.5;f.setFontSize(sz)}f.setText(t)}catch(e){}};const C=(n,on)=>{if(!on)return;try{form.getCheckBox(n).check()}catch(e){}};
     set(T,C);try{form.updateFieldAppearances(font)}catch(e){}try{form.flatten()}catch(e){}const pages=await out.copyPages(doc,doc.getPageIndices());pages.forEach(pg=>out.addPage(pg))};
+  // o.only "agreement" makes the admission agreement alone. o.blank makes the whole packet with nothing filled in, for printing ahead.
+  const justAg=o.only==="agreement";const forms=async()=>{
   const L=n=>"LIC 700 "+n;
   await fill("LIC700",(T,C)=>{const [cn,cs]=splitStreet(v("c_street"));T(L(2),v("c_last"));T(L(3),v("c_middle"));T(L(4),v("c_first"));T(L(5),v("c_sex"));T(L(6),v("c_phone"));T(L(7),cn);T(L(8),cs);T(L(9),v("c_city"));T(L(10),v("c_state"));T(L(11),v("c_zip"));T(L(12),mdy(v("c_dob")));
     [["p1_",13],["p2_",23]].forEach(([p,b])=>{if(!nm(p))return;const a=addrOf(p);const [an,as]=splitStreet(a[0]);T(L(b),v(p+"last"));T(L(b+1),v(p+"middle"));T(L(b+2),v(p+"first"));T(L(b+3),v(p+"work"));T(L(b+4),an);T(L(b+5),as);T(L(b+6),a[1]);T(L(b+7),a[2]);T(L(b+8),a[3]);T(L(b+9),v(p+"home"))});
@@ -45,7 +47,10 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
   await fill("LIC627",T=>{const a=addrOf("p1_");const [ha,hp]=splitPhone(v("p1_home")),[wa,wp]=splitPhone(v("p1_work"));T("Facility Name",FAC.name);T("Name",v("doc_name"));T("Medications",v("med_allergy"));T("Street Address",a[0]);T("City state and zipcode",[a[1],a[2],a[3]].filter(Boolean).join(" "));T("Home area code",ha);T("Home phone",hp);T("work phone area code",wa);T("work phone",wp)});
   await fill("LIC995",T=>{T("LIC 995 1",LICO.name);T("LIC 995 2",LICO.addr);T("LIC 995 3",LICO.phone);T("LIC 995 4",nm("c_"));T("LIC 995 5",FAC.name)});
   await fill("LIC613A",T=>{T("LIC613a_1",LICO.name);T("LIC613a_2",LICO.street);T("LIC613a_3",LICO.city);T("LIC613a_4",LICO.zip);T("LIC613a_5",LICO.phone);T("LIC613a_6",FAC.name);T("LIC613a_7",FAC.addr);T("LIC613a_8",nm("c_"));T("LIC613a_10","Parent")});
-  if(d.sun===true||d.sun==="true")await fill("LIC9221",T=>{T("Text Field 12",FAC.name);T("Text Field 13",FAC.license);T("Text Field 15",nm("c_"));T("Text Field 16",mdy(v("c_dob")));T("Text Field 17","School provided sunscreen");T("Text Field 18","Apply as directed on the label");T("Text Field 22","Before outdoor play and as needed")});
+  if(o.blank){for(const f of ["LIC701","LIC995E"])await fill(f,()=>{})}
+  if(o.blank||d.sun===true||d.sun==="true")await fill("LIC9221",T=>{T("Text Field 12",FAC.name);T("Text Field 13",FAC.license);T("Text Field 15",nm("c_"));T("Text Field 16",mdy(v("c_dob")));T("Text Field 17","School provided sunscreen");T("Text Field 18","Apply as directed on the label");T("Text Field 22","Before outdoor play and as needed")});
+  if(o.blank){for(const f of ["PUB515","WaterLead2026"])await fill(f,()=>{})}
+  };if(!justAg)await forms();
   // Fulton's admission agreement, as the school wrote it, with what TREE knows filled in. The family initials each line and signs at the visit.
   {const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);const M=54,W=504;let pg,y;
     const yr=o.aa||{};const md=s=>{const m=String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return "";return new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})};
@@ -57,7 +62,7 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     const item=t=>{const ls=wrap(t,F,9.5,W-40);pg.drawLine({start:{x:M,y:y-1},end:{x:M+26,y:y-1},thickness:.5,color:gray});if(ag&&ag.initials&&(ag.ticks||[])[ai])pg.drawText(String(ag.initials).toUpperCase(),{x:M+2,y,size:9,font:B,color:ink});ai++;ls.forEach((l,i)=>{pg.drawText(l,{x:M+34,y,size:9.5,font:F,color:ink});y-=12.5});y-=3.5};
     const box=(on,t)=>{pg.drawRectangle({x:M,y:y-1.5,width:8,height:8,borderColor:ink,borderWidth:.7});if(on){pg.drawLine({start:{x:M+1.5,y:y+2.5},end:{x:M+3.5,y:y},thickness:1.1,color:ink});pg.drawLine({start:{x:M+3.5,y},end:{x:M+7,y:y+6},thickness:1.1,color:ink})}pg.drawText(t,{x:M+14,y,size:9.5,font:F,color:ink});y-=15};
     const A=window.FultonAgreement;if(o.agreementWords)A.use(o.agreementWords);const g=ag&&ag.fields?ag:null;const gf=g?g.fields:{};
-    const prog=g?g.program:A.programFor(o.schedule);const T=A.terms(g&&g.aa&&g.aa.start?g.aa:yr,prog);
+    const prog=g?g.program:o.blank||(justAg&&!o.schedule)?"":A.programFor(o.schedule);const T=A.terms(g&&g.aa&&g.aa.start?g.aa:yr,prog);
     page();
     field("Child's name",g?gf.child:nm("c_"),M,300);field("Sex",g?gf.sex:v("c_sex"),M+310,80);field("DOB",g?gf.dob:mdy(v("c_dob")),M+400,104);y-=20;
     field("Parent(s) name(s)",g?gf.parents:[nm("p1_"),nm("p2_")].filter(Boolean).join(" and "),M,W);y-=20;
@@ -75,7 +80,7 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
       field("Signature",sg.name?"/s/ "+sg.name:"",M,230);field("Name",pn||"",M+240,170);field("Date",sg.name?sd:"",M+420,84);y-=34}
     if(signed){pg.drawText(`Signed electronically on the Family page on ${sd} by ${[ag.sign1&&ag.sign1.name,ag.sign2&&ag.sign2.name].filter(Boolean).join(" and ")}${ag.by?", "+ag.by:""}.`,{x:M,y,size:8.5,font:F,color:gray})}}
   // the school's own page, the food allergy and dietary information, signed at the visit with the state forms
-  {const pg=out.addPage([612,792]);const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);
+  if(!justAg){const pg=out.addPage([612,792]);const F=await out.embedFont(PDFLib.StandardFonts.Helvetica),B=await out.embedFont(PDFLib.StandardFonts.HelveticaBold);const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.4,.43,.41);
     let y=740;const M=60,W=492;
     const wrap=(t,f,sz,w)=>{const out=[];for(const para of String(t||"").split("\n")){let line="";for(const w0 of para.split(/\s+/).filter(Boolean)){const tt=line?line+" "+w0:w0;if(f.widthOfTextAtSize(tt,sz)<=w)line=tt;else{if(line)out.push(line);line=w0}}out.push(line)}return out};
     const text=(t,f,sz,c)=>{for(const l of wrap(t,f,sz,W)){pg.drawText(l,{x:M,y,size:sz,font:f,color:c||ink});y-=sz*1.35}};
@@ -83,7 +88,9 @@ async function fillEnrollForms(data,o){o=o||{};const ef={data:data||{}};const ba
     pg.drawText(FAC.name,{x:M,y,size:9,font:F,color:gray});y-=26;
     text("Food Allergy and Dietary Information",B,18);y-=8;
     pair("Child",nm("c_"));pair("Birthdate",mdy(v("c_dob")));pair("Class",o.classroom||"");pair("Parent or guardian",nm("p1_"));pair("Home telephone",v("p1_home"));pair("Work telephone",v("p1_work"));y-=8;
-    if(yes("fa_has")){text("Foods to avoid",B,11);text(v("fa_food"),F,10.5);y-=6;text("The nature of the reaction or sensitivity",B,11);text(v("fa_reaction"),F,10.5);y-=6;
+    const rule=n=>{for(let i=0;i<n;i++){y-=14;pg.drawLine({start:{x:M,y},end:{x:M+W,y},thickness:.5,color:gray});y-=6}y-=6};
+    if(o.blank){text("My child has a food allergy, severe food allergy or dietary need.     Yes        No",F,11);y-=8;text("Foods to avoid",B,11);rule(2);text("The nature of the reaction or sensitivity",B,11);rule(2);text("Reason",B,11);rule(1);text("Is this a medical condition? If yes, please bring a note from the doctor.",B,11);rule(1)}
+    else if(yes("fa_has")){text("Foods to avoid",B,11);text(v("fa_food"),F,10.5);y-=6;text("The nature of the reaction or sensitivity",B,11);text(v("fa_reaction"),F,10.5);y-=6;
       pair("Reason",v("fa_reason"));pair("Medical condition",v("fa_medical"));if(yes("fa_medical"))text("Please bring a note from the doctor.",F,10,gray)}
     else text("My child has no food allergy, severe food allergy or dietary need.",F,11);
     y-=14;text("We are a nut free school. A severe food allergy is a dangerous or life-threatening reaction to a food, by breathing, eating or touching it, that needs medical care right away.",F,9.5,gray);y-=4;

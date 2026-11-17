@@ -12597,6 +12597,11 @@ function renderParticipation(){
       <div class="cnt" style="margin:6px 0">New families see this first on the Family page. It is kept in School words as the Family welcome letter, with its history and Restore. ### starts a heading, a line starting with - is a list item, and [words](link) makes a link.</div>
       <div class="actions">${pageEditBtn("staff/wording/school-words.md","Edit the letter, with its history")}${c.welcome?`<button class="linkbtn" data-ptwelcomereset="1">Go back to the school's letter</button>`:""}</div>
       ${c.welcome?`<div class="cnt">A letter written here before is still shown to families. Go back to the school's letter to show the one in School words.</div>`:""}</details></section>
+    <section class="card"><div class="secthead"><h3 style="font-size:17px">Enrollment packet to print</h3></div>
+      <div class="cnt">The whole packet with nothing filled in, for a tour or a family who wants paper.</div>
+      <div class="cnt">It holds LIC 700, LIC 702, LIC 627, LIC 701, LIC 995, LIC 995E, LIC 613A, LIC 9221, PUB 515, the lead in water notice, the admission agreement, and the food allergy page.</div>
+      <div class="actions" style="margin-top:8px"><button class="btn small" data-kblank="packet">Print the blank enrollment packet</button><button class="btn small ghost" data-kblank="agreement">Print the admission agreement alone</button></div>
+      <div class="cnt" style="margin-top:6px">For one child, with their information filled in, open the child and use Getting started.</div></section>
     <section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Admission agreement dates</h3> <span class="cnt">${c.aa&&c.aa.start?esc(fmtDate(c.aa.start))+" to "+esc(fmtDate(c.aa.end||"")):"Not set, so the agreement prints blank lines"}</span></summary>
       <div class="cnt" style="margin:6px 0">These print on the admission agreement each family signs at the visit. Set them once each school year.</div>
       <div class="gsrow"><label>School year begins<input type="date" id="aa-start" value="${esc((c.aa||{}).start||"")}"></label><label>School year ends<input type="date" id="aa-end" value="${esc((c.aa||{}).end||"")}"></label><label>Program fee due<input type="date" id="aa-fee" value="${esc((c.aa||{}).fee||"")}"></label></div>
@@ -16771,7 +16776,7 @@ function kidFamilySideHtml(c){
     <div><span class="lbl">Admission agreement</span><div>${c.familyAgreement?(c.familyAgreement.done?"Signed electronically by "+esc([c.familyAgreement.sign1&&c.familyAgreement.sign1.name,c.familyAgreement.sign2&&c.familyAgreement.sign2.name].filter(Boolean).join(" and "))+", "+esc(shortDate(new Date(c.familyAgreement.signedAt).getTime())):"Started, not signed"):"Not started"}</div>${isOffice()&&c.familyAgreement&&c.familyAgreement.done?`<div class="actions" style="margin-top:4px"><button class="btn ghost sm" data-agreopen="${esc(c.id)}">Reopen for a change</button></div>`:""}</div>
     <div><span class="lbl">Family checklist</span><div>${(()=>{const ch=c.familyChecks||{};const steps=["handbook","notices","onecore","kaymbu","pickup","portal"].filter(k=>ch[k]).length;const pk=Object.keys(ch).filter(k=>k.startsWith("pack_")).length;return `${steps} of 6 steps, ${pk} of 9 packed`})()}</div></div>
     <div><span class="lbl">All About Me book</span><div>${c.aboutMe?(c.aboutMe.done?"Ready to print":"Started"):"Not started"}</div>${c.aboutMe&&c.aboutMe.done?`<div class="actions" style="margin-top:4px">${printBtns("aboutme",c.id,"Print the book")}</div>`:""}</div></div>
-    ${isOffice()?`<div class="actions">${ef?`<button class="btn small" data-kpacket="${esc(c.id)}">Print the forms to sign</button>`:""}<button class="btn small ghost" data-kpaper="${esc(c.id)}">${ob.paperwork?"Mark not signed":"Signed and complete"}</button></div>
+    ${isOffice()?`<div class="actions">${ef?`<button class="btn small" data-kpacket="${esc(c.id)}">Print the forms to sign</button>`:""}<button class="btn small ghost" data-kblank="agreement" data-kid="${esc(c.id)}">Print the admission agreement alone</button><button class="btn small ghost" data-kpaper="${esc(c.id)}">${ob.paperwork?"Mark not signed":"Signed and complete"}</button></div>
       ${ef?`<details><summary class="chiprow-label">What the family typed</summary>${enrollReadHtml(ef.data||{})}</details>`:""}${officeChecklistHtml(c)}`:""}</section>`}
   if(q)h+=`<section class="card"><details><summary class="secthead" style="cursor:pointer"><h3 style="font-size:17px;display:inline">Family Questionnaire</h3> <span class="cnt">from ${esc(shortDate(new Date(q.at).getTime()))}</span></summary>
     ${(q.questions||[]).map((qq,i)=>String((q.answers||[])[i]||"").trim()?`<div style="margin-top:8px"><div class="cnt">${esc(qq)}</div><div style="white-space:pre-line">${esc(q.answers[i])}</div></div>`:"").join("")}</details></section>`;
@@ -16851,6 +16856,15 @@ function classListDoc(room){const rs=kidList().filter(c=>kidAt(c)&&(room==="All"
 function enrollReadHtml(d){const rows=Object.entries(d).filter(([k,v])=>v!==""&&v!=null&&v!==false);
   return `<div class="kgrid" style="margin-top:8px">${rows.map(([k,v])=>`<div><span class="lbl">${esc(ENROLL_LABELS[k]||k.replace(/_/g," "))}</span><div style="white-space:pre-line">${esc(v===true?"Yes":v)}</div></div>`).join("")}</div>`}
 // the state licensing forms, filled with what the family typed, for the family to sign at the visit. The filling is shared with the Family page.
+/* The enrollment packet with nothing filled in, and the admission agreement alone, blank or for one child. Asked for November 17, 2026. */
+async function enrollBlank(only,c){
+  toast(only?"Making the agreement…":"Making the packet…");if(!window.fillEnrollForms)await loadScript("enroll-forms.js","fillEnrollForms");
+  if(!(wordsDoc("agreement").parts||[]).length){try{const j=await window.FP_API("/api/staff/wording",{});window.FP_WORDS=j.docs||window.FP_WORDS}catch(e){}}
+  if(!(wordsDoc("agreement").parts||[]).some(p=>/^page1 /.test(p.key))){toast("The admission agreement's terms have not loaded yet. Try again in a minute.");return}
+  const o={agreementWords:wordsDoc("agreement"),aa:(ptCfg().aa)||{}};if(only)o.only="agreement";
+  let data={};if(c){const pa=(c.parents||[]).find(p=>p&&has(p.email));data=(c.enrollForm||{}).data||{};Object.assign(o,{agreement:c.familyAgreement||null,enrollDate:c.enrollDate||"",classroom:c.classroom||"",schedule:c.schedule||"",email:pa?pa.email:""})}else o.blank=true;
+  const bytes=await window.fillEnrollForms(data,o);
+  saveFile(new Blob([bytes],{type:"application/pdf"}),only?(c?`Admission agreement ${kidName(c)}.pdf`:"Admission agreement.pdf"):"Enrollment packet.pdf");toast(only?"The agreement is ready to print.":"The packet is ready to print.")}
 async function enrollPacket(c){
   const ef=c.enrollForm;if(!ef){toast("The family has not typed the enrollment information yet.");return}
   toast("Filling in the forms…");if(!window.fillEnrollForms)await loadScript("enroll-forms.js","fillEnrollForms");
@@ -16865,8 +16879,9 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-agreopen]"
   const prev=(c.familyAgreementHistory||[]).concat([c.familyAgreement]);const ag=Object.assign({},c.familyAgreement,{done:false,signedAt:null,sign1:{name:""},sign2:{name:""},esign:false,reopenedAt:new Date().toISOString()});
   c.familyAgreement=ag;c.familyAgreementHistory=prev;db.doc("children/"+c.id).update({familyAgreement:ag,familyAgreementHistory:prev}).then(()=>{toast("Reopened. The family sees it on the Family page.");renderMain()}).catch(er=>toast(er&&er.message||"Could not save."))});
 document.addEventListener("change",e=>{const t=e.target.closest("[data-kwelcome]");if(!t)return;if(VIEW_AS){t.checked=!t.checked;toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}const c=children.get(t.dataset.kwelcome);if(!c)return;c.welcomeOn=t.checked;db.doc("children/"+c.id).update({welcomeOn:t.checked}).then(()=>toast(t.checked?"The family now sees the Welcome tab.":"The Welcome tab is back to showing around the first day.")).catch(er=>toast(er&&er.message||"Could not save."))});
-document.addEventListener("click",async e=>{const t=e.target.closest("[data-kpacket],[data-kpaper],[data-kshareport],[data-kunshare]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",async e=>{const t=e.target.closest("[data-kblank],[data-kpacket],[data-kpaper],[data-kshareport],[data-kunshare]");if(!t)return;const d=t.dataset;
   if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  if(d.kblank){enrollBlank(d.kblank==="agreement",d.kid?children.get(d.kid):null).catch(er=>{toast("That could not be made. "+(er&&er.message||""))});return}
   if(d.kpacket){const c=children.get(d.kpacket);if(!c)return;enrollPacket(c).catch(er=>{toast("The forms could not be filled. "+(er&&er.message||""))});return}
   if(d.kpaper){const c=children.get(d.kpaper);if(!c)return;const on=!(c.onboarding||{}).paperwork;c.onboarding=Object.assign({},c.onboarding||{},{paperwork:on});kidNote(c,on?"Enrollment forms signed and complete":"Enrollment forms marked not signed");saveKid(c);renderMain();return}
   if(d.kunshare){const [id,i]=d.kunshare.split("|");const c=children.get(id);if(!c)return;c.sharedFiles=(c.sharedFiles||[]).filter((x,j)=>j!==+i);db.doc("children/"+c.id).update({sharedFiles:c.sharedFiles}).then(()=>{renderMain();toast("No longer shared.")});return}
