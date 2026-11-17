@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="045300f23f88";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="cb3aadc97eba";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -13230,7 +13230,7 @@ function iqLetterHtml_(x){const L=x.letter||{};const links=new Map((x.readings||
   return `<div style="background:#ffffff;padding:20px 12px"><div style="max-width:640px;margin:0 auto;font-family:Andika,Arial,sans-serif;font-size:16px;line-height:1.55;color:#1B2920"><div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#5B6B61;margin-bottom:14px">Fulton Community School</div>${body}</div></div>`}
 function iqLetterDoc(x){const L=x.letter||{};const links=new Map((x.readings||[]).map(r=>[r.title,r.url]));const blocks=[];
   for(const t of String(L.body||"").trim().split(/\n\s*\n/)){const lines=t.split("\n");
-    if(lines.length>1&&lines.slice(1).every(l=>/^(- |\d+\. )/.test(l.trim()))){const items=lines.slice(1).map(l=>l.trim().replace(/^(- |\d+\. )/,""));blocks.push(Object.assign(dList(lines[0],items,/^\d+\. /.test(lines[1].trim())),{links:items.map(v=>{const ti=[...links.keys()].find(k=>v.startsWith(k));return ti?links.get(ti):""})}));continue}
+    if(lines.length>1&&lines.slice(1).every(l=>/^(- |\d+\. )/.test(l.trim()))){const items=lines.slice(1).map(l=>l.trim().replace(/^(- |\d+\. )/,""));blocks.push(Object.assign(dList(lines[0].replace(/\.\s*$/,""),items,/^\d+\. /.test(lines[1].trim())),{links:items.map(v=>{const ti=[...links.keys()].find(k=>v.startsWith(k));return ti?links.get(ti):""})}));continue}
     const m=t.match(/^([^.\n]{2,60}\.)\s+([\s\S]*)$/);if(m&&m[1].split(/\s+/).length<=6&&!/^Dear /.test(t)){blocks.push(dText(m[1].replace(/\.$/,""),m[2]));continue}
     blocks.push(dText("",t))}
   return {display:true,type:"report",acc:"smallgroup",title:has(L.subject)?L.subject:"A letter to the family",meta:[],blocks}}
