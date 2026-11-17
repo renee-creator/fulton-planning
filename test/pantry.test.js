@@ -108,3 +108,9 @@ test('Costco delivery takes only what delivery carries, and the director can ski
   assert.equal(st('Eggs'), 'delivery'); assert.equal(st('Honey'), 'collect'); assert.equal(find(r.body, 'Eggs').price, 9.5);
   r = await h.call('Dee', 'close', { which: 'skipdelivery' }); assert.equal(st('Eggs'), 'collect');
 });
+test('an item keeps the link to its page, only a plain https address, and a save without one leaves it alone', async () => {
+  const h = make(); let r = await h.call('Dee', 'boot'); const it = find(r.body, 'Cheese'); const base = { id: it.id, name: it.name, store: it.store, group: it.group, section: it.section };
+  r = await h.call('Dee', 'item', Object.assign({ link: 'https://www.example.com/dp/B00ZP6UZJK' }, base)); assert.equal(find(r.body, 'Cheese').link, 'https://www.example.com/dp/B00ZP6UZJK');
+  r = await h.call('Dee', 'item', base); assert.equal(find(r.body, 'Cheese').link, 'https://www.example.com/dp/B00ZP6UZJK');
+  r = await h.call('Dee', 'item', Object.assign({ link: 'javascript:alert(1)' }, base)); assert.equal(find(r.body, 'Cheese').link, '');
+});

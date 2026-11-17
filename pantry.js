@@ -123,6 +123,8 @@ module.exports = function createPantry(o) {
   const storeOf = (c, id) => (c.stores || []).find(s => s.id === id);
   const isDirect = (c, id) => !!(storeOf(c, id) || {}).direct;
   const active = l => l.stage !== 'done';
+  // a link is a plain web address on https, nothing else
+  const okLink = v => { const u = String(v || '').trim().slice(0, 600); return /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/[^\s<>"']*)?$/i.test(u) ? u : ''; };
   function lineFor(c, L, item, why, by, note, extra) {
     const have = item && L.lines.find(x => active(x) && x.item === item.id && x.state !== 'got' && x.state !== 'ordered');
     if (have) {
@@ -223,7 +225,7 @@ module.exports = function createPantry(o) {
   /* ---------- what a page receives ---------- */
   function boot(me) {
     const role = roleOf(me), c = cfg(), L = list(), now = Date.now(), today = dayOf(now);
-    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, also: Array.isArray(i.also) ? i.also : [], delivery: i.delivery || '', price: +i.price || 0, group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
+    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, also: Array.isArray(i.also) ? i.also : [], delivery: i.delivery || '', price: +i.price || 0, link: i.link || '', group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
     const lines = L.lines;
     const ahead = [0, 1, 2, 3].map(n => menuNeeds(c, L, shopMonday(today, n))), mn = ahead[0];
     const last = feedLast(today);
@@ -340,6 +342,8 @@ module.exports = function createPantry(o) {
       if (!it) { err(req, res, 404, 'That item is not in the pantry.'); return; }
       const name = clip(b.name, 80); if (!name) { err(req, res, 400, 'Type the item\'s name.'); return; }
       Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', group: c.groups.some(g => g.id === b.group) ? b.group : (it.group || guessGroup(name)), section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse, delivery: ['yes', 'no'].includes(b.delivery) ? b.delivery : '', price: Math.max(0, Math.round((+b.price || 0) * 100) / 100), also: (Array.isArray(b.also) ? b.also : []).filter(x => storeOf(c, x) && x !== b.store && !isDirect(c, x)).slice(0, 2) });
+      // the page the item is ordered from. It is kept as it was when the save does not carry one, so an older screen never wipes it
+      if (b.link !== undefined) it.link = okLink(b.link);
       if (!c.items.includes(it)) c.items.push(it);
       // the item's open lines follow its new name and store, except what is already on the trip
       for (const x of L.lines) if (x.item === it.id && x.stage !== 'trip') { x.name = it.name; x.section = it.section; x.amount = it.amount; if (x.store !== it.store) { x.store = it.store; x.stage = isDirect(c, it.store) ? 'reorder' : (x.stage === 'reorder' ? 'collect' : x.stage); } }

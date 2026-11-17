@@ -182,9 +182,13 @@ const groupOpts=cur=>B.groups.map(g=>`<option value="${esc(g.id)}" ${g.id===cur?
 const grouped=(rows,gid,draw)=>B.groups.map(g=>{const r=rows.filter(x=>gid(x)===g.id);return r.length?`<h3>${esc(g.name)}</h3><div class="card">${r.map(draw).join("")}</div>`:""}).join("");
 const storeOpts=(cur,none)=>`${none?`<option value="">${esc(none)}</option>`:""}${B.stores.map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.name)}</option>`).join("")}`;
 const fold=(id,title,inner)=>`<details data-fold="${id}" ${U.open[id]?"open":""}><summary>${title}</summary>${inner}</details>`;
+// where an item is ordered online. Its own page when one is kept, and a search at its store when not
+const SEARCH={amazon:"https://www.amazon.com/s?k=",costco:"https://www.costcobusinessdelivery.com/s?keyword=",blick:"https://www.dickblick.com/search/?q=",dss:"https://www.discountschoolsupply.com/search?q="};
+const linkFor=(it,store,name)=>{const st=store||(it&&it.store)||"";if(it&&it.link&&st===it.store)return it.link;if(st==="costco"&&B.role!=="director")return "";return SEARCH[st]?SEARCH[st]+encodeURIComponent(name||(it&&it.name)||""):""};
+const openBtn=(it,store,name)=>{const u=linkFor(it,store,name);if(!u||!["director","kitchen","shopper"].includes(B.role))return "";const st=store||(it&&it.store);return `<a class="link" href="${esc(u)}" target="_blank" rel="noopener" style="display:inline-block;padding:2px 0;min-height:30px">${it&&it.link&&st===it.store?"Open":"Find"} at ${esc(storeName(st))}</a>`};
 function lineInfo(l){const bits=[WHY[l.why]||"",l.by&&l.by!=="TREE"?"from "+esc(l.by):"",l.amount?esc(l.amount):""].filter(Boolean).join(", ");
   const it=itemOf(l),also=it?(it.also||[]).filter(x=>x!==l.store&&B.stores.some(y=>y.id===x)):[];
-  return `<b>${esc(l.name)}${l.section==="sensory"?' <span class="tag">Sensory</span>':""}</b><small>${bits}</small>${l.note?`<small>${esc(l.note)}</small>`:""}${also.length?`<small>Also at ${esc(also.map(storeName).join(" and "))}</small>`:""}`}
+  return `<b>${esc(l.name)}${l.section==="sensory"?' <span class="tag">Sensory</span>':""}</b><small>${bits}</small>${l.note?`<small>${esc(l.note)}</small>`:""}${also.length?`<small>Also at ${esc(also.map(storeName).join(" and "))}</small>`:""}${openBtn(it,l.store,l.name)}`}
 
 /* ---------- the menu, fresh ingredients and FEED ---------- */
 const FRESH={feed:"Coming from FEED",left:"Left from the last FEED delivery",none:"Not on the FEED order",noorder:"No FEED order in TREE yet",added:"Added to the FEED order",have:"We have it",store:"Sent to the shopping list"};
@@ -256,7 +260,7 @@ function itemRow(i){
   if(U.edit===i.id)return itemEdit(i);
   const sub=[i.from,i.amount,i.weekly?"Every week":"",i.perUse?"Added when it is on the menu":"",(i.also||[]).length?"Also at "+i.also.map(storeName).join(" and "):"",i.store==="costco"&&i.delivery==="yes"?"Costco delivers it":i.store==="costco"&&i.delivery==="no"?"In person only":""].filter(Boolean).join(", ");
   return `<div class="row"><div class="n"><b>${esc(i.name)}</b>${sub?`<small>${esc(sub)}</small>`:""}${i.status!=="ok"&&i.markedBy?`<small>${i.status==="low"?"Low":"Out"}, marked by ${esc(i.markedBy)} on ${esc(stamp(i.markedAt))}</small>`:""}
-    ${canSet()?`<button class="link" type="button" data-edit="${i.id}" style="padding:2px 0;min-height:30px">Change</button>`:""}</div>
+    ${canSet()?`<button class="link" type="button" data-edit="${i.id}" style="padding:2px 0;min-height:30px">Change</button>`:""} ${openBtn(i)}</div>
     <button class="st low ${i.status==="low"?"on":""}" type="button" data-mark="${i.id}" data-to="${i.status==="low"?"ok":"low"}" aria-pressed="${i.status==="low"}">Low</button>
     <button class="st out ${i.status==="out"?"on":""}" type="button" data-mark="${i.id}" data-to="${i.status==="out"?"ok":"out"}" aria-pressed="${i.status==="out"}">Out</button></div>`}
 function itemEdit(i){const n=!i.id;
@@ -271,6 +275,7 @@ function itemEdit(i){const n=!i.id;
     <label class="fld">Kind<select id="e-sec">${Object.entries(B.sections).map(([k,v])=>`<option value="${k}" ${k===(i.section||"kitchen")?"selected":""}>${esc(v)}</option>`).join("")}</select></label>
     <label class="fld">The usual amount<input type="text" id="e-amount" value="${esc(i.amount||"")}"></label>
     <label class="fld">Farm or maker, for items ordered direct<input type="text" id="e-from" value="${esc(i.from||"")}"></label>
+    <label class="fld">Link to its page, for items ordered online<input type="url" id="e-link" inputmode="url" placeholder="Paste the web address" value="${esc(i.link||"")}"></label>
     <label style="display:flex;gap:10px;align-items:center;margin-top:12px;min-height:40px"><input type="checkbox" id="e-weekly" ${i.weekly?"checked":""} style="width:22px;height:22px"> Buy it every week</label>
     <div class="acts"><button class="btn go" type="button" data-esave="${i.id||""}">Save</button><button class="btn quiet" type="button" data-edit="">Close</button>${n?"":`<button class="btn quiet" type="button" data-eremove="${i.id}">Take it out of the pantry</button>`}</div></div>`}
 function pantryHtml(){
@@ -409,7 +414,7 @@ document.addEventListener("click",async ev=>{
   if(d.mark){send("mark",{id:d.mark,status:d.to},d.to==="ok"?"Marked as stocked.":"On the list.");return}
   if(d.sec){U.sec=d.sec;render();return}
   if(d.edit!=null){U.edit=d.edit;render();const c=$("#editcard");if(c)c.scrollIntoView({block:"center"});return}
-  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),also:[val("e-also1"),val("e-also2")].filter(Boolean),delivery:val("e-deliv"),price:val("e-price"),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
+  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),also:[val("e-also1"),val("e-also2")].filter(Boolean),delivery:val("e-deliv"),price:val("e-price"),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),link:val("e-link"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
   if(d.eremove){if(confirm("Take this item out of the pantry?")&&await send("item",{id:d.eremove,remove:true},"Taken out.")){U.edit="";render()}return}
   if(d.store){U.store=d.store;U.move="";render();return}
   if(d.line){const ok={got:"",undo:"",ordered:"Marked as ordered.",na:"Moved to the shopper's Costco list.",reordered:"Marked as reordered.",later:"Moved to next week.",remove:"Taken off the list."}[d.do];if(await send("line",{id:d.line,do:d.do},ok)){U.move="";render()}return}
