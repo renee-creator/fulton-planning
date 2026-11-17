@@ -12101,18 +12101,29 @@ function iqLetterDoc(x){const L=x.letter||{};const links=new Map((x.readings||[]
     const m=t.match(/^([^.\n]{2,60}\.)\s+([\s\S]*)$/);if(m&&m[1].split(/\s+/).length<=6&&!/^Dear /.test(t)){blocks.push(dText(m[1].replace(/\.$/,""),m[2]));continue}
     blocks.push(dText("",t))}
   return {display:true,type:"report",acc:"smallgroup",title:has(L.subject)?L.subject:"A letter to the family",meta:[],blocks}}
-function iqLetterHtml(x){if(!isDirector())return "";const L=x.letter||{};const sends=L.sends||[];const ks=inqChildren(x);
+/* Each child in an inquiry has their own letter and their own plan, written for that child's family alone. A letter
+   written when the inquiry was about one child is kept as that child's. The functions that make the email, the printed
+   letter and the plan read a view of the inquiry that holds one child, that child's letter and plan (November 17, 2026) */
+const iqLetterSel={};
+function iqLetterCid(x){const ks=(x.kids||[]).filter(id=>children.get(id));return ks.includes(iqLetterSel[x.id])?iqLetterSel[x.id]:ks[0]||""}
+function iqLetMove(x){if(x.letter&&(x.kids||[]).length===1&&!(x.letters||{})[x.kids[0]]){x.letters={...(x.letters||{}),[x.kids[0]]:x.letter};if(x.famPlan)x.famPlans={...(x.famPlans||{}),[x.kids[0]]:x.famPlan};x.letter=null;x.famPlan=null;saveInquiry(x)}}
+const iqLet=(x,cid)=>((x.letters||{})[cid])||{};
+const iqFam=(x,cid)=>((x.famPlans||{})[cid])||null;
+function iqLetSet(x,cid,L){x.letters={...(x.letters||{}),[cid]:L}}
+function iqFor(x,cid){return Object.assign({},x,{kids:cid?[cid]:[],letter:iqLet(x,cid),famPlan:iqFam(x,cid)||{}})}
+function iqLetterHtml(x0){if(!isDirector())return "";iqLetMove(x0);const cid=iqLetterCid(x0),x=iqFor(x0,cid),L=x.letter;const sends=L.sends||[];const ks=inqChildren(x);const all=(x0.kids||[]).map(id=>children.get(id)).filter(Boolean);
+  if(!cid)return `<section class="card" id="iqletter"><div class="lbl">Share with the family</div><div class="cnt">Choose the child under Who this is about, and a letter to that child's family can be written here.</div></section>`;
   return `<section class="card" id="iqletter"><div class="lbl">Share with the family</div>
-    ${(x.kids||[]).length>1?`<div class="nudge">This inquiry is about ${x.kids.length} children. A letter goes to one family about their own child and never names another child, so email is off here.</div>`:""}
+    ${all.length>1?`<div class="hint">Each child has their own letter and plan. It goes to that child's family alone and never names another child.</div><div class="actions" style="flex-wrap:wrap">${all.map(c=>`<button class="chip ${c.id===cid?"on":""}" data-iqletterkid="${esc(c.id)}">${esc(c.first)}${(iqLet(x0,c.id).sends||[]).some(z=>!z.test)?", sent":has(iqLet(x0,c.id).body)?", started":""}</button>`).join("")}</div>`:""}
     <div class="hint">A letter to ${ks.length?esc(ks.map(c=>c.first).join(" and "))+"'s":"the child's"} family. Print it, or email it to the parents with the classroom inbox copied. Replies go to the classroom inbox.</div>
     <label class="fld-label">Subject<input type="text" data-iqletter="subject" value="${esc(L.subject||"")}" placeholder="Ex. Supporting ${esc(ks[0]?ks[0].first:"your child")} at school and at home"></label>
     <label class="fld-label">The letter<textarea data-iqletter="body" rows="10">${esc(L.body||"")}</textarea></label>
     <div class="cnt">A blank line starts a new paragraph. A short first sentence, such as "Our approach at school.", becomes the heading. Lines starting with a dash or a number become a list.</div>
     <label class="cnt" style="display:block;margin-top:8px"><input type="checkbox" data-iqattach="1" ${L.attach?"checked":""}> Attach our plan as a PDF</label>
     ${L.attach?`<div class="pdir"><div class="hint">The family's copy of the plan, one page, in your words. The team's guesses and notes stay with the team.</div>
-      <label class="fld-label">What we are observing<textarea data-iqfam="seeing" rows="2">${esc((x.famPlan||{}).seeing||"")}</textarea></label>
-      <label class="fld-label">What we are doing at school<textarea data-iqfam="doing" rows="2">${esc((x.famPlan||{}).doing||"")}</textarea></label>
-      <label class="fld-label">What we will try together<textarea data-iqfam="plan" rows="2" placeholder="Leave empty to write it with the family.">${esc((x.famPlan||{}).plan||"")}</textarea></label>
+      <label class="fld-label">What we are observing<textarea data-iqfp="seeing" rows="2">${esc((x.famPlan||{}).seeing||"")}</textarea></label>
+      <label class="fld-label">What we are doing at school<textarea data-iqfp="doing" rows="2">${esc((x.famPlan||{}).doing||"")}</textarea></label>
+      <label class="fld-label">What we will try together<textarea data-iqfp="plan" rows="2" placeholder="Leave empty to write it with the family.">${esc((x.famPlan||{}).plan||"")}</textarea></label>
       <div class="actions"><button class="btn small ghost" data-print="iqfamplan" data-id="${esc(x.id)}">See the plan</button></div></div>`:""}
     <div class="actions" style="flex-wrap:wrap">${has(L.body)?"":`<button class="btn small ghost" data-iqletterstart="1">Start from the outline</button>`}
       <button class="btn small ghost" data-print="iqletter" data-id="${esc(x.id)}">Print for the family</button>
@@ -12129,7 +12140,7 @@ function iqLetterOthers(x){const mine=new Set((x.kids||[]));const L=x.letter||{}
   return [...names]}
 function iqLetterStop(x){if((x.kids||[]).length!==1)return (x.kids||[]).length?"This inquiry is about more than one child. A letter goes to one family about their own child, so it cannot be emailed from here.":"Choose the one child this letter is about, under Who this is about, before it is emailed.";
   const o=iqLetterOthers(x);return o.length?`This letter names ${o.join(" and ")}. A family is not told which other child was involved. Take the ${o.length===1?"name":"names"} out, for example "a peer", and send again.`:""}
-async function iqLetterSend(x,test){const L=x.letter||{};const msg=$("#iqletter-msg");const say=t=>{if(msg)msg.innerHTML=t};
+async function iqLetterSend(x0,test){const cid=iqLetterCid(x0),x=iqFor(x0,cid),L=x.letter;const msg=$("#iqletter-msg");const say=t=>{if(msg)msg.innerHTML=t};
   if(test&&!LS.get("tree.nlme","")){const v=(prompt("Your email address for the test")||"").trim();if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v))return;LS.set("tree.nlme",v)}
   if(!has(L.subject)||!has(L.body)){say(`<span class="nudge">Add a subject and the letter first.</span>`);return}
   {const stop=iqLetterStop(x);if(stop){say(`<span class="nudge">${esc(stop)}</span>`);return}}
@@ -12140,9 +12151,9 @@ async function iqLetterSend(x,test){const L=x.letter||{};const msg=$("#iqletter-
   let attach=null;if(L.attach){try{const blob=await makePdf([iqFamPlanDoc(x)],"plan","quiet");const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
     attach={name:safeFile("Our plan together "+inqChildren(x).map(c=>c.first).join(" and "))+".pdf",data}}catch(e){say(`<span class="nudge">The plan could not be made into a PDF, so nothing was sent.</span>`);return}}
   try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:x.kids,subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):"",attach});
-    L.sends=[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test,plan:!!attach,subject:L.subject}];x.letter=L;
-    if(!r.test&&has(L.body))x.family=[...(x.family||[]),{id:uid(),text:"Letter emailed to the family. "+L.subject,by:whoAmI(),at:Date.now()}];
-    saveInquiry(x);renderMain();toast(r.test?"Test sent to you.":"Sent to the family, with the classroom inbox copied.")}
+    iqLetSet(x0,cid,{...iqLet(x0,cid),sends:[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test,plan:!!attach,subject:L.subject}]});
+    if(!r.test&&has(L.body))x0.family=[...(x0.family||[]),{id:uid(),text:`Letter emailed to ${(children.get(cid)||{}).first||"the child"}'s family. `+L.subject,by:whoAmI(),at:Date.now()}];
+    saveInquiry(x0);renderMain();toast(r.test?"Test sent to you.":"Sent to the family, with the classroom inbox copied.")}
   catch(e){say(`<span class="nudge">${esc(e.message||"It did not send.")}</span>`)}}
 async function inquiriesClick(t){
   const d=t.dataset;
@@ -12180,7 +12191,8 @@ async function inquiriesClick(t){
   if(d.iqdadd){x.tried=[...(x.tried||[]),{id:uid(),text:"",when:"",result:"",by,at:now}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll('[data-iqd$="|text"]');if(ts.length)ts[ts.length-1].focus();return true}
   if(d.iqdrm){x.tried=(x.tried||[]).filter(o=>o.id!==d.iqdrm);saveInquiry(x);renderMain();return true}
   if(d.iqfam){const v=($("#iq-fam")?.value||"").trim();if(!v){toast("Write what was shared first.");return true}x.family=[...(x.family||[]),{id:uid(),text:v,conference:!!$("#iq-famconf")?.checked,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
-  if(d.iqletterstart){if(!isDirector())return true;x.letter={...(x.letter||{}),body:iqLetterOutline(x),subject:(x.letter||{}).subject||("Supporting "+(inqChildren(x)[0]?inqChildren(x)[0].first:"your child")+" at school and at home")};saveInquiry(x);renderMain();return true}
+  if(d.iqletterkid){iqLetterSel[x.id]=d.iqletterkid;renderMain();return true}
+  if(d.iqletterstart){if(!isDirector())return true;const cid=iqLetterCid(x),c=children.get(cid);if(!c)return true;const L=iqLet(x,cid);iqLetSet(x,cid,{...L,body:iqLetterOutline(iqFor(x,cid)),subject:L.subject||("Supporting "+c.first+" at school and at home")});saveInquiry(x);renderMain();return true}
   if(d.iqlettermail){if(!isDirector())return true;iqLetterSend(x,d.iqlettermail==="test");return true}
   if(d.iqkidrm){if(!iqCan())return true;x.kids=(x.kids||[]).filter(id=>id!==d.iqkidrm);x.kidsSet="team";saveInquiry(x);renderMain();return true}
   if(d.iqask){if(!iqCan())return true;const note=($("#iqask-note")?.value||"").trim(),f=$("#iqask-for")?.value||"both";x.readAsk=[...(x.readAsk||[]),{id:uid(),for:f,note,by:whoAmI(),at:Date.now()}];saveInquiry(x);renderMain();toast("Asked. It shows on the director's Today.");return true}
@@ -12203,8 +12215,8 @@ document.addEventListener("input",e=>{const t=e.target;if(view!=="inquiries")ret
   if(!iqCan())return;
   if(d.iqf&&t.type!=="date"){x[d.iqf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);if(d.iqf==="see"||d.iqf==="whenwhere"){const el=$("#iqsafe");if(el)el.innerHTML=iqSafeHtml(x)}return}
   if(d.iqh){const o=(x.hyps||[]).find(h=>h.id===d.iqh);if(o){o.text=t.value;autoGrow(t);saveInquirySoon(x)}return}
-  if(d.iqfam){if(!isDirector())return;x.famPlan={...(x.famPlan||{}),[d.iqfam]:t.value};if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
-  if(d.iqletter){if(!isDirector())return;x.letter={...(x.letter||{}),[d.iqletter]:t.value};if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
+  if(d.iqfp){if(!isDirector())return;const cid=iqLetterCid(x);if(!cid)return;x.famPlans={...(x.famPlans||{}),[cid]:{...(iqFam(x,cid)||{}),[d.iqfp]:t.value}};if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
+  if(d.iqletter){if(!isDirector())return;const cid=iqLetterCid(x);if(!cid)return;iqLetSet(x,cid,{...iqLet(x,cid),[d.iqletter]:t.value});if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
   if(d.iqd){const [id,k]=d.iqd.split("|");const o=(x.tried||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqt){const [id,k]=d.iqt.split("|");const o=(x.tries||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(k==="result"){o.resultAt=Date.now();o.resultBy=whoAmI()}autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqlq!=null){const L=inqLens(x);if(L){x.lensNotes=x.lensNotes||{};x.lensNotes[L.questions[+d.iqlq]]=t.value;autoGrow(t);saveInquirySoon(x)}return}});
@@ -12213,7 +12225,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
-  if(d.iqattach!=null){if(!isDirector())return;x.letter={...(x.letter||{}),attach:t.checked};if(t.checked&&!x.famPlan)x.famPlan=iqFamPlanStart(x);saveInquiry(x);renderMain();return}
+  if(d.iqattach!=null){if(!isDirector())return;const cid=iqLetterCid(x);if(!cid)return;iqLetSet(x,cid,{...iqLet(x,cid),attach:t.checked});if(t.checked&&!iqFam(x,cid))x.famPlans={...(x.famPlans||{}),[cid]:iqFamPlanStart(x)};saveInquiry(x);renderMain();return}
   if(d.iqdevasked!=null){x.devAsked=t.checked?Date.now():0;saveInquiry(x);renderMain();return}
   if(d.iqkidadd!=null){if(!t.value||!iqCan())return;x.kids=[...new Set([...(x.kids||[]),t.value])];x.kidsSet="team";saveInquiry(x);renderMain();return}
   if(d.iqdisplay!=null){x.display=t.value==="show";saveInquiry(x);renderMain();toast(x.display?"It shows on the staff room display while it is open.":"It stays off the staff room display.");return}
@@ -15098,9 +15110,9 @@ async function printsClick(t){
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out(inquiryDocs(x,long),`Team inquiry ${x.name||""}`);return true}
-  if((kind==="iqfamplan"||kind==="iqletter")&&inquiries.get(t.dataset.id)){const o=iqLetterOthers(Object.assign({},inquiries.get(t.dataset.id),{letter:Object.assign({},inquiries.get(t.dataset.id).letter,{attach:true})}));if(o.length&&!confirm(`This names ${o.join(" and ")}. A family is not told which other child was involved. Print it anyway, for the team only?`))return true}
-  if(kind==="iqfamplan"){const x=inquiries.get(t.dataset.id);if(x)out([iqFamPlanDoc(x)],`Our plan together ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
-  if(kind==="iqletter"){const x=inquiries.get(t.dataset.id);if(x)out([iqLetterDoc(x)],`Letter to the family ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
+  if(kind==="iqfamplan"||kind==="iqletter"){const x0=inquiries.get(t.dataset.id);if(!x0)return true;const cid=iqLetterCid(x0),x=iqFor(x0,cid),nm=(children.get(cid)||{}).first||"";
+    const o=iqLetterOthers(Object.assign({},x,{letter:Object.assign({},x.letter,{attach:true})}));if(o.length&&!confirm(`This names ${o.join(" and ")}. A family is not told which other child was involved. Print it anyway, for the team only?`))return true;
+    if(kind==="iqfamplan")out([iqFamPlanDoc(x)],`Our plan together ${nm}`);else out([iqLetterDoc(x)],`Letter to the family ${nm}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
     const name=`Fulton Community School observations ${nRoom==="All"?"all classes":nRoom==="none"?"no class":nRoom} ${mondayOf(new Date())}`;
@@ -16643,7 +16655,7 @@ function pfToggle(c,kind,id,tagged){if(!tagged)return `<span class="pfstate mute
 // family. For the team only. It stays out of the portfolio and the Book, as inquiries do (November 17, 2026)
 function kidInquiriesHtml(c){const L=inqAll().filter(x=>(x.kids||[]).includes(c.id)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));if(!L.length)return "";
   return `<section class="card" id="kidinq"><div class="secthead"><h3 style="font-size:17px">Team inquiries</h3><span class="cnt">For the team only</span></div>
-    <div class="tlist">${L.map(x=>{const sent=((x.letter||{}).sends||[]).filter(z=>!z.test);return `<div class="ref"><div class="actions" style="justify-content:space-between"><b>${esc(x.name||"A team inquiry")}</b><button class="btn small ghost" data-iqopen="${esc(x.id)}">Open</button></div>
+    <div class="tlist">${L.map(x=>{const sent=((iqLet(x,c.id).sends)||((x.kids||[]).length===1&&x.letter&&x.letter.sends)||[]).filter(z=>!z.test);return `<div class="ref"><div class="actions" style="justify-content:space-between"><b>${esc(x.name||"A team inquiry")}</b><button class="btn small ghost" data-iqopen="${esc(x.id)}">Open</button></div>
       <div class="cnt">${esc(ISTATUS[x.status]||"Open")}. Started ${shortDate(x.createdAt)}.${x.lookAgain?` We look again on ${esc(fmtDate(x.lookAgain))}.`:""}</div>
       ${sent.map(z=>`<div class="cnt">Letter emailed to the family ${shortDate(z.at)}${z.plan?", with our plan attached":""}.</div>`).join("")}</div>`}).join("")}</div></section>`}
 function kidMomentRow(c,n){const open=kidOpenMoment===n.id;

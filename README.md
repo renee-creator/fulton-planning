@@ -1144,3 +1144,5 @@ Kitchen TREE is its own small page, kitchen.html, written by hand like Observe T
 
 - An inquiry has one Print or download button, the full PDF.
 - Confidentiality in family letters. A letter and its plan are about one child and go to that child's family alone. The server refuses a letter about more than one child. TREE reads the letter and the attached plan for the first name of any other child at school and stops before sending, and asks before printing (November 17, 2026).
+
+- In an inquiry about several children, each child has their own letter and their own plan under Share with the family. The director picks the child, and the letter goes to that child's family alone, checked for every other child's name. A letter written when the inquiry was about one child stays as that child's (November 17, 2026).

@@ -57,5 +57,10 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   const conf = await s.p.evaluate(() => { const ks = [...children.values()].filter(c => c.first); if (ks.length < 2) return null; const x = inquiries.get('q1'); x.kids = [ks[0].id]; x.letter = { subject: 'Supporting ' + ks[0].first, body: ks[0].first + ' pushed ' + ks[1].first + ' today.' };
     const a = iqLetterOthers(x).includes(ks[1].first), b = !!iqLetterStop(x); x.letter.body = ks[0].first + ' pushed a peer today.'; const c = iqLetterStop(x) === ''; x.kids = [ks[0].id, ks[1].id]; return [a, b, c, /more than one child/.test(iqLetterStop(x))]; });
   if (conf) assert.deepStrictEqual(conf, [true, true, true, true]);
+  // each child in an inquiry has their own letter, and one child's letter is stopped when it names the other
+  const per = await s.p.evaluate(() => { const ks = [...children.values()].filter(c => c.first); if (ks.length < 2) return null; const x = inquiries.get('q1'); x.kids = [ks[0].id, ks[1].id]; x.letter = null; x.letters = {};
+    iqLetSet(x, ks[0].id, { subject: 'A', body: 'About ' + ks[0].first + ' and a peer.' }); iqLetSet(x, ks[1].id, { subject: 'B', body: ks[1].first + ' and ' + ks[0].first + '.' });
+    return [iqFor(x, ks[0].id).letter.subject, iqFor(x, ks[1].id).letter.subject, iqLetterStop(iqFor(x, ks[0].id)) === '', iqLetterOthers(iqFor(x, ks[1].id)).includes(ks[0].first)]; });
+  if (per) assert.deepStrictEqual(per, ['A', 'B', true, true]);
   assert.deepStrictEqual(s.errors, []);
 });
