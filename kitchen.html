@@ -174,6 +174,10 @@ const canTasks=()=>B.role==="director"||B.role==="shopper";
 const tripOn=()=>!!(B.trip&&!B.trip.done);
 const stage=s=>B.lines.filter(l=>l.stage===s);
 const WHY={low:"Running low",out:"We are out",weekly:"Every week",menu:"For next week's menu",request:"Asked for",task:"For a task"};
+const groupOf=l=>{const it=l.item&&B.items.find(i=>i.id===l.item);const g=it?it.group:l.group;return B.groups.some(x=>x.id===g)?g:B.groups[B.groups.length-1].id};
+const groupOpts=cur=>B.groups.map(g=>`<option value="${esc(g.id)}" ${g.id===cur?"selected":""}>${esc(g.name)}</option>`).join("");
+// rows under small headings, like items together, in the order of the groups
+const grouped=(rows,gid,draw)=>B.groups.map(g=>{const r=rows.filter(x=>gid(x)===g.id);return r.length?`<h3>${esc(g.name)}</h3><div class="card">${r.map(draw).join("")}</div>`:""}).join("");
 const storeOpts=(cur,none)=>`${none?`<option value="">${esc(none)}</option>`:""}${B.stores.map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.name)}</option>`).join("")}`;
 const fold=(id,title,inner)=>`<details data-fold="${id}" ${U.open[id]?"open":""}><summary>${title}</summary>${inner}</details>`;
 function lineInfo(l){const bits=[WHY[l.why]||"",l.by&&l.by!=="TREE"?"from "+esc(l.by):"",l.amount?esc(l.amount):""].filter(Boolean).join(", ");
@@ -197,7 +201,7 @@ function weekHtml(){
       ${l.state==="ordered"?"":`<button class="btn" type="button" data-line="${l.id}" data-do="ordered">Ordered</button><button class="btn quiet" type="button" data-line="${l.id}" data-do="na">Not available</button>`}</div>`).join("")}</div>`);
   // lines with no store yet
   const pick=B.lines.filter(l=>!l.store&&l.stage!=="done");
-  if(pick.length)h.push(`<h2>Pick a store</h2><div class="card">${pick.map(l=>`<div class="row"><div class="n">${lineInfo(l)}</div>${canSet()?`<select data-pick="${l.id}" aria-label="Store for ${esc(l.name)}" style="width:auto;max-width:46%">${storeOpts("","Choose")}</select>`:`<span class="cnt">Waiting for a store</span>`}</div>`).join("")}</div>${canSet()?`<div class="cnt" style="margin-top:6px">The store you choose is kept for this item from now on.</div>`:""}`);
+  if(pick.length)h.push(`<h2>Pick a store</h2><div class="card">${pick.map(l=>`<div class="row" style="align-items:flex-start"><div class="n">${lineInfo(l)}</div>${canSet()?`<div style="width:46%"><select data-pickstore="${l.id}" aria-label="Store for ${esc(l.name)}" style="margin:0">${storeOpts("","Store")}</select><select data-pickgroup="${l.id}" aria-label="Group for ${esc(l.name)}" style="margin-top:6px">${groupOpts(groupOf(l))}</select><button class="btn" type="button" data-place="${l.id}" style="margin-top:6px;width:100%">Place it</button></div>`:`<span class="cnt">Waiting for a store</span>`}</div>`).join("")}</div>${canSet()?`<div class="cnt" style="margin-top:6px">The store and group you choose are kept for this item from now on.</div>`:""}`);
   // ordered direct
   const re=stage("reorder");
   if(re.length)h.push(`<h2>To reorder</h2><div class="cnt">These come straight from the farm or maker and never go on the shopping trip.</div><div class="card">${re.map(l=>`<div class="row"><div class="n">${lineInfo(l)}${l.from?`<small>${esc(l.from)}</small>`:""}</div>${canSet()?`<button class="btn" type="button" data-line="${l.id}" data-do="reordered">Reordered</button>`:""}</div>`).join("")}</div>`);
@@ -234,6 +238,7 @@ function itemEdit(i){const n=!i.id;
   return `<div class="card" id="editcard"><b>${n?"Add an item":"Change "+esc(i.name)}</b>
     <label class="fld">Name<input type="text" id="e-name" value="${esc(i.name||"")}"></label>
     <label class="fld">Store<select id="e-store">${storeOpts(i.store||"","Not chosen yet")}</select></label>
+    <label class="fld">Group in the store<select id="e-group">${groupOpts(i.group||B.groups[B.groups.length-1].id)}</select></label>
     <label class="fld">Kind<select id="e-sec">${Object.entries(B.sections).map(([k,v])=>`<option value="${k}" ${k===(i.section||"kitchen")?"selected":""}>${esc(v)}</option>`).join("")}</select></label>
     <label class="fld">The usual amount<input type="text" id="e-amount" value="${esc(i.amount||"")}"></label>
     <label class="fld">Farm or maker, for items ordered direct<input type="text" id="e-from" value="${esc(i.from||"")}"></label>
@@ -250,7 +255,7 @@ function pantryList(its){
   if(!its.length)return `<div class="cnt" style="margin-top:12px">No item matches.</div>`;
   const groups=[...B.stores.map(s=>[s.id,s.name]),["","Store not chosen yet"]];
   return groups.map(([id,name])=>{const g=its.filter(i=>(i.store||"")===id).sort((a,b)=>a.name.localeCompare(b.name));if(!g.length)return"";
-    return `<h3>${esc(name)}</h3><div class="card">${g.map(itemRow).join("")}</div>`}).join("")}
+    return `<h2>${esc(name)}</h2>${grouped(g,i=>groupOf({item:i.id}),itemRow)}`}).join("")}
 
 /* ---------- The list ---------- */
 function listHtml(){
@@ -262,11 +267,11 @@ function listHtml(){
   h.push(`<div class="card mark"><b>${on?"The list for this trip":"Being gathered for this week"}</b><div class="cnt">${on?`${all.filter(l=>l.state!=="got").length} to buy, ${all.filter(l=>l.state==="got").length} in the cart.`:`The full list closes ${DAYS[B.times.close.day]} at ${clock(B.times.close.at)}. The menu and the weekly items join it then.`}</div></div>`);
   if(!stores.length){h.push(`<div class="cnt" style="margin-top:12px">Nothing is on the list.</div>`);return h.join("")}
   h.push(`<div class="chips" role="tablist">${stores.map(s=>{const n=all.filter(l=>l.store===s.id&&l.state!=="got").length;return `<button class="chip ${U.store===s.id?"on":""}" type="button" data-store="${esc(s.id)}">${esc(s.name)}${n?", "+n:""}</button>`}).join("")}</div>`);
-  const mine=all.filter(l=>l.store===U.store).sort((a,b)=>(a.state==="got")-(b.state==="got")||a.section.localeCompare(b.section)||a.name.localeCompare(b.name));
+  const mine=all.filter(l=>l.store===U.store).sort((a,b)=>(a.state==="got")-(b.state==="got")||a.name.localeCompare(b.name));
   const row=l=>`<div class="row ${l.state==="got"?"got":""}">${on&&canShop()?`<button class="check ${l.state==="got"?"on":""}" type="button" data-line="${l.id}" data-do="${l.state==="got"?"undo":"got"}" aria-label="${l.state==="got"?"Take "+esc(l.name)+" back out of the cart":"Got "+esc(l.name)}" aria-pressed="${l.state==="got"}">✓</button>`:""}
     <div class="n">${lineInfo(l)}${U.move===l.id?moveHtml(l):""}</div>
     ${U.move===l.id?"":on&&canShop()&&l.state!=="got"?`<button class="link" type="button" data-move="${l.id}">Out here</button>`:(!on&&(canSet()||key(l.by)===key(B.me))?`<button class="link" type="button" data-line="${l.id}" data-do="remove">Take off</button>`:"")}</div>`;
-  h.push(mine.length?`<div class="card">${mine.map(row).join("")}</div>`:`<div class="cnt" style="margin-top:12px">Nothing left at this store.</div>`);
+  h.push(mine.length?grouped(mine,groupOf,row):`<div class="cnt" style="margin-top:12px">Nothing left at this store.</div>`);
   const lm=late.filter(l=>l.store===U.store);
   if(lm.length)h.push(fold("late",`Added after the list closed, ${lm.length}`,`<div class="cnt">These wait for next week. If you can get one on this trip, check it off.</div><div class="card">${lm.map(l=>`<div class="row">${canShop()?`<button class="check" type="button" data-line="${l.id}" data-do="got" aria-label="Got ${esc(l.name)}">✓</button>`:""}<div class="n">${lineInfo(l)}</div></div>`).join("")}</div>`));
   if(on&&canShop()){const got=all.filter(l=>l.state==="got"),gs=got.filter(l=>l.store===U.store);
@@ -325,6 +330,8 @@ function settingsHtml(){
     <label class="fld">First name<input type="text" id="sh-name" autocapitalize="words"></label><div class="acts"><button class="btn" type="button" data-shadd="1">Add the sign-in</button></div></div>`);
   h.push(fold("stores","Stores",`<div class="card">${B.stores.map((s,i)=>`<div class="row"><div class="n"><input type="text" data-sname="${i}" value="${esc(s.name)}" aria-label="Store name" style="margin:0"></div>${s.direct?`<span class="cnt">Ordered direct</span>`:`<button class="link" type="button" data-sdel="${i}">Remove</button>`}</div>`).join("")}
     <div class="acts"><button class="btn quiet" type="button" data-sadd="1">Add a store</button><button class="btn go" type="button" data-stsave="1">Save the stores</button></div></div>`));
+  h.push(fold("groups","Groups inside a store",`<div class="cnt">Like items sit together on each store's list, in this order.</div><div class="card">${B.groups.map((g,i)=>`<div class="row"><div class="n"><input type="text" data-gname="${i}" value="${esc(g.name)}" aria-label="Group name" style="margin:0"></div>${i?`<button class="link" type="button" data-gup="${i}">Move up</button>`:""}${B.groups.length>1?`<button class="link" type="button" data-gdel="${i}">Remove</button>`:""}</div>`).join("")}
+    <div class="acts"><button class="btn quiet" type="button" data-gadd="1">Add a group</button><button class="btn go" type="button" data-gsave="1">Save the groups</button></div></div>`));
   h.push(fold("words","Menu words",`<div class="cnt">When a dish on next week's menu has the word, its items join the list. Staples kept on hand, such as flour and oil, are left to Low and Out.</div><div class="card">${(B.rules||[]).map((r,i)=>`<div class="row" style="align-items:flex-start"><div class="n"><input type="text" data-rword="${i}" value="${esc(r.word)}" aria-label="Word on the menu" style="margin:0">
       <div class="chips">${r.items.map(id=>{const it=B.items.find(x=>x.id===id);return it?`<button class="chip on" type="button" data-rdrop="${i}" data-item="${id}" aria-label="Take ${esc(it.name)} off">${esc(it.name)} ✕</button>`:""}).join("")}
       <select data-radd="${i}" aria-label="Add an item" style="width:auto;margin:0"><option value="">Add an item</option>${B.items.filter(x=>!r.items.includes(x.id)&&x.section==="kitchen").sort((a,b)=>a.name.localeCompare(b.name)).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select></div></div>
@@ -351,7 +358,7 @@ function go(t){tab=t;LS.set("kt-tab",t);U.ask=false;U.edit="";U.move="";U.task="
 function shrink(file){return new Promise((ok,no)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const k=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",.82))};img.onerror=()=>{URL.revokeObjectURL(u);no(new Error("photo"))};img.src=u})}
 const val=id=>{const e=document.getElementById(id);return e?e.value.trim():""};
 const settingsDraft={stores:null,rules:null};
-function keepDrafts(){document.querySelectorAll("[data-sname]").forEach(e=>{B.stores[+e.dataset.sname].name=e.value});document.querySelectorAll("[data-rword]").forEach(e=>{B.rules[+e.dataset.rword].word=e.value})}
+function keepDrafts(){document.querySelectorAll("[data-sname]").forEach(e=>{B.stores[+e.dataset.sname].name=e.value});document.querySelectorAll("[data-gname]").forEach(e=>{B.groups[+e.dataset.gname].name=e.value});document.querySelectorAll("[data-rword]").forEach(e=>{B.rules[+e.dataset.rword].word=e.value})}
 
 document.addEventListener("click",async ev=>{
   const t=ev.target.closest("button");if(!t)return;const d=t.dataset;
@@ -369,7 +376,7 @@ document.addEventListener("click",async ev=>{
   if(d.mark){send("mark",{id:d.mark,status:d.to},d.to==="ok"?"Marked as stocked.":"On the list.");return}
   if(d.sec){U.sec=d.sec;render();return}
   if(d.edit!=null){U.edit=d.edit;render();const c=$("#editcard");if(c)c.scrollIntoView({block:"center"});return}
-  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
+  if(d.esave!=null){if(await send("item",{id:d.esave,name:val("e-name"),store:val("e-store"),group:val("e-group"),section:val("e-sec"),amount:val("e-amount"),from:val("e-from"),weekly:$("#e-weekly").checked,perUse:(B.items.find(i=>i.id===d.esave)||{}).perUse},"Saved.")){U.edit="";render()}return}
   if(d.eremove){if(confirm("Take this item out of the pantry?")&&await send("item",{id:d.eremove,remove:true},"Taken out.")){U.edit="";render()}return}
   if(d.store){U.store=d.store;U.move="";render();return}
   if(d.line){const ok={got:"",undo:"",ordered:"Marked as ordered.",na:"Moved to the shopper's Costco list.",reordered:"Marked as reordered.",later:"Moved to next week.",remove:"Taken off the list."}[d.do];if(await send("line",{id:d.line,do:d.do},ok)){U.move="";render()}return}
@@ -395,13 +402,17 @@ document.addEventListener("click",async ev=>{
   if(d.sadd){keepDrafts();B.stores.splice(B.stores.length-1,0,{id:"",name:""});render();return}
   if(d.sdel!=null){keepDrafts();const s=B.stores[+d.sdel];const n=B.items.filter(i=>i.store===s.id).length;if(s.id&&n&&!confirm(n+" pantry items come from "+s.name+". They will wait in Pick a store. Remove it?"))return;B.stores.splice(+d.sdel,1);render();return}
   if(d.stsave){keepDrafts();send("settings",{stores:B.stores},"Stores saved.");return}
+  if(d.gadd){keepDrafts();B.groups.push({id:"",name:""});render();return}
+  if(d.gdel!=null){keepDrafts();B.groups.splice(+d.gdel,1);render();return}
+  if(d.gup!=null){keepDrafts();const i=+d.gup;B.groups.splice(i-1,0,B.groups.splice(i,1)[0]);render();return}
+  if(d.gsave){keepDrafts();send("settings",{groups:B.groups},"Groups saved.");return}
+  if(d.place){const st=document.querySelector(`[data-pickstore="${d.place}"]`).value,gr=document.querySelector(`[data-pickgroup="${d.place}"]`).value;if(!st){say("Choose a store first.","bad");return}send("line",{id:d.place,do:"store",store:st,group:gr,keep:true},"Placed.");return}
   if(d.rnew){keepDrafts();B.rules.push({id:"",word:"",items:[]});render();return}
   if(d.rdel!=null){keepDrafts();B.rules.splice(+d.rdel,1);render();return}
   if(d.rdrop!=null){keepDrafts();const r=B.rules[+d.rdrop];r.items=r.items.filter(x=>x!==d.item);render();return}
   if(d.rsave){keepDrafts();send("rules",{rules:B.rules},"Menu words saved.");return}
 });
 document.addEventListener("change",ev=>{const t=ev.target,d=t.dataset||{};
-  if(d.pick&&t.value){send("line",{id:d.pick,do:"store",store:t.value,keep:true},"Store chosen.");return}
   if(d.moveto&&t.value){send("line",{id:d.moveto,do:"store",store:t.value},"Moved to "+storeName(t.value)+".").then(()=>{U.move="";render()});return}
   if(d.radd!=null&&t.value){keepDrafts();B.rules[+d.radd].items.push(t.value);render();return}
 });

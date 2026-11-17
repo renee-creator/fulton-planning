@@ -50,6 +50,14 @@ module.exports = function createPantry(o) {
     { id: 'costco', name: 'Costco' }, { id: 'tj', name: "Trader Joe's" }, { id: 'cashcarry', name: 'Cash and Carry' },
     { id: 'asian', name: 'Asian grocery store' }, { id: 'western', name: 'Western Farm Center' }, { id: 'tractor', name: 'Tractor Supply' },
     { id: 'direct', name: 'Ordered direct', direct: true }];
+  // like items sit together inside each store's list, in the order the shopper walks. Renamed and added to in Settings.
+  const GROUPS = [['produce', 'Produce'], ['dairy', 'Dairy and eggs'], ['cold', 'Refrigerated and frozen'], ['dry', 'Dry goods'], ['baking', 'Baking'], ['sauces', 'Oils, sauces and spices'], ['snacks', 'Snacks'],
+    ['paper', 'Paper and kitchen supplies'], ['cleaning', 'Cleaning'], ['animals', 'Animals and garden'], ['other', 'Other']].map(([id, name]) => ({ id, name }));
+  const GUESS = [['animals', /feed|scratch|hay|pellet|straw|bedding|seed|soil|compost/], ['cleaning', /soap|detergent|disinfect|laundry|trash bag|bleach|sponge/], ['paper', /paper|napkin|foil|wrap|parchment|glove|container|storage bag|toilet/],
+    ['dairy', /egg|butter|milk|yogurt|cream cheese|cheese/], ['cold', /tofu|frozen|miso|tortilla/], ['produce', /produce|fruit|vegetable|lemon|onion|garlic|potato|carrot|kale|broccoli|cucumber|apple|banana|berr/],
+    ['baking', /flour|sugar|baking|yeast|vanilla|cornstarch|cream of tartar|poppy|honey|oats/], ['sauces', /oil|vinegar|soy|sauce|spice|herb|salt|tahini|jelly/], ['snacks', /cracker|pretzel|rice cake|raisin|granola|trail/],
+    ['dry', /pasta|rice|noodle|ramen|seaweed|nori|bean|grain|lentil/]];
+  const guessGroup = name => { const n = String(name || '').toLowerCase(); for (const [g, re] of GUESS) if (re.test(n)) return g; return 'other'; };
   const SECTIONS = { kitchen: 'Kitchen', sensory: 'Sensory staples', other: 'Other items' };
   function startingItems() {
     const L = [];
@@ -78,9 +86,9 @@ module.exports = function createPantry(o) {
   const startingRules = items => RULES.map(([word, names]) => ({ id: newId('r'), word, items: names.map(n => (items.find(i => i.name === n && i.section === 'kitchen') || {}).id).filter(Boolean) }));
   function cfg() {
     const d = settingDoc('pantry');
-    if (d && Array.isArray(d.items)) return d;
-    const items = startingItems();
-    return { stores: STORES, items, rules: startingRules(items), costcoDelivery: true, costcoClose: { day: 4, at: '18:00' }, close: { day: 5, at: '14:00' }, shopperEmail: '', starting: true };
+    if (d && Array.isArray(d.items)) { if (!Array.isArray(d.groups) || !d.groups.length) d.groups = GROUPS; const ok = new Set(d.groups.map(g => g.id)); for (const i of d.items) if (!ok.has(i.group)) i.group = ok.has(guessGroup(i.name)) ? guessGroup(i.name) : d.groups[d.groups.length - 1].id; return d; }
+    const items = startingItems(); for (const i of items) i.group = guessGroup(i.name);
+    return { groups: GROUPS, stores: STORES, items, rules: startingRules(items), costcoDelivery: true, costcoClose: { day: 4, at: '18:00' }, close: { day: 5, at: '14:00' }, shopperEmail: '', starting: true };
   }
   const list = () => { const d = settingDoc('pantrylist'); return { lines: Array.isArray(d.lines) ? d.lines : [], history: Array.isArray(d.history) ? d.history : [], closed: d.closed || {}, trip: d.trip || null }; };
   const tasks = () => { const d = settingDoc('pantrytasks'); return { list: Array.isArray(d.list) ? d.list : [] }; };
@@ -184,11 +192,11 @@ module.exports = function createPantry(o) {
   /* ---------- what a page receives ---------- */
   function boot(me) {
     const role = roleOf(me), c = cfg(), L = list(), now = Date.now(), today = dayOf(now);
-    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
+    const items = c.items.map(i => ({ id: i.id, name: i.name, store: i.store, group: i.group, section: i.section, from: i.from || '', amount: i.amount || '', status: i.status || 'ok', weekly: !!i.weekly, perUse: !!i.perUse, markedBy: i.markedBy || '', markedAt: i.markedAt || 0 }));
     const lines = L.lines;
     const mn = menuNeeds(c, today);
     const out = {
-      me, role, today, stores: c.stores, sections: SECTIONS, items, lines,
+      me, role, today, stores: c.stores, groups: c.groups, sections: SECTIONS, items, lines,
       trip: L.trip, history: L.history.slice(-60).reverse(),
       times: { costcoDelivery: !!c.costcoDelivery, costcoClose: c.costcoClose, close: c.close,
         costcoCloseAt: closeAt(today, c.costcoClose.day, c.costcoClose.at), closeAt: closeAt(today, c.close.day, c.close.at), closedCostco: L.closed.costco === mondayOf(today), closedWeek: L.closed.week === mondayOf(today) },
@@ -253,7 +261,8 @@ module.exports = function createPantry(o) {
         x.movedFrom = x.store; x.store = s.id; if (s.direct) { x.stage = 'reorder'; x.state = ''; } else if (x.stage === 'reorder') x.stage = L.trip && !L.trip.done ? 'trip' : 'collect';
         // a kitchen or director choice for a pantry item keeps that store for the item from now on
         if (b.keep && canSetStores(role) && x.item && item(x.item)) item(x.item).store = s.id;
-        if (b.keep && canSetStores(role) && !x.item) { const it = { id: newId('i'), name: x.name, store: s.id, section: x.section, from: '', amount: x.amount || '', status: 'out', weekly: false, perUse: false, by: me, at: Date.now() }; c.items.push(it); x.item = it.id; } }
+        if (b.keep && canSetStores(role) && x.item && item(x.item) && c.groups.some(g => g.id === b.group)) item(x.item).group = b.group;
+        if (b.keep && canSetStores(role) && !x.item) { const it = { id: newId('i'), name: x.name, store: s.id, group: c.groups.some(g => g.id === b.group) ? b.group : guessGroup(x.name), section: x.section, from: '', amount: x.amount || '', status: 'out', weekly: false, perUse: false, by: me, at: Date.now() }; c.items.push(it); x.item = it.id; } }
       else if (b.do === 'later') { if (!(canSetStores(role) || role === 'shopper')) return no(); x.stage = 'collect'; x.state = ''; x.late = true; x.note = [x.note, 'Moved to next week'].filter(Boolean).join('. '); }
       else if (b.do === 'ordered' || b.do === 'na') { if (role !== 'director') return no('The director orders the Costco delivery.'); if (x.stage !== 'delivery') { err(req, res, 400, 'That line is not waiting on the delivery.'); return; } x.state = b.do === 'ordered' ? 'ordered' : 'na'; x.orderedBy = me;
         if (b.do === 'na') { x.stage = L.trip && !L.trip.done ? 'trip' : 'collect'; x.state = ''; x.note = [x.note, 'Costco delivery did not have it'].filter(Boolean).join('. '); } }
@@ -279,7 +288,7 @@ module.exports = function createPantry(o) {
       const it = item(b.id) || (b.id ? null : { id: newId('i'), status: 'ok', by: me, at: Date.now() });
       if (!it) { err(req, res, 404, 'That item is not in the pantry.'); return; }
       const name = clip(b.name, 80); if (!name) { err(req, res, 400, 'Type the item\'s name.'); return; }
-      Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse });
+      Object.assign(it, { name, store: storeOf(c, b.store) ? b.store : '', group: c.groups.some(g => g.id === b.group) ? b.group : (it.group || guessGroup(name)), section: SECTIONS[b.section] ? b.section : 'kitchen', from: clip(b.from, 60), amount: clip(b.amount, 40), weekly: !!b.weekly, perUse: !!b.perUse });
       if (!c.items.includes(it)) c.items.push(it);
       // the item's open lines follow its new name and store, except what is already on the trip
       for (const x of L.lines) if (x.item === it.id && x.stage !== 'trip') { x.name = it.name; x.section = it.section; x.amount = it.amount; if (x.store !== it.store) { x.store = it.store; x.stage = isDirect(c, it.store) ? 'reorder' : (x.stage === 'reorder' ? 'collect' : x.stage); } }
@@ -292,6 +301,9 @@ module.exports = function createPantry(o) {
       if (b.close) c.close = t(b.close, c.close); if (b.costcoClose) c.costcoClose = t(b.costcoClose, c.costcoClose);
       if ('costcoDelivery' in b) c.costcoDelivery = !!b.costcoDelivery;
       if ('shopperEmail' in b) { const e = clip(b.shopperEmail, 120); if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { err(req, res, 400, 'That email address does not look right.'); return; } c.shopperEmail = e; }
+      if (Array.isArray(b.groups)) { const keep = b.groups.slice(0, 30).map(g => ({ id: /^[a-z0-9-]{1,30}$/.test(g.id) ? g.id : 'g' + crypto.randomBytes(3).toString('hex'), name: clip(g.name, 40) })).filter(g => g.name);
+        if (!keep.length) { err(req, res, 400, 'Keep at least one group.'); return; }
+        const ids = new Set(keep.map(g => g.id)); for (const it of c.items) if (!ids.has(it.group)) it.group = keep[keep.length - 1].id; c.groups = keep; }
       if (Array.isArray(b.stores)) { const keep = b.stores.slice(0, 20).map(s => ({ id: /^[a-z0-9-]{1,30}$/.test(s.id) ? s.id : 's' + crypto.randomBytes(3).toString('hex'), name: clip(s.name, 40), direct: !!s.direct })).filter(s => s.name);
         if (!keep.some(s => s.direct)) keep.push(STORES[STORES.length - 1]);
         const ids = new Set(keep.map(s => s.id)); for (const it of c.items) if (!ids.has(it.store)) it.store = ''; for (const x of L.lines) if (x.store && !ids.has(x.store)) x.store = '';
