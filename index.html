@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="cb3aadc97eba";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="4b2773144ff8";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -13061,6 +13061,36 @@ function planFromInquiry(x,kind,wk,how){
   if(seed.obs)np.fields.observation=seed.obs;if(seed.cur)np.fields.materials=seed.cur;if(seed.ids.length){np.noticeAdded=[...seed.ids];np.noticeUsed=[...seed.ids]}if(seed.thread)np.threadId=seed.thread;
   open(np,"The plan begins with the inquiry. Write the area and your intent in your own words.")}
 
+/* The inquiry printed on the plan form, the same boxed sheet as the Classroom Curriculum Plan (November 17, 2026).
+   Numbered sections in the order the team thinks it through. Written sections fill their boxes, empty ones are left
+   out, and What we will try, What we will watch for and When we looked again stretch to fill the page so the team has
+   room to write at a meeting. Readings, with links, and the observations with their photos follow on their own page. */
+function inquiryForm(x){const ks=inqChildren(x),hy=(x.hyps||[]).filter(h=>has(h.text)&&!h.aside),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(a.at||0)-(b.at||0));
+  const B=[],sub=t=>B.push({t:"sub",text:t}),sec=(label,text,w=0,min=0)=>B.push({t:"sec",label,text:text||"",w,min}),cols=cs=>B.push({t:"cols",cols:cs,w:0});
+  const dot=L=>L.map(t=>"• "+String(t).trim()).join("\n");
+  if(has(x.see)||has(x.whenwhere)){sub("1. What we see, and when and where");if(has(x.see)&&has(x.whenwhere))cols([{label:"What we see",text:x.see,w:.5},{label:"When and where it happens",text:x.whenwhere,w:.5}]);else if(has(x.see))sec("What we see",x.see);else sec("When and where it happens",x.whenwhere)}
+  {const ag=ks.filter(c=>kidAgeText(c)).map(c=>c.first+", "+kidAgeText(c)).join(". ");const dev=has(x.devKnown)?x.devKnown:x.devAsked?"We have asked the family, "+shortDate(x.devAsked)+".":"";
+    if(ag||dev||has(x.ibDev)){sub("2. Could this fit their age and stage");if(ag&&dev)cols([{label:"Age",text:ag+".",w:.32},{label:"What we know about development",text:dev,w:.68}]);else if(ag)sec("Age",ag+".");else if(dev)sec("What we know about development",dev);if(has(x.ibDev))sec("Our thinking",x.ibDev)}}
+  {const sy=Object.entries(x.ibSys||{});const L=inqLens(x),lq=L?L.questions.filter(q=>has((x.lensNotes||{})[q])):[];
+    const need=[(x.ibNeeds||[]).length?"Trying to get. "+x.ibNeeds.join(", ")+".":"",sy.length?"Senses or body systems. "+sy.map(([k,v])=>k+(v==="avoid"?", finding it too much":", seeking more")).join("; ")+".":"",(x.ibUs||[]).length?"Needs from us. "+x.ibUs.join(", ")+".":""].filter(Boolean).join("\n");
+    if(hy.length||need||lq.length){sub("3. What we think is happening");if(hy.length)sec("Our guesses",dot(hy.map(h=>h.text)));if(need)sec("What the child might need",need);lq.forEach(q=>sec(L.name+". "+q,x.lensNotes[q]))}}
+  {const fam=[...(x.family||[])].sort((a,b)=>(a.at||0)-(b.at||0));const ft=[has(x.home)?x.home:"",...fam.map(f=>shortDate(f.at)+". "+(f.conference?"Family conference. ":"")+f.text)].filter(Boolean).join("\n");
+    if(has(x.relation)||ft){sub("4. Our relationship and the family");if(has(x.relation)&&ft)cols([{label:"Our relationship with the child",text:x.relation,w:.5},{label:"Working with the family",text:ft,w:.5}]);else if(has(x.relation))sec("Our relationship with the child",x.relation);else sec("Working with the family",ft)}}
+  {const td=(x.tried||[]).filter(t=>has(t.text||t.step));if(td.length){sub("5. What we have already tried");sec("What we did, when, and what happened",dot(td.map(t=>String(t.text||t.step).trim().replace(/\.+$/,"")+(has(t.when)?". "+t.when:"")+(has(t.result||t.happened)?". What happened. "+String(t.result||t.happened).trim():"."))))}}
+  sub("6. Our plan");
+  sec("What we will try",tries.length?dot(tries.map(t=>t.text+(t.curriculum?" (in the curriculum)":"")+(has(t.result)?". What happened. "+t.result:""))):"",1,4);
+  cols([{label:"What we will watch for",text:x.watch||"",w:.68},{label:"We will look again on",text:x.lookAgain?fmtDate(x.lookAgain):"",w:.32}]);B[B.length-1].w=.6;B[B.length-1].min=3;
+  sub("7. When we looked again");sec("What we saw, and what we will do next",looks.length?looks.map(l=>shortDate(l.at)+". "+l.text).join("\n"):"",1,4);
+  return {type:"inquiry",acc:"classroom",title:x.name||"Team inquiry",meta:[["Class",x.room||"Whole school"],["About",ks.length?ks.map(c=>c.first+(kidAgeText(c)?", "+kidAgeText(c):"")).join("; "):"The children in its observations"],["Started",shortDate(x.createdAt)]],blocks:B}}
+function inquiryAppendix(x,long){const ns=inqNotices(x).sort((a,b)=>(b.at||0)-(a.at||0));const blocks=[];const rd=(x.readings||[]).filter(r=>has(r.title));
+  if(rd.length){blocks.push(dSub("8. Readings"));const put=(lab,L)=>{if(L.length)blocks.push(Object.assign(dList(lab,L.map(r=>r.title+(r.source?". "+r.source:"")+"\n"+(r.why||""))),{links:L.map(r=>r.url||"")}))};
+    put("For the team",rd.filter(r=>r.for==="team"));put("For families",rd.filter(r=>r.for==="family"))}
+  const obs=long?ns:ns.slice(0,4);
+  if(obs.length){blocks.push(dSub("The observations"));obs.forEach(n=>{if(n.photo)blocks.push(dPhoto(n,150,false));blocks.push(dText(shortDate(n.at),noticeText(n)))})}
+  for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))blocks.push(dText("Team notes from the thread "+t.name,t.notes))}
+  if(!blocks.length)return null;
+  return {display:true,type:"report",acc:"smallgroup",title:(x.name||"Team inquiry"),meta:[],blocks}}
+function inquiryDocs(x,long){return [inquiryForm(x),inquiryAppendix(x,long)].filter(Boolean)}
 function inquiryDoc(x,long){
   const ns=inqNotices(x),hy=inqOpenHyps(x),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(b.at||0)-(a.at||0));
   // the printed inquiry reads like a plan, numbered in the order the team thinks it through, the same order as the page.
@@ -16208,7 +16238,7 @@ async function printsClick(t){
     await out(docs,`All About Me ${c.first}`);return true}
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
-  if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
+  if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out(inquiryDocs(x,long),`Team inquiry ${x.name||""}`);return true}
   if(kind==="iqletter"){const x=inquiries.get(t.dataset.id);if(x)out([iqLetterDoc(x)],`Letter to the family ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
@@ -18769,7 +18799,7 @@ function rcJobs(){const F=r=>CLASSROOMS.includes(r)?r+" Class":"School",out=[];
   for(const [k,ps] of [...wk].sort((a,b)=>a[0].localeCompare(b[0]))){const [w,r]=k.split("|");out.push({folder:F(r),name:`Fulton Community School plans week of ${w}${r?" "+r:""}`,docs:()=>ps})}
   for(const t of threads.values())if(t&&!t.unfollowed&&!t.deleted)out.push({folder:F(t.classroom),name:`Thread ${t.name||"untitled"}`,docs:()=>[threadDoc(t)]});
   for(const x of projects.values())if(x&&!x.deleted)out.push({folder:F(x.home),name:`Project ${x.name||"untitled"} full`,docs:()=>[projectDoc(x,true)]});
-  for(const x of inqAll())out.push({folder:F(x.room),name:`Team inquiry ${x.name||"untitled"} full`,docs:()=>[inquiryDoc(x,true)]});
+  for(const x of inqAll())out.push({folder:F(x.room),name:`Team inquiry ${x.name||"untitled"} full`,docs:()=>inquiryDocs(x,true)});
   return out}
 function rcB64(u8){let s="";for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s)}
 // one file, in pieces of 4 MB, each tried three times
