@@ -53,5 +53,9 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
   const closed = await s.p.evaluate(() => { const c = [...children.values()][0]; if (!c) return null; const x = inquiries.get('q1'); x.kids = [c.id]; x.status = 'open'; x.readAsk = [{ id: 'a9', for: 'both', at: Date.now() }]; const n = (x.looks || []).length;
     c.status = 'withdrawn'; inqChildLeft(c, '2026-11-17', 'left'); const y = inquiries.get('q1'); return [y.status, (y.looks || []).length - n, /left our school/.test(y.looks[y.looks.length - 1].text), !!y.readAsk[0].done, iqAskWaiting().length]; });
   if (closed) assert.deepStrictEqual(closed, ['closed', 1, true, true, 0]);
+  // a family letter that names another child is stopped, and so is one for an inquiry about two children
+  const conf = await s.p.evaluate(() => { const ks = [...children.values()].filter(c => c.first); if (ks.length < 2) return null; const x = inquiries.get('q1'); x.kids = [ks[0].id]; x.letter = { subject: 'Supporting ' + ks[0].first, body: ks[0].first + ' pushed ' + ks[1].first + ' today.' };
+    const a = iqLetterOthers(x).includes(ks[1].first), b = !!iqLetterStop(x); x.letter.body = ks[0].first + ' pushed a peer today.'; const c = iqLetterStop(x) === ''; x.kids = [ks[0].id, ks[1].id]; return [a, b, c, /more than one child/.test(iqLetterStop(x))]; });
+  if (conf) assert.deepStrictEqual(conf, [true, true, true, true]);
   assert.deepStrictEqual(s.errors, []);
 });

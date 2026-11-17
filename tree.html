@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8fab7640ceeb";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="adc269393b2b";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -12957,7 +12957,7 @@ function renderInquiry(x){
       <div class="actions"><button class="linkbtn" data-mopen="${esc(n.id)}">See it in Observations</button>${own.has(n.id)?`<button class="linkbtn" data-iqobrm="${esc(n.id)}">Take out of the inquiry</button>`:""}</div></div></div>`;
   let h=`<div class="actions" style="margin-bottom:6px"><button class="linkbtn" data-iqback="1">All team inquiries</button></div>
   <div class="head"><div class="head-row"><div style="flex:1;min-width:0"><span class="eyebrow">Team inquiry · ${esc(inqScope(x))}</span></div>
-    <div class="actions"><button class="btn small" data-iqplan="${esc(x.id)}">Start a plan from it</button><button class="btn small ghost" data-storyinq="${esc(x.id)}">Make a story</button>${printTwo("inquiry",x.id)}
+    <div class="actions"><button class="btn small" data-iqplan="${esc(x.id)}">Start a plan from it</button><button class="btn small ghost" data-storyinq="${esc(x.id)}">Make a story</button><button class="btn small ghost" data-print="inquiry" data-id="${esc(x.id)}" data-long="1">Print or download</button>
       <label class="cnt">Status <select data-iqstatus="1" style="width:auto">${Object.entries(ISTATUS).map(([k,v])=>`<option value="${k}" ${x.status===k?"selected":""}>${v}</option>`).join("")}</select></label></div></div>
     <label class="fld-label">What the team is wondering about<input type="text" data-iqf="name" value="${esc(x.name||"")}" style="font-size:20px;font-family:var(--display)"></label>
     <div class="actions"><label class="cnt">Belongs to <select data-iqroomset="1" style="width:auto">${CLASSROOMS.map(r=>`<option value="${esc(r)}" ${x.room===r?"selected":""}>${esc(r)} class</option>`).join("")}<option value="" ${!x.room?"selected":""}>The whole school</option></select></label>
@@ -13317,6 +13317,7 @@ function iqLetterDoc(x){const L=x.letter||{};const links=new Map((x.readings||[]
   return {display:true,type:"report",acc:"smallgroup",title:has(L.subject)?L.subject:"A letter to the family",meta:[],blocks}}
 function iqLetterHtml(x){if(!isDirector())return "";const L=x.letter||{};const sends=L.sends||[];const ks=inqChildren(x);
   return `<section class="card" id="iqletter"><div class="lbl">Share with the family</div>
+    ${(x.kids||[]).length>1?`<div class="nudge">This inquiry is about ${x.kids.length} children. A letter goes to one family about their own child and never names another child, so email is off here.</div>`:""}
     <div class="hint">A letter to ${ks.length?esc(ks.map(c=>c.first).join(" and "))+"'s":"the child's"} family. Print it, or email it to the parents with the classroom inbox copied. Replies go to the classroom inbox.</div>
     <label class="fld-label">Subject<input type="text" data-iqletter="subject" value="${esc(L.subject||"")}" placeholder="Ex. Supporting ${esc(ks[0]?ks[0].first:"your child")} at school and at home"></label>
     <label class="fld-label">The letter<textarea data-iqletter="body" rows="10">${esc(L.body||"")}</textarea></label>
@@ -13332,16 +13333,27 @@ function iqLetterHtml(x){if(!isDirector())return "";const L=x.letter||{};const s
       <button class="btn small ghost" data-iqlettermail="test">Send me a test</button><button class="btn small" data-iqlettermail="send">Email the family</button></div>
     <div id="iqletter-msg"></div>
     ${sends.length?`<div class="cnt">${sends.slice(-3).reverse().map(z=>`${z.test?"Test sent":"Sent to the family"} ${shortDate(z.at)}${z.test?"":`, ${z.count} ${z.count===1?"address":"addresses"} with the classroom inbox`}`).join(". ")}.</div>`:""}</section>`}
+/* Confidentiality in what goes to a family. A letter and its plan are about one child and go to that child's family
+   alone. They never name another child, so a family is not told who their child was hurt by or who their child hurt.
+   TREE reads the letter and the plan for the first name of any other child at school and stops before anything is
+   sent (November 17, 2026) */
+function iqLetterOthers(x){const mine=new Set((x.kids||[]));const L=x.letter||{},F=L.attach?(x.famPlan||{}):{};const txt=[L.subject,L.body,F.seeing,F.doing,F.plan].filter(Boolean).join("\n");
+  const names=new Set();for(const c of children.values()){if(c.deleted||mine.has(c.id)||!c.first||String(c.first).length<2)continue;if([...mine].some(id=>(children.get(id)||{}).first===c.first))continue;
+    if(new RegExp("(^|[^A-Za-z\u00c0-\u024f])"+String(c.first).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^A-Za-z\u00c0-\u024f])").test(txt))names.add(c.first)}
+  return [...names]}
+function iqLetterStop(x){if((x.kids||[]).length!==1)return (x.kids||[]).length?"This inquiry is about more than one child. A letter goes to one family about their own child, so it cannot be emailed from here.":"Choose the one child this letter is about, under Who this is about, before it is emailed.";
+  const o=iqLetterOthers(x);return o.length?`This letter names ${o.join(" and ")}. A family is not told which other child was involved. Take the ${o.length===1?"name":"names"} out, for example "a peer", and send again.`:""}
 async function iqLetterSend(x,test){const L=x.letter||{};const msg=$("#iqletter-msg");const say=t=>{if(msg)msg.innerHTML=t};
   if(test&&!LS.get("tree.nlme","")){const v=(prompt("Your email address for the test")||"").trim();if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v))return;LS.set("tree.nlme",v)}
   if(!has(L.subject)||!has(L.body)){say(`<span class="nudge">Add a subject and the letter first.</span>`);return}
-  let who;try{who=await window.FP_API("/api/staff/inquiry/family-recipients",{children:inqChildren(x).map(c=>c.id)})}catch(e){say(`<span class="nudge">${esc(e.message||"Could not reach TREE.")}</span>`);return}
+  {const stop=iqLetterStop(x);if(stop){say(`<span class="nudge">${esc(stop)}</span>`);return}}
+  let who;try{who=await window.FP_API("/api/staff/inquiry/family-recipients",{children:x.kids})}catch(e){say(`<span class="nudge">${esc(e.message||"Could not reach TREE.")}</span>`);return}
   if(!test){if(!who.parents){say(`<span class="nudge">No parent email is on file for ${esc((who.kids||[]).join(" and ")||"this child")}.</span>`);return}
     if(!confirm(`Email this letter to ${who.parents} ${who.parents===1?"parent":"parents"} of ${(who.kids||[]).join(" and ")}, with the classroom inbox copied?`))return}
   say(`<span class="spin"></span> Sending`);
   let attach=null;if(L.attach){try{const blob=await makePdf([iqFamPlanDoc(x)],"plan","quiet");const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
     attach={name:safeFile("Our plan together "+inqChildren(x).map(c=>c.first).join(" and "))+".pdf",data}}catch(e){say(`<span class="nudge">The plan could not be made into a PDF, so nothing was sent.</span>`);return}}
-  try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:inqChildren(x).map(c=>c.id),subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):"",attach});
+  try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:x.kids,subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):"",attach});
     L.sends=[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test,plan:!!attach,subject:L.subject}];x.letter=L;
     if(!r.test&&has(L.body))x.family=[...(x.family||[]),{id:uid(),text:"Letter emailed to the family. "+L.subject,by:whoAmI(),at:Date.now()}];
     saveInquiry(x);renderMain();toast(r.test?"Test sent to you.":"Sent to the family, with the classroom inbox copied.")}
@@ -16300,6 +16312,7 @@ async function printsClick(t){
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out(inquiryDocs(x,long),`Team inquiry ${x.name||""}`);return true}
+  if((kind==="iqfamplan"||kind==="iqletter")&&inquiries.get(t.dataset.id)){const o=iqLetterOthers(Object.assign({},inquiries.get(t.dataset.id),{letter:Object.assign({},inquiries.get(t.dataset.id).letter,{attach:true})}));if(o.length&&!confirm(`This names ${o.join(" and ")}. A family is not told which other child was involved. Print it anyway, for the team only?`))return true}
   if(kind==="iqfamplan"){const x=inquiries.get(t.dataset.id);if(x)out([iqFamPlanDoc(x)],`Our plan together ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
   if(kind==="iqletter"){const x=inquiries.get(t.dataset.id);if(x)out([iqLetterDoc(x)],`Letter to the family ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}

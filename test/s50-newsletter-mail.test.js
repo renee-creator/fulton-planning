@@ -171,6 +171,8 @@ test('A letter about one child goes to that child\'s parents and the classroom i
   assert.strictEqual(s.status, 200);
   assert.deepStrictEqual(drive.mails.map(m => m.to).sort(), ['ada@example.test', 'bo@example.test', 'north@childfamilycommunity.com']);
   assert.ok(drive.mails.every(m => m.replyTo === 'north@childfamilycommunity.com'));
+  // a letter about two children is refused, so no family hears about another child
+  assert.strictEqual((await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1', 'k2'], subject: 'x', html: '<p>x</p>', text: 'x' })).status, 400);
   // a test goes to the director alone
   drive.mails.length = 0;
   const tt = await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1'], subject: 'Supporting Wren', html: '<p>x</p>', text: 'x', testTo: 'dee@example.test' });

@@ -30,7 +30,9 @@ module.exports = function newsMail(o) {
     // a letter to one family about their child, from a team inquiry. It goes to the child's parents and the classroom
     // inbox, with replies to the classroom inbox. A test goes to the director's own address alone (November 16, 2026)
     if (P === 'inquiry/family-mail' || P === 'inquiry/family-recipients') {
+      // one child, so a letter about a child reaches that child's own family and no other (November 17, 2026)
       const ids = (Array.isArray(body.children) ? body.children : []).slice(0, 6).map(v => one(v, 80));
+      if (ids.length !== 1) { err(req, res, 400, 'A letter goes to one family about their own child. Choose the one child it is about.'); return; }
       const w = familyPage.childMail(ids);
       if (P === 'inquiry/family-recipients') { json(req, res, 200, { parents: w.parents, count: w.list.length, kids: w.kids, replyTo: w.replyTo, mailOn: drive.on() }); return; }
       if (!drive.on()) { err(req, res, 400, 'The TREE mailbox is not connected, so email cannot go out yet.'); return; }

@@ -1141,3 +1141,6 @@ Kitchen TREE is its own small page, kitchen.html, written by hand like Observe T
 - A child's page shows Team inquiries, for the team only, for each inquiry that names the child in Who this is about, with each letter emailed to the family (November 17, 2026).
 
 - When a child leaves, an inquiry about only that child (or only children who have all left) closes itself, with a dated line under When we looked again, and its open requests for readings are cleared. An inquiry that is also about children still here stays open, with the child named as having left. Nothing is deleted, and the director reopens it from Status if the child returns (November 17, 2026).
+
+- An inquiry has one Print or download button, the full PDF.
+- Confidentiality in family letters. A letter and its plan are about one child and go to that child's family alone. The server refuses a letter about more than one child. TREE reads the letter and the attached plan for the first name of any other child at school and stops before sending, and asks before printing (November 17, 2026).
