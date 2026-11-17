@@ -160,3 +160,19 @@ test('A closure that runs a week shows once with its first and last day, with th
   assert.deepStrictEqual(r, ['Monday, November 9. Family conferences', 'Monday, November 23 to Friday, November 27. Thanksgiving Break, school closed', 'Monday, December 21 to Wednesday, December 23. Winter Break, school closed']);
   assert.deepStrictEqual(s.errors, []);
 });
+
+test('A letter about one child goes to that child\'s parents and the classroom inbox, with replies to the classroom inbox', async t => {
+  const { fx, drive } = await setup(t, true);
+  const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
+  assert.strictEqual((await fx.as(ann, '/api/staff/inquiry/family-recipients', { children: ['k1'] })).status, 403);
+  const r = await fx.as(dee, '/api/staff/inquiry/family-recipients', { children: ['k1'] });
+  assert.deepStrictEqual([r.body.parents, r.body.count, r.body.replyTo], [2, 3, 'north@childfamilycommunity.com']);
+  const s = await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1'], subject: 'Supporting Wren', html: '<p>Dear family</p>', text: 'Dear family' });
+  assert.strictEqual(s.status, 200);
+  assert.deepStrictEqual(drive.mails.map(m => m.to).sort(), ['ada@example.test', 'bo@example.test', 'north@childfamilycommunity.com']);
+  assert.ok(drive.mails.every(m => m.replyTo === 'north@childfamilycommunity.com'));
+  // a test goes to the director alone
+  drive.mails.length = 0;
+  const tt = await fx.as(dee, '/api/staff/inquiry/family-mail', { children: ['k1'], subject: 'Supporting Wren', html: '<p>x</p>', text: 'x', testTo: 'dee@example.test' });
+  assert.deepStrictEqual([tt.body.test, drive.mails.map(m => m.to)], [true, ['dee@example.test']]);
+});

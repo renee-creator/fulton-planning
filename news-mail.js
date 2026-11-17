@@ -27,6 +27,23 @@ module.exports = function newsMail(o) {
       log('Family email sent', subject, 'to', r.sent, 'of', w.list.length, w.test ? '(test mode)' : '', 'by', me);
       json(req, res, 200, { sent: Number(r.sent) || 0, failed: Array.isArray(r.failed) ? r.failed.length : 0, test: w.test, count: w.list.length, at: Date.now() }); return;
     }
+    // a letter to one family about their child, from a team inquiry. It goes to the child's parents and the classroom
+    // inbox, with replies to the classroom inbox. A test goes to the director's own address alone (November 16, 2026)
+    if (P === 'inquiry/family-mail' || P === 'inquiry/family-recipients') {
+      const ids = (Array.isArray(body.children) ? body.children : []).slice(0, 6).map(v => one(v, 80));
+      const w = familyPage.childMail(ids);
+      if (P === 'inquiry/family-recipients') { json(req, res, 200, { parents: w.parents, count: w.list.length, kids: w.kids, replyTo: w.replyTo, mailOn: drive.on() }); return; }
+      if (!drive.on()) { err(req, res, 400, 'The TREE mailbox is not connected, so email cannot go out yet.'); return; }
+      const subject = one(body.subject, 200).replace(/\s+/g, ' ').trim(), html = one(body.html, 4e5), text = one(body.text, 1e5);
+      if (!subject || !html) { err(req, res, 400, 'Add a subject and the letter first.'); return; }
+      const testTo = /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[a-z]{2,}$/i.test(String(body.testTo || '').trim()) ? String(body.testTo).trim().toLowerCase() : '';
+      if (!testTo && !w.parents) { err(req, res, 400, 'No parent email is on file for this child.'); return; }
+      const to = testTo ? [testTo] : w.list;
+      let r; try { r = await drive.ask({ op: 'mail', to, subject, html, text, images: [], name: 'Fulton Community School', replyTo: w.replyTo }, 120000); }
+      catch (e) { log('Family letter did not go out,', e.message); err(req, res, 502, 'The TREE mailbox did not send it. ' + e.message); return; }
+      log('Family letter sent', subject, 'to', r.sent, 'of', to.length, testTo ? '(test)' : '', 'by', me);
+      json(req, res, 200, { sent: Number(r.sent) || 0, failed: Array.isArray(r.failed) ? r.failed.length : 0, test: !!testTo, count: to.length, parents: w.parents, at: Date.now() }); return;
+    }
     // each suggested article is opened here before it is offered, so a link that does not open, or opens somewhere
     // else, is never put in front of families. Only the trusted sites the newsletter reads from are fetched.
     if (P === 'newsletter/linkcheck') {

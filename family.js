@@ -362,6 +362,15 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
       for (const e of TEAM_MAIL) if (!out.has(e)) out.set(e, []); }
     return { test: tmail, pageTest: c.test, list: [...out].map(([email, kids]) => ({ email, kids })) };
   }
+  // a letter about one child goes to that child's own parents and to the child's classroom inbox, so the classroom team
+  // has a copy. Replies go to the classroom inbox, which the team and the director read (November 16, 2026)
+  function childMail(ids) { const out = new Set(); const rooms = new Set(); const kids = [];
+    for (const id of ids || []) { const r = store.recs.children.get(id); const k = r && !r.deleted && r.doc; if (!k || k.status === 'withdrawn') continue; kids.push(firstOf(k));
+      for (const p of k.parents || []) { const e = norm(p && p.email); if (okEmail(e)) out.add(e); }
+      if (CLASS_MAIL[k.classroom]) rooms.add(CLASS_MAIL[k.classroom]); }
+    const parents = [...out]; for (const e of rooms) out.add(e);
+    return { parents: parents.length, kids, list: [...out], replyTo: [...rooms][0] || '' };
+  }
   function contactList(f) {
     const c = cfg(); const keep = new Set(c.test ? c.testers.flatMap(t => t.children || []) : []); const rows = [];
     for (const [id, r] of store.recs.children) { const k = r.doc; if (r.deleted || !k || k.status === 'withdrawn' || (c.test && !keep.has(id))) continue;
@@ -701,7 +710,7 @@ module.exports = function family({ mailText, ideasOn, community, store, log, sig
     return { menu, prev, bins, farms, towns, months, standing, grantEnd: '2027-06-30' };
   }
 
-  return { mailList, learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
+  return { mailList, childMail, learned, firstFridays, postGathering, removeGathering, contactPref, contactList, pacWelcome, offerVisit, conferenceHours, typeOf, withoutOthers, withoutRatings, agreement, check, photo, aboutMe, sendCode, signIn, readFamily, familyView, signUp, shareRecipe, addLog, removeLog, publicMenu, cfg, hoursOf, yearStart, book, reflect, strengths, questionnaire, file, enroll, QUESTIONS, ENROLL: ENROLL_NOW, DEFAULT_WELCOME };
 };
 // the family copy's two rules, shared with the Family Summary a conference sends home
 module.exports.withoutOthers = withoutOthers;

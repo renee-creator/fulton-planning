@@ -516,7 +516,7 @@ module.exports = function staffModule(o) {
     // a new educator reads the libraries and adds or changes nothing in them until the director turns on full access
     if (isNewHire(me) && (P === 'library/picture' || (P.startsWith('library/') && !['library/img', 'library/artshown'].includes(P)))) return deny('A new educator reads the libraries. The rest opens once the director turns on full access.');
     if (P === 'volunteer' || P.startsWith('volunteer/')) { await VOL.handle(P, body, me, req, res, { json, err }); return; }
-    if (P.startsWith('newsletter/') && typeof o.newsMail === 'function') { await o.newsMail(P, body, me, req, res, { json, err }); return; }
+    if ((P.startsWith('newsletter/') || P.startsWith('inquiry/family-')) && typeof o.newsMail === 'function') { await o.newsMail(P, body, me, req, res, { json, err }); return; }
     if (P === 'library' || P.startsWith('library/')) { await LIB.handle(P, body, me, req, res, { json, err, send }); return; }
     /* the ASQ-3 and ASQ:SE-2 questionnaires the director was given to use in our program, kept in the private records under
        staff/screening/asq. TREE fills the original form, so a signed-in educator reads the form and where each answer goes.

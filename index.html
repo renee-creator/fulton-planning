@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="8e271b362184";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="045300f23f88";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -12957,6 +12957,7 @@ function renderInquiry(x){
     ${when?`<div class="cnt">${esc(when)}</div>`:""}</section>`;
 
   // what the team has already done, with when and what happened, read before the team's ideas (November 16, 2026)
+  S.fam+=iqLetterHtml(x);
   S.tried+=`<section class="card" id="iqtried"><div class="lbl">What we have already tried</div>
     <div class="hint">Strategies the team has already put in place, when, and what happened.</div>
     ${(x.tried||[]).map(o=>{if(!o.id)o.id=uid();if(has(o.step)&&!has(o.text))o.text=o.step;if(has(o.happened)&&!has(o.result))o.result=o.happened;if(!has(o.when)&&(o.room||o.at))o.when=[o.room?o.room+" class":"",o.at?shortDate(o.at):""].filter(Boolean).join(", ");return o}).map(o=>`<div class="pdir"><textarea data-iqd="${o.id}|text" rows="2" placeholder="What we did">${esc(o.text||"")}</textarea>
@@ -12973,6 +12974,13 @@ function renderInquiry(x){
     ${L?`<div class="ref" style="background:var(--sky-soft)"><b style="color:var(--sky)">${esc(L.name)}</b>${L.questions.map((q,i)=>`<label class="fld-label">${esc(q)}<textarea data-iqlq="${i}" rows="1">${esc((x.lensNotes||{})[q]||"")}</textarea></label>`).join("")}
       <div class="actions">${iqCan()&&!VIEW_AS?(typeof ibBusyMap!=="undefined"&&ibBusyMap[x.id+"lens"]?`<span class="cnt"><span class="spin"></span> Drafting</span>`:`<button class="btn small ghost" data-iblensdraft="1">Draft from the evidence</button>`):""}<button class="linkbtn" data-lensgo="${esc(L.id)}">Open the lens</button></div></div>`:""}</section>`;
 
+  // what is known about the child's development, from the family or a professional, in plain words. Age and stage, its
+  // drafts and the readings read it (November 16, 2026)
+  {const iep=inqChildren(x).filter(c=>kidIep(c));S.dev+=`<section class="card"><div class="lbl">What we know about development</div>
+    <div class="hint">Only what the family or a professional has shared, such as speech and language development, a diagnosis or support services. Stated as fact, without labels.</div>
+    ${iep.length?`<div class="cnt">${iep.map(c=>esc(c.first)).join(", ")} ${iep.length===1?"has":"have"} an IEP or IFSP on record.</div>`:""}
+    <textarea data-iqf="devKnown" rows="2" placeholder="Ex. His family shared that he receives speech therapy through the school district.">${esc(x.devKnown||"")}</textarea>
+    <label class="cnt"><input type="checkbox" data-iqdevasked="1" ${x.devAsked?"checked":""}> We have asked the family${x.devAsked?", "+shortDate(x.devAsked):""}</label></section>`}
   S.dev+=ibInquiryHtml(x,"dev");S.needs+=ibInquiryHtml(x,"needs");S.ideas+=ibInquiryHtml(x,"ideas");
   S.try+=`<section class="card"><div class="lbl">What we will try</div>
     <details class="helpme"><summary>What belongs here</summary><div class="hint">Guided by relationship-based, positive discipline. Connection first, such as time with an educator the child trusts. Changes the adults make, to a transition, the space, the warning, a role a child is given or who goes with them. Guiding with the children, through a meeting time conversation where they help decide an expectation and hear why it matters, or support for peers solving a problem together. Never a time-out or a punishment. Mark the ones that belong in the curriculum. They appear beside every plan written from this inquiry, for the whole group, and no child is named as the reason. Educators write what happened when they tried it.</div></details>
@@ -13055,42 +13063,43 @@ function planFromInquiry(x,kind,wk,how){
 
 function inquiryDoc(x,long){
   const ns=inqNotices(x),hy=inqOpenHyps(x),tries=(x.tries||[]).filter(t=>has(t.text)),looks=[...(x.looks||[])].filter(l=>has(l.text)).sort((a,b)=>(b.at||0)-(a.at||0));
-  // the printed inquiry reads like a plan, in the order the team thinks it through, the same order as the page (November 16, 2026)
-  const blocks=[];const n1=(n,t)=>blocks.push(dSub(n+". "+t));
+  // the printed inquiry reads like a plan, numbered in the order the team thinks it through, the same order as the page.
+  // One type size, tables for what was tried and the plan, readings that open when clicked, dates without staff names,
+  // and ruled lines where the team will add at a meeting (November 16, 2026)
+  const blocks=[];const n1=(n,t)=>blocks.push(dSub(n+". "+t));const ks=inqChildren(x);
   blocks.push(dText("",IQ_PHIL));
-  n1(1,"What we see, and when and where");
-  if(has(x.see))blocks.push(dLead("What we see",x.see));
-  if(has(x.whenwhere))blocks.push(dText("When and where it happens",x.whenwhere));
-  if(!has(x.see)&&!has(x.whenwhere))blocks.push(dText("","Not written yet."));
-  n1(2,"Could this fit their age and stage");
-  {const ks=inqChildren(x).filter(c=>kidAgeText(c));if(ks.length)blocks.push(dText("Ages",ks.map(c=>c.first+", "+kidAgeText(c)).join(". ")+"."))}
-  blocks.push(dText("",has(x.ibDev)?x.ibDev:"Not written yet."));
-  n1(3,"What we think is happening");
-  if(hy.length)blocks.push(dList("Our guesses",hy.map(h=>h.text)));
-  if((x.ibNeeds||[]).length)blocks.push(dText("What the child might be trying to get",x.ibNeeds.join(", ")+"."));
-  {const sy=Object.entries(x.ibSys||{});if(sy.length)blocks.push(dText("Senses or body systems",sy.map(([k,v])=>k+(v==="avoid"?", finding it too much":", seeking more")).join(". ")+"."))}
-  if((x.ibUs||[]).length)blocks.push(dText("What the child might need from us",x.ibUs.join(", ")+"."));
-  {const L=inqLens(x);if(L){const a=L.questions.filter(q=>has((x.lensNotes||{})[q]));a.forEach(q=>blocks.push(dText(L.name+". "+q,x.lensNotes[q])))}}
-  if(!hy.length&&!(x.ibNeeds||[]).length)blocks.push(dText("","Not written yet."));
-  n1(4,"Our relationship and the family");
-  if(has(x.relation))blocks.push(dText("Our relationship with the child",x.relation));
-  {const fam=[...(x.family||[])].sort((a,b)=>(b.at||0)-(a.at||0));if(has(x.home))blocks.push(dText("Working with the family",x.home));(long?fam:fam.slice(0,2)).forEach(f=>blocks.push(dQuote((f.conference?"Family conference. ":"")+f.text,f.by||"",shortDate(f.at),true)));if(!has(x.relation)&&!has(x.home)&&!fam.length)blocks.push(dText("","Not written yet."))}
-  n1(5,"What we have already tried");
-  {const td=(x.tried||[]).filter(t=>has(t.text||t.step));blocks.push(td.length?dList("",td.map(t=>(t.text||t.step)+(has(t.when)?". When. "+t.when:"")+(has(t.result||t.happened)?". What happened. "+(t.result||t.happened):""))):dText("","Nothing written yet."))}
+  if(has(x.see)||has(x.whenwhere)){n1(1,"What we see, and when and where");if(has(x.see))blocks.push(dText("What we see",x.see));if(has(x.whenwhere))blocks.push(dText("When and where it happens",x.whenwhere))}
+  {const ag=ks.filter(c=>kidAgeText(c));if(ag.length||has(x.devKnown)||x.devAsked||has(x.ibDev)){n1(2,"Could this fit their age and stage");
+    if(ag.length)blocks.push(dText("Age",ag.map(c=>c.first+", "+kidAgeText(c)).join(". ")+"."));
+    if(has(x.devKnown))blocks.push(dText("What we know about development",x.devKnown));else if(x.devAsked)blocks.push(dText("What we know about development","We have asked the family, "+shortDate(x.devAsked)+"."));
+    if(has(x.ibDev))blocks.push(dText("Our thinking",x.ibDev))}}
+  {const sy=Object.entries(x.ibSys||{});const L=inqLens(x),lq=L?L.questions.filter(q=>has((x.lensNotes||{})[q])):[];
+    if(hy.length||(x.ibNeeds||[]).length||sy.length||(x.ibUs||[]).length||lq.length){n1(3,"What we think is happening");
+      if(hy.length)blocks.push(dList("Our guesses",hy.map(h=>h.text)));
+      if((x.ibNeeds||[]).length)blocks.push(dText("What the child might be trying to get",x.ibNeeds.join(", ")+"."));
+      if(sy.length)blocks.push(dText("Senses or body systems",sy.map(([k,v])=>k+(v==="avoid"?", finding it too much":", seeking more")).join(". ")+"."));
+      if((x.ibUs||[]).length)blocks.push(dText("What the child might need from us",x.ibUs.join(", ")+"."));
+      lq.forEach(q=>blocks.push(dText(L.name+". "+q,x.lensNotes[q])))}}
+  {const fam=[...(x.family||[])].sort((a,b)=>(b.at||0)-(a.at||0));if(has(x.relation)||has(x.home)||fam.length){n1(4,"Our relationship and the family");
+    if(has(x.relation))blocks.push(dText("Our relationship with the child",x.relation));
+    if(has(x.home))blocks.push(dText("Working with the family",x.home));
+    (long?fam:fam.slice(0,3)).forEach(f=>blocks.push(dText((f.conference?"Family conference, ":"Conversation with the family, ")+shortDate(f.at),f.text)))}}
+  {const td=(x.tried||[]).filter(t=>has(t.text||t.step));if(td.length){n1(5,"What we have already tried");
+    blocks.push(dTable("",td.map(t=>[String(t.text||t.step).replace(/\.+\s*$/,"."),t.when||"",t.result||t.happened||""]),{head:["What we did","When","What happened"],widths:[.46,.18,.36],noRule:true}))}}
   n1(6,"Our plan");
-  if(tries.length)blocks.push(dList("What we will try",tries.map(t=>t.text+(t.curriculum?" (in the curriculum)":"")+(has(t.result)?". What happened. "+t.result:""))));
-  if(has(x.watch))blocks.push(dText("What we will watch for",x.watch));
-  if(x.lookAgain)blocks.push(dText("We will look again on",fmtDate(x.lookAgain)));
-  if(!tries.length&&!has(x.watch))blocks.push(dText("","Not written yet."));
+  if(tries.length)blocks.push(dTable("",tries.map(t=>[t.text,t.curriculum?"Yes":"",t.result||""]),{head:["What we will try","In the curriculum","What happened"],widths:[.52,.14,.34],noRule:true}));
+  else blocks.push({t:"writein",label:"What we will try",n:3});
+  if(has(x.watch))blocks.push(dText("What we will watch for",x.watch));else blocks.push({t:"writein",label:"What we will watch for",n:2});
+  blocks.push(dText("We will look again on",x.lookAgain?fmtDate(x.lookAgain):"______________________"));
   n1(7,"When we looked again");
-  if(looks.length)(long?looks:looks.slice(0,3)).forEach(l=>blocks.push(dQuote(l.text,l.by||"",shortDate(l.at),true)));else blocks.push(dText("","Not yet. Each time the team looks again, it is added here."));
-  {const rd=x.readings||[];if(rd.length){n1(8,"Readings");const one=r=>r.title+(r.source?", "+r.source:"")+". "+(r.why?r.why+" ":"")+r.url;
-    const tm=rd.filter(r=>r.for==="team"),fm=rd.filter(r=>r.for==="family");if(tm.length)blocks.push(dList("For the team",tm.map(one)));if(fm.length)blocks.push(dList("For families",fm.map(one)))}}
+  (long?looks:looks.slice(0,3)).forEach(l=>blocks.push(dText(shortDate(l.at),l.text)));
+  blocks.push({t:"writein",label:looks.length?"Next time":"",n:3});
+  {const rd=(x.readings||[]).filter(r=>has(r.title));if(rd.length){n1(8,"Readings");
+    const put=(lab,L)=>{if(L.length)blocks.push(Object.assign(dList(lab,L.map(r=>r.title+(r.source?", "+r.source:"")+"."+(has(r.why)?" "+r.why:""))),{links:L.map(r=>r.url||"")}))};
+    put("For the team",rd.filter(r=>r.for==="team"));put("For families",rd.filter(r=>r.for==="family"))}}
   const obs=long?ns:ns.slice(0,3);
-  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(long&&n.photo)blocks.push(dPhoto(n,170,false));blocks.push(dQuote(noticeText(n),[n.by||"",shortDate(n.at)].filter(Boolean).join(", "),"",true));
-      const w=whyText(((x.obsFound||{})[n.id]||{}).why);if(w)blocks.push({t:"text",label:"",quiet:true,text:"Why TREE offered it. "+w})})}
+  if(obs.length){blocks.push(dSub(long?"The observations":"From the observations"));obs.forEach(n=>{if(n.photo)blocks.push(dPhoto(n,130,false));blocks.push(dText(shortDate(n.at),noticeText(n)))})}
   for(const id of x.threads||[]){const t=threads.get(id);if(t&&has(t.notes))blocks.push(dText("Team notes from the thread "+t.name,t.notes))}
-  if(long){const tl=inqTimeline(x);if(tl.length>2){blocks.push(dSub("How our thinking has moved"));tl.forEach(e=>blocks.push(dItem(e.what,e.text,e.by||"",[shortDate(e.at)])))}}
   const meta=[["Class",x.room||"Whole school"]];{const ks=inqChildren(x);if((x.kids||[]).length&&ks.length)meta.push(["About",ks.map(c=>c.first+(kidAgeText(c)?", "+kidAgeText(c):"")).join("; ")])}
   meta.push(["Started",shortDate(x.createdAt)],["Last updated",shortDate(x.updatedAt||x.createdAt)],["Status",ISTATUS[x.status]||"Open"]);
   const ths=(x.threads||[]).map(id=>threads.get(id)).filter(Boolean);if(ths.length)meta.push(["Threads",ths.map(t=>t.name).join(", ")]);
@@ -13199,6 +13208,55 @@ function iqReadingsHtml(x){const ages=iqAges(x),L=x.readings||[];
     ${(x.readAsk||[]).filter(r=>!r.done).map(r=>`<div class="ref" style="background:var(--sky-soft,#eef5f8)"><b>Asked for ${r.for==="family"?"families":r.for==="team"?"the team":"the team and families"}</b>${has(r.note)?`<div>${esc(r.note)}</div>`:""}<div class="actions" style="justify-content:space-between"><span class="cnt">${shortDate(r.at)}</span>${isDirector()?`<button class="linkbtn" data-iqaskdone="${esc(r.id)}">Mark filled</button>`:""}</div></div>`).join("")}
     ${iqCan()?`<details style="margin-top:8px"><summary class="linkbtn">Ask for readings</summary><div class="hint">The director sees this on Today, and the readings are added here.</div><label class="cnt">For <select id="iqask-for" style="width:auto"><option value="both">the team and families</option><option value="team">the team</option><option value="family">families</option></select></label><label class="fld-label">What would help<input type="text" id="iqask-note" maxlength="300" placeholder="Ex. Something short for his family, in Spanish"></label><div class="actions"><button class="btn small" data-iqask="1">Ask</button></div></details>`:""}
     ${iqCan()?`<details style="margin-top:8px"><summary class="linkbtn">Add a reading</summary><label class="fld-label">Title<input type="text" id="iqrd-title"></label><label class="fld-label">Link<input type="url" id="iqrd-url" placeholder="https://"></label><label class="fld-label">Why it fits<input type="text" id="iqrd-why"></label><label class="cnt">For <select id="iqrd-for" style="width:auto"><option value="team">the team</option><option value="family">families</option></select></label><div class="actions"><button class="btn small" data-iqrdadd="1">Add it</button></div></details>`:""}</section>`}
+/* Share with the family. A letter about the child, written and reviewed by the director, printed or emailed to the child's
+   parents with the classroom inbox copied and replies going to the classroom inbox. Start from the outline fills the
+   school's headings, the family readings kept on the inquiry and the questions the team wants to ask (November 16, 2026) */
+const IQ_LETTER_Q=["What words, signs or gestures does your child use at home to ask for something or to ask for space?","What helps your child when they are upset?","Has your child's pediatrician, or another professional, discussed development with you?","Does your child receive any support services, such as speech therapy or a plan through the regional center or school district?","Is there anything you would like us to know, or anything you would like us to try at school?"];
+function iqLetterOutline(x){const ks=inqChildren(x),nm=ks.length===1?ks[0].first:"your child",fam=(x.readings||[]).filter(r=>r.for==="family");
+  return [`Dear ${ks.length===1?nm+"'s":"your"} family,`,"Thank you for meeting with us and sharing what you see at home. Working in partnership with families is central to how we guide children, and we value your perspective.",
+    `${nm}'s strengths. `,"What we are observing. ","Our approach at school. ","Strategies to try at home.\n- \n- ",
+    fam.length?"Recommended readings.\n"+fam.map(r=>"- "+r.title+(r.source?", "+r.source:"")).join("\n"):"",
+    "Questions for your family.\n"+IQ_LETTER_Q.map((q,i)=>(i+1)+". "+q.replace(/your child/g,nm).replace(/they are/,ks.length===1?"he or she is":"they are")).join("\n"),
+    "Please reply to this email, or let us know a time that works for a conversation.","Warmly,\nRenee Whitlock-Hemsouvanh\nDirector"].filter(Boolean).join("\n\n")}
+// the letter as email. A paragraph's short first sentence is its heading, set in bold. Lines starting with a dash or a
+// number are a list. Readings become links.
+function iqLetterHtml_(x){const L=x.letter||{};const links=new Map((x.readings||[]).map(r=>[r.title,r.url]));
+  const par=t=>{const lines=t.split("\n");if(lines.every(l=>/^(- |\d+\. )/.test(l.trim()))||lines.slice(1).length&&lines.slice(1).every(l=>/^(- |\d+\. )/.test(l.trim()))){
+      const head=/^(- |\d+\. )/.test(lines[0].trim())?"":lines.shift();const num=/^\d+\. /.test((lines[0]||"").trim());
+      return (head?`<p style="margin:16px 0 4px"><b>${esc(head)}</b></p>`:"")+`<${num?"ol":"ul"} style="margin:4px 0 12px;padding-left:22px">${lines.map(l=>{const v=l.trim().replace(/^(- |\d+\. )/,"");const ti=[...links.keys()].find(k=>v.startsWith(k));return `<li style="margin:4px 0">${ti&&links.get(ti)?`<a href="${esc(links.get(ti))}" style="color:#245B78">${esc(ti)}</a>${esc(v.slice(ti.length))}`:esc(v)}</li>`}).join("")}</${num?"ol":"ul"}>`}
+    const m=t.match(/^([^.\n]{2,60}\.)\s+([\s\S]*)$/);if(m&&m[1].split(/\s+/).length<=6&&!/^Dear /.test(t))return `<p style="margin:0 0 12px"><b>${esc(m[1])}</b> ${esc(m[2]).replace(/\n/g,"<br>")}</p>`;
+    return `<p style="margin:0 0 12px">${esc(t).replace(/\n/g,"<br>")}</p>`};
+  const body=String(L.body||"").trim().split(/\n\s*\n/).map(par).join("");
+  return `<div style="background:#ffffff;padding:20px 12px"><div style="max-width:640px;margin:0 auto;font-family:Andika,Arial,sans-serif;font-size:16px;line-height:1.55;color:#1B2920"><div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#5B6B61;margin-bottom:14px">Fulton Community School</div>${body}</div></div>`}
+function iqLetterDoc(x){const L=x.letter||{};const links=new Map((x.readings||[]).map(r=>[r.title,r.url]));const blocks=[];
+  for(const t of String(L.body||"").trim().split(/\n\s*\n/)){const lines=t.split("\n");
+    if(lines.length>1&&lines.slice(1).every(l=>/^(- |\d+\. )/.test(l.trim()))){const items=lines.slice(1).map(l=>l.trim().replace(/^(- |\d+\. )/,""));blocks.push(Object.assign(dList(lines[0],items,/^\d+\. /.test(lines[1].trim())),{links:items.map(v=>{const ti=[...links.keys()].find(k=>v.startsWith(k));return ti?links.get(ti):""})}));continue}
+    const m=t.match(/^([^.\n]{2,60}\.)\s+([\s\S]*)$/);if(m&&m[1].split(/\s+/).length<=6&&!/^Dear /.test(t)){blocks.push(dText(m[1].replace(/\.$/,""),m[2]));continue}
+    blocks.push(dText("",t))}
+  return {display:true,type:"report",acc:"smallgroup",title:has(L.subject)?L.subject:"A letter to the family",meta:[],blocks}}
+function iqLetterHtml(x){if(!isDirector())return "";const L=x.letter||{};const sends=L.sends||[];const ks=inqChildren(x);
+  return `<section class="card" id="iqletter"><div class="lbl">Share with the family</div>
+    <div class="hint">A letter to ${ks.length?esc(ks.map(c=>c.first).join(" and "))+"'s":"the child's"} family. Print it, or email it to the parents with the classroom inbox copied. Replies go to the classroom inbox.</div>
+    <label class="fld-label">Subject<input type="text" data-iqletter="subject" value="${esc(L.subject||"")}" placeholder="Ex. Supporting ${esc(ks[0]?ks[0].first:"your child")} at school and at home"></label>
+    <label class="fld-label">The letter<textarea data-iqletter="body" rows="10">${esc(L.body||"")}</textarea></label>
+    <div class="cnt">A blank line starts a new paragraph. A short first sentence, such as "Our approach at school.", becomes the heading. Lines starting with a dash or a number become a list.</div>
+    <div class="actions" style="flex-wrap:wrap">${has(L.body)?"":`<button class="btn small ghost" data-iqletterstart="1">Start from the outline</button>`}
+      <button class="btn small ghost" data-print="iqletter" data-id="${esc(x.id)}">Print for the family</button>
+      <button class="btn small ghost" data-iqlettermail="test">Send me a test</button><button class="btn small" data-iqlettermail="send">Email the family</button></div>
+    <div id="iqletter-msg"></div>
+    ${sends.length?`<div class="cnt">${sends.slice(-3).reverse().map(z=>`${z.test?"Test sent":"Sent to the family"} ${shortDate(z.at)}${z.test?"":`, ${z.count} ${z.count===1?"address":"addresses"} with the classroom inbox`}`).join(". ")}.</div>`:""}</section>`}
+async function iqLetterSend(x,test){const L=x.letter||{};const msg=$("#iqletter-msg");const say=t=>{if(msg)msg.innerHTML=t};
+  if(test&&!LS.get("tree.nlme","")){const v=(prompt("Your email address for the test")||"").trim();if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v))return;LS.set("tree.nlme",v)}
+  if(!has(L.subject)||!has(L.body)){say(`<span class="nudge">Add a subject and the letter first.</span>`);return}
+  let who;try{who=await window.FP_API("/api/staff/inquiry/family-recipients",{children:inqChildren(x).map(c=>c.id)})}catch(e){say(`<span class="nudge">${esc(e.message||"Could not reach TREE.")}</span>`);return}
+  if(!test){if(!who.parents){say(`<span class="nudge">No parent email is on file for ${esc((who.kids||[]).join(" and ")||"this child")}.</span>`);return}
+    if(!confirm(`Email this letter to ${who.parents} ${who.parents===1?"parent":"parents"} of ${(who.kids||[]).join(" and ")}, with the classroom inbox copied?`))return}
+  say(`<span class="spin"></span> Sending`);
+  try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:inqChildren(x).map(c=>c.id),subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):""});
+    L.sends=[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test}];x.letter=L;
+    if(!r.test&&has(L.body))x.family=[...(x.family||[]),{id:uid(),text:"Letter emailed to the family. "+L.subject,by:whoAmI(),at:Date.now()}];
+    saveInquiry(x);renderMain();toast(r.test?"Test sent to you.":"Sent to the family, with the classroom inbox copied.")}
+  catch(e){say(`<span class="nudge">${esc(e.message||"It did not send.")}</span>`)}}
 async function inquiriesClick(t){
   const d=t.dataset;
   if(d.iqopen){openInquiry(d.iqopen);return true}
@@ -13235,6 +13293,8 @@ async function inquiriesClick(t){
   if(d.iqdadd){x.tried=[...(x.tried||[]),{id:uid(),text:"",when:"",result:"",by,at:now}];saveInquiry(x);renderMain();const ts=$("#main").querySelectorAll('[data-iqd$="|text"]');if(ts.length)ts[ts.length-1].focus();return true}
   if(d.iqdrm){x.tried=(x.tried||[]).filter(o=>o.id!==d.iqdrm);saveInquiry(x);renderMain();return true}
   if(d.iqfam){const v=($("#iq-fam")?.value||"").trim();if(!v){toast("Write what was shared first.");return true}x.family=[...(x.family||[]),{id:uid(),text:v,conference:!!$("#iq-famconf")?.checked,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
+  if(d.iqletterstart){if(!isDirector())return true;x.letter={...(x.letter||{}),body:iqLetterOutline(x),subject:(x.letter||{}).subject||("Supporting "+(inqChildren(x)[0]?inqChildren(x)[0].first:"your child")+" at school and at home")};saveInquiry(x);renderMain();return true}
+  if(d.iqlettermail){if(!isDirector())return true;iqLetterSend(x,d.iqlettermail==="test");return true}
   if(d.iqkidrm){if(!iqCan())return true;x.kids=(x.kids||[]).filter(id=>id!==d.iqkidrm);x.kidsSet="team";saveInquiry(x);renderMain();return true}
   if(d.iqask){if(!iqCan())return true;const note=($("#iqask-note")?.value||"").trim(),f=$("#iqask-for")?.value||"both";x.readAsk=[...(x.readAsk||[]),{id:uid(),for:f,note,by:whoAmI(),at:Date.now()}];saveInquiry(x);renderMain();toast("Asked. It shows on the director's Today.");return true}
   if(d.iqaskdone){if(!isDirector())return true;const o=(x.readAsk||[]).find(r=>r.id===d.iqaskdone);if(o){o.done=Date.now();saveInquiry(x);renderMain()}return true}
@@ -13256,6 +13316,7 @@ document.addEventListener("input",e=>{const t=e.target;if(view!=="inquiries")ret
   if(!iqCan())return;
   if(d.iqf&&t.type!=="date"){x[d.iqf]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);if(d.iqf==="see"||d.iqf==="whenwhere"){const el=$("#iqsafe");if(el)el.innerHTML=iqSafeHtml(x)}return}
   if(d.iqh){const o=(x.hyps||[]).find(h=>h.id===d.iqh);if(o){o.text=t.value;autoGrow(t);saveInquirySoon(x)}return}
+  if(d.iqletter){if(!isDirector())return;x.letter={...(x.letter||{}),[d.iqletter]:t.value};if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x);return}
   if(d.iqd){const [id,k]=d.iqd.split("|");const o=(x.tried||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(t.tagName==="TEXTAREA")autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqt){const [id,k]=d.iqt.split("|");const o=(x.tries||[]).find(v=>v.id===id);if(o){o[k]=t.value;if(k==="result"){o.resultAt=Date.now();o.resultBy=whoAmI()}autoGrow(t);saveInquirySoon(x)}return}
   if(d.iqlq!=null){const L=inqLens(x);if(L){x.lensNotes=x.lensNotes||{};x.lensNotes[L.questions[+d.iqlq]]=t.value;autoGrow(t);saveInquirySoon(x)}return}});
@@ -13264,6 +13325,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqdevasked!=null){x.devAsked=t.checked?Date.now():0;saveInquiry(x);renderMain();return}
   if(d.iqkidadd!=null){if(!t.value||!iqCan())return;x.kids=[...new Set([...(x.kids||[]),t.value])];x.kidsSet="team";saveInquiry(x);renderMain();return}
   if(d.iqdisplay!=null){x.display=t.value==="show";saveInquiry(x);renderMain();toast(x.display?"It shows on the staff room display while it is open.":"It stays off the staff room display.");return}
   if(d.iqlens!=null){x.lensId=t.value;saveInquiry(x);renderMain();return}
@@ -15402,7 +15464,8 @@ function displayAtoms(doc,p,A,s){
     else if(b.t==="small"){if(has(b.label))heading(b.label);else gap(6);const i0=atoms.length;(b.lines||[b.text]).filter(has).forEach(t=>lines(wrap(t,"fr",Z.small,cw),"fr",Z.small,Z.slh,cx,D_MUTED));holdFirst(i0)}
     else if(b.t==="list"){heading(b.label);const i0=atoms.length;(b.items||[]).filter(has).forEach((it,i)=>{const ls=wrap(it,"fr",Z.body,cw-18);ls.forEach((l,k)=>push({h:Z.blh,base:base(Z.blh,Z.body),keep:k<ls.length-1,draw(y){const by=y+base(Z.blh,Z.body);
         if(k===0){if(b.numbered){pfont(doc,"fs",Z.body);doc.setTextColor(...AT);doc.text(String(i+1),cx,by)}else{doc.setFillColor(...A.c);doc.circle(cx+3,by-Z.body*.3,2*s,"F")}}
-        pfont(doc,"fr",Z.body);doc.setTextColor(...D_INK);doc.text(l,cx+18,by)}}));gap(3)});holdFirst(i0);
+        // a list item with a link, such as a reading, opens it from the first line when the PDF is clicked (November 16, 2026)
+        pfont(doc,k===0&&b.links&&b.links[i]?"fs":"fr",Z.body);doc.setTextColor(...D_INK);if(k===0&&b.links&&b.links[i])doc.textWithLink(l,cx+18,by,{url:b.links[i]});else doc.text(l,cx+18,by)}}));gap(3)});holdFirst(i0);
       // a list's heading stays with its first two lines, so no heading or lone first line sits at the foot of a page
       {let k=0;for(let j=i0;j<atoms.length&&k<2;j++){if(atoms[j].gap)continue;if(atoms[j+1])atoms[j].keep=true;k++}}}
     else if(b.t==="cols"){const C=(b.cols||[]).filter(c=>c&&has(c.h));if(C.length){gap(10);
@@ -15485,6 +15548,8 @@ function displayAtoms(doc,p,A,s){
         push({h:lh+4,draw(y){let x=m;F.forEach((f,j)=>{pfont(doc,"bs",lz);doc.setTextColor(...AT);doc.text(clean(f),x,y+lh-8);x+=lw[j];doc.setDrawColor(...D_MUTED);doc.setLineWidth(.6);doc.line(x,y+lh-5,x+Math.max(40,rest),y+lh-5);x+=Math.max(40,rest)+g})}})}
       gap(4)}
     else if(b.t==="qa"){gap(6);const ql=wrap(b.q,"fs",9.8*s,cw);ql.forEach(l=>line(l,"fs",9.8*s,13.2*s,cx,D_MUTED,true));lines(wrap(b.a,"fr",Z.body,cw),"fr",Z.body,Z.blh,cx,D_INK)}
+    // ruled lines to write on, under a small label, for a printed plan the team adds to at a meeting (November 16, 2026)
+    else if(b.t==="writein"){if(has(b.label))heading(b.label);for(let i=0;i<(b.n||3);i++)push({h:24*s,keep:i<(b.n||3)-1,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.5);doc.line(m,y+20*s,m+w,y+20*s)}});gap(4)}
     else if(b.t==="sub"){gap(14);sub=b.text;const i0=atoms.length;wrap(b.text,"bs",Z.sub,w).forEach(l=>line(l,"bs",Z.sub,Z.sub*1.3,m,D_INK,true));push({h:6*s,keep:true,gap:false,draw(){}});if(atoms[i0])atoms[i0].isSub=true}
     else if(b.t==="rule"){const nx=B[bi+1];if(!nx||["list","tags","item","table","figures","small"].includes(nx.t)||(nx.t==="text"&&has(nx.label)))continue;gap(12);push({h:2,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y)}});gap(8)}
     else if(b.t==="web"){const n=(b.web.branches||[]).filter(x=>x.name||x.materials).length;push({h:webHeight(n)[0],min:webHeight(n)[1]*.8,draw(y){displayWeb(doc,m,y,w,this.h,b.web,A)}});gap(6)}
@@ -16050,6 +16115,7 @@ async function displayDocx(ch,p,D,A){
       const nx=B[bi+1],nx2=B[bi+2];if(nx&&nx.t==="quote"&&!(nx2&&nx2.t==="quote")){ch.push(spacer(100),...quoteP(nx));bi++}}
     else if(b.t==="qa"){ch.push(para(run(b.q,"fs",9.8*s,MUT),{keepNext:true,spacing:{before:120,after:20}}),...body(b.a))}
     else if(b.t==="sub"){ch.push(para(run(b.text,"bs",16.5*s),{keepNext:true,spacing:{before:280,after:120}}))}
+    else if(b.t==="writein"){if(has(b.label))ch.push(para(run(b.label,"bs",12*s),{keepNext:true}));for(let i=0;i<(b.n||3);i++)ch.push(para(run("______________________________________________________________","fr",11*s)))}
     else if(b.t==="photos"){for(const x of b.items||[]){const im=photoCache.get(x.key);if(!im)continue;const mw=300,mh=(b.maxH||170)*96/72;let pw=mw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
       ch.push(para(new ImageRun({type:"jpg",data:im.bytes,transformation:{width:Math.round(pw),height:Math.round(ph)}}),{alignment:AlignmentType.CENTER,spacing:{after:60}}));if(has(x.cap))ch.push(para(run(x.cap,"fr",9.4*s,MUT),{alignment:AlignmentType.CENTER,spacing:{after:160}}))}}
     else if(b.t==="photo"){const im=photoCache.get(b.key);if(im){const mw=b.full?640:470,mh=(b.maxH||260)*96/72;let pw=mw,ph=pw*im.h/im.w;if(ph>mh){ph=mh;pw=ph*im.w/im.h}
@@ -16143,6 +16209,7 @@ async function printsClick(t){
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out([inquiryDoc(x,long)],`Team inquiry ${x.name||""}`);return true}
+  if(kind==="iqletter"){const x=inquiries.get(t.dataset.id);if(x)out([iqLetterDoc(x)],`Letter to the family ${inqChildren(x).map(c=>c.first).join(" and ")}`);return true}
   if(kind==="project"){const x=projects.get(t.dataset.id);if(x)out([projectDoc(x,long)],`Project ${x.name}`);return true}
   if(kind==="moments"){const docs=momentsDocs(long);if(!docs.length){toast("There are no observations in this view to print.");return true}
     const name=`Fulton Community School observations ${nRoom==="All"?"all classes":nRoom==="none"?"no class":nRoom} ${mondayOf(new Date())}`;
