@@ -5877,6 +5877,7 @@ function renderToday(){
     ${isDirector()&&!VIEW_AS?`<button data-dirplan="1"><b>Write my plan</b><span>An Individual or Classroom plan for any class</span></button>`:isOffice()||window.FP_MYPLANS==="none"||waiting.some(w=>w.t==="Your Individual plan for this week")?"":`<button ${mg.length?`data-newind="${esc(mg[0].name)}" data-room="${esc(mg[0].room)}"`:`data-new="individual"`}><b>Write my plan</b><span>Individual plan for this week</span></button>`}
     <button data-tview="calendar"><b>Sign up for a space</b><span>Yards, studio, library, garden</span></button>
     ${sendClipHtml("quick")}
+    <button data-ktopen="1"><b>Requests</b><span>Pantry and sensory staples, supplies, something to fix</span></button>
     <button data-askfam="1"><b>Ask families for help</b><span>${isOffice()?"Post a way to take part":"Sent to the director to post"}</span></button>
   </div>
   ${askFam?askFamHtml(room):""}${dirPlanAsk?dirPlanHtml():""}
@@ -10990,7 +10991,7 @@ function renderKitchen(){
   const draftOn=kDraft&&kDraft.month===month&&Object.keys(kDraft.days).length;
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">${esc(MENU_MONTH(month))} menu</h2>
       <div class="sub">Type in any meal and it is saved to the month's menu, which the calendar, Today and the family sheets read.</div></div>
-      <div class="actions"><button class="iconbtn" data-kmon="-1" aria-label="Month before">‹</button><button class="iconbtn" data-kmon="1" aria-label="Month after">›</button><button class="btn small ghost" data-kfill="1">Fill this month</button></div></div></div>
+      <div class="actions"><button class="iconbtn" data-kmon="-1" aria-label="Month before">‹</button><button class="iconbtn" data-kmon="1" aria-label="Month after">›</button><button class="btn small ghost" data-kfill="1">Fill this month</button><button class="btn small ghost" data-ktopen="1">Pantry and shopping list</button></div></div></div>
     ${kGardenHtml()}${kDietHtml()}
     <section class="card kprint"><div class="lbl">Print</div><div class="actions">${printBtns("kmenu",month+"|all","Monthly menu",true)}${printBtns("farmsheet",month,"What we ate")}${printBtns("farmwall",month,"Where our food came from")}</div>
       <div class="hint">One page each, as PDF or Word, ready to attach to the Kitchen Digest.</div></section>
@@ -11013,12 +11014,14 @@ function renderKitchen(){
 document.addEventListener("keydown",e=>{const t=e.target;if(view!=="kitchen"||!t.classList||!t.classList.contains("kin")||e.key!=="Enter")return;e.preventDefault();t.blur()});
 document.addEventListener("input",e=>{const t=e.target;if(t.classList&&t.classList.contains("kin"))autoGrow(t)});
 // Today for a kitchen sign-in, the produce coming and the week's menu
+// Kitchen TREE, the pantry, the shopping list and requests, is its own small page (kitchen.html)
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-ktopen]");if(!t)return;const sv=new URLSearchParams(location.search).get("server");location.href="kitchen.html"+(sv?"?server="+encodeURIComponent(sv):"")});
 function renderKitchenToday(){const wk=planWeekNow();const days=[0,1,2,3,4].map(i=>addDays(wk,i));const now=new Date();
   const rows=days.map(d=>{const x=(((menus.get(d.slice(0,7))||{}).days)||{})[d]||{};const lab=parseIso(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
     return `<tr><td><b>${esc(lab)}</b></td>${x.closed?`<td colspan="3" class="cnt">No school</td>`:`<td>${esc(x.am||"")}</td><td>${esc(x.lunch||"")}</td><td>${parseIso(d).getDay()===1?"":esc(x.pm||"")}</td>`}</tr>`}).join("");
   $("#main").innerHTML=`<div class="head"><span class="eyebrow">${esc(now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}))}</span><h2 style="margin-top:4px">Good ${now.getHours()<12?"morning":now.getHours()<17?"afternoon":"evening"}, ${esc(me()||"")}</h2></div>
     ${kitchenCardHtml(wk,false)}${kDietHtml()}
-    <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">The week's menu</h3><button class="linkbtn" data-tview="kitchen">Open the Kitchen</button></div>
+    <section class="card" style="margin-top:14px"><div class="secthead"><h3 style="font-size:17px">The week's menu</h3><span class="actions"><button class="linkbtn" data-ktopen="1">Pantry and shopping list</button><button class="linkbtn" data-tview="kitchen">Open the Kitchen</button></span></div>
       <div class="tablewrap"><table class="grid2" style="min-width:520px"><thead><tr><th>Day</th><th>Morning snack</th><th>Lunch</th><th>Afternoon snack</th></tr></thead><tbody>${rows}</tbody></table></div></section>`}
 document.addEventListener("focusin",e=>{const t=e.target;if(view!=="kitchen"||!t.dataset||!t.dataset.kday)return;document.querySelectorAll(".ksel").forEach(x=>x.classList.remove("ksel"));t.classList.add("ksel");
   const was=kSel&&kSel.k.replace("Side","");kSel={day:t.dataset.kday,k:t.dataset.kk};const lib=document.querySelector(".kaside");
