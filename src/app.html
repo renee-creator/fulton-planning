@@ -4545,9 +4545,11 @@ function portfolioDrdpDoc(c,mode){
   const blocks=[dText("About this page",`Each level is read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025)${views.length===1?` ${DRDP_VIEW[views[0]]} View`:""}.${multi?" Each measure lists the level seen in each school year, what that level means, the observation, and what was seen.":" Each measure lists the level seen, what that level means, the observation, and what was seen."}`)];
   const txt=(v,k)=>(DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][k])||null;
   const cell=x=>{const mean=drdpLevelDesc(x.v,x.code,x.level);const seen=forPrint(focusText(x.evidence||"",c));
-    const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const ph=ob?(momentPhotos(ob)||[])[0]:null;const t=tOf(x);
-    const by=x.src?focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c):"";
-    const words=ob?sentCut(forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)),420):"";
+    const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const t=tOf(x);
+    // evidence read from a Kaymbu Moment carries its own photo and words, where an observation's come from the observation
+    const bk=x.src&&x.src.kind==="book"?x.src:null;const ph=ob?(momentPhotos(ob)||[])[0]:bk&&bk.photo&&window.FP_ORIGINAL_URL?{key:"bk:"+bk.photo,src:window.FP_ORIGINAL_URL(bk.photo)}:null;
+    const by=x.src&&!(bk&&/^A photo from /.test(String(x.src.title||"")))?focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c):"";
+    const words=ob?sentCut(forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)),420):bk&&bk.words?sentCut(forPrint(focusText(String(bk.words),c)),420):"";
     return Object.assign({head:yw(x.yr),age:kidAgeAt(c,t)||"",level:drdpLevelText(x.level,x.emerging),mean:mean?mean.replace(/[.\s]*$/,"."):"",seen,by,date:shortDate(t),words:words&&words!==seen?words:""},ph&&ph.key&&ph.src?{key:ph.key,src:ph.src}:{})};
   for(const dm of doms){const ks=codes.filter(k=>domOf(k)===dm);blocks.push(dSub(DRDP_DOM[dm]||dm));
     for(const k of ks){const xs=years.map(y=>best[y+"|"+k]).filter(Boolean);const cs=xs.map(cell);
