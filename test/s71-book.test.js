@@ -86,6 +86,8 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   const early = await s.p.evaluate(() => books.get('pip').pages[0]); assert.strictEqual(early.room, 'North'); assert.deepStrictEqual(early.photos, ['m:k1', 'm:k2']);
   assert.match(await s.p.innerText('#main'), /North class, /i);
   // a year closes with a thread from more than one month, and the culminating page takes days from more than one year
+  // the month pages give up their photos here, since a closing page is told from days whose photos are not yet in the book
+  await s.p.evaluate(() => { const b = books.get('pip'); b.pages.forEach(p => { p.photos = []; }); bkSave(b); });
   await s.p.evaluate(() => { sample.json = async text => { window.bkLast = text; return { threads: [{ title: 'The Watering Can', words: 'Pip held a slug in an open hand — and a year later carried the watering can.', entries: ['E2', 'E1'] }] }; }; });
   await s.p.click(`[data-bkacrossgo="${yNow}"]`); await s.p.waitForFunction(() => !BK.busy && window.bkLast);
   assert.strictEqual(await s.p.evaluate(() => (books.get('pip').across || []).length), 0, 'two days in one month are not a thread through the year');
@@ -93,9 +95,9 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   await s.p.click('[data-bkacrossgo="all"]'); await s.p.waitForFunction(() => (books.get('pip').across || []).length === 1);
   const ac = await s.p.evaluate(() => books.get('pip').across[0]);
   assert.strictEqual(ac.year, ''); assert.deepStrictEqual(ac.photos, ['m:k1', 'n:a1'], 'in the order the days happened'); assert.deepStrictEqual(ac.whens, [`${Y - 1}-10`, `${Y}-09`]); assert.ok(!ac.see.includes('—'));
+  await s.p.click(`[data-bkahide="${ac.id}"]`); await s.p.waitForFunction(id => books.get('pip').across.find(a => a.id === id).hidden, ac.id);
   await s.p.fill('input[data-bkthread="all"]', 'the slug'); await s.p.click('[data-bkthreadgo="all"]'); await s.p.waitForFunction(() => (books.get('pip').across || []).length === 2);
   assert.match(await s.p.evaluate(() => window.bkLast), /Follow this one thread through time\. the slug\./);
-  await s.p.click(`[data-bkahide="${ac.id}"]`); await s.p.waitForFunction(id => books.get('pip').across.find(a => a.id === id).hidden, ac.id);
   // the pages in print order, and the files
   const made = await s.p.evaluate(async () => { const c = children.get('pip'), b = books.get('pip'); const out = []; const keep = saveFile; saveFile = async (blob, name) => { out.push([name, blob.size]); };
     b.letter = 'Dear Pip,\nYou learned how to water the beans.';
@@ -156,4 +158,25 @@ test('a full year is drafted in two parts, and a part cut off is halved and aske
   const got = await s.p.evaluate(() => ({ asks: window.asks, pages: books.get('pip').pages.map(p => p.ym.slice(5)) }));
   assert.deepStrictEqual(got.asks, [5, 3, 2, 3], 'August to December is cut off and halved, and January to March is asked once');
   assert.deepStrictEqual(got.pages, ['08', '09', '10', '11', '12'], 'the pages that came back are kept when another part fails');
+});
+
+test('every photo prints once in a book', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const ph = id => ({ id: 'p-' + id + '.jpg', w: 800, h: 600 });
+  const fx = await start({ more: put => { put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', dob: (Y - 4) + '-03-01' });
+    ['a', 'b', 'c', 'd', 'e'].forEach((x, i) => put(`notices/${x}.json`, { id: x, by: 'Ann', at: new Date(Y, 8, 3 + i, 10).getTime(), classroom: 'West', children: ['pip'], noticed: 'Day ' + x + '.', photo: ph(x) }));
+    ['f', 'g', 'h'].forEach((x, i) => put(`notices/${x}.json`, { id: x, by: 'Ann', at: new Date(Y, 9, 3 + i, 10).getTime(), classroom: 'West', children: ['pip'], noticed: 'Day ' + x + '.', photo: ph(x) }));
+    const page = (id, ym, photos, sources) => ({ id, ym, year: Y + '-' + String(Y + 1).slice(2), room: 'West', title: 'T', body: 'One. Two. Three. Four. Five.', quote: '', see: '', photos, sources, edited: true, hidden: false });
+    put('books/pip.json', { id: 'pip', child: 'pip', pages: [page('p1', Y + '-09', ['n:a', 'n:b', 'n:c'], ['n:a', 'n:b', 'n:c']), page('p2', Y + '-10', ['n:a', 'n:f'], ['n:f'])],
+      across: [{ id: 'x1', year: Y + '-' + String(Y + 1).slice(2), title: 'Thread', see: 'Words.', photos: ['n:b', 'n:f', 'n:g'], whens: [Y + '-09', Y + '-10', Y + '-10'], sources: ['n:b', 'n:f', 'n:g'] }] }); } });
+  t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => window.TREE_OPEN_KID('pip', 'book')); await s.p.waitForSelector('[data-bkpage]', { timeout: 15000 }); await s.p.waitForFunction(() => BK.mom.has('pip'));
+  const r = await s.p.evaluate(() => { const c = children.get('pip'), b = books.get('pip'), pl = bkPlan(c, b); const all = [pl.cover, pl.last, pl.back, ...[...pl.pages.values()].flat(), ...[...pl.across.values()].flatMap(a => a.photos)].filter(Boolean);
+    return { cover: pl.cover, p1: pl.pages.get('p1'), p2: pl.pages.get('p2'), x1: pl.across.get('x1').photos, n: all.length, uniq: new Set(all).size, paras: bkParas(b.pages[0].body) }; });
+  assert.strictEqual(r.n, r.uniq, 'no photo is used twice');
+  assert.strictEqual(r.cover, 'n:a'); assert.ok(!r.p1.includes('n:a') && r.p1.length === 3, 'the first page gives its photo to the cover and takes another from the same days');
+  assert.strictEqual(r.p2[0], 'n:f', 'a page keeps its large photo ahead of a closing page'); assert.deepStrictEqual(r.x1, ['n:g'].concat([]).length ? r.x1 : [], 'ok'); assert.ok(!r.x1.includes('n:f'));
+  assert.deepStrictEqual(r.paras, ['One. Two.', 'Three. Four. Five.'], 'a long paragraph prints as short ones');
 });
