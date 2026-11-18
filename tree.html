@@ -2951,7 +2951,7 @@ window.TREE_FAMILY_COPY=async(confId,opt)=>{opt=opt||{};const cf=conferences.get
   // a Booklet folds only on paper from the PDF, so its Word file sets two pieces to a page
   const pieces=[];if(lay==="two"||(opt.word&&lay==="booklet"))for(let i=0;i<its.length;i+=2){const xs=its.slice(i,i+2);let k=0;for(;k<PAIR.length-1;k++)if(await one(confPairDoc(c,xs,drdp,...PAIR[k])))break;let kw=k;if(opt.word)while(kw<PAIR.length-1&&(PAIR[kw][0]>PAIR[k][0]*.68||PAIR[kw][1]>PAIR[k][1]*.75))kw++;pieces.push(confPairDoc(c,xs,drdp,...PAIR[kw]))}
   else pieces.push(...its.map(x=>confPieceDoc(c,x,drdp)));
-  const docs=[sum,...pieces];if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,!!opt.quiet);
+  const docs=[sum,...pieces];if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="evpath")))await loadPhotos(docs,!!opt.quiet);
   const name=safeFile(`Family copy ${c.first}${c.last?" "+c.last:""} ${cf.confDate||""}`);
   if(opt.word){const b=await makeDocx(docs,name+".docx",opt.ret||true);if(opt.ret)return b;if(b)await saveFile(b,name+".docx");return b}
   let blob;if(lay==="booklet"&&pieces.length){const a=await makePdf([sum],"x.pdf","quiet"),bk=await makePdf(pieces,"x.pdf","quiet");blob=await confBooklet(a,bk)}else blob=await makePdf(docs,name+".pdf","quiet");
@@ -4900,15 +4900,15 @@ function portfolioDrdpDoc(c,mode){
   const txt=(v,k)=>(DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][k])||null;
   const cell=x=>{const mean=drdpLevelDesc(x.v,x.code,x.level);const seen=forPrint(focusText(x.evidence||"",c));
     const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const ph=ob?(momentPhotos(ob)||[])[0]:null;const t=tOf(x);
-    const by=x.src?`${focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c)}, ${shortDate(t)}`:"";
+    const by=x.src?focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c):"";
     const words=ob?sentCut(forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)),420):"";
-    return Object.assign({head:yw(x.yr),age:kidAgeAt(c,t)||"",level:drdpLevelText(x.level,x.emerging),mean:mean?mean.replace(/[.\s]*$/,"."):"",seen,by,words:words&&words!==seen?words:""},ph&&ph.key&&ph.src?{key:ph.key,src:ph.src}:{})};
+    return Object.assign({head:yw(x.yr),age:kidAgeAt(c,t)||"",level:drdpLevelText(x.level,x.emerging),mean:mean?mean.replace(/[.\s]*$/,"."):"",seen,by,date:shortDate(t),words:words&&words!==seen?words:""},ph&&ph.key&&ph.src?{key:ph.key,src:ph.src}:{})};
   for(const dm of doms){const ks=codes.filter(k=>domOf(k)===dm);blocks.push(dSub(DRDP_DOM[dm]||dm));
     for(const k of ks){const xs=years.map(y=>best[y+"|"+k]).filter(Boolean);const cs=xs.map(cell);
       // the measure's whole path of levels, in the fuller view the child has been read against
       const lv=views.slice().reverse().find(v=>DRDP_M[v][k]),levels=drdpLevels(lv,k);const d=txt(lv,k)||views.map(v=>txt(v,k)).find(Boolean);
       blocks.push({t:"evpath",title:drdpName(k),def:d&&d.def?String(d.def).replace(/[.\s]*$/,"."):"",marks:levels.map(l=>xs.some(x=>x.level===l)),cells:cs,
-        word:cs.map(q=>dItem(drdpName(k)+", "+(q.age||q.head),[q.mean?q.level+" means "+q.mean:"",q.words,q.seen?"What was seen. "+q.seen:""].filter(Boolean).join(" "),q.by,[q.level]))})}}
+        word:cs.map(q=>dItem(drdpName(k)+", "+(q.age||q.head),[q.mean?q.level+" means "+q.mean:"",q.words,q.seen?"What was seen. "+q.seen:""].filter(Boolean).join(" "),[q.by,q.date].filter(Boolean).join(", "),[q.level]))})}}
   const name=mode==="none"?"":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
   return {display:true,packed:true,narrow:true,type:"report",acc:"story",title:multi?"Learning seen across the years":"Learning seen, "+yw(years[0]),meta:[name?["Child",name]:null,["View",views.map(v=>DRDP_VIEW[v]).join(" and ")],[multi?"Years":"Year",multi?yw(years[0])+" through "+yw(years[years.length-1]):yw(years[0])]].filter(Boolean),blocks};
 }
@@ -5276,7 +5276,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="2d36a68b931d";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="b3198c969d72";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -10065,7 +10065,7 @@ document.addEventListener("click",async e=>{
   if(!p)return;
   {const pm=t.closest&&t.closest("details.planmore");if(pm)pm.open=false}
   if(t.id==="dl"||t.id==="dlw"){const ev=planEvidenceDoc(p);
-    (async()=>{const att=(p.attached||[]).length?await attachDocs(p):{docs:[],recipes:[]};const list=[p,...(ev?[ev]:[]),...att.docs];const ph=[...(ev?[ev]:[]),...att.docs.filter(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"))];if(ph.length)await loadPhotos(ph);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"));
+    (async()=>{const att=(p.attached||[]).length?await attachDocs(p):{docs:[],recipes:[]};const list=[p,...(ev?[ev]:[]),...att.docs];const ph=[...(ev?[ev]:[]),...att.docs.filter(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="evpath"))];if(ph.length)await loadPhotos(ph);if(t.id==="dl")makePdf(list,fileName(p));else makeDocx(list,fileName(p).replace(/\.pdf$/,".docx"));
       // a recipe attached to the plan prints its demonstration sheets beside it
       for(const x of att.recipes){try{const n=safeFile("Demonstration "+x.title);if(t.id==="dl")await saveFile(await demoPdf(x,"letter"),n+".pdf",true);else await saveFile(await demoWord(x,"letter"),n+".docx")}catch(er){}}})();return}
   if(t.id==="carry"){carryForward(p);return}
@@ -15801,7 +15801,7 @@ function displayAtoms(doc,p,A,s){
       gap(D_TIGHT?8:10);if(!cells.length)push({h:headH,draw:drawHead});
       const cl=wrap(b.title+", continued","bs",Z.small*1.1,w).slice(0,1);let A0=null;
       const RH={h:Z.slh*1.5,draw(y){pfont(doc,"bs",Z.small*1.1);doc.setTextColor(...D_INK);doc.text(cl[0],m,y+Z.small*1.1)}};
-      /* each entry is one row the full width: the photo in its own shape at the left, and beside it the age, then the level and what it
+      /* each entry is one row the full width: the photo in its own shape at the left, and beside it the age and the date, then the level and what it
          means, the observation in its own words, and what was seen with where it came from */
       const SEEN="What was seen. ",ag=5*s;
       const C=cells.map(q=>{const im=q.key?photoCache.get(q.key):null,off=im?pz+14*s:0,sw=w-off;const lead=clean(q.level)+(has(q.mean)?". ":"");
@@ -15815,7 +15815,8 @@ function displayAtoms(doc,p,A,s){
         else{pfont(doc,"fr",fz);doc.setTextColor(...D_INK);doc.text(l,tx,yb)}});
       const drawCell=(x,py)=>{const q=x.q,tx=m+x.off;let ty=py;
         if(x.im)doc.addImage(x.im.url,"JPEG",m+(pz-x.pw)/2,py,x.pw,x.phh,undefined,"FAST");
-        pfont(doc,"bs",fz*1.04);doc.setTextColor(...D_INK);doc.text(clean(has(q.age)?q.age:q.head),tx,ty+base(flh,fz));ty+=flh+ag;
+        pfont(doc,"bs",fz*1.04);doc.setTextColor(...D_INK);const at=clean(has(q.age)?q.age:q.head);doc.text(at,tx,ty+base(flh,fz));
+        if(has(q.date)){const aw=doc.getTextWidth(at);pfont(doc,"fr",fz);doc.setTextColor(...D_MUTED);doc.text(clean(q.date),tx+aw+9*s,ty+base(flh,fz))}ty+=flh+ag;
         run(x.ml,x.lead,AT,tx,ty);ty+=x.ml.length*flh;if(x.ol.length){ty+=4*s;run(x.ol,"",D_INK,tx,ty);ty+=x.ol.length*flh}
         if(x.sl.length){ty+=4*s;run(x.sl,has(q.seen)?SEEN:"",D_INK,tx,ty)}};
       C.forEach((x,r)=>{const first=r===0,rh=8*s+x.h+8*s;
@@ -16456,7 +16457,7 @@ async function printsClick(t){
   // the official wording of each DRDP level, for any print that carries a level
   if(/drdp|portfolio|conf|fam|slide/i.test(t.dataset.print||""))try{await loadDrdpTxt()}catch(e){}
   const word=t.dataset.word==="1",long=t.dataset.long==="1",kind=t.dataset.print;
-  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="photos"))){await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
+  const out=async(docs,name)=>{if(!docs.length)return;const n=safeFile(name+(long?" full":""));if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="photos"||b.t==="evpath"))){await loadPhotos(docs)}if(word)makeDocx(docs,n+".docx");else makePdf(docs,n+".pdf")};
   if(kind==="moment"){const n=notices.get(t.dataset.id);if(n)await out([momentDoc(n)],`Observation ${momentTitle(n)||n.classroom||""} ${iso(new Date(n.at||Date.now()))}`);return true}
   if(kind==="story"){const st=stories.get(t.dataset.id);if(st)await (word?storyDocx:storyPdf)(st);return true}
   if(kind==="storysmall"){const st=stories.get(t.dataset.id);if(st)await (word?storySmallDocx:storySmallPdf)(st);return true}
@@ -19163,7 +19164,7 @@ async function rcMake(manual){
       const sig=rcSig(j.folder,base,docs);
       if(prev&&prev.sigs[pdf]===sig&&prev.sigs[doc]===sig){const got=await copy([pdf,doc]);if(got.has(pdf)&&got.has(doc)){sigs[pdf]=sigs[doc]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
       await rcIdle();
-      try{if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo")))await loadPhotos(docs,true)}catch(e){rcNow.skipped.push(pdf,doc);rcNow.done+=2;rcShow();clear();continue}
+      try{if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="evpath")))await loadPhotos(docs,true)}catch(e){rcNow.skipped.push(pdf,doc);rcNow.done+=2;rcShow();clear();continue}
       await put(j.folder,base+".pdf",have.has(pdf)?null:await makePdf(docs,base+".pdf","quiet").catch(()=>null),sig);
       await rcIdle();
       await put(j.folder,base+".docx",have.has(doc)?null:await makeDocx(docs,base+".docx","quiet").catch(()=>null),sig);
