@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="e900614d9a7c";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="95a8547b46d2";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5473,6 +5473,7 @@ function todayWaiting(){
   // Farm to School pieces that are ready for the director, each opening the card on the Farm to School page
   out.push(...bagWaiting());
   out.push(...iqAskWaiting());
+  out.push(...iqFollowWaiting());
   if(dir){const b=binCurrent(),bn=binNoteRec(b);if(bn&&bn.status==="draft")out.push({dot:"sky",t:"This week's bin note is ready",s:firstLine(bn.text,120),act:`data-tview="grant" data-gopen="made"`,b:"Read it"});
     const day=new Date().getDate(),pm=mShift(mNow(),-1);if(day<=10&&!farmPostMade(pm)&&farmOfMonth(pm).best)out.push({dot:"sky",t:"Farm of the month post",s:`${farmOfMonth(pm).best.farm}, for ${parseIso(pm+"-01").toLocaleDateString("en-US",{month:"long"})}.`,act:`data-gfom="${pm}"`,b:"Start it"});
     const qd=Math.floor((Date.now()-parseIso(quarterRange(quarterOf(iso(new Date()))).from).getTime())/864e5),lq=lastQuarter();
@@ -13374,6 +13375,22 @@ const iqLet=(x,cid)=>((x.letters||{})[cid])||{};
 const iqFam=(x,cid)=>((x.famPlans||{})[cid])||null;
 function iqLetSet(x,cid,L){x.letters={...(x.letters||{}),[cid]:L}}
 function iqFor(x,cid){return Object.assign({},x,{kids:cid?[cid]:[],letter:iqLet(x,cid),famPlan:iqFam(x,cid)||{}})}
+/* Letters sent. Each letter emailed to a family is kept as it was sent, to read or print, and cannot be changed. Beside
+   it the team records what the family replied, and the director can set a day to follow up, which waits on Today until
+   a reply is recorded or a later letter is sent (November 17, 2026) */
+function iqSentHtml(x,cid){const S=[...(iqLet(x,cid).sent||[])].sort((a,b)=>(b.at||0)-(a.at||0));if(!S.length)return "";const c=children.get(cid)||{};
+  return `<div class="chiprow-label" style="margin-top:12px">Letters sent to ${esc(c.first||"the")}'s family</div>${S.map((z,i)=>`<details class="ref"${i===0&&!z.reply?" open":""}><summary><b>${shortDate(z.at)}</b>. ${esc(z.subject||"")}${z.plan?", with our plan":""}${z.reply?". The family replied":""}</summary>
+    <div style="white-space:pre-wrap;margin:8px 0;padding:10px;border:1px solid var(--line,#DCE3DA);border-radius:8px;background:#fff">${esc(z.body||"")}</div>
+    <div class="actions"><button class="linkbtn" data-print="iqsent" data-id="${esc(x.id)}" data-kid="${esc(cid)}" data-sent="${esc(z.id)}">Print this letter</button></div>
+    ${z.reply?`<div class="pdir"><b>The family replied, ${shortDate(z.reply.at)}</b><div style="white-space:pre-wrap">${esc(z.reply.text)}</div><div class="actions"><button class="linkbtn" data-iqreplydev="${esc(z.id)}">Copy into What we know about development</button><button class="linkbtn" data-iqreplyrm="${esc(z.id)}">Change the reply</button></div></div>`
+      :`<label class="fld-label">The family replied<textarea id="iqreply-${esc(z.id)}" rows="2" placeholder="What the family said, by email or in person"></textarea></label>
+        <div class="actions" style="align-items:center;flex-wrap:wrap"><button class="btn small" data-iqreplykeep="${esc(z.id)}">Keep the reply</button>${i===0?`<label class="cnt">Follow up on <input type="date" data-iqfollow="${esc(z.id)}" value="${esc(z.followUp||"")}" style="width:auto"></label>`:""}</div>`}</details>`).join("")}`}
+// a follow-up that is due. The newest letter to a family, with a follow-up day that has come and no reply recorded
+function iqFollowWaiting(){if(!isDirector()||VIEW_AS||isKitchenUser())return [];const today=iso(new Date()),due=[];
+  for(const x of inqAll()){if((x.status||"open")==="closed")continue;for(const [cid,L] of Object.entries(x.letters||{})){const S=[...((L&&L.sent)||[])].sort((a,b)=>(b.at||0)-(a.at||0)),z=S[0];const c=children.get(cid);
+    if(z&&c&&z.followUp&&z.followUp<=today&&!z.reply)due.push({x,c,z})}}
+  return due.map(({x,c,z})=>({dot:"sky",t:`Follow up with ${c.first}'s family`,s:`Our letter of ${shortDate(z.at)} has no reply recorded.`,act:`data-iqopen="${esc(x.id)}"`,b:"Open"}))}
+function iqSentFind(x,sid){for(const [cid,L] of Object.entries(x.letters||{})){const z=((L&&L.sent)||[]).find(v=>v.id===sid);if(z)return {cid,L,z}}return null}
 function iqLetterHtml(x0){if(!isDirector())return "";iqLetMove(x0);const cid=iqLetterCid(x0),x=iqFor(x0,cid),L=x.letter;const sends=L.sends||[];const ks=inqChildren(x);const all=(x0.kids||[]).map(id=>children.get(id)).filter(Boolean);
   if(!cid)return `<section class="card" id="iqletter"><div class="lbl">Share with the family</div><div class="cnt">Choose the child under Who this is about, and a letter to that child's family can be written here.</div></section>`;
   return `<section class="card" id="iqletter"><div class="lbl">Share with the family</div>
@@ -13390,8 +13407,9 @@ function iqLetterHtml(x0){if(!isDirector())return "";iqLetMove(x0);const cid=iqL
       <div class="actions"><button class="btn small ghost" data-print="iqfamplan" data-id="${esc(x.id)}">See the plan</button></div></div>`:""}
     <div class="actions" style="flex-wrap:wrap">${has(L.body)?"":`<button class="btn small ghost" data-iqletterstart="1">Start from the outline</button>`}
       <button class="btn small ghost" data-print="iqletter" data-id="${esc(x.id)}">Print for the family</button>
-      <button class="btn small ghost" data-iqlettermail="test">Send me a test</button><button class="btn small" data-iqlettermail="send">Email the family</button></div>
+      ${(L.sent||[]).length?`<button class="btn small ghost" data-iqfollowup="1">Write a follow-up</button>`:""}<button class="btn small ghost" data-iqlettermail="test">Send me a test</button><button class="btn small" data-iqlettermail="send">Email the family</button></div>
     <div id="iqletter-msg"></div>
+    ${iqSentHtml(x0,cid)}
     ${sends.length?`<div class="cnt">${sends.slice(-3).reverse().map(z=>`${z.test?"Test sent":"Sent to the family"} ${shortDate(z.at)}${z.test?"":`, ${z.count} ${z.count===1?"address":"addresses"} with the classroom inbox`}`).join(". ")}.</div>`:""}</section>`}
 /* Confidentiality in what goes to a family. A letter and its plan are about one child and go to that child's family
    alone. They never name another child, so a family is not told who their child was hurt by or who their child hurt.
@@ -13414,7 +13432,9 @@ async function iqLetterSend(x0,test){const cid=iqLetterCid(x0),x=iqFor(x0,cid),L
   let attach=null;if(L.attach){try{const blob=await makePdf([iqFamPlanDoc(x)],"plan","quiet");const data=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
     attach={name:safeFile("Our plan together "+inqChildren(x).map(c=>c.first).join(" and "))+".pdf",data}}catch(e){say(`<span class="nudge">The plan could not be made into a PDF, so nothing was sent.</span>`);return}}
   try{const r=await window.FP_API("/api/staff/inquiry/family-mail",{children:x.kids,subject:L.subject,html:iqLetterHtml_(x),text:L.body,testTo:test?LS.get("tree.nlme",""):"",attach});
-    iqLetSet(x0,cid,{...iqLet(x0,cid),sends:[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test,plan:!!attach,subject:L.subject}]});
+    iqLetSet(x0,cid,{...iqLet(x0,cid),sends:[...(L.sends||[]),{at:r.at||Date.now(),count:r.count,test:!!r.test,plan:!!attach,subject:L.subject}],
+      // a copy of the letter as the family received it, kept as it was sent (November 17, 2026)
+      sent:r.test?(L.sent||[]):[...(L.sent||[]),{id:uid(),at:r.at||Date.now(),subject:L.subject,body:L.body,plan:!!attach,count:r.count}]});
     if(!r.test&&has(L.body))x0.family=[...(x0.family||[]),{id:uid(),text:`Letter emailed to ${(children.get(cid)||{}).first||"the child"}'s family. `+L.subject,by:whoAmI(),at:Date.now()}];
     saveInquiry(x0);renderMain();toast(r.test?"Test sent to you.":"Sent to the family, with the classroom inbox copied.")}
   catch(e){say(`<span class="nudge">${esc(e.message||"It did not send.")}</span>`)}}
@@ -13455,6 +13475,13 @@ async function inquiriesClick(t){
   if(d.iqdrm){x.tried=(x.tried||[]).filter(o=>o.id!==d.iqdrm);saveInquiry(x);renderMain();return true}
   if(d.iqfam){const v=($("#iq-fam")?.value||"").trim();if(!v){toast("Write what was shared first.");return true}x.family=[...(x.family||[]),{id:uid(),text:v,conference:!!$("#iq-famconf")?.checked,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
   if(d.iqletterkid){iqLetterSel[x.id]=d.iqletterkid;renderMain();return true}
+  if(d.iqfollowup){if(!isDirector())return true;const cid=iqLetterCid(x),c=children.get(cid),L=iqLet(x,cid),last=[...(L.sent||[])].sort((a,b)=>(b.at||0)-(a.at||0))[0];if(!c||!last)return true;
+    if(has(L.body)&&L.body!==last.body&&!confirm("The letter in the box has not been sent. Write over it with a follow-up?"))return true;
+    iqLetSet(x,cid,{...L,attach:false,subject:"Following up on "+c.first,body:[iqDear(c),`We are writing to follow up on our letter of ${shortDate(last.at)}. Thank you for your partnership.`,"What we have seen since. ","What we would like to try next. ","Please reply to this email, or let us know a time that works for a conversation.","Warmly,\nRenee Whitlock-Hemsouvanh\nDirector"].join("\n\n")});saveInquiry(x);renderMain();toast("A follow-up is started. The earlier letter stays saved below.");return true}
+  if(d.iqreplykeep){const f=iqSentFind(x,d.iqreplykeep);const v=($("#iqreply-"+CSS.escape(d.iqreplykeep))?.value||"").trim();if(!f)return true;if(!v){toast("Write what the family said first.");return true}
+    f.z.reply={text:v,at:now,by};x.family=[...(x.family||[]),{id:uid(),text:`${(children.get(f.cid)||{}).first||"The child"}'s family replied to our letter. `+v,by,at:now}];saveInquiry(x);renderMain();toast("Kept with today's date.");return true}
+  if(d.iqreplyrm){const f=iqSentFind(x,d.iqreplyrm);if(f&&f.z.reply){const old=f.z.reply.text;delete f.z.reply;f.z.reply=null;saveInquiry(x);renderMain();const el=$("#iqreply-"+CSS.escape(d.iqreplyrm));if(el){el.value=old;el.focus()}}return true}
+  if(d.iqreplydev){const f=iqSentFind(x,d.iqreplydev);if(f&&f.z.reply){const line=`The family shared, ${shortDate(f.z.reply.at)}. ${f.z.reply.text}`;if(!String(x.devKnown||"").includes(f.z.reply.text)){x.devKnown=[x.devKnown,line].filter(has).join("\n");saveInquiry(x);renderMain();toast("Copied into What we know about development.")}else toast("It is already there.")}return true}
   if(d.iqletterstart){if(!isDirector())return true;const cid=iqLetterCid(x),c=children.get(cid);if(!c)return true;const L=iqLet(x,cid);iqLetSet(x,cid,{...L,body:iqLetterOutline(iqFor(x,cid)),subject:L.subject||("Supporting "+c.first+" at school and at home")});saveInquiry(x);renderMain();return true}
   if(d.iqlettermail){if(!isDirector())return true;iqLetterSend(x,d.iqlettermail==="test");return true}
   if(d.iqkidrm){if(!iqCan())return true;x.kids=(x.kids||[]).filter(id=>id!==d.iqkidrm);x.kidsSet="team";saveInquiry(x);renderMain();return true}
@@ -13488,6 +13515,7 @@ document.addEventListener("change",e=>{const t=e.target;if(view!=="inquiries")re
   if(d.iqf&&t.type==="date"){x.lookAgain=t.value;saveInquiry(x);return}
   if(d.iqstatus){x.status=t.value;saveInquiry(x);renderMain();return}
   if(d.iqroomset!=null){x.room=t.value;saveInquiry(x);renderMain();return}
+  if(d.iqfollow){if(!isDirector())return;const f=iqSentFind(x,d.iqfollow);if(f){f.z.followUp=t.value||"";saveInquiry(x);toast(t.value?"It will show on Today on that day.":"Cleared.")}return}
   if(d.iqattach!=null){if(!isDirector())return;const cid=iqLetterCid(x);if(!cid)return;iqLetSet(x,cid,{...iqLet(x,cid),attach:t.checked});if(t.checked&&!iqFam(x,cid))x.famPlans={...(x.famPlans||{}),[cid]:iqFamPlanStart(x)};saveInquiry(x);renderMain();return}
   if(d.iqdevasked!=null){x.devAsked=t.checked?Date.now():0;saveInquiry(x);renderMain();return}
   if(d.iqkidadd!=null){if(!t.value||!iqCan())return;x.kids=[...new Set([...(x.kids||[]),t.value])];x.kidsSet="team";saveInquiry(x);renderMain();return}
@@ -16380,6 +16408,7 @@ async function printsClick(t){
   if(kind==="grantq"){await out([grantDoc(t.dataset.id)],`Farm to School grant ${periodName(t.dataset.id)}`);return true}
   if(kind==="bin"){const b=binAll().find(x=>x.id===t.dataset.id);if(b)await out([binDoc(b,binRoomNow())],`Weekly bin ${binRoomNow()} ${b.date}`);return true}
   if(kind==="inquiry"){const x=inquiries.get(t.dataset.id);if(x)out(inquiryDocs(x,long),`Team inquiry ${x.name||""}`);return true}
+  if(kind==="iqsent"){const x0=inquiries.get(t.dataset.id),f=x0&&iqSentFind(x0,t.dataset.sent);if(f)out([iqLetterDoc(Object.assign({},x0,{kids:[f.cid],letter:{subject:f.z.subject,body:f.z.body}}))],`Letter to the family ${(children.get(f.cid)||{}).first||""} ${shortDate(f.z.at)}`);return true}
   if(kind==="iqfamplan"||kind==="iqletter"){const x0=inquiries.get(t.dataset.id);if(!x0)return true;const cid=iqLetterCid(x0),x=iqFor(x0,cid),nm=(children.get(cid)||{}).first||"";
     const o=iqLetterOthers(Object.assign({},x,{letter:Object.assign({},x.letter,{attach:true})}));if(o.length&&!confirm(`This names ${o.join(" and ")}. A family is not told which other child was involved. Print it anyway, for the team only?`))return true;
     if(kind==="iqfamplan")out([iqFamPlanDoc(x)],`Our plan together ${nm}`);else out([iqLetterDoc(x)],`Letter to the family ${nm}`);return true}
@@ -17927,7 +17956,8 @@ function kidInquiriesHtml(c){const L=inqAll().filter(x=>(x.kids||[]).includes(c.
   return `<section class="card" id="kidinq"><div class="secthead"><h3 style="font-size:17px">Team inquiries</h3><span class="cnt">For the team only</span></div>
     <div class="tlist">${L.map(x=>{const sent=((iqLet(x,c.id).sends)||((x.kids||[]).length===1&&x.letter&&x.letter.sends)||[]).filter(z=>!z.test);return `<div class="ref"><div class="actions" style="justify-content:space-between"><b>${esc(x.name||"A team inquiry")}</b><button class="btn small ghost" data-iqopen="${esc(x.id)}">Open</button></div>
       <div class="cnt">${esc(ISTATUS[x.status]||"Open")}. Started ${shortDate(x.createdAt)}.${x.lookAgain?` We look again on ${esc(fmtDate(x.lookAgain))}.`:""}</div>
-      ${sent.map(z=>`<div class="cnt">Letter emailed to the family ${shortDate(z.at)}${z.plan?", with our plan attached":""}.</div>`).join("")}</div>`}).join("")}</div></section>`}
+      ${sent.map(z=>`<div class="cnt">Letter emailed to the family ${shortDate(z.at)}${z.plan?", with our plan attached":""}.</div>`).join("")}
+      ${isDirector()?(iqLet(x,c.id).sent||[]).map(z=>`<div class="actions"><span class="cnt">${esc(z.subject||"Letter")}, ${shortDate(z.at)}${z.reply?". The family replied "+shortDate(z.reply.at):""}</span><button class="linkbtn" data-print="iqsent" data-id="${esc(x.id)}" data-kid="${esc(c.id)}" data-sent="${esc(z.id)}">Print</button></div>`).join(""):""}</div>`}).join("")}</div></section>`}
 function kidMomentRow(c,n){const open=kidOpenMoment===n.id;
   return `<div class="kmwrap">${kidMomentRow0(c,n,open)}${pfToggle(c,"notices",n.id,kidTagged(c,n))}</div>`}
 function kidMomentRow0(c,n,open){

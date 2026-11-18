@@ -62,5 +62,11 @@ test('an inquiry shows, prints and reads the team notes of its threads', async t
     iqLetSet(x, ks[0].id, { subject: 'A', body: 'About ' + ks[0].first + ' and a peer.' }); iqLetSet(x, ks[1].id, { subject: 'B', body: ks[1].first + ' and ' + ks[0].first + '.' });
     return [iqFor(x, ks[0].id).letter.subject, iqFor(x, ks[1].id).letter.subject, iqLetterStop(iqFor(x, ks[0].id)) === '', iqLetterOthers(iqFor(x, ks[1].id)).includes(ks[0].first)]; });
   if (per) assert.deepStrictEqual(per, ['A', 'B', true, true]);
+  // a sent letter is kept as sent, a follow-up day waits on Today, and a recorded reply clears it
+  const fol = await s.p.evaluate(() => { const c = [...children.values()].filter(k => k.first)[0]; if (!c) return null; const x = inquiries.get('q1'); x.status = 'open'; x.kids = [c.id];
+    iqLetSet(x, c.id, { subject: 'S', body: 'Changed later', sent: [{ id: 'z1', at: Date.now() - 864e5, subject: 'S', body: 'As sent', followUp: '2026-01-01' }] });
+    const a = iqFollowWaiting().length, html = iqSentHtml(x, c.id); iqSentFind(x, 'z1').z.reply = { text: 'Thank you', at: Date.now() };
+    return [a, /As sent/.test(html) && !/Changed later/.test(html), iqFollowWaiting().length]; });
+  if (fol) assert.deepStrictEqual(fol, [1, true, 0]);
   assert.deepStrictEqual(s.errors, []);
 });
