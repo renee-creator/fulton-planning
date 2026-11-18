@@ -4538,12 +4538,17 @@ function portfolioDrdpDoc(c,mode,view){
   const latest={};for(const x of done){const t=x.src?.at||x.at||0,cur=latest[x.code];const r=drdpRank(v,x.code,x.level),rc=cur?drdpRank(v,x.code,cur.level):-1;if(!cur||r>rc||(r===rc&&t>(cur.src?.at||cur.at||0)))latest[x.code]=x}
   const blocks=[dText("About this page",`Each level is read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View.`)];
   const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
+  // every measure and its level at a glance, by domain, before the evidence (November 17, 2026)
+  {const rows=[];for(const dm of doms)for(const k of Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]))rows.push([drdpName(k),drdpLevelText(latest[k].level,latest[k].emerging)]);
+    if(rows.length>1)blocks.push(dTable("At a glance",rows,{head:["Measure","Level seen"],widths:[.66,.34],bold0:true}))}
   for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
     blocks.push(dSub(DRDP_DOM[dm]||dm));
     for(const k of codes){const x=latest[k];const mean=drdpLevelDesc(v,k,x.level);const seen=forPrint(focusText(x.evidence||"",c));
       // the observation itself, its photo and its words, beside the level it shows
       const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const ph=ob?(momentPhotos(ob)||[])[0]:null;
-      blocks.push(dItem(drdpName(k),[mean?`${x.level} means ${mean}.`:"",seen?"What was seen. "+seen:""].filter(Boolean).join(" "),[x.src?`From ${focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",x.reviewedBy?`${x.status==="changed"?"Changed":"Accepted"} by ${x.reviewedBy}`:""].filter(Boolean).join(". "),[drdpLevelText(x.level,x.emerging)]));
+      /* one measure prints as one block that stays on one sheet, its photo at the left, the level's meaning and what we
+         saw each under its own label, and the observation in an outlined box beneath (parts and evid, read by the sheet) */
+      blocks.push(Object.assign(dItem(drdpName(k),[mean?`${x.level} means ${mean}.`:"",seen?"What was seen. "+seen:""].filter(Boolean).join(" "),[x.src?`From ${focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",x.reviewedBy?`${x.status==="changed"?"Changed":"Accepted"} by ${x.reviewedBy}`:""].filter(Boolean).join(". "),[drdpLevelText(x.level,x.emerging)]),{evid:true,parts:[mean?["What this level means",mean.replace(/[.\s]*$/,".")]:null,seen?["What we saw",seen]:null].filter(Boolean)}));
       if(ph)blocks.push(Object.assign({t:"photo",maxH:170,full:false},ph));
       const words=ob?forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)):"";if(words)blocks.push({t:"text",label:"The observation",text:sentCut(words,420)});
       // every level of the measure stays on screen under each measure, and the printed page keeps only the level seen (November 6, 2026)
@@ -14471,6 +14476,26 @@ function displayAtoms(doc,p,A,s){
         if(has(credit)){const bl=wrap(credit,"fr",Z.small,QW).slice(0,2);bl.forEach((l,k)=>push({h:Z.slh+(k===bl.length-1?3:0),keep:k<bl.length-1,draw(y){if(chain&&!last){doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.line(lx,y,lx,y+Z.slh+3)}pfont(doc,"fr",Z.small);doc.setTextColor(...D_MUTED);doc.text(l,QX,y+Z.small*1.02)}}))}
         if(!last)push({h:12*s,draw(y){doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.line(lx,y,lx,y+12*s)}})});
       gap(5)}
+    // a piece of evidence as one block that never splits, with the photo and the observation that follow it drawn inside
+    else if(b.t==="item"&&b.evid){const pb=B[bi+1]&&B[bi+1].t==="photo"?B[++bi]:null;const ob=B[bi+1]&&B[bi+1].t==="text"&&B[bi+1].label==="The observation"?B[++bi]:null;
+      const im=pb?photoCache.get(pb.key):null;const sd=(b.side||[]).filter(has);const pad=9*s,bz=Z.body*.96,blh=Z.blh*.94,oz=10.4*s,olh=14.4*s;
+      let pw=0,ph=0;if(im){pw=150*s;ph=pw*im.h/im.w;const mh=170*s;if(ph>mh){ph=mh;pw=ph*im.w/im.h}}
+      const tx=m+(im?pw+14*s:0),tw=w-(im?pw+14*s:0);pfont(doc,"fs",Z.small);const tagW=sd.length?doc.getTextWidth(clean(sd[0]))+10:0;
+      const tl=wrap(b.title,"bs",Z.item,w-tagW-8);const P=(b.parts||[]).map(([lab,t])=>({lab,ls:wrap(t,"fr",bz,tw)}));
+      const by=[b.by,...sd.slice(1)].filter(has).join("  ·  ");const byl=has(by)?wrap(by,"fr",Z.small,tw).slice(0,3):[];
+      const textH=P.reduce((t,x)=>t+Z.slh+x.ls.length*blh+5*s,0)+(byl.length?byl.length*Z.slh+2*s:0);
+      const ol=ob?wrap(ob.text,"fr",oz,w-pad*2):[];const obH=ol.length?pad*2+Z.slh+ol.length*olh:0;
+      const headH=tl.length*Z.ilh+5*s,midH=Math.max(ph,textH),h=10*s+headH+midH+(obH?9*s+obH:0)+6*s;
+      gap(D_TIGHT?8:10);push({h,draw(y){doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,y,m+w,y);let yy=y+10*s;
+        pfont(doc,"bs",Z.item);doc.setTextColor(...D_INK);tl.forEach((l,i)=>doc.text(l,m,yy+base(Z.ilh,Z.item)+i*Z.ilh));
+        if(sd.length){pfont(doc,"fs",Z.small);doc.setTextColor(...AT);doc.text(clean(sd[0]),m+w,yy+base(Z.ilh,Z.item),{align:"right"})}
+        yy+=headH;if(im)doc.addImage(im.url,"JPEG",m,yy,pw,ph,undefined,"FAST");let ty=yy;
+        for(const x of P){pfont(doc,"fs",Z.small);doc.setTextColor(...AT);doc.text(clean(x.lab),tx,ty+Z.small*1.02);ty+=Z.slh;
+          pfont(doc,"fr",bz);doc.setTextColor(...D_INK);x.ls.forEach((l,i)=>doc.text(l,tx,ty+base(blh,bz)+i*blh));ty+=x.ls.length*blh+5*s}
+        if(byl.length){pfont(doc,"fr",Z.small);doc.setTextColor(...D_MUTED);byl.forEach((l,i)=>doc.text(l,tx,ty+2*s+Z.small*1.02+i*Z.slh))}
+        if(obH){const oy=yy+midH+9*s;doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.roundedRect(m,oy,w,obH,4,4);
+          pfont(doc,"fs",Z.small);doc.setTextColor(...AT);doc.text("The observation",m+pad,oy+pad+Z.small*.9);
+          pfont(doc,"fr",oz);doc.setTextColor(...D_INK);ol.forEach((l,i)=>doc.text(l,m+pad,oy+pad+Z.slh+base(olh,oz)+i*olh))}}});gap(4)}
     else if(b.t==="item"){hair();const i0=atoms.length;const sd=(b.side||[]).filter(has);
       if(sd.length)lines(wrap(sd[0],"fs",Z.small,cw),"fs",Z.small,Z.slh,cx,AT,true);
       lines(wrap(b.title,"bs",Z.item,cw),"bs",Z.item,Z.ilh,cx,D_INK,true);
