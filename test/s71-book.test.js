@@ -138,3 +138,22 @@ test('a year is drafted from the educators’ words, checked, changed, read and 
   assert.strictEqual(rec(fx, 'books/pip.json').readBy.name, 'Ann');
   assert.deepStrictEqual(s.errors, []); assert.deepStrictEqual(a.errors, []);
 });
+
+test('a full year is drafted in two parts, and a part cut off is halved and asked again', async t => {
+  const b = await browser(); if (!b) { t.skip('Playwright is not installed here'); return; }
+  const months = [[Y, 8], [Y, 9], [Y, 10], [Y, 11], [Y, 12], [Y + 1, 1], [Y + 1, 2], [Y + 1, 3]];
+  const fx = await start({ more: put => { put('children/pip.json', { first: 'Pip', last: 'Test', classroom: 'West', status: 'active', dob: (Y - 4) + '-03-01' });
+    months.forEach(([y, m], i) => put(`notices/f${i}.json`, { id: 'f' + i, by: 'Ann', at: new Date(y, m - 1, 9, 10).getTime(), classroom: 'West', children: ['pip'], noticed: 'Pip dug in the sand on day ' + i + '.' })); } });
+  t.after(() => fx.stop());
+  const br = await b.launch(); t.after(() => br.close());
+  const s = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => s.close());
+  await s.p.evaluate(() => window.TREE_OPEN_KID('pip', 'book')); await s.p.waitForSelector('[data-bkyear]', { timeout: 15000 }); await s.p.waitForFunction(() => BK.mom.has('pip'));
+  // an answer with more than three months is cut off, and March never comes back
+  await s.p.evaluate(() => { window.asks = []; sample.json = async text => { const labs = [...text.matchAll(/^(E\d+), (\w+) \d+, (\d{4})/gm)].map(m => [m[1], m[3] + '-' + String(BK_MONTHS.indexOf(m[2]) + 1).padStart(2, '0')]);
+    const ms = [...new Set(labs.map(x => x[1]))]; window.asks.push(ms.length); if (ms.length > 3) throw { code: 'truncated' }; if (ms.some(m => m.endsWith('-03'))) throw { code: 'unavailable' };
+    return { months: labs.map(([l, ym]) => ({ ym, title: 'Sand', body: 'Pip dug in the sand.', quote: '', see: '', entries: [l], photos: [] })) }; }; });
+  await s.p.click('[data-bkyear]'); await s.p.waitForFunction(() => !BK.busy && (books.get('pip') || { pages: [] }).pages.length > 0, null, { timeout: 30000 });
+  const got = await s.p.evaluate(() => ({ asks: window.asks, pages: books.get('pip').pages.map(p => p.ym.slice(5)) }));
+  assert.deepStrictEqual(got.asks, [5, 3, 2, 3], 'August to December is cut off and halved, and January to March is asked once');
+  assert.deepStrictEqual(got.pages, ['08', '09', '10', '11', '12'], 'the pages that came back are kept when another part fails');
+});

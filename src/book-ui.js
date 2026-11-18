@@ -107,18 +107,31 @@ function bkPageFrom(c,m,E,P){const ym=String(m&&m.ym||"");if(!/^\d{4}-\d\d$/.tes
   if(quote){const q=bkNorm(quote);const from=src.find(e=>bkNorm(e.words).includes(q));if(from&&q.length>1)qat=from.at;else quote=""}
   return {id:"p"+ym+"-"+Math.random().toString(36).slice(2,7),ym,year:bkYearOf(ym),room:src[0].room||"",title:classCase(bkClean(String(m.title||"").replace(/\s*:\s+/g,", ")).replace(/[:.]+$/,"")),body,quote,quoteOk:!!quote,qat,see:bkClean(m.see).replace(/\n+/g," "),photos,sources:src.map(e=>e.k),
     others:[...new Set((Array.isArray(m.others)?m.others:[]).map(l=>E.get(String(l).trim())).filter(e=>e&&e.ym===ym&&!src.includes(e)).map(e=>e.k))].slice(0,2),edited:false,hidden:false}}
+/* a year's month pages. The book is one page for a month whatever is written, but a full year is about twelve pages,
+   more than one answer has room for, so a year with more than six months of writing is drafted in two parts, August to
+   December and January to July. A part whose answer is still cut off is halved by its months and asked again. Pages
+   from the parts that came back are kept, and the months that did not are named (November 17, 2026). */
 async function bkDraftYear(c,year){
   if(!sample){toast("Drafting is not available here. Open TREE and sign in.");return}
   const yr=bkYears(c).find(y=>y.year===year);if(!yr||!yr.entries.length){toast("Nothing is written for that year yet.");return}
   const b=bkBook(c);const keep=new Set(b.pages.filter(p=>p.year===year&&p.edited).map(p=>p.ym));
   BK.busy="y:"+year;renderMain();
-  try{const {text,E,P}=bkPrompt(c,yr,yr.entries);
-    const out=await sample.json(text,{modelTier:"complex",cache:false,purpose:"book"});
-    const made=[];const seen=new Set();for(const m of Array.isArray(out?.months)?out.months:[]){const p=bkPageFrom(c,m,E,P);if(!p||p.year!==year||seen.has(p.ym)||keep.has(p.ym))continue;seen.add(p.ym);made.push(p)}
-    if(!made.length){toast("No pages came back. Try again in a moment.");return}
-    const cur=bkBook(c);cur.pages=[...cur.pages.filter(p=>p.year!==year||p.edited),...made].sort((a,b)=>a.ym<b.ym?-1:a.ym>b.ym?1:0);
+  const made=[],seen=new Set(),failed=[];let lastErr=null;
+  const monthsOf=ents=>[...new Set(ents.map(e=>e.ym))].sort();
+  const part=async ents=>{const ms=monthsOf(ents);
+    try{const {text,E,P}=bkPrompt(c,yr,ents);const out=await sample.json(text,{modelTier:"complex",cache:false,purpose:"book"});
+      for(const m of Array.isArray(out?.months)?out.months:[]){const pg=bkPageFrom(c,m,E,P);if(!pg||pg.year!==year||seen.has(pg.ym)||keep.has(pg.ym))continue;seen.add(pg.ym);made.push(pg)}
+    }catch(err){
+      if(err&&(err.code==="truncated"||err.code==="prompt_too_large")&&ms.length>1){const cut=ms[Math.ceil(ms.length/2)];await part(ents.filter(e=>e.ym<cut));await part(ents.filter(e=>e.ym>=cut));return}
+      lastErr=err;failed.push(...ms)}};
+  try{const ms=monthsOf(yr.entries);
+    if(ms.length>6){const jan=(+year.slice(0,4)+1)+"-01";const a=yr.entries.filter(e=>e.ym<jan),z=yr.entries.filter(e=>e.ym>=jan);if(a.length)await part(a);if(z.length)await part(z)}
+    else await part(yr.entries);
+    if(!made.length){toast(lastErr?assistError(lastErr,"Nothing was changed."):"No pages came back. Try again in a moment.");return}
+    // a month that came back takes the place of its page. A month that did not keeps the page it had.
+    const cur=bkBook(c);const lost=new Set(failed);cur.pages=[...cur.pages.filter(p=>p.year!==year||p.edited||lost.has(p.ym)),...made].sort((a,b)=>a.ym<b.ym?-1:a.ym>b.ym?1:0);
     cur.draftedAt=Object.assign({},cur.draftedAt,{[year]:Date.now()});bkTouched(cur);bkSave(cur);
-    toast(`${made.length} page${made.length===1?"":"s"} drafted for ${yearLabel(year)}. Read each one as someone who knows ${c.first}.`);
+    toast(`${made.length} page${made.length===1?"":"s"} drafted for ${yearLabel(year)}.${failed.length?` ${failed.map(bkYmLabel).join(", ")} did not come back. Use No page yet under the year for ${failed.length>1?"those months":"that month"}.`:` Read each one as someone who knows ${c.first}.`}`);
   }catch(err){toast(assistError(err||"unknown","Nothing was changed."))}
   finally{BK.busy="";if(view==="child"&&kidTab==="book")renderMain()}
 }
