@@ -59,3 +59,14 @@ test('the PD library shows the Resource shelf above the Readings', () => {
   assert.match(s, /TreeGrowth\.shelfHtml\(\):""\)\+\(window\.TreeGrowth&&TreeGrowth\.readingsHtml/);
   assert.ok(fs.readFileSync(path.join(ROOT, 'tree-staff.js'), 'utf8').includes('Resource shelf'), 'the built file holds the shelf');
 });
+
+test('no hanging words, a line never holds one word by itself when the word above can join it', () => {
+  const ctx = { window: {} }; ctx.window = ctx; require('vm').runInNewContext(fs.readFileSync(path.join(ROOT, 'print-kit.js'), 'utf8'), ctx);
+  const fits = s => s.length <= 16;
+  assert.deepStrictEqual(ctx.TREE_KIT.noHang(['Weight, full and', 'empty, and how', 'much.'], fits), ['Weight, full and', 'empty, and', 'how much.']);
+  assert.deepStrictEqual(ctx.TREE_KIT.noHang(['Seeing from new', 'angles', '(orientation)'], fits), ['Seeing from', 'new angles', '(orientation)']);
+  assert.deepStrictEqual(ctx.TREE_KIT.noHang(['one', 'two'], fits), ['one', 'two']);
+  const app = fs.readFileSync(path.join(ROOT, 'src', 'app.html'), 'utf8');
+  assert.match(app, /per=n<=3\?n:n<=6\?Math\.ceil\(n\/2\):3/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'print-kit.js'), 'utf8'), /html\{text-wrap:pretty\}/);
+});

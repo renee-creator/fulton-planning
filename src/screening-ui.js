@@ -287,7 +287,7 @@ async function scrFill(doc,pages,F,x,cp,c){const H=F.size[1];const font=await do
   const dot=(n,pt,r)=>pt&&pg(n).drawCircle({x:pt[0],y:H-pt[1],size:r||4.2,color:ink});
   const tick=(n,pt)=>{if(!pt)return;const [x0,y0]=pt;const p=pg(n);p.drawLine({start:{x:x0-3.2,y:H-y0},end:{x:x0-.8,y:H-y0-2.8},thickness:1.4,color:ink});p.drawLine({start:{x:x0-.8,y:H-y0-2.8},end:{x:x0+4,y:H-y0+4.2},thickness:1.4,color:ink})};
   const ring=(n,pt,w)=>pt&&pg(n).drawEllipse({x:pt[0],y:H-pt[1],xScale:w||10,yScale:6.5,borderColor:ink,borderWidth:1});
-  const wrapIn=(n,box,t,sz)=>{t=scrSan(t);if(!box||!t)return;sz=sz||9;const w=box[2]-box[0]-14;const lines=[];let line="";for(const wd of t.split(/\s+/)){const tt=line?line+" "+wd:wd;if(font.widthOfTextAtSize(tt,sz)<=w)line=tt;else{if(line)lines.push(line);line=wd}}if(line)lines.push(line);
+  const wrapIn=(n,box,t,sz)=>{t=scrSan(t);if(!box||!t)return;sz=sz||9;const w=box[2]-box[0]-14;const lines=[];let line="";for(const wd of t.split(/\s+/)){const tt=line?line+" "+wd:wd;if(font.widthOfTextAtSize(tt,sz)<=w)line=tt;else{if(line)lines.push(line);line=wd}}if(line)lines.push(line);if(window.TREE_KIT&&TREE_KIT.noHang){const nl=TREE_KIT.noHang(lines,x=>font.widthOfTextAtSize(x,sz)<=w);lines.splice(0,lines.length,...nl)}
     const max=Math.max(1,Math.floor((box[3]-box[1]-8)/(sz+2)));lines.slice(0,max).forEach((l,i)=>pg(n).drawText(l,{x:box[0]+7,y:H-(box[1]+6+sz+i*(sz+2)),size:sz,font,color:ink}))};
   const onLines=(n,lns,t,sz)=>{t=scrSan(t);if(!lns||!lns.length||!t)return;sz=sz||9;let rest=t.split(/\s+/);for(const l of lns){const w=(l[2]||560)-l[0]-6;let line="";while(rest.length){const tt=line?line+" "+rest[0]:rest[0];if(font.widthOfTextAtSize(tt,sz)>w&&line)break;line=tt;rest.shift()}if(line)pg(n).drawText(line,{x:l[0],y:H-l[1],size:sz,font,color:ink});if(!rest.length)break}};
   const cv=F.cover||{};const S=F.summary||{};const prog="Fulton Community School";const full=[c.first,c.last].filter(Boolean).join(" ");const dob=scrMdy(c.dob);
@@ -326,7 +326,7 @@ async function scrComparePage(out,F,x,c){const f=await out.embedFont(PDFLib.Stan
   const ink=PDFLib.rgb(.1,.13,.11),gray=PDFLib.rgb(.42,.44,.42),line=PDFLib.rgb(.8,.8,.78),tint={below:PDFLib.rgb(.93,.9,.9),close:PDFLib.rgb(.95,.94,.9),above:PDFLib.rgb(.94,.96,.94),unscored:PDFLib.rgb(.96,.96,.96)};
   const M=54,W=504;let p=out.addPage([612,792]),y=742;
   const tx=(t,x0,yy,sz,fo,col)=>p.drawText(scrSan(t),{x:x0,y:yy,size:sz,font:fo||f,color:col||ink});
-  const wrap=(t,sz,w,fo)=>{const ls=[];let l="";for(const wd of scrSan(t).split(/\s+/).filter(Boolean)){const tt=l?l+" "+wd:wd;if((fo||f).widthOfTextAtSize(tt,sz)<=w)l=tt;else{if(l)ls.push(l);l=wd}}if(l)ls.push(l);return ls};
+  const wrap=(t,sz,w,fo)=>{const ls=[];let l="";for(const wd of scrSan(t).split(/\s+/).filter(Boolean)){const tt=l?l+" "+wd:wd;if((fo||f).widthOfTextAtSize(tt,sz)<=w)l=tt;else{if(l)ls.push(l);l=wd}}if(l)ls.push(l);return window.TREE_KIT&&TREE_KIT.noHang?TREE_KIT.noHang(ls,x=>(fo||f).widthOfTextAtSize(x,sz)<=w):ls};
   const room=n=>{if(y-n<70){p=out.addPage([612,792]);y=742}};
   const E=x.copies.educator,Fm=x.copies.family,se=F.tool==="asqse2";const sE=scrScore(F,E),sF=scrScore(F,Fm);
   tx("Fulton Community School",M,y,10,b,gray);y-=22;tx(`${SCR_NAME[F.tool]} ${F.months} month questionnaire, side by side`,M,y,16,b);y-=20;

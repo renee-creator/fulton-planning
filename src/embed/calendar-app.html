@@ -293,7 +293,7 @@ details.how ol{margin:8px 0 0;padding-left:20px;display:grid;gap:4px}
   .sprow,.calcard{padding:12px}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
-</style>
+html{text-wrap:pretty}h1,h2,h3,h4,h5,summary,button{text-wrap:balance}</style>
 
 <div id="gate" hidden>
   <form class="card" id="gate-form" autocomplete="off">
@@ -771,7 +771,7 @@ function printCal(){
   const body=days.map(d=>{const v=idx.get(d)||{allDay:[],timed:[]};const rows=v.allDay.concat(v.timed.slice().sort((a,b)=>a.start-b.start));
     return rows.length?`<section><h3>${esc(fmt(d,{weekday:"long",month:"long",day:"numeric"}))}</h3><table>${rows.map(line).join("")}</table></section>`:""}).filter(Boolean).join("");
   const w=window.open("","_blank");if(!w){toast("Allow pop-ups for TREE to print the calendar.");return}
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(titleText())}</title><style>body{font-family:system-ui,sans-serif;color:#222;margin:28px}h2{text-align:center;font-weight:600;margin:0 0 18px}section{break-inside:avoid;margin:0 0 12px}h3{font-size:14px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:2px}table{width:100%;border-collapse:collapse;font-size:13px}td{padding:2px 6px;vertical-align:top}td.t{width:120px;color:#555;white-space:nowrap}@page{margin:14mm}</style></head><body><h2>${esc(titleText())}</h2>${body||"<p>Nothing scheduled.</p>"}</body></html>`);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(titleText())}</title><style>body{font-family:system-ui,sans-serif;color:#222;margin:28px}h2{text-align:center;font-weight:600;margin:0 0 18px}section{break-inside:avoid;margin:0 0 12px}h3{font-size:14px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:2px}table{width:100%;border-collapse:collapse;font-size:13px}td{padding:2px 6px;vertical-align:top}td.t{width:120px;color:#555;white-space:nowrap}@page{margin:14mm}html{text-wrap:pretty}h1,h2,h3,h4,h5,summary,button{text-wrap:balance}</style></head><body><h2>${esc(titleText())}</h2>${body||"<p>Nothing scheduled.</p>"}</body></html>`);
   w.document.close();w.focus();setTimeout(()=>w.print(),300)}
 function render(){
   $("title").textContent=titleText();

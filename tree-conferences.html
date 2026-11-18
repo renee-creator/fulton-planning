@@ -1525,11 +1525,11 @@ async function buildFormsPdf(items){
   const clean=s=>printFull(s).replace(/\r/g,"").replace(/\t/g," ").replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/\s*[\u2013\u2014]\s*/g,", ").split("").map(ch=>ch==="\n"||charset.has(ch.codePointAt(0))?ch:"?").join("");
   const INK=rgb(.13,.16,.14), GRAY=rgb(.36,.4,.37), LINE=rgb(.6,.65,.62), GREEN=rgb(.894,.925,.902), GOLD=rgb(.79,.59,.16), CREAM=rgb(.992,.953,.847);
   const W=612,H=792,M=36,TW=W-2*M;
-  const wrap=(text,font,size,width)=>{ const out=[]; for(const para of clean(text).split("\n")){ if(!para.trim()){ out.push(""); continue; } let line="";
+  const wrap=(text,font,size,width)=>{ const all=[]; for(const para of clean(text).split("\n")){ const out=[]; if(!para.trim()){ all.push(""); continue; } let line="";
       for(let word of para.split(/\s+/).filter(Boolean)){ while(font.widthOfTextAtSize(word,size)>width){ let k=word.length-1; while(k>1&&font.widthOfTextAtSize(word.slice(0,k),size)>width) k--; if(line){ out.push(line); line=""; } out.push(word.slice(0,k)); word=word.slice(k); }
         const t=line? line+" "+word : word; if(font.widthOfTextAtSize(t,size)<=width) line=t; else { out.push(line); line=word; } }
-      out.push(line); }
-    while(out.length&&out[out.length-1]==="") out.pop(); return out; };
+      out.push(line); all.push(...(window.TREE_KIT&&TREE_KIT.noHang?TREE_KIT.noHang(out,t=>font.widthOfTextAtSize(t,size)<=width):out)); }
+    while(all.length&&all[all.length-1]==="") all.pop(); return all; };
   const lines=(pg,ls,x,y,font,size,color=INK,lh=1.2)=>{ ls.forEach((l,n)=>pg.drawText(l,{x,y:y-size-(n*size*lh),size,font,color})); return ls.length*size*lh; };
   const fit=(pg,text,x,top,w,h,max=9.5,min=5.5)=>{ if(!String(text||"").trim()) return; let size=max, ls;
     for(;size>=min;size=+(size-.5).toFixed(1)){ ls=wrap(text,F.r,size,w); if(ls.length*size*1.2<=h) break; }

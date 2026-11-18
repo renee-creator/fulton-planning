@@ -335,6 +335,55 @@
     return new Blob([await out.save()], { type: 'application/pdf' });
   }
 
-  root.TREE_KIT = { LIB, SIZES, PF, loadScript, fonts, pdfFonts, wordFonts, pdf, word, wordFile, wordBlob, pdfLib, pdfjs, readPdf, pageImage, readDocx, placeSheet, childHeight,
+  /* No hanging words, in any output. A line never holds one word by itself, at the end of a paragraph or in its middle.
+     When it would, the last word of the line above moves down to join it, as long as the two still fit the width. Every PDF wrap through
+     jsPDF's splitTextToSize passes through here, and the hand-made wraps in TREE call noHang the same way. On screens,
+     the browser's own balancing does the same work (text-wrap pretty). */
+  function noHang(lines, fits) {
+    if (!Array.isArray(lines) || lines.length < 2) return lines;
+    const out = lines.slice();
+    // from the last line up, a line holding one word takes the last word of the line above, when both still fit
+    for (let i = out.length - 1; i > 0; i--) {
+      const one = String(out[i]).trim();
+      if (!one || /\s/.test(one)) continue;
+      const prev = String(out[i - 1]).trim().split(/\s+/);
+      if (prev.length < 2) continue;
+      const moved = prev[prev.length - 1] + ' ' + one;
+      if (!fits(moved)) continue;
+      out[i - 1] = prev.slice(0, -1).join(' '); out[i] = moved;
+    }
+    return out;
+  }
+  function keepWords(j) {
+    try {
+      const A = j && j.jsPDF && j.jsPDF.API;
+      if (!A || A.__treeNoHang || typeof A.splitTextToSize !== 'function') return;
+      const orig = A.splitTextToSize;
+      A.splitTextToSize = function (text, max, opt) {
+        const doc = this, fs = (opt && opt.fontSize) || (doc.getFontSize ? doc.getFontSize() : 12);
+        const fits = t => doc.getStringUnitWidth(t) * fs / doc.internal.scaleFactor <= max + 0.01;
+        const one = t => noHang(orig.call(doc, t, max, opt), fits);
+        if (Array.isArray(text)) return [].concat(...text.map(t => one(String(t))));
+        return [].concat(...String(text == null ? '' : text).split(/\r?\n/).map(one));
+      };
+      A.__treeNoHang = true;
+    } catch (e) {}
+  }
+  if (root.jspdf) keepWords(root.jspdf);
+  else {
+    // jsPDF loads after this file. Its loader sets window.jspdf first and fills it straight after, so the patch waits a tick
+    let held;
+    try { Object.defineProperty(root, 'jspdf', { configurable: true, enumerable: true, get() { return held; }, set(v) { held = v; Promise.resolve().then(() => keepWords(v)); setTimeout(() => keepWords(v), 0); } }); } catch (e) {}
+  }
+  // screens balance their own lines, so a paragraph does not end on one word and a heading splits evenly
+  try {
+    if (root.document && root.document.head && !root.document.getElementById('tree-nohang')) {
+      const st = root.document.createElement('style'); st.id = 'tree-nohang';
+      st.textContent = 'html{text-wrap:pretty}h1,h2,h3,h4,h5,summary,button,.chip{text-wrap:balance}';
+      root.document.head.appendChild(st);
+    }
+  } catch (e) {}
+
+  root.TREE_KIT = { noHang, keepWords, LIB, SIZES, PF, loadScript, fonts, pdfFonts, wordFonts, pdf, word, wordFile, wordBlob, pdfLib, pdfjs, readPdf, pageImage, readDocx, placeSheet, childHeight,
     isEmpty, printable, nothing, guard, cardsPer, signSize, setChoice, cardsPerHtml, signSizeHtml, pageKind, pagePlan, repage };
 })(typeof window !== 'undefined' ? window : this);
