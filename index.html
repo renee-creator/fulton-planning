@@ -5269,7 +5269,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="152d00b20f2f";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="e900614d9a7c";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -13323,8 +13323,12 @@ function iqReadingsHtml(x){const ages=iqAges(x),L=x.readings||[];
    parents with the classroom inbox copied and replies going to the classroom inbox. Start from the outline fills the
    school's headings, the family readings kept on the inquiry and the questions the team wants to ask (November 16, 2026) */
 const IQ_LETTER_Q=["What words, signs or gestures does your child use at home to ask for something or to ask for space?","What helps your child when they are upset?","Has your child's pediatrician, or another professional, discussed development with you?","Does your child receive any support services, such as speech therapy or a plan through the regional center or school district?","Is there anything you would like us to know, or anything you would like us to try at school?"];
+// the greeting of a family letter, the parents' first names from the child's record, "Dear Ana and Luis,". With no
+// parent name on record it greets the child's family (November 17, 2026)
+function iqDear(c){if(!c)return "Dear family,";const ns=[...new Set((c.parents||[]).map(p=>String((p&&p.name)||"").trim().split(/\s+/)[0]).filter(n=>n&&/^[A-Za-z\u00c0-\u024f'-]{2,}$/.test(n)))];
+  return ns.length?`Dear ${ns.length>1?ns.slice(0,-1).join(", ")+" and "+ns[ns.length-1]:ns[0]},`:`Dear ${c.first}'s family,`}
 function iqLetterOutline(x){const ks=inqChildren(x),nm=ks.length===1?ks[0].first:"your child",fam=(x.readings||[]).filter(r=>r.for==="family");
-  return [`Dear ${ks.length===1?nm+"'s":"your"} family,`,"Thank you for meeting with us and sharing what you see at home. Working in partnership with families is central to how we guide children, and we value your perspective.",
+  return [ks.length===1?iqDear(ks[0]):"Dear family,","Thank you for meeting with us and sharing what you see at home. Working in partnership with families is central to how we guide children, and we value your perspective.",
     `${nm}'s strengths. `,"What we are observing. ","Our approach at school. ","Strategies to try at home.\n- \n- ",
     fam.length?"Recommended readings.\n"+fam.map(r=>"- "+r.title+(r.source?", "+r.source:"")).join("\n"):"",
     "Questions for your family.\n"+IQ_LETTER_Q.map((q,i)=>(i+1)+". "+q.replace(/your child/g,nm).replace(/they are/,ks.length===1?"he or she is":"they are")).join("\n"),
