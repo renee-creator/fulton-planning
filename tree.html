@@ -4884,31 +4884,33 @@ function pfNear(list){const out=[];
   return out}
 const pfItemId=x=>x.kind==="slides"?x.s.id:x.kind==="stories"?x.st.id:x.n.id;
 // the DRDP page closes the portfolio, with the levels educators have accepted and the evidence behind each
-function portfolioDrdpDoc(c,mode,view){
-  // this school year's evidence only, from the day the year began
-  const y0=parseIso(schoolYearStart()).getTime();
-  const cur=drdpViewOf(c).v,v=view||cur;const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level&&(x.view===v||(!x.view&&v===cur))&&(x.src?.at||x.at||x.reviewedAt||0)>=y0);if(!done.length)return null;
-  // the strongest reviewed level in the measure, and of those the most recent
-  const latest={};for(const x of done){const t=x.src?.at||x.at||0,cur=latest[x.code];const r=drdpRank(v,x.code,x.level),rc=cur?drdpRank(v,x.code,cur.level):-1;if(!cur||r>rc||(r===rc&&t>(cur.src?.at||cur.at||0)))latest[x.code]=x}
-  const blocks=[dText("About this page",`Each level is read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025) ${DRDP_VIEW[v]} View.`)];
-  const doms=[...new Set(Object.keys(DRDP_M[v]).map(k=>DRDP_M[v][k].d))];
-  // every measure and its level at a glance, by domain, before the evidence (November 17, 2026)
-  {const rows=[];for(const dm of doms)for(const k of Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]))rows.push([drdpName(k),drdpLevelText(latest[k].level,latest[k].emerging)]);
-    if(rows.length>1)blocks.push(dTable("At a glance",rows,{head:["Measure","Level seen"],widths:[.66,.34],bold0:true}))}
-  for(const dm of doms){const codes=Object.keys(DRDP_M[v]).filter(k=>DRDP_M[v][k].d===dm&&latest[k]);if(!codes.length)continue;
-    blocks.push(dSub(DRDP_DOM[dm]||dm));
-    for(const k of codes){const x=latest[k];const mean=drdpLevelDesc(v,k,x.level);const seen=forPrint(focusText(x.evidence||"",c));
-      // the observation itself, its photo and its words, beside the level it shows
-      const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const ph=ob?(momentPhotos(ob)||[])[0]:null;
-      /* one measure prints as one block that stays on one sheet, its photo at the left, the level's meaning and what we
-         saw each under its own label, and the observation in an outlined box beneath (parts and evid, read by the sheet) */
-      blocks.push(Object.assign(dItem(drdpName(k),[mean?`${x.level} means ${mean}.`:"",seen?"What was seen. "+seen:""].filter(Boolean).join(" "),[x.src?`From ${focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c)}, ${shortDate(x.src.at||x.at)}${kidAgeAt(c,x.src.at||x.at)?", age "+kidAgeAt(c,x.src.at||x.at):""}`:"",x.reviewedBy?`${x.status==="changed"?"Changed":"Accepted"} by ${x.reviewedBy}`:""].filter(Boolean).join(". "),[drdpLevelText(x.level,x.emerging)]),{evid:true,parts:[mean?["What this level means",mean.replace(/[.\s]*$/,".")]:null,seen?["What we saw",seen]:null].filter(Boolean)}));
-      if(ph)blocks.push(Object.assign({t:"photo",maxH:170,full:false},ph));
-      const words=ob?forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)):"";if(words)blocks.push({t:"text",label:"The observation",text:sentCut(words,420)});
-      // every level of the measure stays on screen under each measure, and the printed page keeps only the level seen (November 6, 2026)
-      }}
-  const name=mode==="none"?"This year":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
-  return {display:true,type:"report",acc:"story",title:"Learning seen this year",meta:[["Child",name],["View",DRDP_VIEW[v]],["Year",yearFromTime(Date.now()).replace("-"," to ")]],blocks};
+function portfolioDrdpDoc(c,mode){
+  /* one page set for the child's whole time with us (November 18, 2026): every school year that has a reviewed level,
+     the strongest level of each measure in each year, a table of the levels year by year at the front, and each measure
+     as a row of small cards, one per year, so the pages are filled and growth reads across */
+  const cur=drdpViewOf(c).v;const tOf=x=>x.src?.at||x.at||x.reviewedAt||0;
+  const done=kidDrdpItems(c).filter(x=>(x.status==="accepted"||x.status==="changed")&&x.level).map(x=>Object.assign({},x,{v:x.view||cur,yr:yearFromTime(tOf(x))}));if(!done.length)return null;
+  const best={};for(const x of done){const k=x.yr+"|"+x.code,o=best[k];const r=drdpRank(x.v,x.code,x.level),ro=o?drdpRank(o.v,o.code,o.level):-1;if(!o||r>ro||(r===ro&&tOf(x)>tOf(o)))best[k]=x}
+  const years=[...new Set(Object.values(best).map(x=>x.yr))].sort(),multi=years.length>1,yw=y=>y.replace("-"," to ");
+  const views=["it","ptk"].filter(v=>Object.values(best).some(x=>x.v===v));
+  const codes=[];for(const v of views)for(const k of Object.keys(DRDP_M[v]))if(!codes.includes(k)&&years.some(y=>best[y+"|"+k]))codes.push(k);
+  const domOf=k=>{for(const v of views)if(DRDP_M[v][k])return DRDP_M[v][k].d;return""};const doms=[...new Set(codes.map(domOf))];
+  const short=x=>x.level+(x.emerging?", emerging":"");
+  const blocks=[dText("About this page",`Each level is read from ${c.first}'s documentation and reviewed by an educator, against the DRDP (2025)${views.length===1?` ${DRDP_VIEW[views[0]]} View`:""}.${multi?" Each measure lists the level seen in each school year, what that level means, the observation, and what was seen.":" Each measure lists the level seen, what that level means, the observation, and what was seen."}`)];
+  const txt=(v,k)=>(DRDP_TXT&&DRDP_TXT[v]&&DRDP_TXT[v][k])||null;
+  const cell=x=>{const mean=drdpLevelDesc(x.v,x.code,x.level);const seen=forPrint(focusText(x.evidence||"",c));
+    const ob=x.src&&x.src.kind==="notices"?notices.get(x.src.id):null;const ph=ob?(momentPhotos(ob)||[])[0]:null;const t=tOf(x);
+    const by=x.src?`${focusText(String(x.src.title||"documentation").replace(/[.\s]+$/,""),c)}, ${shortDate(t)}`:"";
+    const words=ob?sentCut(forPrint(focusText([ob.noticed,ob.wonder].filter(Boolean).join(" "),c)),420):"";
+    return Object.assign({head:yw(x.yr),age:kidAgeAt(c,t)||"",level:drdpLevelText(x.level,x.emerging),mean:mean?mean.replace(/[.\s]*$/,"."):"",seen,by,words:words&&words!==seen?words:""},ph&&ph.key&&ph.src?{key:ph.key,src:ph.src}:{})};
+  for(const dm of doms){const ks=codes.filter(k=>domOf(k)===dm);blocks.push(dSub(DRDP_DOM[dm]||dm));
+    for(const k of ks){const xs=years.map(y=>best[y+"|"+k]).filter(Boolean);const cs=xs.map(cell);
+      // the measure's whole path of levels, in the fuller view the child has been read against
+      const lv=views.slice().reverse().find(v=>DRDP_M[v][k]),levels=drdpLevels(lv,k);const d=txt(lv,k)||views.map(v=>txt(v,k)).find(Boolean);
+      blocks.push({t:"evpath",title:drdpName(k),def:d&&d.def?String(d.def).replace(/[.\s]*$/,"."):"",marks:levels.map(l=>xs.some(x=>x.level===l)),cells:cs,
+        word:cs.map(q=>dItem(drdpName(k)+", "+(q.age||q.head),[q.mean?q.level+" means "+q.mean:"",q.words,q.seen?"What was seen. "+q.seen:""].filter(Boolean).join(" "),q.by,[q.level]))})}}
+  const name=mode==="none"?"":shownName(c.first,c.last||"",mode==="initials"?"initials":mode);
+  return {display:true,packed:true,narrow:true,type:"report",acc:"story",title:multi?"Learning seen across the years":"Learning seen, "+yw(years[0]),meta:[name?["Child",name]:null,["View",views.map(v=>DRDP_VIEW[v]).join(" and ")],[multi?"Years":"Year",multi?yw(years[0])+" through "+yw(years[years.length-1]):yw(years[0])]].filter(Boolean),blocks};
 }
 // how the DRDP sits in a portfolio. Within the moments, each accepted level prints on the page of the moment or slide it
 // was read from, so the reading stays with the experience and is seen over time. At the end keeps the summary page.
@@ -4944,7 +4946,7 @@ function portfolioDocs(c,mode,drdp){
   for(const x of items){const d=page(x);const m=new Date(x.at).toLocaleDateString("en-US",{month:"long",year:"numeric"});if(m!==mon){mon=m;d.over=m}out.push(d)}
   if(drdp==="none")return out;
   const cv=drdpViewOf(c).v;
-  if(drdp==="end")return [...out,...[portfolioDrdpDoc(c,mode,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,mode,cv)].filter(Boolean)];
+  if(drdp==="end")return [...out,portfolioDrdpDoc(c,mode)].filter(Boolean);
   // a level read from a piece that is not in the portfolio still prints, on one closing page, so nothing accepted is lost
   const left=done.filter(x=>!placed.has(x.id));
   if(left.length){const lines=left.sort((a,b)=>(a.src.at||0)-(b.src.at||0)).map(x=>`${drdpName(x.code)}  ·  ${drdpLevelText(x.level,x.emerging)}  ·  ${focusText(x.src.title||"documentation",c)}, ${shortDate(x.src.at||x.at)}`);
@@ -5274,7 +5276,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="d8319cd90b2a";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="2d36a68b931d";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -15188,7 +15190,7 @@ async function decodeImage(blob){
 }
 // photos are fetched once and kept for the PDF and Word files, so a printout never waits on each picture twice
 async function loadPhotos(docs,quiet){const say=quiet?()=>{}:progress;
-  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="photos"?(b.items||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):b.t==="grid"||b.t==="stages"||b.t==="stagegrid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
+  const want=[];for(const d of docs)for(const b of [...(d.blocks||[]).flatMap(b=>b.t==="photos"?(b.items||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):b.t==="evpath"?(b.cells||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):b.t==="grid"||b.t==="stages"||b.t==="stagegrid"?(b.tiles||[]).filter(x=>x.src&&x.key).map(x=>({t:"photo",key:x.key,src:x.src})):[b]),...(d.photos||[]).map(x=>Object.assign({t:"photo"},x))])if(b.t==="photo"&&b.src&&!photoCache.has(b.key)&&!want.some(w=>w.key===b.key))want.push(b);
   let missed=0,got=0;const n=want.length;if(n)say(n===1?"Getting the photo":`Getting photos, 0 of ${n}`);
   await Promise.all(want.map(async b=>{try{
     const r=await fetchPhoto(b.src);const blob=await r.blob();
@@ -15782,6 +15784,45 @@ function displayAtoms(doc,p,A,s){
         if(has(credit)){const bl=wrap(credit,"fr",Z.small,QW).slice(0,2);bl.forEach((l,k)=>push({h:Z.slh+(k===bl.length-1?3:0),keep:k<bl.length-1,draw(y){if(chain&&!last){doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.line(lx,y,lx,y+Z.slh+3)}pfont(doc,"fr",Z.small);doc.setTextColor(...D_MUTED);doc.text(l,QX,y+Z.small*1.02)}}))}
         if(!last)push({h:12*s,draw(y){doc.setDrawColor(...A.c);doc.setLineWidth(1);doc.line(lx,y,lx,y+12*s)}})});
       gap(5)}
+    /* one DRDP measure across a child's whole time (November 18, 2026), set as a ruled record the full width of the page:
+       the measure's name with a small line of dots for its levels and the ones seen filled in, the official wording of the
+       measure, then one row for each school year, with the photo at the left in its own shape and beside it the child's age then (the school year
+       only when no birthday is on file), the level and what it means, the observation, and what was seen and where. A row never splits, the head stays with its first row, and a
+       measure that runs onto the next sheet repeats its name there. */
+    else if(b.t==="evpath"){const cells=b.cells||[],fz=9.9*s,flh=13.4*s,tz=Z.item*.9,tlh=Z.ilh*.9,pz=92*s;
+      const MK=b.marks||[],n=MK.length,dstep=10.5*s,dotsW=n?n*dstep+6*s:0;
+      const tl=wrap(b.title,"bs",tz,w-dotsW),dl=has(b.def)?wrap(b.def,"fr",Z.small*1.04,w):[],dlh=Z.slh*1.04;
+      const headH=8*s+tl.length*tlh+(dl.length?dl.length*dlh:0)+5*s;
+      const drawHead=y=>{doc.setDrawColor(...D_INK);doc.setLineWidth(.9);doc.line(m,y,m+w,y);let yy=y+8*s;
+        pfont(doc,"bs",tz);doc.setTextColor(...D_INK);tl.forEach((l,i)=>doc.text(l,m,yy+base(tlh,tz)+i*tlh));
+        if(n){const cy=yy+tlh/2,x0=m+w-(n-.5)*dstep;doc.setDrawColor(...D_HAIR);doc.setLineWidth(.8);doc.line(x0,cy,x0+(n-1)*dstep,cy);
+          MK.forEach((on,i)=>{if(on){doc.setFillColor(...AT);doc.circle(x0+i*dstep,cy,3.1*s,"F")}else{doc.setFillColor(255,255,255);doc.setDrawColor(...D_HAIR);doc.circle(x0+i*dstep,cy,2.1*s,"FD")}})}
+        yy+=tl.length*tlh;if(dl.length){pfont(doc,"fr",Z.small*1.04);doc.setTextColor(...D_MUTED);dl.forEach((l,i)=>doc.text(l,m,yy+Z.small*1.04+i*dlh))}};
+      gap(D_TIGHT?8:10);if(!cells.length)push({h:headH,draw:drawHead});
+      const cl=wrap(b.title+", continued","bs",Z.small*1.1,w).slice(0,1);let A0=null;
+      const RH={h:Z.slh*1.5,draw(y){pfont(doc,"bs",Z.small*1.1);doc.setTextColor(...D_INK);doc.text(cl[0],m,y+Z.small*1.1)}};
+      /* each entry is one row the full width: the photo in its own shape at the left, and beside it the age, then the level and what it
+         means, the observation in its own words, and what was seen with where it came from */
+      const SEEN="What was seen. ",ag=5*s;
+      const C=cells.map(q=>{const im=q.key?photoCache.get(q.key):null,off=im?pz+14*s:0,sw=w-off;const lead=clean(q.level)+(has(q.mean)?". ":"");
+        // the photo keeps its own shape, never cut to a square: the full width of its column, and a very tall one held to a height
+        let pw=0,phh=0;if(im){pw=pz;phh=pw*im.h/im.w;const mh=pz*1.36;if(phh>mh){phh=mh;pw=phh*im.w/im.h}}
+        const ml=wrap(lead+(q.mean||""),"fs",fz,sw),ol=has(q.words)?wrap(q.words,"fr",fz,sw):[];
+        const tail=[q.seen,has(q.by)?"("+q.by+")":""].filter(has).join(" "),sl=has(q.seen)?wrap(SEEN+tail,"fs",fz,sw):has(tail)?wrap(tail,"fr",fz,sw):[];
+        return {q,im,off,pw,phh,lead,ml,ol,sl,h:Math.max(phh,flh+ag+ml.length*flh+(ol.length?4*s+ol.length*flh:0)+(sl.length?4*s+sl.length*flh:0))}});
+      const run=(ls,lead,col,tx,y0)=>ls.forEach((l,i)=>{const yb=y0+base(flh,fz)+i*flh,L=lead.trimEnd();if(i===0&&L&&l.startsWith(L)){pfont(doc,"fs",fz);doc.setTextColor(...col);doc.text(L,tx,yb);const lw=doc.getTextWidth(lead);
+          const rest=l.slice(lead.length);if(rest){pfont(doc,"fr",fz);doc.setTextColor(...D_INK);doc.text(rest,tx+lw,yb)}}
+        else{pfont(doc,"fr",fz);doc.setTextColor(...D_INK);doc.text(l,tx,yb)}});
+      const drawCell=(x,py)=>{const q=x.q,tx=m+x.off;let ty=py;
+        if(x.im)doc.addImage(x.im.url,"JPEG",m+(pz-x.pw)/2,py,x.pw,x.phh,undefined,"FAST");
+        pfont(doc,"bs",fz*1.04);doc.setTextColor(...D_INK);doc.text(clean(has(q.age)?q.age:q.head),tx,ty+base(flh,fz));ty+=flh+ag;
+        run(x.ml,x.lead,AT,tx,ty);ty+=x.ml.length*flh;if(x.ol.length){ty+=4*s;run(x.ol,"",D_INK,tx,ty);ty+=x.ol.length*flh}
+        if(x.sl.length){ty+=4*s;run(x.sl,has(q.seen)?SEEN:"",D_INK,tx,ty)}};
+      C.forEach((x,r)=>{const first=r===0,rh=8*s+x.h+8*s;
+        const a=push({h:(first?headH:0)+rh,rehead:first?null:RH,draw(y){if(first)drawHead(y);const y0=y+(first?headH:0);
+          doc.setDrawColor(...D_HAIR);doc.setLineWidth(.6);doc.line(m,y0,m+w,y0);drawCell(x,y0+8*s)}});
+        if(first)A0=a;else RH.of=A0});
+      gap(2)}
     // a piece of evidence as one block that never splits, with the photo and the observation that follow it drawn inside
     else if(b.t==="item"&&b.evid){const pb=B[bi+1]&&B[bi+1].t==="photo"?B[++bi]:null;const ob=B[bi+1]&&B[bi+1].t==="text"&&B[bi+1].label==="The observation"?B[++bi]:null;
       const im=pb?photoCache.get(pb.key):null;const sd=(b.side||[]).filter(has);const pad=9*s,bz=Z.body*.96,blh=Z.blh*.94,oz=10.4*s,olh=14.4*s;
@@ -15873,15 +15914,15 @@ function displayFlow(doc,p,A,s){
       // the continuation heading waits until something actually lands under it, so no sheet opens with an empty one
       if(pend){if(!a.isSub){const hd=displayAtoms.head(pend+", continued",A,s);pages[pages.length-1].push({a:hd,y});y+=hd.h}pend=""}
       // a table that runs onto a new sheet repeats its title row there
-      if(a.rehead&&pages.length>1&&!pages[pages.length-1].some(x=>x.a===a.rehead||x.a.rehead===a.rehead)){pages[pages.length-1].push({a:a.rehead,y});y+=a.rehead.h}
+      if(a.rehead&&pages.length>1&&!pages[pages.length-1].some(x=>x.a===a.rehead||x.a.rehead===a.rehead||(a.rehead.of&&x.a===a.rehead.of))){pages[pages.length-1].push({a:a.rehead,y});y+=a.rehead.h}
       if(a.min)a.h=Math.max(a.min,Math.min(a.h,DG.bottom-y));
       pages[pages.length-1].push({a,y});y+=a.h;
     }
     return {pages,end:y,top1,topN};
   };
   let F=run(1e9);
-  // with more than one sheet, the content is spread so the last sheet is not left half empty
-  if(F.pages.length>1){const usable=DG.bottom-topN;
+  // with more than one sheet, the content is spread so the last sheet is not left half empty (a page marked packed keeps each sheet full)
+  if(F.pages.length>1&&!p.packed){const usable=DG.bottom-topN;
     for(let t=.95;t>=.55;t-=.05){const G=run(usable*t);
       if(G.pages.length!==F.pages.length)break;
       F=G;const last=G.pages[G.pages.length-1];
@@ -15906,17 +15947,19 @@ function displayFitAt(doc,p,A){
   else if(F.pages.length===2){for(const t of p.onePage?[.97,.94,.91,.88,.85,.82,.79,.76,.73,.7,.67,.64]:[.97,.94,.91,.88,.85]){const T=displayFlow(doc,p,A,t);if(T.pages.length===1){s=t;F=T;break}}}
   return {s,F};
 }
-function drawDisplay(doc,p,pageAcc){
+// a page marked narrow is set with narrower side margins, so a long record takes fewer sheets (November 18, 2026)
+function drawDisplay(doc,p,pageAcc){if(!p.narrow)return drawDisplay0(doc,p,pageAcc);const k={m:DG.m,w:DG.w,cx:DG.cx,cw:DG.cw};DG.m=32;DG.w=PW-64;DG.cx=DG.m;DG.cw=DG.w;try{return drawDisplay0(doc,p,pageAcc)}finally{Object.assign(DG,k)}}
+function drawDisplay0(doc,p,pageAcc){
   const A=accOf(p.acc||p.type)||ACC.classroom;const {F}=displayFit(doc,p,A);
   F.pages.forEach((pg,pi)=>{
     if(pi>0)doc.addPage();
-    pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:F.pages.length,display:true,foot:p.footer};
+    pageAcc[doc.getNumberOfPages()]=A;pageInfo[doc.getNumberOfPages()]={i:pi+1,n:F.pages.length,display:true,foot:p.footer,m:p.narrow?DG.m:0};
     if(pi===0)displayHead(doc,p,A);else displayHeadCont(doc,p,A);
     pg.forEach(({a,y})=>a.draw(y));
   });
 }
 function displayFoot(doc,A,pi){
-  const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();const m=DG.m,w=pw-2*m;doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,ph-42,m+w,ph-42);
+  const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight();const m=(pi&&pi.m)||DG.m,w=pw-2*m;doc.setDrawColor(...D_HAIR);doc.setLineWidth(.7);doc.line(m,ph-42,m+w,ph-42);
   pfont(doc,"fr",8.6);doc.setTextColor(...D_MUTED);doc.text("Observe    Provoke    Document    Reflect    Evolve",m+w/2,ph-28,{align:"center"});
   // a print for outside audiences names the school on its face, at the foot of each page
   if(pi&&has(pi.foot)){pfont(doc,"fs",8.6);doc.text(clean(pi.foot),m+w/2,ph-16,{align:"center"})}
@@ -16338,7 +16381,7 @@ async function displayDocx(ch,p,D,A){
   const quoteP=q=>{const by=[q.by,q.side].filter(has).join("  ·  ");const out=[para(raw(q.plain?clean(q.text).trim().replace(/\s*\n+\s*/g,"  "):"“"+clean(q.text).trim().replace(/^"+|"+$/g,"").replace(/\s*\n+\s*/g," ")+"”","bm",14.5*s),{keepNext:has(by),spacing:{after:30,line:Math.round(400*s),lineRule:"atLeast"}})];
     if(has(by))out.push(para(run(by,"fr",9.4*s,MUT),{spacing:{after:60}}));return out};
   const cellP=(t,k,pt,color,align)=>para(run(String(t??""),k,pt,color),{alignment:align==="r"?AlignmentType.RIGHT:AlignmentType.LEFT,spacing:{after:0,line:Math.round(pt*24),lineRule:"atLeast"}});
-  const B=p.blocks||[];let first=true;
+  const B=(p.blocks||[]).flatMap(b=>b.t==="evpath"?(b.word||[]):[b]);let first=true;
   for(let bi=0;bi<B.length;bi++){const b=B[bi];
     if(b.t==="rule"){continue}
     if(b.t==="lead"){const [lt,lrest]=leadSplit(b.text);const pt=leadSize(lt);
@@ -16419,7 +16462,7 @@ async function printsClick(t){
   if(kind==="storysmall"){const st=stories.get(t.dataset.id);if(st)await (word?storySmallDocx:storySmallPdf)(st);return true}
   if(kind==="slide"){const s=slides.get(t.dataset.id);if(s&&slideBare(s)){toast("This slide has no title and no photo yet, so there is nothing to print. Add a title or a photo first.");return true}if(s){const pg=s.drdpPage?drdpSummaryDoc(s):null;await out(pg?[slideDoc(s),pg]:[slideDoc(s)],`Slide ${s.title||"untitled"}`)}return true}
   // the child's DRDP on its own, the accepted levels with their evidence, as it closes a portfolio
-  if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names,cv==="ptk"?"it":"ptk"),portfolioDrdpDoc(c,PRINT.names,cv)].filter(Boolean);
+  if(kind==="drdp"){const c=children.get(t.dataset.id);if(!c)return true;const cv=drdpViewOf(c).v;const docs=[portfolioDrdpDoc(c,PRINT.names)].filter(Boolean);
     if(!docs.length){toast(`No DRDP level is accepted for ${c.first} yet.`);return true}await out(docs,`DRDP ${c.first}${c.last?" "+c.last:""}`);return true}
   if(kind==="transition"){const c=children.get(t.dataset.id);if(c)await out([transitionDoc(c)],`Transition summary ${kidName(c)}`);return true}
   if(kind==="gguidesel"){if(!gdnOk())return true;const docs=gdnGuideDoc(gdnGuide==="children"?"children":"adults",t.dataset.id);if(docs.length)await out(docs,gdnGuide==="children"?"Plant cards":"Full plant pages");return true}
