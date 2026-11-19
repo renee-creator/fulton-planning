@@ -50,10 +50,15 @@ async function start(opt) {
     r.writeHead(200, { 'Content-Type': /\.html$/.test(f) ? 'text/html' : /\.js$/.test(f) ? 'text/javascript' : /\.png$/.test(f) ? 'image/png' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
   await new Promise(ok => files.listen(web, '127.0.0.1', ok));
   const api = 'http://127.0.0.1:' + port;
-  for (let i = 0; i < 80; i++) { try { await fetch(api + '/'); break; } catch (e) { await new Promise(r => setTimeout(r, 150)); } }
-  const login = async (name, passcode) => (await fetch(api + '/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + web }, body: JSON.stringify({ name, passcode }) })).json();
-  // a request to the server as someone signed in
-  const as = async (token, p, body) => { const r = await fetch(api + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + web, Authorization: 'Bearer ' + token }, body: JSON.stringify(body || {}) }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
+  // wait up to 45 seconds for the server to answer at all. The tests have always gone on once / answers, while the records
+  // may still be loading, so /ready is not used here. A server that never answers stops the test with a plain message.
+  let up = false;
+  for (const t0 = Date.now(); Date.now() - t0 < 45000;) { try { await fetch(api + '/', { signal: AbortSignal.timeout(5000) }); up = true; break; } catch (e) { await new Promise(r => setTimeout(r, 150)); } }
+  if (!up) { srv.kill(); files.close(); await gh.close(); throw new Error('TREE did not start in 45 s'); }
+  const login = async (name, passcode) => (await fetch(api + '/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + web }, body: JSON.stringify({ name, passcode }), signal: AbortSignal.timeout(90000) })).json();
+  // a request to the server as someone signed in. It and login stop after 90 seconds, so a stalled request fails the
+  // test instead of holding the file open
+  const as = async (token, p, body) => { const r = await fetch(api + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + web, Authorization: 'Bearer ' + token }, body: JSON.stringify(body || {}), signal: AbortSignal.timeout(90000) }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
   return { dir, gh, api, web, page: `http://localhost:${web}/tree.html?server=${api}`, login, as, stop: async () => { srv.kill(); files.close(); await gh.close(); } };
 }
 

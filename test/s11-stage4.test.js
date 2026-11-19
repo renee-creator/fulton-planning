@@ -70,8 +70,10 @@ test('Children and Conferences open on the educator\'s own Class each visit', as
   assert.strictEqual(await kroom(s.p), 'North');
   // the Conferences page opens on her Class
   await s.p.evaluate(() => goView('conferences'));
-  const fr = await (await s.p.waitForSelector('#tembed-conferences')).contentFrame();
-  await fr.waitForFunction(() => typeof S !== 'undefined' && S.filters, null, { timeout: 15000 });
+  // the frame loads its page first, then its records, and a busy machine can take a while for both
+  const fr = await (await s.p.waitForSelector('#tembed-conferences', { timeout: 30000 })).contentFrame();
+  await fr.waitForLoadState('load', { timeout: 30000 });
+  await fr.waitForFunction(() => typeof S !== 'undefined' && S.filters, null, { timeout: 30000 });
   assert.strictEqual(await fr.evaluate(() => S.filters.room), 'North');
   assert.deepStrictEqual(s.errors, []); await s.close();
   // an educator with no Class, and the director, see every Class
