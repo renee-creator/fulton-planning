@@ -98,7 +98,8 @@ test('the mailbox script backs up every night, replaces the Monday time, keeps t
   assert.ok(weekly.some(f => f < 'TREE weekly backup 2026-10-01'), 'the Monday backups from before start the weekly set');
   assert.ok(!files.includes('TREE backup 2026-04-06.json.gz') && !files.includes('TREE weekly backup 2026-04-06.json.gz'), 'the oldest week went to the trash');
   // the same part, pasted with the whole mailbox script, is the same code
-  const part = s => s.slice(s.indexOf('/*\n  Nightly backup of TREE')).split('\n/*\n  Readable copies')[0].trim();
+  // the part runs from its own header to the next header at the start of a line, or to the end of the file
+  const part = s => { const from = s.indexOf('/*\n  Nightly backup of TREE'); assert.ok(from >= 0, 'the backup header is there'); return s.slice(from).split(/\n\/\*\n/)[0].trim(); };
   assert.strictEqual(part(fs.readFileSync(path.join(__dirname, '..', 'tools', 'kaymbu-apps-script.gs'), 'utf8')), part(fs.readFileSync(gs, 'utf8')));
 });
 
