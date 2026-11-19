@@ -171,7 +171,7 @@ test('clip drafts that waited join the observations once, with a Kaymbu video cr
   const more = put => {
     put('settings/program.json', { id: 'program', videoClipsOn: true });
     const clip = (id, x) => put(`clips/${id}.json`, Object.assign({ id, fileId, name: 'West Kaymbu video.mp4', mimeType: 'video/mp4', status: 'done', sent: 'kaymbu', at: Date.now(), draftId: 'dv' + id, seconds: 40 }, x));
-    const draft = (id, by, form) => put(`drafts/dv${id}.json`, { id: 'dv' + id, by, startedAt: Date.now(), updatedAt: Date.now(), queue: [], fromClip: id, form: Object.assign({ id: 'nq' + id, wonder: '', classroom: 'West', by, at: Date.now() - 30 * 864e5, week: '2026-10-12', projectId: '', threadId: '' }, form) });
+    const draft = (id, by, form) => put(`drafts/dv${id}.json`, { id: 'dv' + id, by, startedAt: Date.now(), updatedAt: Date.now(), queue: [], fromClip: id, form: Object.assign({ id: 'nq' + id, wonder: '', classroom: 'West', by, at: Date.parse('2026-10-14T17:00:00Z'), week: '2026-10-12', projectId: '', threadId: '' }, form) });
     clip('va1'); draft('va1', 'Dee', { noticed: 'At 0:00 a child pours water.\nAt 0:04 a child says, "A mixer!"', children: ['max'], kaymbu: { v: 3, key: 'kv1' }, photo: { id: 'aaaaaaaaaaaa-clip-still-1.jpg' }, siblings: [{ id: 's1', photo: { id: 'bbbbbbbbbbbb-clip-still-2.jpg', w: 4, h: 3 } }, { id: 's2', photo: { id: 'cccccccccccc-clip-still-3.jpg' } }], clip: { id: 'va1', fileId, name: 'West Kaymbu video.mp4', note: 'Kaymbu does not say which educator took this clip, so it waits with the director. Choose the educator in Kept by.' } });
     clip('va2', { seconds: 4 }); draft('va2', 'Ann', { noticed: 'At 0:01 a child runs.', clip: { id: 'va2', fileId, name: 'x.mp4' } });
     clip('va3', { status: 'failed' }); draft('va3', 'Ann', { noticed: '', clip: { id: 'va3', fileId, name: 'y.mp4', error: 'The clip could not be read, so this draft is empty.' } });
@@ -196,7 +196,7 @@ test('the page plays a clip on its card and from Watch the clip, and a Presentin
   const more = put => {
     put('drafts/dv1.json', { id: 'dv1', by: 'Ann', startedAt: Date.now(), updatedAt: Date.now(), queue: [], fromClip: 'v1abcde', form: { id: 'nv1', noticed: '', wonder: '', classroom: 'North', by: 'Ann', at: Date.now(), week: '2026-11-02', projectId: '', threadId: '', clip: { id: 'v1abcde', fileId, name: 'North Ann water.mp4', at: Date.now(), error: 'The clip could not be read, so this draft is empty.' } } });
     put('clips/v0abcde.json', { id: 'v0abcde', fileId, name: 'North Ann sand.mp4', mimeType: 'video/mp4', status: 'done', at: Date.now() });
-    put('notices/nk1.json', { id: 'nk1', noticed: 'At 0:02 the educator says, "What do you notice?"', wonder: '', classroom: 'West', by: 'Ann', at: Date.now() - 36e5, week: '2026-11-02', clip: { id: 'v0abcde', fileId, name: 'North Ann sand.mp4', at: Date.now() - 36e5 } });
+    put('notices/nk1.json', { id: 'nk1', noticed: 'At 0:02 the educator says, "What do you notice?"', wonder: '', classroom: 'West', by: 'Ann', at: Date.parse('2026-11-04T17:00:00Z'), week: '2026-11-02', clip: { id: 'v0abcde', fileId, name: 'North Ann sand.mp4', at: Date.now() - 36e5 } });
   };
   const fx = await start({ more, env: { KAYMBU_INBOX_KEY: KEY } }); t.after(() => fx.stop());
   const dee = (await fx.login('Dee', 'director-pass-1')).token;
