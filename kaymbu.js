@@ -366,7 +366,9 @@ module.exports = function kaymbu({ store, log, gh, repo, noteChange, scheduleSav
         // children to offer on the form, rather than tag. A group photo offers everyone named. A single photo offers the names to check.
         const offer = group ? [...kids.ids, ...kids.maybe] : kids.maybe;
         const when = onDay || photoDay(p, sent) || sent, day = laDay(when);
-        const id = 'n' + (when + i).toString(36) + crypto.randomBytes(3).toString('hex');
+        // named from the photo's own name, so the same email read by two servers at once makes one record (November 19, 2026)
+        const id = 'n' + (when + i).toString(36) + crypto.createHash('sha1').update(String(k)).digest('hex').slice(0, 6);
+        if (store.recs.notices.has(id) && !store.recs.notices.get(id).deleted) { again++; have.add(k); continue; }
         const binId = sub.bin ? binFor(day) : '';
         const pg = photo ? postGroup(noticed, room, day) : '';
         const doc = { id, noticed, wonder: '', classroom: room, ...(sg ? { smallGroup: sg } : {}), ...(pg ? { group: pg } : {}), ...(binId ? { bin: binId } : {}), by: mBy, at: when + i, week: mondayOf(day), projectId: sub.projectId, threadId: sub.threadId, children: group ? [] : kids.ids,

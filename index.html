@@ -4208,13 +4208,17 @@ function newStory(o){
   if(o.event){const ev=o.event;kind="ready";grp=[];from={kind:"event",id:String(ev.id||""),label:ev.title||"a day on the calendar"};about=[ev.title,ev.when,ev.where?"Where. "+ev.where:"",ev.desc].filter(Boolean).join("\n")}
   if(o.bin){const b=o.bin;kind="ready";frame="meal";grp=[];room=binRoomNow&&binRoomNow()||"";from={kind:"bin",id:b.id,label:"the weekly bin, "+fmtDate(b.date)};
     const items=(b.items||[]).map(it=>String(it.name||"").trim()).filter(Boolean);about=["On Tuesday a small group will open our weekly bin from FEED Sonoma and share the food.",items.length?"In the bin. "+items.join(", ")+".":"","We wash and prepare the food simply and share it with care."].filter(Boolean).join("\n")}
+  // begun from a subject someone typed or from one child's observations, with only the ticked photos (November 19, 2026)
+  if(o.picked){const c=o.child||null,sub=String(o.subject||"").trim();grp=o.picked.filter(x=>x&&x.photo).sort((a,b)=>(a.at||0)-(b.at||0)).slice(-12);
+    from={kind:c?"child":"subject",id:c?c.id:"",label:c?"observations of "+c.first+(sub?" about "+sub:""):"the subject "+sub};
+    about=[sub?"The subject. "+sub:"",c?"About "+c.first+".":""].filter(Boolean).join("\n");if(c)room=c.classroom||""}
   if(o.lens){const L=o.lens;lensId=L.id;grp=withPhotos([...notices.values()].filter(x=>x.photo&&lensesFinding(x).some(l=>l.id===L.id)));from={kind:"lens",id:L.id,label:"the lens "+(L.name||"")}}
   if(n){const th=n.threadId&&threads.get(n.threadId);pr=pr||(n.projectId&&projects.get(n.projectId))||(th&&projectOfThread(th.id))||null;threadId=n.threadId||""}
   room=room||(n&&n.classroom)||(pr&&projRoom(pr))||myRoom()||"";
   // the group the children in the photos belong to, so the footer names their group
   const gc={};for(const x of grp)for(const id of x.children||[]){const c=children.get(id);if(c&&c.group)gc[c.group]=(gc[c.group]||0)+1}
   const gName=Object.entries(gc).sort((a,b)=>b[1]-a[1])[0];const g=gName?{name:gName[0]}:n&&GROUPS.find(x=>x.room===room&&(x.educator||"").toLowerCase()===String(n.by||"").toLowerCase());
-  const st={id:stId(),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:frame?(stFrames().find(f=>f.k===frame)||{}).title||"":"",cover:"",classroom:room,group:g?g.name:"",projectId:pr?pr.id:"",threadId,
+  const st={id:stId(),year:yearFromTime(Date.now()),at:Date.now(),by:whoAmI(),title:frame?(stFrames().find(f=>f.k===frame)||{}).title||"":String(o.title||""),cover:"",...(o.child?{childId:o.child.id}:{}),classroom:room,group:g?g.name:"",projectId:pr?pr.id:"",threadId,
     sources:grp.map(x=>x.id),coverPhoto:grp[0]?grp[0].id:"",pages:grp.map(x=>({id:stPageId(),heading:"",photo:x.id,lines:""})),
     care:Object.assign({},ST_CARE,{on:false}),words:Object.assign({},ST_WORDS,{on:false,items:frame?frameWords(frame):[]}),think:Object.assign({},ST_THINK,{on:false}),practice:Object.assign({},ST_PRACTICE,{on:false}),
     ourwords:Object.assign({},ST_OURWORDS,{on:false}),draw:Object.assign({},ST_DRAW,{on:false}),community:Object.assign({},ST_COMMUNITY,{on:false}),families:Object.assign({},ST_FAMILIES,{on:false}),
@@ -4237,6 +4241,35 @@ function storyStartOptions(){const g=(label,list)=>list.length?`<optgroup label=
   const lns=LENSES.map(l=>["lens:"+l.id,l.name]);
   const bns=[...bins.values()].filter(b=>b&&b.date&&b.date>=addDays(wk,-21)).sort((a,b)=>b.date.localeCompare(a.date)).map(b=>["bin:"+b.id,"Weekly bin, "+fmtDate(b.date).replace(/, \d{4}$/,"")]);
   return `<option value="blank:">A blank story</option>`+g("Projects",prs)+g("Threads",ths)+g("Lenses",lns)+g("Plans",pls)+g("Team inquiries",iqs)+g("The weekly bin",bns)}
+// a story can also start from a subject someone types, from one child, or both. The search is plain word matching on the
+// educators' own words, so it asks nothing of the writing help (November 19, 2026)
+let stFind={q:"",kid:"",ran:false};
+function stFindKids(){const room=myRoom();return [...children.values()].filter(c=>c&&c.first&&c.status!=="withdrawn"&&(isDirector()||!room||c.classroom===room)).sort((a,b)=>kidName(a).localeCompare(kidName(b)))}
+function stFindTerms(q){const SKIP=new Set("the a an and or of for to on in at with our we is are it its this that how when get getting got put putting use using make making go going do doing about".split(" "));
+  const stem=w=>w.length<=3?w:/(x|ch|sh|ss)es$/.test(w)?w.slice(0,-2):/[^s]s$/.test(w)?w.slice(0,-1):w.length>5&&/ing$/.test(w)?w.slice(0,-3).replace(/([b-df-hj-np-tv-z])\1$/,"$1"):w;
+  const ws=String(q||"").toLowerCase().split(/[^a-z0-9']+/).filter(w=>w.length>1);const keep=ws.filter(w=>!SKIP.has(w));
+  return [...new Set((keep.length?keep:ws).map(stem))]}
+// an observation is found when it holds any of the subject's words, and the ones holding the most of them come first
+function stFindMatches(){const room=myRoom(),kid=stFind.kid;
+  const res=stFindTerms(stFind.q).map(w=>new RegExp("\\b"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")));
+  const out=[];for(const n of notices.values()){if(!n||!n.photo)continue;
+    if(kid){if(!(n.children||[]).includes(kid))continue}
+    else if(!isDirector()&&room&&!momentRooms(n).includes(room))continue;
+    const t=noticeText(n).toLowerCase();const k=res.filter(r=>r.test(t)).length;if(res.length&&!k)continue;out.push([k,n])}
+  return out.sort((a,b)=>b[0]-a[0]||(b[1].at||0)-(a[1].at||0)).slice(0,80).map(x=>x[1])}
+function stFindTitle(){const q=String(stFind.q||"").trim(),c=stFind.kid&&children.get(stFind.kid);const t=q?q.charAt(0).toUpperCase()+q.slice(1):"";return c&&t?c.first+", "+q:c?c.first:t}
+function stFindPanel(){const kids=stFindKids(),c=stFind.kid&&children.get(stFind.kid);
+  const row=`<div class="actions" style="margin-top:6px"><input type="text" id="stfq" value="${esc(stFind.q)}" placeholder="A subject, such as rain, shoes or clay" aria-label="A subject" style="max-width:320px" onkeydown="if(event.key==='Enter'){event.preventDefault();this.parentNode.querySelector('[data-stfind]').click()}">
+    <select id="stfkid" style="width:auto;max-width:100%" aria-label="A child"><option value="">Any child</option>${kids.map(k=>`<option value="${esc(k.id)}" ${stFind.kid===k.id?"selected":""}>${esc(kidName(k))}</option>`).join("")}</select>
+    <button class="btn ghost" data-stfind="1">Find observations</button></div>`;
+  if(!stFind.ran)return `<div class="cnt" style="margin-top:12px"><b>Or start from a subject, a child, or both.</b></div>${row}`;
+  const ms=stFindMatches(),what=[stFind.q&&`"${esc(stFind.q)}"`,c&&esc(c.first)].filter(Boolean).join(" and ");
+  const item=n=>`<label class="radio" style="display:flex;gap:10px;align-items:flex-start;margin:6px 0"><input type="checkbox" data-stftick="${esc(n.id)}" style="margin-top:4px"><img src="${esc(photoThumb(n))}" alt="" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:6px;flex:none"><span><span class="cnt">${esc([shortDate(n.at),n.by,obsRoomText(n)].filter(Boolean).join(" · "))}</span><br>${esc(firstLine(noticeText(n).replace(/\s+/g," "),160))}</span></label>`;
+  return `<div class="cnt" style="margin-top:12px"><b>Or start from a subject, a child, or both.</b></div>${row}
+    <section class="card" style="margin-top:8px">${ms.length?`<div><b>${ms.length} observation${ms.length===1?"":"s"} with a photo found for ${what}.</b></div><div class="cnt">Tick the ones that belong in the story. A story holds up to 12 photos.</div>
+      <div class="actions" style="margin:6px 0"><button class="linkbtn" data-stfall="1">Tick all</button><button class="linkbtn" data-stfnone="1">Clear the ticks</button></div>${ms.map(item).join("")}`
+      :`<div><b>No observations with a photo found for ${what} yet.</b></div><div class="cnt">The story can still begin, with its title and blank pages ready for photos and words.</div>`}
+      <div class="actions" style="margin-top:8px"><button class="btn" data-stfgo="1">Make the story</button><button class="linkbtn" data-stfclose="1">Close</button></div></section>`}
 function renderStories(){
   const ss=[...stories.values()].sort((a,b)=>(b.at||0)-(a.at||0));
   const card=st=>{const ph=notices.get(st.coverPhoto||storyPhotoIds(st)[0]);
@@ -4244,7 +4277,8 @@ function renderStories(){
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Stories</h2><div class="sub">Stories to read aloud with children, made from observations. Each page has one photo and a few short sentences written to the children, and every word comes from what the educators saw.</div></div>
 </div>
     <div class="actions" style="margin-top:8px"><select id="ststart" style="width:auto;max-width:100%" aria-label="Where the story starts">${storyStartOptions()}</select><button class="btn" data-storygo="1">Make a story</button></div>
-    <div class="cnt">It brings in the photos and the educators' words from where it starts.</div></div>
+    <div class="cnt">It brings in the photos and the educators' words from where it starts.</div>
+    ${stFindPanel()}</div>
   ${ss.length?`<div class="tgrid3" style="margin-top:12px">${ss.map(card).join("")}</div>`:`<div class="empty" style="margin-top:12px">No stories yet.</div>`}`;
 }
 // the photos a story can use, the ones it already has and others from the same project or class
@@ -4426,6 +4460,14 @@ document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)r
   if(t.dataset.storybin){const x=bins.get(t.dataset.storybin);if(x)newStory({bin:x});return}
   if(t.dataset.storylens){const x=LENSES.find(l=>l.id===t.dataset.storylens);if(x)newStory({lens:x});return}
   if(view==="stories"&&t.dataset.storynew){newStory({});return}
+  if(view==="stories"&&t.dataset.stfind){stFind.q=String(($("#stfq")||{}).value||"").trim();stFind.kid=($("#stfkid")||{}).value||"";
+    if(!stFind.q&&!stFind.kid){toast("Type a subject or choose a child first.");return}stFind.ran=true;renderStories();return}
+  if(view==="stories"&&t.dataset.stfall){document.querySelectorAll("[data-stftick]").forEach(x=>{x.checked=true});return}
+  if(view==="stories"&&t.dataset.stfnone){document.querySelectorAll("[data-stftick]").forEach(x=>{x.checked=false});return}
+  if(view==="stories"&&t.dataset.stfclose){stFind={q:"",kid:"",ran:false};renderStories();return}
+  if(view==="stories"&&t.dataset.stfgo){const picked=[...document.querySelectorAll("[data-stftick]:checked")].map(x=>notices.get(x.dataset.stftick)).filter(Boolean);
+    const c=stFind.kid&&children.get(stFind.kid)||null,q=stFind.q,title=stFindTitle();stFind={q:"",kid:"",ran:false};
+    newStory({picked,subject:q,child:c,title});return}
   if(view==="stories"&&t.dataset.storystart!=null){stStarting=t.dataset.storystart==="1";renderStories();return}
   if(view==="stories"&&t.dataset.storygo){const v=($("#ststart")||{}).value||"blank:",i=v.indexOf(":"),k=v.slice(0,i),id=v.slice(i+1);stStarting=false;
     if(k==="proj"){const x=projects.get(id);if(x)newStory({project:x});return}
@@ -5278,7 +5320,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="dfcbb908e7ea";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="755fff687dab";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -18133,11 +18175,13 @@ function renderChild(){
   }
   $("#main").innerHTML=`<div class="head"><div class="head-row"><div><span class="eyebrow">${esc([c.classroom&&c.classroom+" class",c.group&&c.group+" group"].filter(Boolean).join(" · "))}</span><h2 style="margin-top:4px">${esc(kidName(c))}</h2>
       <div class="sub">${kidAt(c)?`${kidAgeText(c)?esc(kidAgeText(c))+". ":""}At our school${c.enrollDate?" since "+esc(longDate(c.enrollDate)):""}.`:`${KSTATUS_LABEL(c)}${kidLeftDay(c)?", "+esc(longDate(kidLeftDay(c))):""}. Everything kept about ${esc(c.first)} stays here.`}</div></div>
-      <span class="actions pfrow"><select data-pfdrdp="1" aria-label="How the DRDP prints in the portfolio" style="width:auto">${Object.entries(PF_DRDP).map(([k,l])=>`<option value="${k}" ${pfDrdpMode()===k?"selected":""}>${l}</option>`).join("")}</select>${printBtns("portfolio",c.id,"Portfolio PDF")}</span></div></div>
+      <span class="actions pfrow"><select data-pfdrdp="1" aria-label="How the DRDP prints in the portfolio" style="width:auto">${Object.entries(PF_DRDP).map(([k,l])=>`<option value="${k}" ${pfDrdpMode()===k?"selected":""}>${l}</option>`).join("")}</select>${printBtns("portfolio",c.id,"Portfolio PDF")}<button class="btn small ghost" data-kidstory="${esc(c.id)}">Make a story</button></span></div></div>
     <div class="tseg ktabs" role="tablist" aria-label="${esc(c.first)}'s page">${tabs.map(([k,l])=>`<button role="tab" data-ktab="${k}" aria-pressed="${kidTab===k}">${l}</button>`).join("")}</div>
     <div style="display:grid;gap:14px">${body}</div>`;
 }
 document.addEventListener("click",e=>{const t=e.target.closest("button");if(!t||view!=="child")return;
+  // a story about this one child begins on the Stories page, with the child already chosen
+  if(t.dataset.kidstory){stFind={q:"",kid:t.dataset.kidstory,ran:true};goView("stories");jumpTop();return}
   if(t.dataset.ktab){kidTab=t.dataset.ktab;LS.set("tree.kidtab",kidTab);kidOpenMoment=t.dataset.kmopen||"";renderMain();if(kidOpenMoment){const el=document.getElementById("nw-"+kidOpenMoment);if(el){formTop(el);return}}jumpTop();return}
   if(t.dataset.kdoc){kidDocShow=t.dataset.kdoc;kidOpenMoment="";kidDocMax=60;renderMain();return}
   // the next sixty, keeping the place on the page

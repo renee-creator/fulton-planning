@@ -310,7 +310,9 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
         } else if (!t.words) continue;
         const noticed = t.words || '';
         if (!group) group = (noticed.length >= 12 ? kaymbu.postGroup(noticed, room2, day) : '') || ('kb' + crypto.createHash('sha1').update(batchKey).digest('hex').slice(0, 13));
-        const id = 'n' + at.toString(36) + crypto.randomBytes(3).toString('hex');
+        // the record is named from the photo's own name, so two servers running at once during an update write one record, never two (November 19, 2026)
+        const id = 'n' + at.toString(36) + crypto.createHash('sha1').update(String(t.key)).digest('hex').slice(0, 6);
+        if (store.recs.notices.has(id) && !store.recs.notices.get(id).deleted) { h.byKey.set(t.key, id); h.byKid.add(m._id); out.merged++; continue; }
         const doc = { id, noticed, wonder: '', classroom: room2, ...(sg ? { smallGroup: sg } : {}), ...(photo ? { group } : {}), by, at, week: mondayOf(day), projectId: '', threadId: '', children: t.kids.ids.slice(), ...(photo ? { photo } : {}), kaymbu: mark, updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true }); noteChange('notices', id); scheduleSave('notices', id);
         h.byKey.set(t.key, id); h.byKid.add(m._id);
