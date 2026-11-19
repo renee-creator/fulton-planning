@@ -12,6 +12,7 @@ module.exports = function ({ drive, store, noteChange, scheduleSave, log }) {
   const TYPES = { pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
   const CHUNK = 4 * 1024 * 1024;
   // one device makes a set at a time. A device that has sent nothing for 15 minutes gives way to the next.
+  // The claim is kept only in memory, so a restart forgets it.
   let claim = null;
   const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const info = () => { const r = store.recs.settings.get('readable'); return (r && !r.deleted && r.doc) || {}; };
@@ -20,7 +21,16 @@ module.exports = function ({ drive, store, noteChange, scheduleSave, log }) {
     store.recs.settings.set('readable', Object.assign({}, cur || {}, { doc: Object.assign({}, info(), { id: 'readable', updatedAt: Date.now(), updatedByName: 'Readable copies' }, patch) }));
     noteChange('settings', 'readable'); scheduleSave('settings', 'readable');
   }
-  const mine = b => claim && claim.id === String(b.device || '') && Date.now() - claim.at < 15 * 60e3;
+  // A device may go on when it holds the claim. It may also take the claim back after a restart or a long pause, when it
+  // sends the run of the set still waiting and no other device holds a fresh claim. Each request it makes renews the claim.
+  const mine = b => {
+    const d = String(b.device || '').slice(0, 40), p = info().pending;
+    if (!d) return false;
+    if (claim && claim.id !== d && Date.now() - claim.at < 15 * 60e3) return false;
+    if (!(claim && claim.id === d) && !(p && p.run && p.run === String(b.run || ''))) return false;
+    claim = { id: d, at: Date.now() };
+    return true;
+  };
 
   async function handle(b, who) {
     const a = String(b.action || '');
@@ -44,7 +54,6 @@ module.exports = function ({ drive, store, noteChange, scheduleSave, log }) {
     }
     if (a === 'copy') {
       if (!mine(b)) return { status: 409, error: 'Another device is making the readable copies, or this one waited too long. Try again in a few minutes.' };
-      claim.at = Date.now();
       const run = String(b.run || ''), from = String(b.from || ''); const prevRun = info().run;
       if (!RUN.test(run) || !RUN.test(from) || from !== prevRun) return { status: 400, error: 'The request could not be read.' };
       const files = (Array.isArray(b.files) ? b.files : []).map(String).filter(f => { const [folder, ...rest] = f.split('/'); return FOLDER.test(folder) && NAME.test(rest.join('/')); }).slice(0, 40);
@@ -54,7 +63,6 @@ module.exports = function ({ drive, store, noteChange, scheduleSave, log }) {
       return { copied: Array.isArray(j.copied) ? j.copied.map(String) : [] };
     }
     if (!mine(b)) return { status: 409, error: 'Another device is making the readable copies, or this one waited too long. Try again in a few minutes.' };
-    claim.at = Date.now();
     const run = String(b.run || '');
     if (!RUN.test(run)) return { status: 400, error: 'The request could not be read.' };
     if (a === 'put') {

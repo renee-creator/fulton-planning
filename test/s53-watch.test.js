@@ -164,3 +164,28 @@ test('a save that works on its retry is not a finding, and one whose retry also 
   assert.strictEqual(safe().length, 1, 'the retry did not work');
   assert.match(safe()[0].text, /retry did not work/);
 });
+
+test('a fallback that works is not a failed job, and records that load on the retry are not either (issue 46)', () => {
+  const c = clock(); const w = makeWatch({ now: c.now }); w.load(null);
+  const jobs = () => w.snapshot().items.filter(i => i.kind === 'job');
+  w.fromLog(['GitHub could not list the records in one go, listing each folder on its own']);
+  w.fromLog(['GitHub could not list', 'staff', 'in one go, reading its folders one by one']);
+  w.fromLog(['GitHub could not list', 'photos', 'in time, so the server starts without it and lists it once running']);
+  w.fromLog(['GraphQL could not give', 3, 'records in full, reading them from the raw file address']);
+  w.fromLog(['Could not read the DRDP descriptors, trying again in', 5, 'minutes,', 'timeout']);
+  assert.deepStrictEqual(jobs(), [], 'each fallback stays quiet');
+  w.fromLog(['Could not load records.', 'GitHub GraphQL answered 504 Gateway Timeout']);
+  w.fromLog(['Loaded 12 plans, 30 notices, 4 threads']);
+  assert.deepStrictEqual(jobs(), [], 'one failed load put right by the retry stays quiet');
+  w.fromLog(['Could not load records.', 'GitHub GraphQL answered 504 Gateway Timeout']);
+  w.fromLog(['Loaded through GraphQL 12 plans, 30 notices, 2 posts']);
+  w.fromLog(['Could not load records.', 'GitHub GraphQL answered 504 Gateway Timeout']);
+  assert.deepStrictEqual(jobs(), [], 'a load in between starts the count again');
+  w.fromLog(['Could not load records.', 'GitHub GraphQL answered 504 Gateway Timeout']);
+  assert.strictEqual(jobs().length, 1, 'two failed loads in a row are trouble');
+  assert.strictEqual(jobs()[0].count, 1);
+  assert.match(jobs()[0].text, /Could not load records/);
+  w.fromLog(['Menus from the Kitchen Digest could not be read', 'timeout']);
+  assert.strictEqual(jobs().length, 2, 'an ordinary failure is still counted');
+  assert.ok(jobs().some(i => /Kitchen Digest could not be read/.test(i.text)));
+});
