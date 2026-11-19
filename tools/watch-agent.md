@@ -39,7 +39,8 @@ what needs correcting, with a plan of correction for each thing. It proposes. It
    - Report only what would really slow an educator down or confuse them, with the page, what to change, and the file
      in src where it is drawn. Leave out the same finding you already reported in an open program-watch issue.
 3. `npm test`. The full run takes 20 to 30 minutes, so run it in the background with a limit of about 40 minutes, and
-   not while the walk runs. A busy machine makes some files fail that pass alone, so rerun every failing file on its
+   not while the walk runs. Each test has a 5 minute limit, so a test that hangs shows as failed with its name instead
+   of holding up the run. A busy machine makes some files fail that pass alone, so rerun every failing file on its
    own (`node --test test/<file>.test.js`) before calling it a failure. A test that still fails is a glitch. Read the
    failure and find the commit that caused it with `git log`. Two checks of a Word file (s13-fieldguide, s71-book) are
    skipped with a note where the Word tool cannot be fetched from cdn.jsdelivr.net. That is the sandbox, not TREE.

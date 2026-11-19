@@ -786,7 +786,7 @@ body[data-sec="calendar"]{--acc:var(--marigold);--acc-soft:var(--marigold-soft)}
 .kitchen>summary h3{font-size:17px;margin:0}.kitchen>summary h3::before{content:"\203A";display:inline-block;width:14px;color:var(--muted);transition:transform .15s}.kitchen[open]>summary h3::before{transform:rotate(90deg)}
 .klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 18px;margin-top:8px}.kitem{padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;line-height:1.35}.kitem .cnt{font-size:12.5px}.knote{font-size:12px;color:var(--muted)}.knote.kset{color:var(--moss);font-weight:600}.kchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.kchips .chip-btn{font-size:12.5px;padding:4px 10px}
 /* on a touch screen a text link gets a taller area to tap, without moving anything around it */
-@media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}.chip{padding-top:8px;padding-bottom:8px}}
+@media (pointer:coarse){.linkbtn{padding-top:11px;padding-bottom:11px;margin-top:-11px;margin-bottom:-11px}.rname button{min-width:30px;min-height:30px;margin:-6px -2px -6px 0;font-size:18px}.chip{padding-top:8px;padding-bottom:8px}.chips{row-gap:10px}.chips .linkbtn{margin-top:0;margin-bottom:0;padding-top:8px;padding-bottom:8px;min-height:40px}.cnt:has(>.linkbtn){padding-bottom:12px}}
 .kwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}.kmain{display:grid;gap:10px;min-width:0}
 .kweek{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.kday{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;gap:6px;min-width:0;align-content:start}.kday.closed{opacity:.6}
 .kdayh{display:flex;justify-content:space-between;gap:2px 4px;flex-wrap:wrap;align-items:center;font-size:14px;min-height:22px}.kclosed{display:flex;align-items:center;gap:8px;min-height:40px;font-size:14px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:2px;cursor:pointer}.kclosed input{width:20px;height:20px;margin:0}.kdayh label{white-space:nowrap;font-size:11.5px;display:flex;align-items:center;gap:3px}.kdayh label input{margin:0}.kmeal{display:grid;gap:3px;font-size:13px;color:var(--muted);font-weight:600}
@@ -1064,6 +1064,8 @@ function renderWho(){const el=$("#me"),w=$("#whoneed");if(!el||!w)return;const b
 function isOffice(){if(VIEW_AS)return false;return isDirector()||!!(window.FP_OFFICE&&window.FP_OFFICE())}
 function isDirector(){if(VIEW_AS)return false;return window.FP_HOSTED?!!(window.FP_DIRECTOR&&window.FP_DIRECTOR()):true}
 function blankWeb(){return{focus:"",branches:[{name:"",materials:""},{name:"",materials:""},{name:"",materials:""}],connections:[],languages:[],questions:"",environment:""}}
+// a plan kept without its web, or with only part of one, gets the missing parts so it always opens
+function planWeb(p){const w=p.web&&typeof p.web==="object"?p.web:blankWeb();if(!Array.isArray(w.branches))w.branches=blankWeb().branches;if(!Array.isArray(w.connections))w.connections=[];if(!Array.isArray(w.languages))w.languages=[];for(const k of["focus","questions","environment"])if(typeof w[k]!=="string")w[k]=String(w[k]||"");p.web=w;return w}
 
 function newPlan(type,extra={}){
   const p={id:uid(),type,weekOf:week,classroom:roomFilter!=="All"?roomFilter:(LS.get("fps.myroom","")||""),educator:me(),group:"",setting:[],session:"Morning",languages:[],docplan:[],
@@ -1472,6 +1474,7 @@ function renderMain(){
   const p=currentId&&plans.get(currentId);
   if(!p){renderWeekBoard();return}
   const F=FORMS[p.type];
+  if(F&&F.web)planWeb(p);
   const prev=p.prevId&&plans.get(p.prevId);
   let h=`<div class="head">
     <div class="head-row">
@@ -1763,7 +1766,7 @@ document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.tagName==="DETAI
 
 /* Curriculum web editor */
 function webEditor(p){
-  const w=p.web;
+  const w=planWeb(p);
   const names=w.branches.map((b,i)=>b.name||"Branch "+(i+1));
   return `<section class="card"><div class="lbl">Curriculum web</div>
    <div class="hint">Visual and non-linear. Start from the thinking you observed, then add 3 to 6 directions it could go. Branches may connect or stay separate. Revisit and evolve it weekly.</div>
@@ -1846,7 +1849,7 @@ function webLayout(n,cx,cy,rx,ry){const pts=[];for(let i=0;i<n;i++){const a=(-90
 function wrapWords(t,max){const words=String(t).split(/\s+/).filter(Boolean);const out=[];let line="";for(const w of words){if((line+" "+w).trim().length>max){if(line)out.push(line);line=w}else line=(line+" "+w).trim()}if(line)out.push(line);return window.TREE_KIT&&TREE_KIT.noHang?TREE_KIT.noHang(out,s=>s.length<=max):out}
 function webPreviewSvg(w){
   const W=560,H=380,cx=W/2,cy=H/2;
-  const pts=webLayout(w.branches.length,cx,cy,195,130);
+  const brs=w.branches||[];const pts=webLayout(brs.length,cx,cy,195,130);
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curriculum web preview">`;
   pts.forEach(([x,y])=>s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--muted)" stroke-width="1.2"/>`);
   (w.connections||[]).forEach(([a,b])=>{if(pts[a]&&pts[b]){const [x1,y1]=pts[a],[x2,y2]=pts[b];const mx=(x1+x2)/2+(cx-(x1+x2)/2)*-0.35,my=(y1+y2)/2+(cy-(y1+y2)/2)*-0.35;s+=`<path d="M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="var(--marigold)" stroke-width="1.6" stroke-dasharray="5 4"/>`}});
@@ -1854,7 +1857,7 @@ function webPreviewSvg(w){
   const fl=wrapWords(w.focus||"Central focus",longW?26:20).slice(0,longW?4:3);
   s+=`<ellipse cx="${cx}" cy="${cy}" rx="92" ry="44" fill="var(--moss-soft)" stroke="var(--moss)" stroke-width="1.5"/>`;
   fl.forEach((l,i)=>s+=`<text x="${cx}" y="${cy-(fl.length-1)*(longW?6.5:8)+i*(longW?13:16)+5}" text-anchor="middle" font-size="${longW?11:13.5}" font-weight="600" fill="var(--moss)" font-family="Andika, sans-serif">${esc(l)}</text>`);
-  w.branches.forEach((b,i)=>{const [x,y]=pts[i];const nl=upTo(wrapWords(b.name||"Branch "+(i+1),22),2);const ml=upTo(wrapWords(b.materials,28),3);const h=14+nl.length*15+ml.length*13;
+  brs.forEach((b,i)=>{const [x,y]=pts[i];const nl=upTo(wrapWords(b.name||"Branch "+(i+1),22),2);const ml=upTo(wrapWords(b.materials,28),3);const h=14+nl.length*15+ml.length*13;
     s+=`<rect x="${x-78}" y="${y-h/2}" width="156" height="${h}" rx="7" fill="var(--paper)" stroke="var(--line)"/>`;
     nl.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+j*15}" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--ink)" font-family="Andika, sans-serif">${esc(l)}</text>`);
     ml.forEach((l,j)=>s+=`<text x="${x}" y="${y-h/2+17+nl.length*15+j*13}" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="Andika, sans-serif">${esc(l)}</text>`);
@@ -2206,6 +2209,8 @@ async function fetchPhoto(u){
   const m0=u.match(/\/original\/([^?]+)/),id=m0?decodeURIComponent(m0[1]):"",kept=id&&/\.(jpe?g|png|webp)$/i.test(id)?await photoKept(id):null;
   if(kept)return new Response(kept,{headers:{"Content-Type":kept.type||"image/jpeg"}});
   const go=x=>fetch(x+(x.includes("?")?"&":"?")+"use=print",{cache:"no-store",mode:"cors"});
+  // a link made with a key that has run out, or nearly, is made again with a fresh key first
+  if(id&&window.FP_ORIGINAL_URL&&window.FP_FRESH_KEY){const t=(u.match(/[?&]t=([^&]+)/)||[])[1],e=t?parseInt(decodeURIComponent(t).split(".")[0],36):0;if(e&&e<Date.now()+5*60e3){await window.FP_FRESH_KEY();u=window.FP_ORIGINAL_URL(id)}}
   let r=await go(u);
   if(!r.ok&&r.status===403&&window.FP_RENEW_KEY){await window.FP_RENEW_KEY();if(id&&window.FP_ORIGINAL_URL)r=await go(window.FP_ORIGINAL_URL(id))}
   if(!r.ok)throw new Error("photo "+r.status);
@@ -8518,6 +8523,7 @@ function assistError(code,tail){const msg=code&&typeof code==="object"?String(co
 async function draftFromNotes(p,btn){
   const notes=$("#notes").value.trim();if(!notes){toast("Add your notes first.");return}
   const F=FORMS[p.type];const empty=F.fields.filter(f=>!(p.fields[f.k]||"").trim());
+  if(p.type==="classroom")planWeb(p);
   const wantWeb=p.type==="classroom"&&!p.web.focus&&!p.web.branches.some(b=>b.name);
   if(!empty.length&&!wantWeb){toast("Every section already has text. Use Strengthen wording on any section instead.");return}
   btn.disabled=true;$("#draftstate").textContent="Reading your notes";
@@ -15757,7 +15763,7 @@ function digest(ps){
   return shareRoom(onePerPost(ps),160).map(p=>{const o={id:p.id,week:p.weekOf,type:FORMS[p.type].short,classroom:p.classroom||"",who:p.type==="classroom"?"team":(p.educator||""),text:{}};
     (keys[p.type]||[]).forEach(k=>{const v=(p.fields?.[k]||"").trim();if(v)o.text[k]=v.slice(0,p.type==="notice"?900:450)});
     if(p.type==="notice"&&notices.get(p.id))Object.assign(o,noticeExtras(notices.get(p.id)));
-    if(p.web&&(p.web.focus||p.web.branches?.some(b=>b.name)))o.text.web=[p.web.focus,...p.web.branches.map(b=>b.name)].filter(Boolean).join("; ");
+    if(p.web&&(p.web.focus||p.web.branches?.some(b=>b.name)))o.text.web=[p.web.focus,...(p.web.branches||[]).map(b=>b.name)].filter(Boolean).join("; ");
     const fol=planThreads(p).filter(c=>c.how!=="quoted").map(c=>c.t.id);if(fol.length)o.follows=fol;
     return o}).filter(o=>Object.keys(o.text).length);
 }
@@ -15829,7 +15835,7 @@ async function familyUpdate(p,btn){
   const prompt=`Write a short weekly note for ${who} at Fulton Community School & Farm, to post in Kaymbu. Base it only on this week's ${FORMS[p.type].name} below. 120 to 200 words. Warm and specific, in family-friendly language. Describe what children are wondering and investigating and how the environment is changing to support it. End with one open question families could ask their child at home, in the spirit of "Tell me about this" rather than "What is it". Do not name individual children. Do not invent anything the plan does not say. ${STYLE}
 Return only the note.
 
-${planContext(p)}${p.web?.focus?"\nCurriculum web focus. "+p.web.focus+". Branches. "+p.web.branches.map(b=>b.name).filter(Boolean).join(", "):""}`;
+${planContext(p)}${p.web?.focus?"\nCurriculum web focus. "+p.web.focus+". Branches. "+(p.web.branches||[]).map(b=>b.name).filter(Boolean).join(", "):""}`;
   try{const r=await sample(prompt,{modelTier:"default",cache:false});p=plans.get(p.id)||p;p.familyUpdate=(r.text||"").trim().replace(/\s*[—–]\s*/g,", ");persist(p);const ta=$("#family");if(ta){ta.value=p.familyUpdate;autoGrow(ta)}}
   catch(err){toast(assistError(err||"unknown"))}
   btn.disabled=false;btn.textContent="Draft family update";
@@ -16339,7 +16345,7 @@ function applyTranscript(out,target,type,j){
     if(noDate)p.importNoDate=true;
   }
   for(const f of F.fields){const v=str(out?.fields?.[f.k]);if(v&&!(p.fields[f.k]||"").trim())p.fields[f.k]=v}
-  if(tp==="classroom"&&out?.web&&typeof out.web==="object"){const w=out.web;const empty=!p.web.focus&&!p.web.branches.some(b=>b.name);
+  if(tp==="classroom"&&out?.web&&typeof out.web==="object"){const w=out.web;planWeb(p);const empty=!p.web.focus&&!p.web.branches.some(b=>b.name);
     if(empty){const br=(Array.isArray(w.branches)?w.branches:[]).slice(0,6).map(b=>({name:str(b?.name),materials:str(b?.materials)})).filter(b=>b.name||b.materials);
       if(str(w.focus)||br.length){p.web.focus=str(w.focus);if(br.length){p.web.branches=br;p.web.connections=[]}p.web.languages=langPick(w.languages);p.web.questions=str(w.questions);p.web.environment=str(w.environment)}}}
   if(tp==="individual"&&out?.__group&&!target){p.focus="smallgroup";p.groups=[out.__group];const g=GROUPS.find(x=>x.name===out.__group);if(g){if(!p.classroom)p.classroom=g.room;if(!str(out.educator)&&!str(j.meta?.educator)&&g.educator)p.educator=g.educator}if(Array.isArray(out.setting)&&out.setting.length&&!p.where)p.where=out.setting.join(", ")}
@@ -17880,6 +17886,7 @@ async function rcMake(manual){
   if(rcNow)return;rcTried=Date.now();rcNow={done:0,total:0,bytes:0,failed:0,why:"",skipped:[],copied:0};rcShow();
   const keep=new Set(photoCache.keys()),clear=()=>{for(const k of [...photoCache.keys()])if(!keep.has(k))photoCache.delete(k)};let run="";
   try{
+    if(window.FP_FRESH_KEY)await window.FP_FRESH_KEY().catch(()=>{});
     const st=await window.FP_API("/api/readable",{action:"start",device:RC_DEVICE});
     if(st.busy){rcNow=null;rcShow();if(manual)toast("Another computer or iPad is making the readable copies now.");return}
     run=st.run;const have=new Set(st.have||[]),used=new Set(),prev=st.prev&&st.prev.sigs?st.prev:null,sigs={};let files=0,canCopy=!!prev;
@@ -17902,6 +17909,8 @@ async function rcMake(manual){
       let docs=[];try{docs=j.docs()}catch(e){docs=null}
       if(!docs||!docs.length){rcNow.skipped.push(pdf,doc);rcNow.done+=2;rcShow();continue}
       const sig=rcSig(j.folder,base,docs);
+      // both files already arrived in an earlier try of this set, so nothing waits and no photo loads for them
+      if(have.has(pdf)&&have.has(doc)){sigs[pdf]=sigs[doc]=sig;files+=2;rcNow.done+=2;rcShow();continue}
       if(prev&&prev.sigs[pdf]===sig&&prev.sigs[doc]===sig){const got=await copy([pdf,doc]);if(got.has(pdf)&&got.has(doc)){sigs[pdf]=sigs[doc]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
       await rcIdle();
       try{if(docs.some(d=>(d.photos||[]).length||(d.blocks||[]).some(b=>b.t==="photo"||b.t==="evpath")))await loadPhotos(docs,true)}catch(e){rcNow.skipped.push(pdf,doc);rcNow.done+=2;rcShow();clear();continue}
@@ -17914,7 +17923,7 @@ async function rcMake(manual){
       for(const p of ed){const folder=p.former?"Former educators":CLASSROOMS.includes(p.room)?p.room+" Class":"School",base=uniq(folder,p.name+" records"),sig=rcSig(folder,base,p.doc);
         const paths=[folder+"/"+base+".pdf",folder+"/"+base+".docx"];
         if(prev&&paths.every(x=>prev.sigs[x]===sig)){const got=await copy(paths);if(paths.every(x=>got.has(x))){for(const x of paths)sigs[x]=sig;files+=2;rcNow.done+=2;rcShow();continue}}
-        for(const ext of [".pdf",".docx"]){await rcIdle();await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null),sig)}}}
+        for(const ext of [".pdf",".docx"]){if(!have.has(folder+"/"+base+ext))await rcIdle();await put(folder,base+ext,have.has(folder+"/"+base+ext)?null:await (ext===".pdf"?makePdf:makeDocx)([p.doc],base+ext,"quiet").catch(()=>null),sig)}}}
     catch(e){if(e&&e.status===409)throw e;rcNow.failed++;rcNow.why="The educators' records could not be read. "+((e&&e.message)||"")}
     // each conference as it prints, in the child's class, or Former children. One whose record and child have not
     // changed is copied, every file it made last time.
@@ -17933,7 +17942,8 @@ async function rcMake(manual){
     readableInfo=Object.assign({},readableInfo,{lastAt:Date.now(),run,files:Number(fin.kept)||files,bytes:rcNow.bytes,copied:rcNow.copied,skipped:rcNow.skipped.slice(0,20),pending:null,tried:null});
     if(manual)toast(`The readable copies are in Google Drive, ${Number(fin.kept||files).toLocaleString()} files.`)}
   catch(e){const why=(e&&e.message)||"The readable copies did not finish.";
-    if(run&&!(e&&e.status===409)){await window.FP_API("/api/readable",{action:"fail",device:RC_DEVICE,run,done:rcNow.done,total:rcNow.total,why}).catch(()=>{});readableInfo=Object.assign({},readableInfo,{tried:{at:Date.now(),run,done:rcNow.done,total:rcNow.total,why}})}
+    // a set stopped for any reason, a refusal too, is noted, so the card says it did not finish
+    if(run){await window.FP_API("/api/readable",{action:"fail",device:RC_DEVICE,run,done:rcNow.done,total:rcNow.total,why}).catch(()=>{});readableInfo=Object.assign({},readableInfo,{tried:{at:Date.now(),run,done:rcNow.done,total:rcNow.total,why}})}
     if(manual)toast(why)}
   finally{clear();rcNow=null;rcShow();if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()}}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rcnow]");if(!t||view!=="settings"||rcNow)return;

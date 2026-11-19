@@ -82,13 +82,22 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
     } catch (e) { log('Photo could not be kept in Google Drive, kept in the records instead', id.slice(0, 60), e.message); return false; }
   }
 
+  // At most 4 photo reads go to Drive at once. A burst of hundreds made each one take up to 100 seconds (issue 34).
+  // The rest wait their turn in order. A read that fails frees its place too.
+  const READS = 4; let reading = 0; const waiting = [];
+  async function oneRead(body) {
+    if (reading >= READS) await new Promise(ok => waiting.push(ok)); else reading++;
+    try { return await call(body); }
+    finally { const next = waiting.shift(); if (next) next(); else reading--; }
+  }
+
   // Google now and then answers a photo request as if it had no body, so a read that fails that way is tried twice more
   async function read(o) {
     let last;
     for (let k = 0; k < 3; k++) {
       if (k) await new Promise(ok => setTimeout(ok, 1200 * k));
       try {
-        const j = await call({ op: 'get', id: o.drive });
+        const j = await oneRead({ op: 'get', id: o.drive });
         if (!j.data) throw new Error('Drive sent no photo');
         return Buffer.from(j.data, 'base64');
       } catch (e) { last = e; if (/^Drive said /.test(e.message)) break; }

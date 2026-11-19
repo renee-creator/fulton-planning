@@ -45,6 +45,8 @@ function pathOf(p) { return norm(String(p || '').split('?')[0], 80).replace(/\/(
 
 // a log line that tells of trouble. Routine lines, a backup sent or a photo found, are left alone.
 const JOB_RE = /could not|couldn't|failed|failing|not be (read|saved|sent|made|loaded)|unexpected/i;
+// a line that tells of a slower way the server took, which then worked
+const FALLBACK_RE = /\bin one go\b|in time, so the server starts without it|from the raw file address|trying again in \d/i;
 const ERROR_RE = /^(Request error|Unexpected (error|rejection))/;
 // a message shown on a page that tells of trouble rather than of something done
 const TROUBLE_RE = /could not|couldn't|did not|didn't|try again|not allowed|too (large|long|big)|first\b|needs? |missing|no longer|has expired|isn't|is not|can't|cannot|choose |pick |fill in|add (a|an|the|at least) /i;
@@ -186,8 +188,17 @@ module.exports = function watch(o) {
     if (/^Save failed/.test(first)) { const p = String(args[1] || ''), n = (saveFails.get(p) || 0) + 1; saveFails.set(p, n);
       if (saveFails.size > 500) saveFails.delete(saveFails.keys().next().value);
       if (n >= 2) note('job', 'Save failed, and the retry did not work either'); return; }
+    // the whole line, since a fallback can tell of itself in a later piece
+    const line = args.map(a => a instanceof Error ? a.message : String(a)).join(' ');
+    // the records loaded, so an earlier failed load was put right by its retry
+    if (/^Loaded\b/.test(first)) { loadFails = 0; return; }
+    // a fallback that works is how the server carries on, so it is not trouble (issue 46)
+    if (FALLBACK_RE.test(line)) return;
+    // GitHub often answers one load with 504 and the retry works. Only a second failure before any load is trouble.
+    if (/^Could not load records/.test(first)) { if (++loadFails >= 2) note('job', 'Could not load records, and the next try did not work either'); return; }
     if (JOB_RE.test(first)) note('job', first);
   }
+  let loadFails = 0;
   const saveFails = new Map();
   function refused(path, status, message, who) {
     const p = pathOf(path);

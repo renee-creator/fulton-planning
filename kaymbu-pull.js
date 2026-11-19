@@ -44,6 +44,9 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
   const SINCE_DEFAULT = String(process.env.KAYMBU_SINCE || '2026-08-15');
   const LOOKBACK_PER_HOUR = Number(process.env.KAYMBU_LOOKBACK_PER_HOUR) || 250;
   const OVERLAP_MS = 3 * 864e5;                 // the hourly look reads three days before its last look, for late tags
+  // a photo Kaymbu would not send is asked for once more after this short wait, and on at most three looks in all
+  const PHOTO_WAIT_MS = () => { const v = Number(process.env.KAYMBU_PHOTO_WAIT_MS); return Number.isFinite(v) && v >= 0 ? v : 5000; };
+  const PHOTO_TRIES = 3;
   // what the estimate counts each request as, at the quick lane's prices on Render, and a Gemini read of a short video
   const COST = { sort: 0.006, screen: 0.006, video: 0.02 };
 
@@ -180,7 +183,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       return typeof a.keep === 'boolean' ? { keep: a.keep, why: String(a.why || '').replace(/[:—–]/g, ',').slice(0, 160) } : null;
     } catch (e) { log('A Kaymbu photo could not be screened', e.message); return null; }
   }
-  const REASON = { nowords: 'No words and no children tagged', before: 'Taken before the school year', dark: 'Too dark to see', blurry: 'Too blurred to see', similar: 'Nearly the same as another photo in its post', notlearning: 'Not documentation of children\'s learning' };
+  const REASON = { nowords: 'No words and no children tagged', before: 'Taken before the school year', dark: 'Too dark to see', blurry: 'Too blurred to see', similar: 'Nearly the same as another photo in its post', notlearning: 'Not documentation of children\'s learning', nophoto: 'Kaymbu would not send the photo' };
 
   /* ---------- one post at a time ---------- */
   // what TREE already holds, by the photo's own name and by Kaymbu's Moment
@@ -240,7 +243,9 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     for (const m of list) {
       const key = keyOf(m), kids = matchChildren(kaymbuStudents(m));
       if (h.byKey.has(key) || h.byKid.has(m._id)) { const id = h.byKey.get(key); if (!o.count && id && merge(id, m, kids)) out.merged++; else if (o.count) out.merged++; continue; }
-      if (h.aside.has(m._id)) continue;
+      // a Moment set aside stays aside. Only one whose photo Kaymbu would not send is asked for again, on up to three looks.
+      const was = h.aside.get(m._id);
+      if (was && !(was.reason === 'nophoto' && was.status === 'aside' && (was.tries || 0) < PHOTO_TRIES)) continue;
       todo.push({ m, key, kids, own: momentWords(m) });
     }
     if (!todo.length) return out;
@@ -302,8 +307,19 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
         let photo = null;
         if (m.pictureSource || m.pictureThumb) {
           const display = mediaUrl(m.pictureSource || String(m.pictureThumb).replace(/_thumb(\.\w+)$/i, '_display$1'));
-          const p = await kaymbu.bestPhoto(display);
-          if (!p) throw new Error('Kaymbu would not send the photo');
+          let p = await kaymbu.bestPhoto(display);
+          // Kaymbu sometimes will not send a photo. It is asked once more after a short wait, for its small copy when it
+          // has one. With still no photo the Moment is set aside, so it shows on the Kaymbu page and is never lost.
+          if (!p) { await new Promise(ok => setTimeout(ok, PHOTO_WAIT_MS())); p = await kaymbu.bestPhoto(m.pictureThumb ? mediaUrl(m.pictureThumb) : display); }
+          if (!p) {
+            const r0 = store.recs.kaymbu.get('a' + m._id); const d0 = r0 && !r0.deleted && r0.doc;
+            const tries = (d0 && d0.reason === 'nophoto' ? d0.tries || 0 : 0) + 1;
+            aside(m, 'nophoto', REASON.nophoto + (tries > 1 ? ', after ' + tries + ' tries' : ''), { tries });
+            h.aside.set(m._id, store.recs.kaymbu.get('a' + m._id).doc);
+            out.aside++; out.reasons.nophoto = (out.reasons.nophoto || 0) + 1;
+            log('Kaymbu would not send the photo of a Moment, so it is set aside', 'try ' + tries);
+            continue;
+          }
           photo = { id: await kaymbu.keepPhoto(p.buf, by), w: p.w, h: p.h };
           if (t.look && t.look.thumb && t.look.thumb.length < 600 * 1024) { try { const d2 = kaymbu.size(t.look.thumb); if (d2) photo.thumb = await kaymbu.keepPhoto(t.look.thumb, by, 'thumb'); } catch (e) {} }
           mark.src = p.url;
@@ -316,6 +332,9 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
         const doc = { id, noticed, wonder: '', classroom: room2, ...(sg ? { smallGroup: sg } : {}), ...(photo ? { group } : {}), by, at, week: mondayOf(day), projectId: '', threadId: '', children: t.kids.ids.slice(), ...(photo ? { photo } : {}), kaymbu: mark, updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true }); noteChange('notices', id); scheduleSave('notices', id);
         h.byKey.set(t.key, id); h.byKid.add(m._id);
+        // a Moment whose photo came on a later try leaves the Set aside list
+        const r1 = store.recs.kaymbu.get('a' + m._id); const d1 = r1 && !r1.deleted && r1.doc;
+        if (d1 && d1.reason === 'nophoto' && d1.status === 'aside') saveAside(Object.assign({}, d1, { status: 'back', backAt: Date.now() }));
         out.kept++; out.ids.push(id);
       } catch (e) { out.failed = (out.failed || 0) + 1; out.problem = e.message; log('A Kaymbu Moment could not be brought in', e.message); }
     }
@@ -704,6 +723,8 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       const words0 = momentWords(m);
       if (!words0 && d.batch) { for (const [, x] of store.recs.notices) { const n = x && !x.deleted && x.doc; if (n && n.kaymbu && n.kaymbu.batch === d.batch && n.noticed) { m.annotation = n.noticed; break; } } }
       const out = await takePost([m], { hold, chosen: true });
+      // a photo Kaymbu still would not send stays set aside, with its new count of tries
+      if (out.reasons.nophoto) throw new Error(REASON.nophoto + '. It stays set aside.');
       saveAside(Object.assign({}, d, { status: 'back', backAt: Date.now() }));
       return out;
     } finally { busy = ''; }

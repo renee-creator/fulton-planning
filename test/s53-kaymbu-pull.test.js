@@ -23,7 +23,7 @@ function setup(extra) {
   };
   const pull = require('../kaymbu-pull.js')({ store, log: () => {}, kaymbu, noteChange: () => {}, scheduleSave: () => {}, askClaude: async () => ({ status: 200, text: JSON.stringify({ content: [{ text: '{"keep":false,"why":"A menu for families"}' }] }) }),
     video: { fromKaymbu: async () => 'v1' }, onPost: (ids, o) => posts.push([ids, o]) });
-  return Object.assign({ store, pull, photos, posts }, extra || {});
+  return Object.assign({ store, pull, photos, posts, kaymbu }, extra || {});
 }
 // a busy photo with plenty of edges, a near copy of it, and a dark one
 async function img(seed, dark) {
@@ -101,6 +101,38 @@ test('the look back credits a Moment with no small group to its class team, and 
   const n = [...x.store.recs.notices.values()][0].doc;
   assert.deepStrictEqual([n.by, n.kaymbu.back, n.kaymbu.keptAt === n.at], ['South class team', 1, true]);
   assert.strictEqual(x.posts[0][1].back, true);
+});
+
+test('a Moment whose photo Kaymbu will not send is set aside, asked for once more each look, and not after three tries', async () => {
+  process.env.KAYMBU_PHOTO_WAIT_MS = '5';
+  const x = setup(); x.photos.set('f1-aaaa_bbbb_thumb.jpg', await img(4));
+  const asked = []; x.kaymbu.bestPhoto = async url => { asked.push(url); return null; };
+  const post = () => [mom('f1', Object.assign({ caption: 'Leaf rubbing', annotation: 'Wren rubs a crayon over a leaf.' }, tag('Wren Alder')))];
+  const r = await x.pull.takePost(post(), {});
+  assert.deepStrictEqual([r.kept, r.aside, r.reasons, r.failed], [0, 1, { nophoto: 1 }, undefined], 'the Moment is kept aside, not dropped');
+  assert.strictEqual(asked.length, 2, 'asked once more after a short wait');
+  assert.ok(/_thumb\.jpg$/.test(asked[1]), 'the second ask is for the small copy');
+  let a = x.store.recs.kaymbu.get('af1').doc;
+  assert.deepStrictEqual([a.reason, a.status, a.tries, a.why], ['nophoto', 'aside', 1, 'Kaymbu would not send the photo']);
+  assert.ok(x.pull.view().aside.some(d => d.id === 'af1' && d.reason === 'nophoto'), 'it shows on the Kaymbu page');
+  // the next two looks ask again, and after three tries Kaymbu is not asked again
+  await x.pull.takePost(post(), {}); await x.pull.takePost(post(), {});
+  a = x.store.recs.kaymbu.get('af1').doc; assert.deepStrictEqual([a.tries, asked.length], [3, 6]);
+  const r4 = await x.pull.takePost(post(), {});
+  assert.deepStrictEqual([r4.aside, asked.length, x.store.recs.kaymbu.get('af1').doc.tries], [0, 6, 3]);
+  assert.strictEqual(x.store.recs.notices.size, 0);
+  // a Moment whose photo comes on a later try is kept and leaves the Set aside list
+  const y = setup(); y.photos.set('f2-aaaa_bbbb_thumb.jpg', await img(5));
+  let n = 0; y.kaymbu.bestPhoto = async url => (++n === 1 ? null : { buf: Buffer.from('x'), url, w: 320, h: 240 });
+  const ok = await y.pull.takePost([mom('f2', Object.assign({ caption: 'Seeds' }, tag('Wren Alder')))], {});
+  assert.deepStrictEqual([ok.kept, ok.aside], [1, 0], 'the second ask brought the photo');
+  const z = setup(); z.photos.set('f3-aaaa_bbbb_thumb.jpg', await img(6)); z.kaymbu.bestPhoto = async () => null;
+  const f3 = () => [mom('f3', Object.assign({ caption: 'Shells' }, tag('Wren Alder')))];
+  await z.pull.takePost(f3(), {}); z.kaymbu.bestPhoto = async url => ({ buf: Buffer.from('x'), url, w: 2000, h: 1500 });
+  const later = await z.pull.takePost(f3(), {});
+  assert.strictEqual(later.kept, 1); assert.strictEqual(z.store.recs.kaymbu.get('af3').doc.status, 'back');
+  assert.ok(!z.pull.view().aside.some(d => d.id === 'af3'));
+  delete process.env.KAYMBU_PHOTO_WAIT_MS;
 });
 
 test('quiet hours are evenings, nights and weekends in Los Angeles', () => {
