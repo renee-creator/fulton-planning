@@ -329,6 +329,10 @@ window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];i
   let renewing=null;
   window.FP_RENEW_KEY=()=>{if(renewing)return renewing;if(Store.fileKeyAt&&Date.now()-Store.fileKeyAt<30000)return Promise.resolve();
     renewing=(async()=>{try{const j=await api("/api/file-key");if(j&&j.fileKey){Store.fileKey=j.fileKey;Store.fileKeyAt=Date.now()}}catch(e){}finally{setTimeout(()=>{renewing=null},0)}})();return renewing};
+  // how long the photo key has left. A computer that slept renews it before it asks for photos, so none is refused first
+  const keyLeft=()=>(parseInt(String(Store.fileKey||"").split(".")[0],36)||0)-Date.now();
+  window.FP_FRESH_KEY=async()=>{if(Auth.token&&Store.fileKey&&keyLeft()<60*60e3)await window.FP_RENEW_KEY()};
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)window.FP_FRESH_KEY().catch(()=>{})});
   window.claude={ use:async(name)=>{ await Store.ready; return caps[name]||null; } };
   window.addEventListener("pagehide",()=>{ try{ if(Auth.token) navigator.sendBeacon && fetch(SERVER+"/api/save-now",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",Authorization:"Bearer "+Auth.token},body:"{}"}); }catch(e){} });
 })();
