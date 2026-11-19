@@ -147,3 +147,58 @@ test('the director\'s TREE makes the set by itself on a computer, never on a pho
     assert.deepStrictEqual(s.errors, []); await s.close();
   });
 });
+
+// the claim on a set is kept only in memory, so these drive readable.js on its own with a clock the test moves
+function claimRig() {
+  const recs = new Map(); let now = Date.parse('2026-11-16T18:00:00Z');
+  const asks = [];
+  const drive = { on: () => true, ask: async o => { asks.push(o.op); return o.op === 'readable-start' ? { have: [] } : { id: 'f' + asks.length }; } };
+  const store = { recs: { settings: recs } };
+  const make = () => require('../readable.js')({ drive, store, noteChange: () => {}, scheduleSave: () => {}, log: () => {} });
+  const realNow = Date.now;
+  return { make, asks, tick: ms => { now += ms; }, use: () => { Date.now = () => now; }, done: () => { Date.now = realNow; } };
+}
+const piece = (device, run) => ({ action: 'put', device, run, folder: 'School', name: 'a.pdf', data: B64('%PDF') });
+
+test('a device that waited over 15 minutes, or met a restart, carries on with its own set', async () => {
+  const r = claimRig(); r.use();
+  try {
+    let rc = r.make();
+    const run = (await rc.handle({ action: 'start', device: 'one' }, 'Dee')).run;
+    assert.ok(run);
+    r.tick(20 * 60e3);
+    assert.strictEqual((await rc.handle(piece('one', run), 'Dee')).ok, true);
+    // a restart forgets the claim, and the set still waiting brings it back
+    rc = r.make(); r.tick(30 * 60e3);
+    assert.strictEqual((await rc.handle(piece('one', run), 'Dee')).ok, true);
+    // and the claim it took back keeps a second device waiting
+    assert.strictEqual((await rc.handle({ action: 'start', device: 'two' }, 'Dee')).busy, true);
+  } finally { r.done(); }
+});
+
+test('a second device is told busy while the first has a fresh claim', async () => {
+  const r = claimRig(); r.use();
+  try {
+    const rc = r.make();
+    const run = (await rc.handle({ action: 'start', device: 'one' }, 'Dee')).run;
+    r.tick(5 * 60e3);
+    assert.strictEqual((await rc.handle({ action: 'start', device: 'two' }, 'Dee')).busy, true);
+    assert.strictEqual((await rc.handle(piece('two', run), 'Dee')).status, 409);
+    assert.strictEqual((await rc.handle(piece('one', run), 'Dee')).ok, true);
+    // each piece renews the claim, so the first device keeps it past 15 minutes from its start
+    r.tick(12 * 60e3);
+    assert.strictEqual((await rc.handle(piece('two', run), 'Dee')).status, 409);
+  } finally { r.done(); }
+});
+
+test('a device with no claim and the wrong run is refused', async () => {
+  const r = claimRig(); r.use();
+  try {
+    let rc = r.make();
+    const run = (await rc.handle({ action: 'start', device: 'one' }, 'Dee')).run;
+    rc = r.make();
+    assert.strictEqual((await rc.handle(piece('two', '2020-01-01'), 'Dee')).status, 409);
+    assert.strictEqual((await rc.handle(piece('two', ''), 'Dee')).status, 409);
+    assert.strictEqual((await rc.handle(piece('', run), 'Dee')).status, 409);
+  } finally { r.done(); }
+});
