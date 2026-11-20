@@ -5329,7 +5329,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="88f182b38a8d";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="4e0ffc10d262";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -5344,7 +5344,7 @@ function goView(v,opts){
   if(v!=="stjour"&&window.TreeGrowth&&TreeGrowth.leave)TreeGrowth.leave();
   if(isKitchenUser()&&!KITCHEN_VIEWS.includes(v))v="kitchen";
   // the newsletter, the grant, the kitchen and the walls are the director's and the kitchen's, so an educator who reaches one goes to Today
-  else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen","walls"].includes(v))v="today";
+  else if(!isKitchenUser()&&!isDirector()&&["newsletter","share","grant","kitchen","walls"].includes(v)&&!(isOffice()&&(v==="grant"||v==="kitchen")))v="today";
   // the Gatherings page waits for the director to release it, or a gathering in it
   else if(v==="gatherings"&&!gthPageOpen())v="today";
   // the planning resources wait for the director to turn them on for educators
@@ -5380,7 +5380,7 @@ function subnavHtml(){
   if(view==="story")back=`<button class="chip-btn back" data-tview="stories">‹ All stories</button>`;
   // one way back. When there is a screen to return to, Back names it and takes its place
   const prev=typeof NAVS!=="undefined"&&NAVS[NAVS.length-1];if(prev&&navDetail())back=`<button class="chip-btn back" data-navback="1">‹ Back to ${esc(navLabel(prev.s))}</button>`;
-  let subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():k==="museums"?(isDirector()||!!(libData&&libData.places)):(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector());if(!subs&&!back&&s!=="plans")return"";
+  let subs=SUBS[s]&&SUBS[s].filter(([k])=>STAFF_VIEWS.includes(k)?staffSubOk(k):k==="participation"||k==="volunteer"?isOffice():k==="drdpreport"?isDirector():k==="gatherings"?gthPageOpen():k==="museums"?(isDirector()||!!(libData&&libData.places)):(k!=="newsletter"&&k!=="share"&&k!=="grant"&&k!=="kitchen"&&k!=="connect"&&k!=="walls")||isDirector()||(isOffice()&&(k==="grant"||k==="kitchen")));if(!subs&&!back&&s!=="plans")return"";
   const curSub=view==="child"?"children":view==="slide"?"slides":view==="story"?"stories":view==="import"?"plans":view==="guide"?"ideabank":view;
   // the planning resources sit under the plan tabs, closed until opened, and open while one of them is the page
   let res="";if(s==="plans"){const kit=isKitchenUser();if(kit)subs=[];const rs=PLAN_RES.filter(([k])=>kit?KITCHEN_VIEWS.includes(k):!planResOk()?false:k==="museums"?(isDirector()||!!(libData&&libData.places)):true);
@@ -5871,7 +5871,7 @@ function kitchenNotes(it,monday){const re=kFoodRe(it.food||it.name);const out=[]
   // one short note, where it goes this week first
   return out.slice(0,1)}
 // who answers how a food is served, the director, or a kitchen account once there is one
-const kCanServe=()=>isDirector()||!!(window.FP_KITCHEN&&window.FP_KITCHEN());
+const kCanServe=()=>isOffice()||!!(window.FP_KITCHEN&&window.FP_KITCHEN());
 function kServeText(it,monday){const sv=it.serve||{};const days=[0,1,2,3,4].map(i=>addDays(monday,i)).map(d=>({d,x:((menus.get(d.slice(0,7))||{}).days||{})[d]})).filter(o=>o.x&&!o.x.closed);
   const how=sv.side&&sv.cooked?"Side dish and cooked in":sv.side?"Side dish":"Cooked in";
   // the dish the kitchen named, or one the menu names the food in, and never a guess
@@ -12085,6 +12085,10 @@ function gSchoolDays(from,to){let full=0,short=0;for(const m of menus.values()){
 async function gWrite(id,patch,base){if(!db){toast("TREE is not connected. Try again in a moment.");return false}
   try{if(!grantRecs.get(id))await db.doc("grant/"+id).create(base||{id});await db.doc("grant/"+id).update(patch);return true}catch(e){toast((e&&e.message)||"Could not save that.");return false}}
 
+/* The state's procurement worksheet, F2F-066, for one month, as the Excel file the office uploads. Each purchase line
+   fills one row of the form. A FEED bin or box is one row, a csa box, with what came in it listed under Item Variety.
+   A bin's contents come from the weekly list TREE keeps from FEED, and a box FEED keeps no list for is typed once here.
+   The name, email and telephone at the top of the form, and anything typed for a box, are kept with the grant records. */
 const dFigures=(items,label)=>({t:"figures",items,label});
 const dTable=(label,rows,o)=>Object.assign({t:"table",label,rows},o||{});
 function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
@@ -12105,7 +12109,7 @@ function grantDoc(q){const {from,to}=periodRange(q);const lines=gLines(from,to);
     [...new Set(qq)].sort().forEach(x=>{const r=quarterRange(x);if(r.from<from||r.to>to)return;const ck=(grantRecs.get("q-"+x)||{}).checkin||{};const parts=[["progress","Progress"],["successes","Successes"],["challenges","Challenges"]].filter(([k])=>has(ck[k])).map(([k,l])=>l+". "+ck[k]);if(parts.length)blocks.push(dText(quarterName(x),parts.join("\n\n")))})}
   return {display:true,type:"report",acc:"smallgroup",title:"Farm to School grant, "+periodName(q),meta:[["Agreement",gSet().agreement],[isQuarter(q)?"Quarter":"Period",periodName(q)]],blocks}}
 
-function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","43c803dd50").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderGrant(...a){const m=$("#main");if(m&&!window.TreeLazy_grant)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("grant","cc5ca946f9").then(()=>renderGrant(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 /* ---------- Where our food came from ----------
    A look back at a month's food for families, from the menus and the orders kept for the grant, never with prices. It
    prints as a sheet for the Kitchen Digest, as a large type sheet for a classroom wall, and as a section of the
@@ -12535,11 +12539,11 @@ function gUnsureHtml(){const L=gUnsure();if(!L.length)return"";
     <div class="cnt" style="margin-bottom:8px">TREE is not sure these were bought for meals. Until you choose, each counts for meals and shows to check on the worksheet.</div>
     ${gFold(L.map(u=>`<div class="binidea"><div style="flex:1;min-width:0"><b>${esc(kName(u.x.item).name)}</b> <span class="cnt">${esc(u.x.producer||"")} · ${esc(fmtDate(u.o.fulfilled||u.o.placed||""))}</span><div class="cnt">${esc(u.why)}.</div></div>
       <div class="gmarks" style="flex:none"><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="meals">Meals</button><button class="chip-btn" data-gplace="${esc(u.o.id)}|${u.i}" data-gv="education">Education</button></div></div>`),6)}</div></details>`}
-const kCanEdit=()=>isDirector()||isKitchenUser();
+const kCanEdit=()=>isOffice()||isKitchenUser();
 // every dish ever on a menu, how often and when it was last served
-function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","d6cb435ffc").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","d6cb435ffc").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
-function kMonthMenu(...a){return lazyLoad("kitchen","d6cb435ffc").then(()=>kMonthMenu(...a))}
+function renderKitchen(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","aac806ed9b").then(()=>renderKitchen(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderKitchenToday(...a){const m=$("#main");if(m&&!window.TreeLazy_kitchen)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("kitchen","aac806ed9b").then(()=>renderKitchenToday(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function kMonthMenu(...a){return lazyLoad("kitchen","aac806ed9b").then(()=>kMonthMenu(...a))}
 /* ---------- Story frames ----------
    The director keeps the Words we can practice that each frame starts with, one on each line, the words in bold, then a
    bar, then what they mean. A story still changes its own. */

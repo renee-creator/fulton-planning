@@ -60,7 +60,7 @@ function kLibraryHtml(){const want=kSel?(kSel.k==="lunch"?"lunch":"snack"):"";co
 function kGardenHtml(){if(gdn===null)loadGarden();if(!gdnOk()||!(gdn.harvests||[]).length)return "";const from=iso(new Date(Date.now()-35*864e5));const hs=(gdn.harvests||[]).filter(h=>h.date>=from).slice().reverse();if(!hs.length)return "";
   return `<section class="card"><div class="secthead"><div class="lbl">From the garden</div><button class="linkbtn" data-tview="garden">Garden</button></div><ul style="margin:4px 0;padding-left:18px">${hs.slice(0,10).map(h=>`<li>${esc(longDate(h.date))}, ${esc(h.plantName)}${h.amount?", "+esc(h.amount):""}${h.children?", gathered by children":""}</li>`).join("")}</ul></section>`}
 function renderKitchen(){
-  if(!kCanEdit()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">Kitchen</h2><div class="sub">The Kitchen page is for the kitchen and the director.</div></div>`;return}
+  if(!kCanEdit()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">Kitchen</h2><div class="sub">The Kitchen page is for the kitchen, the office and the director.</div></div>`;return}
   const month=kMonthNow();kLoadClosed(month);const mrec=menus.get(month)||{};const notes=mrec.notes||(menus.get(kMonthShift(month,-1))||{}).notes||{};
   const draftOn=kDraft&&kDraft.month===month&&Object.keys(kDraft.days).length;
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">Kitchen</span><h2 style="margin-top:4px">${esc(MENU_MONTH(month))} menu</h2>

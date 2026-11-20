@@ -44,7 +44,7 @@ function renderGrant(){const m=$("#main");const was=m&&m.querySelector(".gsec")?
   renderGrant0();
   if(was&&view==="grant"){for(const [d,k] of gDetailsKeys($("#main")))if(was.has(k))d.open=was.get(k);window.scrollTo(0,y)}}
 function renderGrant0(){
-  if(!isDirector()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Farm to School grant</h2><div class="sub">The grant records are kept in the director's view.</div></div>`;return}
+  if(!isOffice()){$("#main").innerHTML=`<div class="head"><span class="eyebrow">Documentation</span><h2 style="margin-top:4px">Farm to School grant</h2><div class="sub">The grant records are kept by the director and the office.</div></div>`;return}
   const S=gSet(),q=gQ(),{from,to}=periodRange(q),lines=gLines(from,to),all=gLines("0000","9999");const pw=periodWord(q);
   const sum=a=>a.reduce((t,x)=>t+(Number(x.total)||0),0);
   const meals=lines.filter(x=>x.use!=="education"),edu=lines.filter(x=>x.use==="education");
@@ -54,12 +54,13 @@ function renderGrant0(){
   const pr=[...prods.values()].sort((a,b)=>b.total-a.total);
   const cat=f=>sum(lines.filter(x=>f(x)));
   let h=`<div class="head"><div class="head-row"><div><span class="eyebrow">CDFA Farm to School Incubator Grant · ${esc(S.agreement)}</span><h2 style="margin-top:4px">Farm to School grant</h2>
-    <div class="sub prose" style="--pw:76ch">What TREE already holds, gathered by quarter, by year or across the whole grant, against the agreement's objectives. Only you see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
-    <div class="actions">${printBtns("grantq",q,isQuarter(q)?"Quarter summary":/^\d{4}$/.test(q)?"Year summary":"Grant summary",true)}<button class="linkbtn" data-gact="csv">Procurement worksheet</button></div></div>
+    <div class="sub prose" style="--pw:76ch">What TREE already holds, gathered by quarter, by year or across the whole grant, against the agreement's objectives. The director and the office see this page.${S.end?" The grant term runs to "+esc(fmtDate(S.end))+".":""}</div></div>
+    <div class="actions">${printBtns("grantq",q,isQuarter(q)?"Quarter summary":/^\d{4}$/.test(q)?"Year summary":"Grant summary",true)}<button class="linkbtn" data-gact="ws">Procurement worksheet</button></div></div>
     <div class="filters" role="group" aria-label="Whole grant or a year"><button class="pill" aria-pressed="${q==="all"}" data-gq="all">Whole grant</button>${ys.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(periodName(x))}</button>`).join("")}</div>
     <div class="filters" role="group" aria-label="Quarter" style="margin-top:6px">${qs.map(x=>`<button class="pill" aria-pressed="${x===q}" data-gq="${x}">${esc(quarterName(x))}</button>`).join("")}</div>
     ${isQuarter(q)?"":`<div class="cnt" style="margin-top:8px">${esc(periodName(q))}</div>`}
     ${S.start?"":`<div class="hint warnline">Enter the day the term began in Grant details, at the end of the page.</div>`}</div>`;
+  h+=gWsHtml();
   // the key figures first
   h+=`<div class="gstats gkey">${gFigures(from,to).map(([v,l])=>`<div class="gstat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("")}</div>`;
   h+=gGoalsHtml(true,from,to,q);
@@ -220,6 +221,65 @@ function gAddHtml(){const f=gAdd;return `<div class="binadd"><div class="kfields
   <datalist id="g-prods"><option>Petaluma Creamery</option><option>Next Generation Foods</option><option>Central Milling</option><option>Trader Joe's</option><option>Costco</option></datalist>
   <div class="actions" style="margin-top:8px"><button class="btn small" data-gact="buysave">Keep it</button><button class="linkbtn" data-gact="buycancel">Cancel</button></div></div>`}
 
+let gWsOpen=false,gWsMonth="",gWsBusy=false;
+const G_WS_ORG="Child Family Community Inc. - Fulton Community School & Farm";
+const G_WS_EDU="Used for exploration and creating recipes with the children";
+const gWsRec=()=>grantRecs.get("worksheet")||{};
+const gWsKey=x=>String(x.manual?"m-"+x.manual:x.src+"-"+x.i).replace(/[^A-Za-z0-9_-]+/g,"-");
+// a line FEED invoices in its own name is a bin or a box of mixed produce, never one farm's food
+const gWsBox=x=>/FEED\s*Bin/i.test(x.item||"")||/^feed cooperative/i.test(String(x.producer||"").trim());
+function gWsListed(x){if(!/FEED\s*Bin/i.test(x.item||""))return"";const b=gBinNear(x.day);return b?(b.items||[]).map(binName).filter(Boolean).join(", "):""}
+function gWsContents(x){const own=((gWsRec().list||{})[gWsKey(x)]||{}).contents;return own!=null?String(own):gWsListed(x)}
+function gWsMonths(){const now=iso(new Date()).slice(0,7);return [...new Set([now,...gLines("0000","9999").map(x=>x.day.slice(0,7))])].filter(m=>m<=now).sort().reverse()}
+const gWsMonthName=m=>parseIso(m+"-01").toLocaleDateString("en-US",{month:"long",year:"numeric"});
+function gWsLines(m){return gLines(m+"-01",m+"-31").sort((a,b)=>a.day.localeCompare(b.day)||String(a.producer||"").localeCompare(String(b.producer||""))||String(a.item||"").localeCompare(String(b.item||"")))}
+const G_WS_TYPES=[[/\b(cheese|milk|yogurt|butter|cream|kefir)\b/i,"B"],[/\beggs?\b/i,"C"],[/\b(chicken|beef|pork|lamb|turkey|sausage|bacon)\b/i,"D"],[/\b(fish|salmon|cod|tuna|shrimp|crab|oyster)s?\b/i,"E"],[/\b(flour|rice|oats?|wheat|barley|quinoa|polenta|cornmeal|bread|tortillas?|pasta|farro|millet)\b/i,"F"],[/\b(beans?|lentils?|chickpeas?|garbanzos?|almonds?|walnuts?|pecans?|pistachios?|sunflower seeds?|pumpkin seeds?|sesame)\b/i,"G"],[/\b(honey|olive oil|oil|vinegar|jam|syrup)\b/i,"H"]];
+const gWsType=x=>gWsBox(x)?"A":(G_WS_TYPES.find(([re])=>re.test(x.item||""))||[0,"A"])[1];
+const G_WS_MADE=[[/\b(flour|cornmeal|polenta)\b/i,"milled"],[/\b(cheese|yogurt|butter|kefir)\b/i,"cultured"],[/\bdried\b/i,"dried"],[/\bfrozen\b/i,"frozen"],[/\broasted\b/i,"roasted"],[/\b(shelled|hulled)\b/i,"shelled"],[/\b(juice|cider|olive oil|oil)\b/i,"pressed"],[/\b(bread|tortillas?|pasta)\b/i,"baked or made"],[/\b(jam|sauce|pickled?)\b/i,"cooked or preserved"]];
+const G_WS_SALAD=/\b(lettuce|salad|arugula|spinach|little gem|mesclun|spring mix|microgreens?)\b/i;
+const G_WS_SNACK=/\b(apple|pear|mandarin|orange|tangerine|clementine|satsuma|grapes?|plum|pluot|peach|nectarine|apricot|cherr(y|ies)|berr(y|ies)|strawberr|blueberr|raspberr|blackberr|kiwi|persimmon|melon|watermelon|cantaloupe|fig|pomegranate|banana|lemon|carrot|cucumber|snap pea|cherry tomato|grapefruit|pomelo)/i;
+function gWsUse(x){if(x.use==="education")return G_WS_EDU;const dish=String((x.serve&&x.serve.dish)||"").trim();if(dish)return "Used to make "+dish+" for school lunches";
+  if(G_WS_SALAD.test(x.item||""))return "Used for side salads for school lunches";return G_WS_SNACK.test(x.item||"")?"Used for school snacks and lunches":"Used for school lunches"}
+// one row of the form for one purchase line. all is every line kept, for whether we bought from the producer before
+function gWsRow(x,all){const p=gProducer(x.producer),feed=/^feed\b/i.test(String(x.distributor||"")),box=gWsBox(x);
+  const made=box?null:G_WS_MADE.find(([re])=>re.test(x.item||""));const contents=box?gWsContents(x).trim():"";
+  const k=gKey(x.producer);const before=all.some(y=>y.day<x.day&&gKey(y.producer)===k);
+  return {date:x.day,vendor:feed?x.distributor:(x.distributor&&x.distributor!=="Direct"?x.distributor:x.producer),farm:x.producer||"unknown",
+    county:box&&feed?"Sonoma":(gTownCounty(p.town)||"Unknown"),contact:feed?"ordering@feedsonoma.com":(p.contact||"unknown"),before:before?"Yes":"No",
+    connect:p.connect||(feed?"B":"H"),channel:feed?"B":"A",method:"D",timing:"D",type:gWsType(x),
+    name:box?"csa box":(kName(x.item).food||String(x.item||"").toLowerCase()),variety:box?String(x.item||"").trim()+(contents?" - "+contents:""):String(x.item||"").trim(),
+    whole:made?"Min Processed":"Whole",how:made?made[1]:"",ca:"Yes",organic:gOrganic(x)?"Yes":"Unknown",amount:Number(x.qty)||1,unit:x.unit||"each",total:Number(x.total)||0,
+    purpose:x.use==="education"?"Student education":"School meals",use:gWsUse(x)}}
+function gWsRows(m){const all=gLinesAll("0000","9999");return gWsLines(m).map(x=>gWsRow(x,all))}
+function gWsHtml(){if(!gWsOpen)return"";const months=gWsMonths();if(!months.includes(gWsMonth))gWsMonth=months[0];const m=gWsMonth,lines=gWsLines(m),R=gWsRec();
+  const total=lines.reduce((t,x)=>t+(Number(x.total)||0),0);const uns=new Set(gUnsure().map(u=>u.o.id+"|"+u.i));
+  const chk=lines.filter(x=>x.review||uns.has(x.src+"|"+x.i)).length;const boxes=lines.filter(gWsBox);const parts=Math.ceil(lines.length/74);
+  return `<section class="card" id="g-ws" data-noproof="1"><div class="secthead"><h3>Procurement worksheet</h3><span class="gfig">${esc(gWsMonthName(m))}</span></div>
+    <div class="cnt" style="margin-bottom:8px">The state's form, F2F-066, filled in for one month and ready to&nbsp;upload.</div>
+    <div class="kfields"><label>Month<select id="g-wsmonth">${months.map(x=>`<option value="${x}" ${x===m?"selected":""}>${esc(gWsMonthName(x))}</option>`).join("")}</select></label></div>
+    <div class="cnt" style="margin:8px 0"><b>${lines.length} line${lines.length===1?"":"s"}, ${esc(gMoney(total))}.</b>${chk?` ${chk} still to check further down this&nbsp;page.`:""}${parts>1?` The form holds 74 lines, so this month comes as ${parts} files.`:""}</div>
+    ${boxes.length?`<div class="lbl" style="margin-top:8px">What came in each bin and box</div><div class="cnt" style="margin-bottom:6px">This fills Item Variety on the form. A bin starts with FEED's list for that week. Change it to what&nbsp;came.</div>
+      ${boxes.map(x=>{const v=gWsContents(x);return `<label class="fld-label">${esc(String(x.item||"").trim())}, ${esc(fmtDate(x.day))}${Number(x.qty)>1?", quantity "+Number(x.qty):""}<textarea rows="2" data-gwsbox="${esc(gWsKey(x))}" placeholder="Ex. Apples, kiwis, persimmons">${esc(v)}</textarea></label>${v?"":`<div class="hint warnline">FEED keeps no list for this one. Type what&nbsp;came.</div>`}`}).join("")}`:""}
+    <div class="lbl" style="margin-top:10px">At the top of the form</div>
+    <div class="kfields"><label>Person in charge of procurement<input type="text" data-gwsf="person" value="${esc(R.person||"")}" autocomplete="off"></label>
+      <label>Email<input type="text" inputmode="email" data-gwsf="email" value="${esc(R.email||"")}" autocomplete="off"></label>
+      <label>Telephone<input type="text" inputmode="tel" data-gwsf="phone" value="${esc(R.phone||"")}" autocomplete="off"></label></div>
+    <div class="actions" style="margin-top:10px"><button class="btn small" data-gact="xlsx" ${gWsBusy||!lines.length?"disabled":""}>${gWsBusy?"Making it":"Download the Excel worksheet"}</button><button class="linkbtn" data-gact="csv">The whole grant as a list (CSV)</button><button class="linkbtn" data-gact="wsclose">Close</button></div>
+    ${lines.length?"":`<div class="cnt" style="margin-top:6px">No California purchases are kept for this month&nbsp;yet.</div>`}</section>`}
+async function gWsDownload(){if(gWsBusy)return;if(!window.FP_API){toast("The worksheet is made in TREE. Open TREE and sign in.");return}
+  const m=gWsMonth,rows=gWsRows(m);if(!rows.length){toast("No purchases are kept for this month yet.");return}
+  const R=gWsRec();gWsBusy=true;renderGrant();
+  try{const n=Math.ceil(rows.length/74),d=parseIso(m+"-01");const stem=d.toLocaleDateString("en-US",{month:"short"})+"."+d.getFullYear()+".F2F-066 Procurement Metrics Worksheet";
+    for(let i=0;i<n;i++){const j=await window.FP_API("/api/grant/worksheet",{month:m,org:G_WS_ORG,person:R.person||"",email:R.email||"",phone:R.phone||"",rows:rows.slice(i*74,i*74+74)});
+      const bin=atob(j.data),u8=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u8[k]=bin.charCodeAt(k);
+      const u=URL.createObjectURL(new Blob([u8],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));const l=document.createElement("a");l.href=u;l.download=stem+(n>1?" part "+(i+1):"")+".xlsx";document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+    toast(n>1?"The worksheet is in your downloads, in "+n+" files.":"The worksheet is in your downloads.")}
+  catch(e){toast((e&&e.message)||"The worksheet could not be made. Try again.")}
+  gWsBusy=false;renderGrant()}
+document.addEventListener("change",async e=>{const t=e.target;if(view!=="grant"||!t||!t.dataset)return;
+  if(t.id==="g-wsmonth"){gWsMonth=t.value;renderGrant();return}
+  if(t.dataset.gwsf){const f=t.dataset.gwsf;if(!["person","email","phone"].includes(f))return;await gWrite("worksheet",{[f]:t.value.trim().slice(0,200)},{id:"worksheet",list:{}});return}
+  if(t.dataset.gwsbox){await gWrite("worksheet",{list:{[t.dataset.gwsbox]:{contents:t.value.replace(/\s+/g," ").trim().slice(0,500)}}},{id:"worksheet",list:{}});return}});
 function gWorksheetCsv(){const S=gSet();const lines=gLines(S.start||"0000",S.end||"9999");
   const head=["Date","Invoice","Distributor","Producer","Producer town","Item","Unit","Quantity","Unit price","Total","Budget line","California grown","Organic","Small to midsize","BIPOC, female, veteran or limited resource","Climate smart","To check","Sources"];const uns=new Set(gUnsure().map(u=>u.o.id+"|"+u.i));const chk=(x,p)=>[x.review?"Order read from an email, not yet checked":"",uns.has(x.src+"|"+x.i)?"Meals or education to check":"",p.check||""].filter(Boolean).join(". ");
   const yn=v=>v?"Yes":"";
@@ -287,6 +347,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("[data-gdon
   if(d.gpf){const cur=gProducer(d.gpn);await gWrite("producers",{list:{[d.gpk]:{name:d.gpn,[d.gpf]:!cur[d.gpf]}}},{id:"producers",list:{}});renderGrant();return}
   if(d.gfdel){await gWrite("families",{list:{[d.gfdel]:{__delete__:true}}});renderGrant();return}
   const a=d.gact;
+  if(a==="ws"){gWsOpen=!gWsOpen;renderGrant();if(gWsOpen)$("#g-ws")?.scrollIntoView({block:"nearest"});return}
+  if(a==="wsclose"){gWsOpen=false;renderGrant();return}
+  if(a==="xlsx"){gWsDownload();return}
   if(a==="csv"){const blob=new Blob(["﻿"+gWorksheetCsv()],{type:"text/csv"});const u=URL.createObjectURL(blob);const l=document.createElement("a");l.href=u;l.download=`Farm to School procurement ${iso(new Date())}.csv`;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);return}
   if(a==="addbuy"){gAdd={};renderGrant();return}
   if(a==="buycancel"){gAdd=null;renderGrant();return}

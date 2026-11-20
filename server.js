@@ -1018,7 +1018,8 @@ const staff = require('./staff.js')({ newsMail: (P, b, m, q, r, h) => newsMail.h
 staff.useRecsEdit(recsEdit);
 setInterval(() => { try { settleFormer(); } catch (e) { log('Former educators could not be settled', e.message); } }, 10 * 60e3).unref();
 // Kitchen TREE, the pantry, the weekly shopping list by store and the shared tasks, on its own page kitchen.html (pantry.js)
-const pantry = require('./pantry.js')({ store, log, setSetting, settingDoc: id => settingDoc(id), isDirector, isKitchen, accountFor, accounts, saveAccounts: n => saveAccounts(n), nameKey, cleanName: n => cleanName(n), okName: n => okName(n), mailText,
+const f2fWorksheet = require('./f2f-worksheet.js');
+const pantry = require('./pantry.js')({ store, log, setSetting, settingDoc: id => settingDoc(id), isDirector, isKitchen: n => isKitchen(n) || (isOffice(n) && !isDirector(n)), accountFor, accounts, saveAccounts: n => saveAccounts(n), nameKey, cleanName: n => cleanName(n), okName: n => okName(n), mailText,
   pushTo: (n, m) => reminders.sendTo(n, m), keepOriginal: (id, b, t, m) => keepOriginal(id, b, t, m), photoSrc: id => photoSrc(id),
   feedOrders: () => { const out = []; for (const r of store.recs.grant.values()) { const d = r && !r.deleted && r.doc; if (d && d.kind === 'order' && /feed cooperative/i.test(d.distributor || '') && d.fulfilled) out.push(d); } return out; },
   menuDays: d => { const r = store.recs.menus.get(d.slice(0, 7)); return r && !r.deleted && r.doc && r.doc.days ? r.doc.days[d] : null; } });
@@ -2780,7 +2781,7 @@ function snapshotText(director, kitchen, office, name) {
   const key = [director ? 'd' : '', kitchen ? 'k' : '', office ? 'o' : ''].join('');
   let c = snapCache.get(key);
   if (!c || c.rev !== rev || Date.now() - c.at > 30000) {
-    const out = {}; for (const k of KINDS) { if (OWN_KINDS.includes(k)) continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && !(k === 'kaymbu' && id.startsWith('book')) && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
+    const out = {}; for (const k of KINDS) { if (OWN_KINDS.includes(k)) continue; out[k] = {}; if (DIRECTOR_KINDS.includes(k) && !director && !(k === 'grant' && office)) continue; if (OFFICE_KINDS.includes(k) && !office) continue; for (const [id, r] of store.recs[k]) if (!r.deleted && !(k === 'kaymbu' && id.startsWith('book')) && (!kitchen || kitchenSees(k, id)) && (director || !directorSetting(k, id))) out[k][id] = forViewer(k, r.doc, director, office); }
     c = { rev, at: Date.now(), text: JSON.stringify(out) }; snapCache.set(key, c);
   }
   const own = {}; for (const k of OWN_KINDS) { own[k] = {}; for (const [id, r] of store.recs[k]) if (!r.deleted && (!kitchen || kitchenSees(k, id)) && draftSeen(k, r.doc, name, director)) own[k][id] = forViewer(k, r.doc, director); }
@@ -3509,7 +3510,7 @@ async function handle(req, res) {
   if (path === '/api/data') { const head = JSON.stringify({ staff: staff.bootInfo(me.name), wording: kitchenOnly ? { 'food-rule': staff.wordingDoc('food-rule') } : staff.wordingAll(), gardenEducators: kitchenOnly ? undefined : staff.gardenEducators(), myPlans: kitchenOnly ? undefined : (((((store.recs.settings.get('notify') || {}).doc || {}).people || {})[Object.keys((((store.recs.settings.get('notify') || {}).doc || {}).people) || {}).find(n => nameKey(n) === nameKey(me.name)) || ''] || {}).plans || ''), gatherings: kitchenOnly ? undefined : gatheringsFor(me.name), saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey(), bootId: BOOT_ID, rev, me: me.name, director: isDirector(me.name), kitchen: kitchenOnly || undefined, drdpOfficial: !!DRDP_DESC, storage: storageNow(), teachers: teacherNames(), office: isOffice(me.name) || undefined, cycleHealth: isDirector(me.name) ? cycleHealthCached() : undefined, photoSizes: sharpLib ? [1200, 1920] : [], clips: isDirector(me.name) ? videoClips.status() : undefined }); jsonText(req, res, 200, head.slice(0, -1) + ',"data":' + snapshotText(isDirector(me.name), kitchenOnly, isOffice(me.name), me.name) + '}'); return; }
   if (path === '/api/changes') {
     if (body.bootId !== BOOT_ID || !(body.since >= 0) || (changeLog.length && body.since < changeLog[0].rev - 1)) { json(req, res, 200, { reload: true }); return; }
-    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind)) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { if (c.kind === 'kaymbu' && String(c.id).startsWith('book')) continue; const r = store.recs[c.kind].get(c.id); if (OWN_KINDS.includes(c.kind) && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
+    const seeAll = isDirector(me.name); const out = {}; for (const c of changeLog) if (c.rev > body.since && (seeAll || !DIRECTOR_KINDS.includes(c.kind) || (c.kind === 'grant' && isOffice(me.name))) && (!OFFICE_KINDS.includes(c.kind) || isOffice(me.name)) && (!kitchenOnly || kitchenSees(c.kind, c.id)) && (seeAll || !directorSetting(c.kind, c.id))) { if (c.kind === 'kaymbu' && String(c.id).startsWith('book')) continue; const r = store.recs[c.kind].get(c.id); if (OWN_KINDS.includes(c.kind) && r && !r.deleted && !draftSeen(c.kind, r.doc, me.name, seeAll)) continue; out[c.kind] = out[c.kind] || {}; out[c.kind][c.id] = r && !r.deleted ? forViewer(c.kind, r.doc, seeAll, isOffice(me.name)) : null; }
     json(req, res, 200, { bootId: BOOT_ID, rev, changes: out, saveError: store.saveError || undefined, saveWarn: saveWarn() || undefined, fileKey: makeFileKey() }); return;
   }
   if (path === '/api/write') {
@@ -3551,7 +3552,7 @@ async function handle(req, res) {
     const askOk = kind === 'participation' && /^rq-/.test(id) && (op === 'create' || op === 'set') && !(store.recs.participation.get(id) && !store.recs.participation.get(id).deleted) && body.data && body.data.kind === 'item' && body.data.status === 'requested' && body.data.open === false;
     if (askOk) body.data = Object.assign({}, body.data, { requestedBy: me.name, test: false });
     if (OFFICE_KINDS.includes(kind) && !isOffice(me.name) && !askOk) { log(kind + ' change refused for', me.name, id); err(req, res, 403, 'Only the director and the office keep family participation.'); return; }
-    if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name)) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director keeps the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
+    if (DIRECTOR_KINDS.includes(kind) && !isDirector(me.name) && !(kind === 'grant' && isOffice(me.name))) { log(kind + ' change refused for', me.name, id); err(req, res, 403, kind === 'grant' ? 'Only the director and the office keep the grant records.' : kind === 'posts' ? 'Only the director makes posts.' : 'Only the director makes the family newsletter.'); return; }
     // a conference record is removed only by the director
     if (kind === 'conferences' && op === 'delete' && !isDirector(me.name)) { err(req, res, 403, 'Only the director removes a conference record.'); return; }
     const map = store.recs[kind]; const cur = map.get(id);
@@ -3617,9 +3618,9 @@ async function handle(req, res) {
       op = 'set'; delete body.patch;
       body.data = Object.assign({}, cur && !cur.deleted && cur.doc ? cur.doc : {}, { names: [...was, { name: String(mine.name).trim().slice(0, 60), room: String((accountFor(me.name) || {}).room || mine.room || '').slice(0, 40) }], updatedAt: Date.now() });
     }
-    if (((kind === 'settings' && id !== 'educators' && !(id === 'staples' && kitchenOnly)) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
+    if (((kind === 'settings' && id !== 'educators' && !(id === 'staples' && (kitchenOnly || isOffice(me.name)))) || ((kind === 'threads' || kind === 'projects' || kind === 'inquiries') && op === 'delete')) && !isDirector(me.name)) { err(req, res, 403, kind === 'settings' ? 'Only the director can change Program settings.' : kind === 'projects' ? 'Only the director can remove a project. Close it instead, and it stays in the record.' : kind === 'inquiries' ? 'Only the director can remove a team inquiry. Close it instead, and it stays in the record.' : 'Only the director can remove a thread permanently. Ask the director if this needs to be removed.'); return; }
     // the monthly snack and lunch menus are the director's to add and change
-    if (kind === 'menus' && !isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen add the monthly menus.'); return; }
+    if (kind === 'menus' && !isOffice(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director, the office and the kitchen add the monthly menus.'); return; }
     // an observation is removed by the educator who kept it or by the director, or by anyone who has just combined it into another
     if (kind === 'notices' && op === 'delete' && !isDirector(me.name)) {
       const cur0 = store.recs.notices.get(id); const d0 = cur0 && !cur0.deleted && cur0.doc;
@@ -4165,7 +4166,7 @@ async function handle(req, res) {
   if (path === '/api/kitchen-week') { json(req, res, 200, { weeks: kitchenWeeks() }); return; }
   // the director or the kitchen says how a food is served, a side dish, cooked in, or both. Only that one field changes.
   if (path === '/api/kitchen-serve') {
-    if (!isDirector(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director and the kitchen answer this.'); return; }
+    if (!isOffice(me.name) && !kitchenOnly) { err(req, res, 403, 'Only the director, the office and the kitchen answer this.'); return; }
     // the food is named the way Produce coming names it, its farm and its week, so no order number is ever sent to a page
     const mon = String(body.monday || ''), name = String(body.name || ''), farm = String(body.farm || '').trim(), field = body.field === 'side' ? 'side' : body.field === 'cooked' ? 'cooked' : body.field === 'dish' ? 'dish' : '';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(mon) || !name || !farm || !field) { err(req, res, 400, 'That answer could not be read.'); return; }
@@ -4187,8 +4188,16 @@ async function handle(req, res) {
       if (o.id === 'purchases' && o.list) for (const p of Object.values(o.list)) { if (!p || !p.date || p.date < from || p.date > to || p.use === 'education') continue; lines.push({ day: p.date, item: String(p.item || ''), producer: String(p.producer || ''), kind: String(p.kind || ''), manual: true }); } }
     json(req, res, 200, { lines }); return;
   }
+  // the state's procurement worksheet for one month, as the Excel file the office uploads. The page sends the lines it shows.
+  if (path === '/api/grant/worksheet') {
+    if (!isOffice(me.name)) { err(req, res, 403, 'Only the director and the office keep the grant records.'); return; }
+    try { const file = f2fWorksheet.fill({ month: String(body.month || ''), org: String(body.org || ''), person: String(body.person || ''), email: String(body.email || ''), phone: String(body.phone || ''), rows: Array.isArray(body.rows) ? body.rows.slice(0, f2fWorksheet.ROWS + 1) : [] });
+      log('Procurement worksheet made by', me.name, String(body.month || ''), (body.rows || []).length + ' lines'); json(req, res, 200, { ok: true, data: file.toString('base64') }); }
+    catch (e) { err(req, res, 400, (e && e.message) || 'The worksheet could not be made.'); }
+    return;
+  }
   if (path === '/api/grant/order') {
-    if (!isDirector(me.name)) { err(req, res, 403, 'Only the director keeps the grant records.'); return; }
+    if (!isOffice(me.name)) { err(req, res, 403, 'Only the director and the office keep the grant records.'); return; }
     const r = await readOrderPart({ name: String(body.name || 'file'), raw: body.raw, data: body.data, type: String(body.type || '') }, me.name);
     if (r.error) { err(req, res, 400, r.error); return; }
     if (r.skip) { err(req, res, 400, 'This does not look like an order or invoice for food. ' + r.skip); return; }
