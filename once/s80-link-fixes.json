@@ -1,0 +1,71 @@
+{
+ "name": "s80LinkFixes",
+ "note": "Link check. The DRDP view link and date, two article links and two book links corrected, November 20, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/32-cooking-from-the-garden.md",
+   "from": "https://doi.org/10.1016/S0195-6663(82)80053-6",
+   "to": "https://doi.org/10.1016/S0195-6663%2882%2980053-6"
+  },
+  {
+   "path": "staff/pd/modules/14-smallgroup.md",
+   "from": "https://biblioteca.izt.uam.mx/vufind/Record/EBSCO_ocn896877289/Description",
+   "to": "https://search.worldcat.org/search?q=Engaging+Children%27s+Minds+The+Project+Approach+Katz+Chard+Kogan"
+  },
+  {
+   "path": "staff/pd/modules/18-atelier.md",
+   "from": "https://search.library.uitm.edu.my/Record/wils-13369",
+   "to": "https://search.worldcat.org/search?q=Analyzing+Children%27s+Art+Rhoda+Kellogg"
+  },
+  {
+   "path": "staff/pd/modules/29-seeding-planting-and-watering.md",
+   "from": "https://doi.org/10.1016/S0002-8223(02)90027-1",
+   "to": "https://doi.org/10.1016/S0002-8223%2802%2990027-1"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "https://doi.org/10.1016/S0195-6663(82)80053-6",
+   "to": "https://doi.org/10.1016/S0195-6663%2882%2980053-6"
+  },
+  {
+   "path": "staff/pd/depth/atelier.md",
+   "from": "https://search.library.uitm.edu.my/Record/wils-13369",
+   "to": "https://search.worldcat.org/search?q=Analyzing+Children%27s+Art+Rhoda+Kellogg"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "https://doi.org/10.1016/S0195-6663(82)80053-6",
+   "to": "https://doi.org/10.1016/S0195-6663%2882%2980053-6"
+  },
+  {
+   "path": "staff/pd/depth/smallgroup.md",
+   "from": "https://biblioteca.izt.uam.mx/vufind/Record/EBSCO_ocn896877289/Description",
+   "to": "https://search.worldcat.org/search?q=Engaging+Children%27s+Minds+The+Project+Approach+Katz+Chard+Kogan"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "DRDP%20%282025%29%20PTK%20View_08202026_ADA.pdf",
+   "to": "DRDP%20%282025%29%20PTK%20View_04202026_ADA.pdf"
+  },
+  {
+   "path": "staff/pd/depth/documentation.md",
+   "from": "California Department of Education, August 20, 2026]",
+   "to": "California Department of Education, April 20, 2026]"
+  },
+  {
+   "path": "staff/familypieces/together-drdp-foundations.md",
+   "from": "DRDP%20%282025%29%20PTK%20View_08202026_ADA.pdf",
+   "to": "DRDP%20%282025%29%20PTK%20View_04202026_ADA.pdf"
+  },
+  {
+   "path": "staff/pd/modules/21-table.md",
+   "from": "offered two year olds unfamiliar foods between five and twenty times and found",
+   "to": "offered two year olds unfamiliar fruits up to twenty times and found"
+  },
+  {
+   "path": "staff/pd/depth/table.md",
+   "from": "offered two year olds unfamiliar foods between five and twenty times and found",
+   "to": "offered two year olds unfamiliar fruits up to twenty times and found"
+  }
+ ]
+}

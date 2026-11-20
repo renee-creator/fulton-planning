@@ -879,6 +879,8 @@ ONCE.push(['s77PiagetFamily', () => staff.once.edits('s77PiagetFamily', recsEdit
 ONCE.push(['s78AccuracyOne', () => staff.once.edits('s78AccuracyOne', recsEdit)]);
 // Accuracy check, the rest of the PD library. Katz timing in The Professional Educator, a DRDP line, and original sources named on printables, November 19, 2026
 ONCE.push(['s79AccuracyTwo', () => staff.once.edits('s79AccuracyTwo', recsEdit)]);
+// Link check of the PD library. The DRDP view link and its date, two article links and two book links corrected, November 20, 2026
+ONCE.push(['s80LinkFixes', () => staff.once.edits('s80LinkFixes', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
