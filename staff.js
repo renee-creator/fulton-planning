@@ -1284,6 +1284,7 @@ module.exports = function staffModule(o) {
     s76PiagetModule: ['code:once/s76-piaget-module.json', "The Study of Play names Piaget's three stages on both tabs, November 19, 2026"],
     s77PiagetFamily: ['code:once/s77-piaget-family.json', "The family piece on play names Piaget's three stages, November 19, 2026"],
     s78AccuracyOne: ['code:once/s78-accuracy-one.json', 'Accuracy check, first area, The Study of Play, Beyond Discipline and The Educator as Mentor, November 19, 2026'],
+    s79AccuracyTwo: ['code:once/s79-accuracy-two.json', 'Accuracy check, the rest of the PD library, November 19, 2026'],
     museums: ['code:once/museums.json', 'Museums and cultural places within about an hour and a half of Santa Rosa, checked October 27, 2026'],
     museums2: ['code:once/museums2.json', 'The museum list with its opening sections from the original document and a photo for each place that has one free to share'],
     parks2: ['code:once/parks2.json', 'The parks with every part of the director\'s guide and a photo for each park that has one free to share'],

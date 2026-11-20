@@ -1,0 +1,66 @@
+{
+ "name": "s79AccuracyTwo",
+ "note": "Accuracy check, the rest of the PD library. Katz timing, a DRDP line and source lines on printables, November 19, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/22-professional.md",
+   "from": "consolidation in the second and third, renewal in the third or fourth",
+   "to": "consolidation from about the end of the first year, renewal in the third or fourth"
+  },
+  {
+   "path": "staff/pd/depth/professional.md",
+   "from": "consolidation in the second and third, renewal in the third or fourth",
+   "to": "consolidation from about the end of the first year, renewal in the third or fourth"
+  },
+  {
+   "path": "staff/pd/depth/researcher.md",
+   "from": "The DRDP (2025) is the research based standard used across California public schools.",
+   "to": "The DRDP (2025) is the research based instrument California uses in its state funded early learning programs."
+  },
+  {
+   "path": "staff/pd/printables/cooking-from-the-garden.md",
+   "from": "Footer. Adapted from Leann Birch's studies and Ellyn Satter's division of responsibility,",
+   "to": "Footer. Adapted from Leann Birch's studies, Terence Dovey and colleagues' review of food neophobia (2008) and Ellyn Satter's division of responsibility,"
+  },
+  {
+   "path": "staff/pd/printables/active-supervision.md",
+   "from": "Where are the children, and where are we?\n",
+   "to": "Where are the children, and where are we?\n\nAdapted from Active Supervision, Office of Head Start, National Center on Early Childhood Health and Wellness.\n"
+  },
+  {
+   "path": "staff/pd/printables/risk.md",
+   "from": "Where would a lower step, or a hand, let a child keep trying?\n",
+   "to": "Where would a lower step, or a hand, let a child keep trying?\n\nAdapted from Active Supervision, Office of Head Start, National Center on Early Childhood Health and Wellness.\n"
+  },
+  {
+   "path": "staff/pd/printables/development.md",
+   "from": "homemade accessories.\n\nWhich stage do you see today, and what might invite the next?\n",
+   "to": "homemade accessories.\n\nWhich stage do you see today, and what might invite the next?\n\nAdapted from Harriet M. Johnson, The Art of Block Building (1933), by way of the Developmental Stages of Block Play chart, Iowa Regents' Center for Early Developmental Education.\n"
+  },
+  {
+   "path": "staff/pd/printables/development.md",
+   "from": "then sentences with punctuation.\n\nWhich stage do you see today, and what might invite the next?\n",
+   "to": "then sentences with punctuation.\n\nWhich stage do you see today, and what might invite the next?\n\nAdapted from the Developmental Stages of Writing chart, revised August 2010, original author unknown.\n"
+  },
+  {
+   "path": "staff/pd/printables/development-and-anti-bias.md",
+   "from": "From Louise Derman-Sparks and Julie Olsen Edwards.\n",
+   "to": "From Louise Derman-Sparks and Julie Olsen Edwards, with Catherine M. Goins, Anti-Bias Education for Young Children and Ourselves, second edition (NAEYC, 2020).\n"
+  },
+  {
+   "path": "staff/pd/printables/development-and-anti-bias.md",
+   "from": "Which child's behavior might you be reading through your own culture rather than theirs?\n",
+   "to": "Which child's behavior might you be reading through your own culture rather than theirs?\n\nAdapted from Edward T. Hall's iceberg model of culture, Beyond Culture (1976).\n"
+  },
+  {
+   "path": "staff/pd/printables/collaboration.md",
+   "from": "Tony Alessandra's Platinum Rule. \"Treat others the way they want to be treated.\"",
+   "to": "From Tony Alessandra and Michael J. O'Connor, The Platinum Rule (1996). \"Treat others the way they want to be treated.\""
+  },
+  {
+   "path": "staff/pd/printables/writer.md",
+   "from": "We use this chart to understand each child. We do not score or compare.",
+   "to": "Adapted from the Developmental Stages of Writing chart, revised August 2010, original author unknown. We use this chart to understand each child. We do not score or compare."
+  }
+ ]
+}
