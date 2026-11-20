@@ -1,0 +1,11 @@
+{
+ "name": "s75PiagetCard",
+ "note": "Piaget's three cognitive stages card corrected to functional play, symbolic play and games with rules, with its source, November 19, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/printables/play.md",
+   "from": "1. **Functional play.** Repeating a physical action to learn how materials behave, such as dumping and refilling a basket. Root in sensory and motor development.\n2. **Constructive play.** Building a specific object. The beginning of goal-oriented thinking.\n3. **Symbolic play.** One object stands for another, so a block becomes a telephone. The birth of imagination.\n\nChildren often return to repetition when a material is new.\n\nWhere do you see a child testing an idea again and again at the sensory table?\n",
+   "to": "1. **Functional play (practice play).** Repeating an action to learn how materials behave, such as dumping and refilling a basket. Rooted in sensory and motor development.\n2. **Symbolic play.** One object stands for another, so a block becomes a telephone. The birth of imagination.\n3. **Games with rules.** Children agree on rules and keep to them together, such as a chase game with a home base.\n\nChildren often return to repetition when a material is new.\n\nWhere do you see a child testing an idea again and again at the sensory table?\n\nAdapted from Jean Piaget, Play, Dreams and Imitation in Childhood (1945, English translation 1951).\n"
+  }
+ ]
+}

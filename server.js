@@ -869,6 +869,8 @@ ONCE.push(['s72PhotoOverview', () => staff.once.edits('s72PhotoOverview', recsEd
 // Play schemas, positioning and orientation join the Idea bank needs with a card each, a visual of the nine schemas in
 // The Study of Play, and three readings on schemas, November 17, 2026
 ONCE.push(['s73PlaySchemas', () => staff.once.edits('s73PlaySchemas', recsEdit)]);
+// Piaget's three cognitive stages card names his three, functional play, symbolic play and games with rules, with its source, November 19, 2026
+ONCE.push(['s75PiagetCard', () => staff.once.edits('s75PiagetCard', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
