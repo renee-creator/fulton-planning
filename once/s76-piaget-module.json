@@ -1,0 +1,16 @@
+{
+ "name": "s76PiagetModule",
+ "note": "The Study of Play names Piaget's three stages on the Overview and In depth tabs, with constructive play credited to Smilansky, November 19, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/modules/12-play.md",
+   "from": "Jean Piaget traced a cognitive path through play. Functional play repeats a physical action to learn how something behaves, such as dumping and refilling a basket. Constructive play uses materials to make something on purpose. Symbolic play lets one thing stand for another, so a block becomes a telephone or a length of silk becomes a river. Children move among these forms as they grow, and they often return to simple repetition when a material is new to them.",
+   "to": "Jean Piaget traced a cognitive path through play. Functional play (practice play) repeats an action to learn how something behaves, such as dumping and refilling a basket. Symbolic play lets one thing stand for another, so a block becomes a telephone or a length of silk becomes a river. Games with rules come later, when children agree on rules and keep to them together. Sara Smilansky later added constructive play, using materials to make something on purpose. Children move among these forms as they grow, and they often return to simple repetition when a material is new to them."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "1. **Functional play.** Repetitive physical actions that let a child learn the properties of the environment, such as dumping and refilling a basket. Its root is sensory and motor development.\n2. **Constructive play.** Using materials to create or build a specific object. It marks the beginning of goal-oriented thinking. Its root is fine motor skill and logical planning.\n3. **Symbolic play.** Using one object to represent another, so a block becomes a telephone or a length of silk becomes a river. In short, A=B, an abstract transfer and the birth of imagination. Jean Piaget described symbolic play as the moment a child lets one thing stand for another. It is a precursor to abstract literacy and math, and its life outcome is narrative literacy and algebraic thinking.\n\nChildren move among these forms as they grow",
+   "to": "1. **Functional play (practice play).** Repetitive physical actions that let a child learn the properties of the environment, such as dumping and refilling a basket. Its root is sensory and motor development.\n2. **Symbolic play.** Using one object to represent another, so a block becomes a telephone or a length of silk becomes a river. In short, A=B, an abstract transfer and the birth of imagination. Jean Piaget described symbolic play as the moment a child lets one thing stand for another. It is a precursor to abstract literacy and math, and its life outcome is narrative literacy and algebraic thinking.\n3. **Games with rules.** Children agree on rules and keep to them together, such as a chase game with a home base.\n\nSara Smilansky later added constructive play, using materials to create or build a specific object. It marks the beginning of goal-oriented thinking, and its root is fine motor skill and logical planning.\n\nChildren move among these forms as they grow"
+  }
+ ]
+}

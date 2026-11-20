@@ -871,6 +871,8 @@ ONCE.push(['s72PhotoOverview', () => staff.once.edits('s72PhotoOverview', recsEd
 ONCE.push(['s73PlaySchemas', () => staff.once.edits('s73PlaySchemas', recsEdit)]);
 // Piaget's three cognitive stages card names his three, functional play, symbolic play and games with rules, with its source, November 19, 2026
 ONCE.push(['s75PiagetCard', () => staff.once.edits('s75PiagetCard', recsEdit)]);
+// The Study of Play names Piaget's three stages on the Overview and In depth tabs, constructive play credited to Smilansky, November 19, 2026
+ONCE.push(['s76PiagetModule', () => staff.once.edits('s76PiagetModule', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */
