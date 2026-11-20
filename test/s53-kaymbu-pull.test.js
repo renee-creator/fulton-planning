@@ -6,7 +6,7 @@ const assert = require('node:assert');
 const sharp = require('sharp');
 
 const recs = () => ({ notices: new Map(), children: new Map(), settings: new Map(), drafts: new Map(), clips: new Map(), kaymbu: new Map() });
-function setup(extra) {
+function setup(extra, ask) {
   const store = { ready: true, recs: recs() };
   const kid = (id, first, last, classroom, group) => store.recs.children.set(id, { doc: { first, last, classroom, group } });
   kid('c1', 'Wren', 'Alder', 'North', 'Marigold'); kid('c2', 'Pip', 'Birch', 'North', 'Marigold'); kid('c3', 'Pip', 'Cedar', 'South', 'Iris');
@@ -21,7 +21,7 @@ function setup(extra) {
       const g = one(ks.map(k => k.group)); return { room: one(ks.map(k => k.classroom)), group: g ? { name: g, room: one(ks.map(k => k.classroom)) } : null }; },
     groupLead: (g, r) => ({ 'Marigold|North': 'Dee', 'Iris|South': 'Ann' })[g + '|' + r] || '',
   };
-  const pull = require('../kaymbu-pull.js')({ store, log: () => {}, kaymbu, noteChange: () => {}, scheduleSave: () => {}, askClaude: async () => ({ status: 200, text: JSON.stringify({ content: [{ text: '{"keep":false,"why":"A menu for families"}' }] }) }),
+  const pull = require('../kaymbu-pull.js')({ store, log: () => {}, kaymbu, noteChange: () => {}, scheduleSave: () => {}, askClaude: ask || (async () => ({ status: 200, text: JSON.stringify({ content: [{ text: '{"keep":false,"why":"A menu for families"}' }] }) })),
     video: { fromKaymbu: async () => 'v1' }, onPost: (ids, o) => posts.push([ids, o]) });
   return Object.assign({ store, pull, photos, posts, kaymbu }, extra || {});
 }
@@ -255,4 +255,35 @@ test('earlier photos are kept once in Drive for each child they belong to, never
   assert.strictEqual(a.items[0].photo, 'p1'); assert.strictEqual(b.items[0].photo, 'p1', 'one photo kept for both children');
   assert.deepStrictEqual([a.items[0].words, a.items[0].day, a.items[0].kids], ['Ramps', '2024-10-02', ['c1', 'c3']]);
   assert.strictEqual(x.store.recs.notices.size, 0);
+});
+
+// November 19, 2026. A setup photographed with no children in it is kept as an invitation, off the to tag list.
+const says = o => async () => ({ status: 200, text: JSON.stringify({ content: [{ text: JSON.stringify(o) }] }) });
+test('a photo with no children in it comes in as an invitation', async () => {
+  const x = setup(null, says({ keep: true, children: false, why: 'Materials set out' }));
+  x.photos.set('i1-aaaa_bbbb_thumb.jpg', await img(4)); x.photos.set('i2-aaaa_bbbb_thumb.jpg', await img(5));
+  const r = await x.pull.takePost([mom('i1', { caption: 'Rabbit yard' })], {});
+  const r2 = await x.pull.takePost([mom('i2', {})], {});
+  assert.deepStrictEqual([r.kept, r2.kept], [1, 1], 'words or none, a photo with no children is kept');
+  for (const v of x.store.recs.notices.values()) { const n = v.doc; assert.strictEqual(n.invitation, true); assert.deepStrictEqual(n.children, []); assert.strictEqual(n.kaymbu.check, false); assert.strictEqual(n.kaymbu.kidsLook.children, false); assert.ok(!n.provocation); }
+});
+test('a photo with children in it and no words is still set aside, and one with words waits to be tagged', async () => {
+  const x = setup(null, says({ keep: true, children: true, why: 'Children digging' }));
+  x.photos.set('j1-aaaa_bbbb_thumb.jpg', await img(6)); x.photos.set('j2-aaaa_bbbb_thumb.jpg', await img(7));
+  const r = await x.pull.takePost([mom('j1', {})], {});
+  assert.deepStrictEqual(r.reasons, { nowords: 1 });
+  const r2 = await x.pull.takePost([mom('j2', { caption: 'Digging' })], {});
+  assert.strictEqual(r2.kept, 1);
+  const n = [...x.store.recs.notices.values()][0].doc; assert.ok(!n.invitation); assert.strictEqual(n.kaymbu.check, true); assert.strictEqual(n.kaymbu.kidsLook.children, true);
+});
+test('photos waiting to be tagged are looked at once, and one with no children becomes an invitation', async () => {
+  const x = setup(null, says({ children: false }));
+  x.photos.set('w1.jpg', await img(8));
+  const w = (id, o) => x.store.recs.notices.set(id, { doc: Object.assign({ id, noticed: '', classroom: 'North', children: [], kaymbu: { v: 3, check: true, src: 'https://d1.cloudfront.net/w1.jpg' } }, o) });
+  w('n1'); w('n2', { children: ['c1'] }); w('n3', { kaymbu: { v: 3, check: true, src: 'https://d1.cloudfront.net/w1.jpg', suggest: ['c1'] } });
+  assert.strictEqual(await x.pull.inviteSweep(), 1);
+  const d = id => x.store.recs.notices.get(id).doc;
+  assert.strictEqual(d('n1').invitation, true); assert.strictEqual(d('n1').kaymbu.check, false); assert.strictEqual(d('n1').kaymbu.checkedBy, 'TREE');
+  assert.ok(!d('n2').invitation && !d('n3').invitation, 'a photo with a child tagged or offered is left for a person');
+  assert.strictEqual(await x.pull.inviteSweep(), 0, 'nothing is read twice');
 });

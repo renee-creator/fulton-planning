@@ -5326,7 +5326,7 @@ function tqHtml(w){
       ${grp.map(x=>{const others1=others.filter(c=>!(tqKids[x.id]||[]).includes(c.id)),kids1=[...kids,...others.filter(c=>(tqKids[x.id]||[]).includes(c.id))];
         return `<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}${sugg.length&&!tqGroup?`<div class="chips" style="margin-bottom:6px">${sugg.map(c=>`<button class="chip sug ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")}</div>`:""}${kids1.length?groupFirstHtml(kids1,tqGroup,room,chipFor(x)):`<div class="chips"><span class="cnt">Choose the class to see its children.</span></div>`}
         ${others1.length?`<details class="tqother" style="margin-top:6px"><summary class="cnt">Show all classes, ${others1.length} more children</summary><div class="chips" style="margin-top:6px">${others1.map(chipFor(x)).join("")}</div></details>`:""}</div>`}).join("")}
-      <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button>${full}</div>`}
+      <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button><button class="btn small ghost" data-tqsave="kay|${esc(id)}|inv">Invitation</button>${full}</div>`}
   if(kind==="kmail"){const n=notices.get(id);if(!n)return "";const kb=kBatchOf(n);const ns=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&kmailMine(x)).sort((a,b)=>(a.at||0)-(b.at||0));
     const by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];const rm=momentRooms(n)[0]||"";const mine=roster.filter(r=>r.room&&r.room===rm).map(r=>r.name),rest=rosterNames().filter(x=>!mine.includes(x));
     return `<div class="cnt">${by.length?`<b>Shared by ${esc(by.join(" and "))}.</b>${ns.some(x=>!String(x.by||"").trim())?" Some have no name yet.":""} Tap a name to change it`:"<b>Who shared these?</b> Tap a name to put it"} on all ${ns.length} photo${ns.length===1?"":"s"}.</div>
@@ -5350,11 +5350,12 @@ document.addEventListener("click",e=>{
     p.fields[AFTER_KEY[p.type]]=txt;persist(p);toast("Saved to the plan.")}
   else if(kind==="photo"){const n=notices.get(id);const txt=($("#tqtext")?.value||"").trim();if(!n||!txt)return;const base=jclone(n);n.noticed=txt;n.editedBy=whoAmI();n.editedAt=Date.now();saveNotice(n,base);toast("Saved.")}
   else if(kind==="kay"){const n=notices.get(id);if(!n||!tqKids)return;const room=tqRoom||momentRooms(n)[0]||"";
-    for(const x of noteGroup(n)){const base=jclone(x);x.children=[...(tqKids[x.id]||[])];if(room&&!x.classroom)x.classroom=room;if(tqGroup!=null&&tqGroup!==(x.smallGroup||"")){if(tqGroup)x.smallGroup=tqGroup;else delete x.smallGroup}
+    const inv=v==="inv";
+    for(const x of noteGroup(n)){const base=jclone(x);x.children=inv?[]:[...(tqKids[x.id]||[])];if(inv)x.invitation=true;if(room&&!x.classroom)x.classroom=room;if(tqGroup!=null&&tqGroup!==(x.smallGroup||"")){if(tqGroup)x.smallGroup=tqGroup;else delete x.smallGroup}
       {const lead=groupLeadOf(x);if(lead&&(!String(x.by||"").trim()||(x.kaymbu&&x.kaymbu.sentBy))){x.by=lead;if(x.kaymbu&&x.kaymbu.sentBy){x.kaymbu=Object.assign({},x.kaymbu);delete x.kaymbu.sentBy}}}
       if(x.kaymbu&&x.kaymbu.check){x.kaymbu=Object.assign({},x.kaymbu,{check:false,checkedBy:whoAmI(),checkedAt:Date.now()});delete x.kaymbu.unsure;delete x.kaymbu.suggest;delete x.kaymbu.maybe}
       x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base)}
-    toast("Saved.")}
+    toast(inv?"Kept as an invitation, with no children tagged.":"Saved.")}
   else if(kind==="kmail"){const n=notices.get(id);if(!n||!v)return;const kb=kBatchOf(n);
     if(v==="__done"){const seen=LS.get("tree.kmailSeen",[]);if(!seen.includes(kb))LS.set("tree.kmailSeen",[...seen,kb].slice(-200))}
     else{let c=0;for(const x of [...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&x.by!==v&&kmailMine(x))){const base=jclone(x);x.by=v;x.editedBy=whoAmI();x.editedAt=Date.now();saveNotice(x,base);c++}
@@ -9358,6 +9359,14 @@ function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml
   return `<div class="nf-pgroups">${ps.map((p,i)=>`<div class="nf-pg"><a class="nf-pgimg" href="${esc(photoSrc(p))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(p))}" alt="Photo ${i+1} in this observation"></a>
     <div style="min-width:0">${nfKidsHtml(p,i)}${i?sibStatusHtml(p):""}</div></div>`).join("")}</div>
     <div class="hint">Tap the children in each photo. Each child's portfolio and conference evidence get only the photos they are in, with these words.</div>`}
+/* An invitation is the setup educators lay out before the children come, photographed with no children in it. It keeps no
+   children, so it never reaches a child's portfolio, Book, conference notes or DRDP evidence. Every provocation is an
+   invitation. An invitation is also a provocation only when it grew from something observed, which an educator or the
+   director marks by hand. TREE never marks it (November 19, 2026). */
+const isInvitation=n=>!!(n&&n.invitation);
+const setupLabel=n=>isInvitation(n)?(n.provocation?"Invitation, provocation":"Invitation"):"";
+function nfSetupHtml(n){return `<div class="chips"><button class="chip ${n.invitation?"on":""}" data-nfsetup="invitation" type="button">Invitation</button>${n.invitation?`<button class="chip ${n.provocation?"on":""}" data-nfsetup="provocation" type="button">Provocation</button>`:""}</div>`}
+const nfInviteKidsHtml=()=>`<div class="cnt">No children are tagged on an invitation.</div>`;
 let nfMoreOpen=false;
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("nfmore"))nfMoreOpen=d.open},true);
 function noticeFormCard(){
@@ -9382,7 +9391,8 @@ function noticeFormCard(){
     <label class="fld-label">What I noticed<textarea id="nf-noticed" rows="${ph?8:4}" placeholder="${n.clip?"The children's words and what they did, from the clip. Trim it to what matters.":ph?"The children's words, copied from the photo":"What happened, and what children did or said"}">${esc(n.noticed)}</textarea></label>
     <label class="fld-label">What I wonder<textarea id="nf-wonder" rows="2" placeholder="I wonder, educator notes or relevant context">${esc(n.wonder)}</textarea></label>
     <div class="actions" style="margin-top:2px;flex-wrap:wrap" role="group" aria-label="Class"><span class="cnt">Class</span>${CLASSROOMS.map(r=>`<label class="radio" style="display:inline-flex"><input type="checkbox" data-nfroomck="${esc(r)}" ${obsRoomsChosen(n).includes(r)?"checked":""}><span>${esc(r)}</span></label>`).join("")}</div>
-    <div class="fld-label" id="nf-kids">${kidsAreaHtml(n)}</div>
+    <div class="fld-label" id="nf-setup">${nfSetupHtml(n)}</div>
+    <div class="fld-label" id="nf-kids">${n.invitation?nfInviteKidsHtml():kidsAreaHtml(n)}</div>
     ${ph||many?`<div class="actions" style="margin-top:0">${addBtn}<span class="cnt">Another photo of the same moment joins this observation.</span></div>`:""}
     ${(()=>{const day0=iso(new Date(editing&&n.at?n.at:Date.now())),set=(n.languages||[]).length+(n.projectId?1:0)+(n.threadId?1:0)+(n.bin?1:0)+(n.smallGroup?1:0)+(n.planId?1:0)+(n.day&&n.day!==day0?1:0);
       // the rest is optional, folded under More so Keep stays close on a phone. It opens by itself when something is set.
@@ -9494,7 +9504,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-whyedit],[
   const key=t.dataset.whysave,box=document.querySelector(`[data-whybox="${CSS.escape(key)}"]`);const ok=whySet(key,box?box.value:"");whyEditing="";renderMain();toast(ok?"Saved.":"That could not be changed here.")},true);
 function noticeCard(n){
   const pr=n.projectId&&projects.get(n.projectId),th=n.threadId&&threads.get(n.threadId);
-  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${obsGroups(n).length?" \u00b7 "+esc(obsAnd(obsGroups(n)))+(obsGroups(n).length>1?" groups":" group"):""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
+  return `<article class="thread" id="nw-${n.id}"><div class="cnt">${esc(n.by||"An educator")}${momentRoomsText(n)?" \u00b7 "+esc(momentRoomsText(n)):""}${obsGroups(n).length?" \u00b7 "+esc(obsAnd(obsGroups(n)))+(obsGroups(n).length>1?" groups":" group"):""} \u00b7 ${shortDate(n.at)}${n.planId&&plans.get(n.planId)?" \u00b7 for the plan "+esc(obsPlanLabel(plans.get(n.planId))):""}${setupLabel(n)?" \u00b7 "+esc(setupLabel(n)):""}${n.editedBy&&n.editedBy!==n.by?" \u00b7 changed by "+esc(n.editedBy):""}</div>
     ${clipPlayerHtml(n)?`<div style="margin:6px 0">${clipPlayerHtml(n)}</div>`:""}
     ${n.photo?`<div class="nw-row"><a class="nw-thumb" href="${esc(photoSrc(n))}" target="_blank" rel="noopener"><img src="${esc(photoThumb(n))}" alt="Photo kept with this observation" loading="lazy"></a><div style="font-size:15.5px;white-space:pre-line;min-width:0">${esc(n.noticed)}</div></div>`
       :`<div style="font-size:15.5px;margin-top:4px;white-space:pre-line">${esc(n.noticed)}</div>`}
@@ -9837,12 +9847,17 @@ function noticesClick(t){
     if(was&&was.photo&&!notices.has(was.id)){nBlobs.delete(was.id);nPreview.delete(was.id);if(nQueue.length){noticeForm=nQueue.shift();serverDraftSoon();renderMain();jumpTop();toast("Skipped. The next photo is open.");return true}}
     if(did&&!nQueue.length)serverDraftEnd(did);
     if(view==="moments")renderMain();else renderAll();return true}
+  if(t.dataset.nfsetup&&noticeForm){const n=noticeForm;
+    if(t.dataset.nfsetup==="invitation"){if(n.invitation){delete n.invitation;delete n.provocation}else n.invitation=true}
+    else if(n.invitation){if(n.provocation)delete n.provocation;else n.provocation=true}
+    const a=$("#nf-setup");if(a)a.innerHTML=nfSetupHtml(n);const k=$("#nf-kids");if(k)k.innerHTML=n.invitation?nfInviteKidsHtml():kidsAreaHtml(n);return true}
   if(t.dataset.nfkid&&noticeForm){const tgt=t.dataset.nfph!=null?formPhotos(noticeForm)[+t.dataset.nfph]:noticeForm;if(!tgt)return true;const a=tgt.children||(tgt.children=[]);const i=a.indexOf(t.dataset.nfkid);i>=0?a.splice(i,1):a.push(t.dataset.nfkid);t.classList.toggle("on");return true}
   if(t.dataset.nfkidsnamed&&noticeForm){noticeForm.noticed=$("#nf-noticed")?.value||noticeForm.noticed;const a=noticeForm.children||(noticeForm.children=[]);for(const c of kidsAt().filter(c=>!noticeForm.classroom||c.classroom===noticeForm.classroom))if(new RegExp("(^|[^A-Za-z])"+c.first+"(?![A-Za-z])").test(noticeForm.noticed||"")&&!a.includes(c.id))a.push(c.id);const el=$("#nf-kids");if(el)el.innerHTML=nfKidsHtml(noticeForm);return true}
   if(t.dataset.nflang&&noticeForm){const v=t.dataset.nflang,a=noticeForm.languages||(noticeForm.languages=[]);const i=a.indexOf(v);i>=0?a.splice(i,1):a.push(v);t.classList.toggle("on");return true}
   if(t.dataset.nfretry){const all=[...formPhotos(noticeForm),...((noticeForm&&noticeForm.pick)||[]),...nQueue];const n=all.find(x=>x.id===t.dataset.nfretry);if(n)readMomentPhoto(n,t.dataset.nfcopy==="0"||(noticeForm&&noticeForm.pick)?{copy:false}:undefined);return true}
   if(t.id==="nf-save"){const n=noticeForm;n.noticed=($("#nf-noticed")?.value||"").trim();n.wonder=($("#nf-wonder")?.value||"").trim();
-    if(!n.noticed){toast("Write what you noticed first.");return true}
+    if(!n.noticed&&!n.invitation){toast("Write what you noticed first.");return true}
+    if(n.invitation){n.children=[];for(const s of n.siblings||[])s.children=[]}else delete n.provocation
     if(VIEW_AS){noticeForm=null;renderAll();toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return true}
     if(!me()){needName();return true}
     if(!formStored(n)){toast("The photo is still being kept. Wait a moment.");return true}
@@ -9865,6 +9880,7 @@ function noticesClick(t){
     sibs.forEach((s,i)=>{const had=notices.get(s.id);
       for(const k of ["noticed","wonder","classroom","projectId","threadId","group"])s[k]=n[k]||"";
       s.languages=[...(n.languages||[])];if(n.bin)s.bin=n.bin;else delete s.bin;
+      for(const k of ["invitation","provocation"])if(n[k])s[k]=true;else delete s[k];
       if(had){s.by=s.by||had.by||n.by;s.at=had.at&&iso(new Date(had.at))===iso(new Date(n.at))?had.at:n.at+i+1;s.editedBy=whoAmI();s.editedAt=Date.now()}else{s.by=n.by;s.at=n.at+i+1}
       s.week=n.week;
       if(s.photo)s.photo={id:s.photo.id||"",w:s.photo.w,h:s.photo.h,...(s.photo.thumb?{thumb:s.photo.thumb}:{}),...(s.photo.data?{data:s.photo.data}:{}),...(s.photo.pending?{pending:true}:{})};

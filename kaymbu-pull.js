@@ -172,15 +172,15 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
   }
   const apart = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; };
   const DARK = 28, BLUR = 80, SAME = 6;
-  const SCREEN_PROMPT = 'This photo was published by an educator at our preschool, with these words: "{words}". No child is tagged in it. Say whether it belongs in the school\'s documentation of children\'s learning. Keep it when it shows children at play or work, children\'s own work such as drawing, writing, building or art, words an educator wrote down as children said them, materials or a space set up for children, the garden, the animals or nature at school. Set it aside when it is mainly a sign, a menu, a flyer, a calendar, a sign-up sheet, a screenshot, a document for adults, or a picture from outside school with no children\'s learning in it. Answer only with JSON, {"keep": true or false, "why": "a short plain reason, no colons or dashes"}.';
+  const SCREEN_PROMPT = 'This photo was published by an educator at our preschool, with these words: "{words}". No child is tagged in it. Say whether it belongs in the school\'s documentation of children\'s learning. Keep it when it shows children at play or work, children\'s own work such as drawing, writing, building or art, words an educator wrote down as children said them, materials or a space set up for children, the garden, the animals or nature at school. Set it aside when it is mainly a sign, a menu, a flyer, a calendar, a sign-up sheet, a screenshot, a document for adults, or a picture from outside school with no children\'s learning in it. Answer only with JSON, {"keep": true or false, "children": true or false, "why": "a short plain reason, no colons or dashes"}. "children" is true when any child, or any part of a child such as a hand, is in the photo. Adults do not count.';
   async function readByQuick(m, buf, text) {
     if (!askClaude || !buf) return null;
     try {
-      const r = await askClaude([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: buf.toString('base64') } }, { type: 'text', text: SCREEN_PROMPT.replace('{words}', text.slice(0, 400).replace(/"/g, "'")) }], false, { max_tokens: 300 });
+      const r = await askClaude([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: buf.toString('base64') } }, { type: 'text', text: (text ? SCREEN_PROMPT.replace('{words}', text.slice(0, 400).replace(/"/g, "'")) : SCREEN_PROMPT.replace(', with these words: "{words}"', ' with no words')) }], false, { max_tokens: 300 });
       if (r.status !== 200) return null;
       const j = JSON.parse(r.text); const t = (j.content || []).map(x => x.text || '').join('');
       const a = JSON.parse((t.match(/\{[\s\S]*\}/) || ['{}'])[0]);
-      return typeof a.keep === 'boolean' ? { keep: a.keep, why: String(a.why || '').replace(/[:—–]/g, ',').slice(0, 160) } : null;
+      return typeof a.keep === 'boolean' ? { keep: a.keep, children: typeof a.children === 'boolean' ? a.children : null, why: String(a.why || '').replace(/[:—–]/g, ',').slice(0, 160) } : null;
     } catch (e) { log('A Kaymbu photo could not be screened', e.message); return null; }
   }
   const REASON = { nowords: 'No words and no children tagged', before: 'Taken before the school year', dark: 'Too dark to see', blurry: 'Too blurred to see', similar: 'Nearly the same as another photo in its post', notlearning: 'Not documentation of children\'s learning', nophoto: 'Kaymbu would not send the photo' };
@@ -252,11 +252,13 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     const put = (t, reason, why) => { out.aside++; out.reasons[reason] = (out.reasons[reason] || 0) + 1; if (!o.count) aside(t.m, reason, why, reason === 'similar' ? leftOut() : null); t.out = true; };
     // the rules that need no photo. A Moment the director put back skips the screener.
     for (const t of todo) {
-      if (o.chosen) { t.words = t.own || batchWords; continue; }
+      if (o.chosen) { t.words = t.own || batchWords; if (o.lookKids && !t.words && !t.kids.ids.length && !t.kids.unmatched.length) t.noWords = true; continue; }
       const words0 = t.own || batchWords;
       t.words = words0;
       if (capturedAt(t.m) < start - 864e5) { put(t, 'before', 'Taken on ' + new Date(capturedAt(t.m)).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'long', day: 'numeric', year: 'numeric' }) + ', before the school year'); continue; }
-      if (!words0 && !t.kids.ids.length && !t.kids.unmatched.length) { put(t, 'nowords'); continue; }
+      /* A photo with no words and no children tagged is looked at once by the quick lane. With no children in it, it is the
+         setup educators laid out, kept as an invitation. With children in it, it is set aside as before (November 19, 2026). */
+      if (!words0 && !t.kids.ids.length && !t.kids.unmatched.length) { if (askClaude) t.noWords = true; else put(t, 'nowords'); continue; }
     }
     // light, sharpness and near repeats, read from Kaymbu's small copies
     const photos = todo.filter(t => !t.out && !t.m.video && t.m.pictureThumb);
@@ -270,14 +272,20 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       const twin = seen.find(s => apart(s.look.hash, t.look.hash) <= SAME);
       if (twin) put(t, 'similar', REASON.similar + ', which was kept'); else seen.push(t);
     }
-    // a photo with words and no children tagged is read once by the quick lane
+    // a photo with no children tagged is read once by the quick lane, for whether it is documentation and whether any
+    // child is in it. One with no children in it is kept as an invitation, off the to tag list (November 19, 2026).
     for (const t of todo) {
-      if (o.chosen || t.out || t.m.video || t.kids.ids.length || t.kids.unmatched.length || !t.own) continue;
+      if ((o.chosen && !o.lookKids) || t.out || t.m.video || t.kids.ids.length || t.kids.unmatched.length || (!t.own && !t.noWords)) continue;
       out.asked++;
       if (o.count) continue;
       const a = await readByQuick(t.m, t.look && t.look.thumb, t.own);
-      if (a && !a.keep) put(t, 'notlearning', a.why || REASON.notlearning);
+      if (!a) { if (t.noWords) put(t, 'nowords'); continue; }
+      t.seen = a.children;
+      if (!a.keep && !o.chosen) put(t, 'notlearning', a.why || REASON.notlearning);
+      else if (a.children === false) t.invite = true;
+      else if (t.noWords) put(t, 'nowords');
     }
+    for (const t of todo) if (t.noWords && !t.out && !t.invite && !o.count) put(t, 'nowords');
     if (o.count) { for (const t of todo) if (!t.out) { if (t.m.video) out.videos++; else out.kept++; } return out; }
     // kept. Videos go to Video clips, photos and words become observations.
     const room0 = list.map(roomOf).find(Boolean) || '';
@@ -296,7 +304,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
         const by = kaymbu.groupLead(sg, room2) || (o.back && room2 ? room2 + ' class team' : '');
         const at = capturedAt(m), day = laDay(at);
         const mark = { v: 3, pull: 1, ...(o.back ? { back: 1 } : {}), key: t.key, kid: m._id, kids: [m._id], ...(m.batchId ? { batch: m.batchId } : {}), mail: 'kb:' + batchKey, src: mediaUrl(m.pictureSource || m.pictureThumb), dated: 'captured',
-          subject: '', keptAt: o.back ? at : Date.now(), check: !t.kids.ids.length || t.kids.unmatched.length > 0, ...(t.kids.unmatched.length ? { unmatched: t.kids.unmatched } : {}), ...((m.isPrivate || m.internal) ? { internal: 1 } : {}) };
+          subject: '', keptAt: o.back ? at : Date.now(), check: !t.invite && (!t.kids.ids.length || t.kids.unmatched.length > 0), ...(t.seen != null ? { kidsLook: { at: Date.now(), children: t.seen } } : {}), ...(t.invite ? { checkedBy: 'TREE', checkedAt: Date.now() } : {}), ...(t.kids.unmatched.length ? { unmatched: t.kids.unmatched } : {}), ...((m.isPrivate || m.internal) ? { internal: 1 } : {}) };
         if (m.video) {
           const d = m.videoSource || m.videoLowRendition ? m : ((await api('POST', '/api/moments/moment/' + m._id, {})) || {}).moment || m;
           const url = mediaUrl(d.videoLowRendition || d.videoSource);
@@ -329,7 +337,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
         // the record is named from the photo's own name, so two servers running at once during an update write one record, never two (November 19, 2026)
         const id = 'n' + at.toString(36) + crypto.createHash('sha1').update(String(t.key)).digest('hex').slice(0, 6);
         if (store.recs.notices.has(id) && !store.recs.notices.get(id).deleted) { h.byKey.set(t.key, id); h.byKid.add(m._id); out.merged++; continue; }
-        const doc = { id, noticed, wonder: '', classroom: room2, ...(sg ? { smallGroup: sg } : {}), ...(photo ? { group } : {}), by, at, week: mondayOf(day), projectId: '', threadId: '', children: t.kids.ids.slice(), ...(photo ? { photo } : {}), kaymbu: mark, updatedByName: by };
+        const doc = { id, noticed, wonder: '', classroom: room2, ...(sg ? { smallGroup: sg } : {}), ...(photo ? { group } : {}), by, at, week: mondayOf(day), projectId: '', threadId: '', children: t.invite ? [] : t.kids.ids.slice(), ...(t.invite ? { invitation: true } : {}), ...(photo ? { photo } : {}), kaymbu: mark, updatedByName: by };
         store.recs.notices.set(id, { doc, path: `notices/${id}.json`, local: true }); noteChange('notices', id); scheduleSave('notices', id);
         h.byKey.set(t.key, id); h.byKid.add(m._id);
         // a Moment whose photo came on a later try leaves the Set aside list
@@ -708,6 +716,73 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     saveEarly(Object.assign(d, { read, tries, found: (d.found || 0) + (ok ? Math.max(0, Number(found) || 0) : 0) }));
   }
 
+  /* ---------- invitations, a setup photographed with no children in it (November 19, 2026) ----------
+     A Kaymbu photo waiting to be tagged, with no child tagged or offered, is looked at once by the quick lane. With no
+     child in it, it is kept as an invitation and leaves the to tag list. Each photo is read once, and its answer kept as
+     kidsLook. A photo set aside with no words and no children is looked at once the same way, in the quiet hours, and
+     one with no children in it comes into TREE as an invitation. Provocation is only ever marked by a person. */
+  const KIDS_PROMPT = 'This photo was published by an educator at our preschool. Is any child, or any part of a child such as a hand, in the photo? Adults do not count. Answer only with JSON, {"children": true or false}.';
+  async function seesChildren(buf) {
+    if (!askClaude || !buf) return null;
+    try {
+      let small = buf; if (sharp) small = await sharp(buf, { failOn: 'none' }).rotate().resize(640, 640, { fit: 'inside' }).jpeg({ quality: 80 }).toBuffer();
+      const r = await askClaude([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: small.toString('base64') } }, { type: 'text', text: KIDS_PROMPT }], false, { max_tokens: 60 });
+      if (r.status !== 200) return null;
+      const j = JSON.parse(r.text); const t = (j.content || []).map(x => x.text || '').join('');
+      const a = JSON.parse((t.match(/\{[\s\S]*\}/) || ['{}'])[0]);
+      return typeof a.children === 'boolean' ? a.children : null;
+    } catch (e) { log('A Kaymbu photo could not be looked at for children', e.message); return null; }
+  }
+  const waitsUntagged = d => d && d.kaymbu && d.kaymbu.check && !d.invitation && !(d.children || []).length && !(d.kaymbu.suggest || []).length && !(d.kaymbu.unmatched || []).length && d.kaymbu.src && !d.clip && !(d.kaymbu.kidsLook && d.kaymbu.kidsLook.at);
+  let sweeping = false;
+  async function inviteSweep(max = 40) {
+    if (!askClaude || !store.ready || sweeping) return 0;
+    sweeping = true; let n = 0, made = 0;
+    try {
+      for (const [id, r] of store.recs.notices) {
+        if (n >= max) break;
+        const d = r && !r.deleted && r.doc; if (!waitsUntagged(d)) continue;
+        n++;
+        let buf = null; try { const g = await kaymbu.getBuf(d.kaymbu.src); if (g.status === 200) buf = g.buf; } catch (e) {}
+        const seen = await seesChildren(buf);
+        const now = store.recs.notices.get(id); const d2 = now && !now.deleted && now.doc; if (!waitsUntagged(d2)) continue;
+        const tries = ((d2.kaymbu.kidsLook || {}).tries || 0) + 1;
+        if (seen == null) { d2.kaymbu = Object.assign({}, d2.kaymbu, { kidsLook: tries >= 3 ? { at: Date.now(), children: null } : { tries } }); }
+        else {
+          d2.kaymbu = Object.assign({}, d2.kaymbu, { kidsLook: { at: Date.now(), children: seen } });
+          if (!seen) { d2.invitation = true; d2.children = []; d2.kaymbu.check = false; d2.kaymbu.checkedBy = 'TREE'; d2.kaymbu.checkedAt = Date.now(); delete d2.kaymbu.maybe; delete d2.kaymbu.unsure; made++; }
+        }
+        noteChange('notices', id); scheduleSave('notices', id);
+      }
+    } finally { sweeping = false; }
+    if (made) log(`Kept ${made} Kaymbu photos with no children in them as invitations`);
+    return made;
+  }
+  async function asideInviteTick(max = 15) {
+    if (!configured() || !askClaude || !store.ready || busy || bringing || !quietHours()) return 0;
+    const ids = []; for (const [id, r] of store.recs.kaymbu) { const d = r && !r.deleted && r.doc; if (d && d.kid && d.status === 'aside' && d.reason === 'nowords' && !d.video && !d.kidsLook) ids.push(id); }
+    if (!ids.length) return 0;
+    busy = 'invite'; let made = 0;
+    try {
+      for (const id of ids.slice(0, max)) {
+        const d = store.recs.kaymbu.get(id).doc;
+        try {
+          const j = await api('POST', '/api/moments/moment/' + d.kid, {}); const m = j && j.moment;
+          if (!m) { saveAside(Object.assign({}, d, { kidsLook: Date.now() })); continue; }
+          if (Array.isArray(m.students)) m.studentInfo = Object.fromEntries(m.students.map(s => [s._id, s]));
+          m.classroomName = m.classroomName || (m.classroom && m.classroom.name) || d.kaymbuClass;
+          const hold = holding(); hold.aside.delete(d.kid);
+          const out = await takePost([m], { hold, chosen: true, lookKids: true });
+          const now = (store.recs.kaymbu.get(id) || {}).doc || d;
+          if (out.kept) { saveAside(Object.assign({}, now, { status: 'back', backAt: Date.now(), kidsLook: Date.now(), invitation: true })); made++; }
+          else saveAside(Object.assign({}, now, { status: 'aside', kidsLook: Date.now() }));
+        } catch (e) { log('A set aside Kaymbu photo could not be looked at for children', e.message); }
+      }
+    } finally { busy = ''; }
+    if (made) log(`Brought ${made} set aside Kaymbu photos into TREE as invitations`);
+    return made;
+  }
+
   /* ---------- the director's choices on what was set aside ---------- */
   async function putBack(id) {
     const r = store.recs.kaymbu.get(id); const d = r && !r.deleted && r.doc; if (!d || !d.kid) throw new Error('That Moment is no longer set aside.');
@@ -768,9 +843,14 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
     setInterval(() => hourly().catch(() => {}), 60 * 60e3).unref();
     setInterval(() => lookbackTick().catch(() => {}), 10 * 60e3).unref();
     setInterval(() => bringTick().catch(() => {}), 10 * 60e3 + 30e3).unref();
+    // photos waiting to be tagged are looked at for children a few minutes after each hourly look, and the set aside
+    // photos with no words in the quiet hours
+    setTimeout(() => inviteSweep().catch(() => {}), 6 * 60e3).unref();
+    setInterval(() => inviteSweep().catch(() => {}), 60 * 60e3 + 5 * 60e3).unref();
+    setInterval(() => asideInviteTick().catch(() => {}), 10 * 60e3 + 90e3).unref();
   }
 
   return { start, hourly, startEstimate, estimate, startBookCount, bookCount, startBring, pauseBring, bringTick, bringMoment, bookDoc, earlyPlan, earlyView, earlyStart, earlyPause, earlyNext, earlyMark, approve, pause, lookbackTick, putBack, bringAll, acceptClass, view, statusLine, configured,
     // for the tests
-    keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, leaveNearCopies, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
+    inviteSweep, asideInviteTick, keyOf, matchChildren, takePost, posts, tallyBook, bookSummary, packAcc, unpackAcc, leaveNearCopies, kaymbuIds, enrolledKids, holding, quietHours, laMidnight, _setCookies: c => { cookies = new Map(c); } };
 };
