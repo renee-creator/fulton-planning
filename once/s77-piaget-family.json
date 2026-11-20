@@ -1,0 +1,11 @@
+{
+ "name": "s77PiagetFamily",
+ "note": "The family piece on play names Piaget's three stages, with constructive play credited to Smilansky, November 19, 2026",
+ "changes": [
+  {
+   "path": "staff/familypieces/together-play.md",
+   "from": "- **Doing it again and again (functional play).** Dumping and refilling a basket, opening and closing a door, to learn how something behaves.\n- **Making something on purpose (constructive play).** Building a tower, a road or a bed for a stuffed animal.\n- **One thing standing for another (symbolic play).** A block becomes a phone, a scarf becomes a river, a stick becomes a spoon.\n",
+   "to": "- **Doing it again and again (functional play).** Dumping and refilling a basket, opening and closing a door, to learn how something behaves.\n- **One thing standing for another (symbolic play).** A block becomes a phone, a scarf becomes a river, a stick becomes a spoon.\n- **Playing by agreed rules (games with rules).** A chase game with a home base, or taking turns in a simple game.\n\nAnother researcher, Sara Smilansky, added **making something on purpose (constructive play)**, such as building a tower, a road or a bed for a stuffed animal.\n"
+  }
+ ]
+}
