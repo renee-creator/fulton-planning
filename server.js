@@ -875,6 +875,8 @@ ONCE.push(['s75PiagetCard', () => staff.once.edits('s75PiagetCard', recsEdit)]);
 ONCE.push(['s76PiagetModule', () => staff.once.edits('s76PiagetModule', recsEdit)]);
 // The family piece on play names Piaget's three stages, constructive play credited to Smilansky, November 19, 2026
 ONCE.push(['s77PiagetFamily', () => staff.once.edits('s77PiagetFamily', recsEdit)]);
+// Accuracy check, first area. Sources and overstated claims corrected in The Study of Play, Beyond Discipline and The Educator as Mentor, November 19, 2026
+ONCE.push(['s78AccuracyOne', () => staff.once.edits('s78AccuracyOne', recsEdit)]);
 /* The North class sign-up sheet of November 3, 2026, class representatives and PAC. TREE's code is public, so it holds
    only a short fingerprint of each parent's email. The name and email are taken from the enrollment record that matches,
    and a parent already on the list keeps their entry. */

@@ -1,0 +1,91 @@
+{
+ "name": "s78AccuracyOne",
+ "note": "Accuracy check, first area. The Study of Play, Beyond Discipline and The Educator as Mentor, November 19, 2026",
+ "changes": [
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "\"We don't stop playing because we grow old; we grow old because we stop playing.\" (George Bernard Shaw)",
+   "to": "\"We don't stop playing because we grow old; we grow old because we stop playing.\" (a saying that traces to G. Stanley Hall, 1904)"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "- George Bernard Shaw, quoted in the closing slide.",
+   "to": "- The closing saying traces to G. Stanley Hall, Adolescence (1904). It is often credited to George Bernard Shaw without a source."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "photography by Jenna Daly, Redleaf Press, 2015]",
+   "to": "photography by Jenna Daly, Redleaf Press, 2014]"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "Play is the only modality where all components of social and emotional competence are practiced at the same time.",
+   "to": "Play lets children practice many social and emotional skills at once."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": " Skipping stages often leads to negative power dynamics, and the stages are a foundation for teamwork and empathy.",
+   "to": " The forms are a foundation for teamwork and empathy."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "It is a precursor to abstract literacy and math, and its life outcome is narrative literacy and algebraic thinking.",
+   "to": "It supports later storytelling and the use of symbols in reading and math."
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "play can serve as an antidote to toxic stress",
+   "to": "play can serve as a buffer against toxic stress"
+  },
+  {
+   "path": "staff/pd/depth/beyond.md",
+   "from": "play can serve as an antidote to toxic stress",
+   "to": "play can serve as a buffer against toxic stress"
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "This is the amygdala hijack, when stress overrides the prefrontal cortex. ",
+   "to": "Daniel Goleman named this the amygdala hijack, when stress overrides the prefrontal cortex. "
+  },
+  {
+   "path": "staff/pd/depth/play.md",
+   "from": "children combine building with storytelling, a form of play called fused play.",
+   "to": "children combine building with storytelling, which we call fused play."
+  },
+  {
+   "path": "staff/pd/modules/12-play.md",
+   "from": "children combine building with storytelling, a form of play called fused play.",
+   "to": "children combine building with storytelling, which we call fused play."
+  },
+  {
+   "path": "staff/pd/printables/play.md",
+   "from": "What is this builder testing today?\n",
+   "to": "What is this builder testing today?\n\nAdapted from Harriet M. Johnson, The Art of Block Building (1933).\n"
+  },
+  {
+   "path": "staff/pd/printables/play.md",
+   "from": "I notice a child playing alone. I wonder what focused work is happening.\n",
+   "to": "I notice a child playing alone. I wonder what focused work is happening.\n\nAdapted from Mildred B. Parten, Social Participation among Pre-School Children (1932).\n"
+  },
+  {
+   "path": "staff/pd/printables/beyond.md",
+   "from": "Footer. Adapted from the Early Learning Institute's sensory tip sheets by Pat Boblitt and April Davis, by way of",
+   "to": "Footer. Adapted from Winnie Dunn's model of sensory processing (1997) and the Early Learning Institute's sensory tip sheets by Pat Boblitt and April Davis, by way of"
+  },
+  {
+   "path": "staff/pd/modules/24-mentor.md",
+   "from": "- **Consolidation, into the second and third year.**",
+   "to": "- **Consolidation, from about the end of the first year.**"
+  },
+  {
+   "path": "staff/pd/depth/mentor.md",
+   "from": "- **Consolidation, into the second and third year.**",
+   "to": "- **Consolidation, from about the end of the first year.**"
+  },
+  {
+   "path": "staff/pd/printables/mentor.md",
+   "from": "### Consolidation, the second and third year",
+   "to": "### Consolidation, from about the end of the first year"
+  }
+ ]
+}
