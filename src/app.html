@@ -5326,7 +5326,7 @@ function tqHtml(w){
       ${grp.map(x=>{const others1=others.filter(c=>!(tqKids[x.id]||[]).includes(c.id)),kids1=[...kids,...others.filter(c=>(tqKids[x.id]||[]).includes(c.id))];
         return `<div class="tqph">${x.photo?`<img class="tqimg" src="${esc(photoThumb(x))}" alt="A photo from this Kaymbu post" loading="lazy">`:""}${sugg.length&&!tqGroup?`<div class="chips" style="margin-bottom:6px">${sugg.map(c=>`<button class="chip sug ${(tqKids[x.id]||[]).includes(c.id)?"on":""}" data-tqkid="${esc(x.id)}|${esc(c.id)}" type="button">${esc(c.first)}</button>`).join("")}</div>`:""}${kids1.length?groupFirstHtml(kids1,tqGroup,room,chipFor(x)):`<div class="chips"><span class="cnt">Choose the class to see its children.</span></div>`}
         ${others1.length?`<details class="tqother" style="margin-top:6px"><summary class="cnt">Show all classes, ${others1.length} more children</summary><div class="chips" style="margin-top:6px">${others1.map(chipFor(x)).join("")}</div></details>`:""}</div>`}).join("")}
-      <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button><button class="btn small ghost" data-tqsave="kay|${esc(id)}|inv">A setup with no children (invitation)</button>${full}</div>`}
+      <div class="actions"><button class="btn small" data-tqsave="kay|${esc(id)}">Save</button><button class="btn small ghost" data-tqsave="kay|${esc(id)}|inv">Invitation</button>${full}</div>`}
   if(kind==="kmail"){const n=notices.get(id);if(!n)return "";const kb=kBatchOf(n);const ns=[...notices.values()].filter(x=>x.kaymbu&&kBatchOf(x)===kb&&kmailMine(x)).sort((a,b)=>(a.at||0)-(b.at||0));
     const by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];const rm=momentRooms(n)[0]||"";const mine=roster.filter(r=>r.room&&r.room===rm).map(r=>r.name),rest=rosterNames().filter(x=>!mine.includes(x));
     return `<div class="cnt">${by.length?`<b>Shared by ${esc(by.join(" and "))}.</b>${ns.some(x=>!String(x.by||"").trim())?" Some have no name yet.":""} Tap a name to change it`:"<b>Who shared these?</b> Tap a name to put it"} on all ${ns.length} photo${ns.length===1?"":"s"}.</div>
@@ -9365,7 +9365,7 @@ function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml
    director marks by hand. TREE never marks it (November 19, 2026). */
 const isInvitation=n=>!!(n&&n.invitation);
 const setupLabel=n=>isInvitation(n)?(n.provocation?"Invitation, provocation":"Invitation"):"";
-function nfSetupHtml(n){return `<div class="chips"><button class="chip ${n.invitation?"on":""}" data-nfsetup="invitation" type="button">A setup with no children (invitation)</button>${n.invitation?`<button class="chip ${n.provocation?"on":""}" data-nfsetup="provocation" type="button">It grew from something observed (provocation)</button>`:""}</div>`}
+function nfSetupHtml(n){return `<div class="chips"><button class="chip ${n.invitation?"on":""}" data-nfsetup="invitation" type="button">Invitation</button>${n.invitation?`<button class="chip ${n.provocation?"on":""}" data-nfsetup="provocation" type="button">Provocation</button>`:""}</div>`}
 const nfInviteKidsHtml=()=>`<div class="cnt">No children are tagged on an invitation.</div>`;
 let nfMoreOpen=false;
 document.addEventListener("toggle",e=>{const d=e.target;if(d.classList&&d.classList.contains("nfmore"))nfMoreOpen=d.open},true);
