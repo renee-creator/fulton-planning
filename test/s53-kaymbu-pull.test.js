@@ -287,3 +287,15 @@ test('photos waiting to be tagged are looked at once, and one with no children b
   assert.ok(!d('n2').invitation && !d('n3').invitation, 'a photo with a child tagged or offered is left for a person');
   assert.strictEqual(await x.pull.inviteSweep(), 0, 'nothing is read twice');
 });
+test('an answer with more text after its JSON, braces and all, is still read', async () => {
+  const extra = o => async () => ({ status: 200, text: JSON.stringify({ content: [{ text: JSON.stringify(o) + '\n\n{"note": "the photo shows {blocks} only"}' }] }) });
+  const x = setup(null, extra({ keep: true, children: false, why: 'Materials set out, a "tray" {of} shells' }));
+  x.photos.set('k1-aaaa_bbbb_thumb.jpg', await img(9));
+  const r = await x.pull.takePost([mom('k1', {})], {});
+  assert.strictEqual(r.kept, 1); assert.strictEqual(r.unread, 0);
+  const n = [...x.store.recs.notices.values()][0].doc; assert.strictEqual(n.invitation, true);
+  const y = setup(null, extra({ children: false }));
+  y.photos.set('w2.jpg', await img(10));
+  y.store.recs.notices.set('m1', { doc: { id: 'm1', noticed: '', classroom: 'North', children: [], kaymbu: { v: 3, check: true, src: 'https://d1.cloudfront.net/w2.jpg' } } });
+  assert.strictEqual(await y.pull.inviteSweep(), 1);
+});

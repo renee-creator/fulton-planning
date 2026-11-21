@@ -1,7 +1,7 @@
 'use strict';
 /* A small made-up school for the tests, written to a fresh folder, with the mock GitHub and the real server started on
    it, and the page served from this repository. Every name here is invented. */
-const fs = require('fs'), os = require('os'), path = require('path'), http = require('http');
+const fs = require('fs'), os = require('os'), path = require('path'), http = require('http'), net = require('net');
 const { spawn } = require('child_process');
 const mock = require('./mock-github.js');
 const ROOT = path.join(__dirname, '..');
@@ -36,7 +36,13 @@ function records() {
 async function start(opt) {
   opt = opt || {};
   const dir = opt.dir || records();
-  const port = 5000 + Math.floor(Math.random() * 400), web = port + 500;
+  // the system gives each test server and its file server a free port, so test files running at the same time never
+  // pick the same one (November 21, 2026). The file server keeps its port open from here on, and the server's port is
+  // found free just before TREE starts.
+  const freePort = () => new Promise((ok, no) => { const s = net.createServer(); s.unref(); s.on('error', no); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
+  let serve = (q, r) => { r.writeHead(503); r.end(); };
+  const files = http.createServer((q, r) => serve(q, r)); await new Promise((ok, no) => { files.once('error', no); files.listen(0, '127.0.0.1', ok); });
+  const web = files.address().port, port = await freePort();
   const put = (rel, doc) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, typeof doc === 'string' ? doc : JSON.stringify(doc, null, 2) + '\n'); };
   if (opt.more) opt.more(put);
   if (opt.feed) { put('calendar/settings/program.json', { calendars: [{ id: 'cal3', name: 'Conferences', color: 'clay' }], spaces: [], dayStart: 420, dayEnd: 1080, weekends: true });
@@ -44,11 +50,10 @@ async function start(opt) {
   const gh = await mock.start(dir, 0, opt.gh);
   const srv = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env: Object.assign({}, process.env, { GITHUB_API: 'http://127.0.0.1:' + gh.port, GITHUB_RAW: 'http://127.0.0.1:' + gh.port + '/raw', GITHUB_TOKEN: 't', PORT: String(port),
     TEACHER_PASSCODES: 'Dee=director-pass-1,Shared=shared-pass-1', ALLOWED_ORIGINS: 'http://localhost:' + web, FLUSH_DELAY_MS: '500', WRITE_GAP_MS: '20', FAMILY_SHOW_CODE: '1', FEED_TEST_BASE: `http://127.0.0.1:${web}/feeds`, ONCE_SKIP: ONCE_SKIP_DEFAULT }, opt.env || {}), stdio: process.env.FX_LOG ? 'inherit' : 'ignore' });
-  const files = http.createServer((q, r) => { if (opt.feed && q.url.startsWith('/feeds/conf.ics')) { r.writeHead(200, { 'Content-Type': 'text/calendar' }); r.end(opt.feed()); return; }
+  serve = (q, r) => { if (opt.feed && q.url.startsWith('/feeds/conf.ics')) { r.writeHead(200, { 'Content-Type': 'text/calendar' }); r.end(opt.feed()); return; }
     const f = path.join(ROOT, decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/, '') || 'tree.html');
     if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); r.end(); return; }
-    r.writeHead(200, { 'Content-Type': /\.html$/.test(f) ? 'text/html' : /\.js$/.test(f) ? 'text/javascript' : /\.png$/.test(f) ? 'image/png' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); });
-  await new Promise(ok => files.listen(web, '127.0.0.1', ok));
+    r.writeHead(200, { 'Content-Type': /\.html$/.test(f) ? 'text/html' : /\.js$/.test(f) ? 'text/javascript' : /\.png$/.test(f) ? 'image/png' : 'application/octet-stream' }); fs.createReadStream(f).pipe(r); };
   const api = 'http://127.0.0.1:' + port;
   // wait up to 45 seconds for the server to answer at all. The tests have always gone on once / answers, while the records
   // may still be loading, so /ready is not used here. A server that never answers stops the test with a plain message.
@@ -59,7 +64,9 @@ async function start(opt) {
   // a request to the server as someone signed in. It and login stop after 90 seconds, so a stalled request fails the
   // test instead of holding the file open
   const as = async (token, p, body) => { const r = await fetch(api + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:' + web, Authorization: 'Bearer ' + token }, body: JSON.stringify(body || {}), signal: AbortSignal.timeout(90000) }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
-  return { dir, gh, api, web, page: `http://localhost:${web}/tree.html?server=${api}`, login, as, stop: async () => { srv.kill(); files.close(); await gh.close(); } };
+  // waits until the records, the calendar and the staff records are all loaded, for a test whose first check needs them
+  const ready = async () => { for (const t0 = Date.now(); Date.now() - t0 < 60000;) { try { if ((await fetch(api + '/ready', { signal: AbortSignal.timeout(5000) })).status === 200) return; } catch (e) {} await new Promise(r => setTimeout(r, 150)); } throw new Error('TREE did not finish loading in 60 s'); };
+  return { dir, gh, api, web, ready, page: `http://localhost:${web}/tree.html?server=${api}`, login, as, stop: async () => { srv.kill(); files.close(); await gh.close(); } };
 }
 
 // a browser page signed in as someone, or null when Playwright is not installed here
