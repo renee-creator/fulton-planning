@@ -1,7 +1,7 @@
 'use strict';
 // November 14, 2026. Today, tidied. The Kaymbu kinds share one row, a sorted caption shows one short line, Send a clip reads
-// the same on a phone and a computer, a save that took many tries shows for a day, and emails with no educator named wait
-// for the director only. Made-up names only.
+// the same on a phone and a computer, a save that took many tries shows for a day, and emails with no educator named no
+// longer ask anyone (November 20, 2026). Made-up names only.
 const test = require('node:test');
 const assert = require('node:assert');
 const { start, browser, signedIn } = require('./fixture.js');
@@ -22,11 +22,10 @@ test('Today, tidied', async t => {
   const d = await signedIn(fx, br, 'Dee', 'director-pass-1', 1100); t.after(() => d.close());
   await d.p.waitForFunction(() => notices.get('u2') && notices.get('s1'), null, { timeout: 15000 });
   await d.p.evaluate(() => { todayAll = true; goView('today'); });
-  await d.p.waitForSelector('[data-tg="kayall"]', { timeout: 15000 });
-  const sum = await d.p.innerText('[data-tg="kayall"] > summary');
-  assert.match(sum, /4 from Kaymbu/); assert.match(sum, /2 to tag\. 2 emails with no educator named/);
-  // each part keeps its own fold inside
-  assert.ok(await d.p.$('[data-tg="kayall"] [data-tg="kaymbu"]')); assert.ok(await d.p.$('[data-tg="kayall"] [data-tg="kby"]'));
+  await d.p.waitForSelector('[data-tg="kaymbu"]', { timeout: 15000 });
+  // Kaymbu moments with no educator named stay without one, and no one is asked who shared them
+  assert.ok(!(await d.p.evaluate(() => todayWaiting().some(w => /^kmail\|/.test(w.q || '')))), 'no one is asked who shared');
+  assert.ok(!(await d.p.$('[data-tg="kby"]')));
   assert.strictEqual(await d.p.$$eval('[data-tg="kaymbu"]', x => x.length), 1);
   // the number says it is a total
   assert.match(await d.p.innerText('.tgrid2 .secthead'), /\d+ in all/);

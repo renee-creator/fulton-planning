@@ -5202,8 +5202,10 @@ function todayWaiting(){
    for(const n of [...notices.values()].filter(n=>n.kaymbu&&(n.kaymbu.keptAt||0)>Date.now()-14*864e5&&(dir||!rm||momentIn(n,rm)))){const k=kBatchOf(n);const e=bs.get(k);if(e)e.push(n);else bs.set(k,[n])}
    for(const [k,ns] of [...bs.entries()].sort((a,b)=>(b[1][0].kaymbu.keptAt||0)-(a[1][0].kaymbu.keptAt||0))){const n=ns[0];
     const unnamed=ns.some(x=>!String(x.by||"").trim()),early=ns.filter(x=>(x.week||"")<wk0);
-    // only an email with no educator named needs anyone. Photos filed in earlier weeks are where they belong and ask nothing
-    if(!unnamed||!dir)continue;
+    // only an email with no educator named needs anyone. Photos filed in earlier weeks are where they belong and ask nothing.
+    // Kaymbu is signed in by class and does not record who posted, so a moment with no educator named stays without one and
+    // TREE does not ask (November 20, 2026, until each educator has their own Kaymbu sign in)
+    if(!unnamed||!dir||KAYMBU_ASK_WHO===false)continue;
     const subj=(n.kaymbu.subject||"").trim(),by=[...new Set(ns.map(x=>String(x.by||"").trim()).filter(Boolean))];
     const ats=early.map(x=>x.at||0).sort((a,b)=>a-b);const span=!ats.length?"":ats.length===1?shortDate(ats[0]):`from ${shortDate(ats[0]).replace(/, \d{4}$/,"")} to ${shortDate(ats[ats.length-1])}`;
     out.push({dot:"sky",t:unnamed?"Who shared this from Kaymbu?":"Just shared from Kaymbu",s:`${ns.length} photo${ns.length===1?"":"s"} came ${new Date(n.kaymbu.keptAt).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}${subj?`, subject ${subj}`:""}.${by.length?" Shared by "+by.join(" and ")+".":""}${early.length?` ${early.length===ns.length?(ns.length===1?"It was":"They were"):early.length+" were"} taken ${span}, so ${early.length===1?"it is":"each is"} under the week ${early.length===1?"it was":"they were"} taken.`:""}`,act:`data-nwedit="${n.id}"`,b:unnamed?"Choose":"Look",q:"kmail|"+n.id})}}
@@ -9365,6 +9367,7 @@ function kidsAreaHtml(n){const ps=formPhotos(n);if(ps.length<2)return nfKidsHtml
    director marks by hand. TREE never marks it (November 19, 2026). */
 const isInvitation=n=>!!(n&&n.invitation);
 const setupLabel=n=>isInvitation(n)?(n.provocation?"Invitation, provocation":"Invitation"):"";
+const KAYMBU_ASK_WHO=false;
 function nfSetupHtml(n){return `<div class="chips"><button class="chip ${n.invitation?"on":""}" data-nfsetup="invitation" type="button">Invitation</button>${n.invitation?`<button class="chip ${n.provocation?"on":""}" data-nfsetup="provocation" type="button">Provocation</button>`:""}</div>`}
 const nfInviteKidsHtml=()=>`<div class="cnt">No children are tagged on an invitation.</div>`;
 let nfMoreOpen=false;
