@@ -173,13 +173,25 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
   const apart = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; };
   const DARK = 28, BLUR = 80, SAME = 6;
   const SCREEN_PROMPT = 'This photo was published by an educator at our preschool, with these words: "{words}". No child is tagged in it. Say whether it belongs in the school\'s documentation of children\'s learning. Keep it when it shows children at play or work, children\'s own work such as drawing, writing, building or art, words an educator wrote down as children said them, materials or a space set up for children, the garden, the animals or nature at school. Set it aside when it is mainly a sign, a menu, a flyer, a calendar, a sign-up sheet, a screenshot, a document for adults, or a picture from outside school with no children\'s learning in it. Answer only with JSON, {"keep": true or false, "children": true or false, "why": "a short plain reason, no colons or dashes"}. "children" is true when any child, or any part of a child such as a hand, is in the photo. Adults do not count.';
+  // the first whole JSON object in a reader's answer. The reader sometimes adds a line after it, with braces of its own,
+  // so the answer is read up to the brace that closes the first one, not the last brace in the text (November 21, 2026)
+  function firstJson(t) {
+    const s = String(t || ''), i = s.indexOf('{'); if (i < 0) return {};
+    let depth = 0, inStr = false, esc = false;
+    for (let k = i; k < s.length; k++) {
+      const c = s[k];
+      if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true; else if (c === '{') depth++; else if (c === '}' && --depth === 0) return JSON.parse(s.slice(i, k + 1));
+    }
+    return JSON.parse(s.slice(i));
+  }
   async function readByQuick(m, buf, text) {
     if (!askClaude || !buf) return null;
     try {
       const r = await askClaude([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: buf.toString('base64') } }, { type: 'text', text: (text ? SCREEN_PROMPT.replace('{words}', text.slice(0, 400).replace(/"/g, "'")) : SCREEN_PROMPT.replace(', with these words: "{words}"', ' with no words')) }], false, { max_tokens: 300 });
       if (r.status !== 200) return null;
       const j = JSON.parse(r.text); const t = (j.content || []).map(x => x.text || '').join('');
-      const a = JSON.parse((t.match(/\{[\s\S]*\}/) || ['{}'])[0]);
+      const a = firstJson(t);
       return typeof a.keep === 'boolean' ? { keep: a.keep, children: typeof a.children === 'boolean' ? a.children : null, why: String(a.why || '').replace(/[:—–]/g, ',').slice(0, 160) } : null;
     } catch (e) { log('A Kaymbu photo could not be screened', e.message); return null; }
   }
@@ -235,7 +247,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
   // a post's Moments, screened, then kept or set aside. Answers what happened to each, for the log and the estimate.
   async function takePost(list, opts) {
     const o = Object.assign({ back: false, count: false, chosen: false }, opts);
-    const out = { kept: 0, merged: 0, aside: 0, videos: 0, asked: 0, ids: [], reasons: {} };
+    const out = { kept: 0, merged: 0, aside: 0, videos: 0, asked: 0, unread: 0, ids: [], reasons: {} };
     const h = o.hold || holding();
     const start = laMidnight(since());
     const batchWords = list.map(momentWords).find(Boolean) || '';
@@ -279,7 +291,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       out.asked++;
       if (o.count) continue;
       const a = await readByQuick(t.m, t.look && t.look.thumb, t.own);
-      if (!a) { if (t.noWords) put(t, 'nowords'); continue; }
+      if (!a) { out.unread++; if (t.noWords) put(t, 'nowords'); continue; }
       t.seen = a.children;
       if (!a.keep && !o.chosen) put(t, 'notlearning', a.why || REASON.notlearning);
       else if (a.children === false) t.invite = true;
@@ -729,7 +741,7 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
       const r = await askClaude([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: small.toString('base64') } }, { type: 'text', text: KIDS_PROMPT }], false, { max_tokens: 60 });
       if (r.status !== 200) return null;
       const j = JSON.parse(r.text); const t = (j.content || []).map(x => x.text || '').join('');
-      const a = JSON.parse((t.match(/\{[\s\S]*\}/) || ['{}'])[0]);
+      const a = firstJson(t);
       return typeof a.children === 'boolean' ? a.children : null;
     } catch (e) { log('A Kaymbu photo could not be looked at for children', e.message); return null; }
   }
@@ -775,6 +787,8 @@ module.exports = function kaymbuPull({ store, log, kaymbu, noteChange, scheduleS
           const out = await takePost([m], { hold, chosen: true, lookKids: true });
           const now = (store.recs.kaymbu.get(id) || {}).doc || d;
           if (out.kept) { saveAside(Object.assign({}, now, { status: 'back', backAt: Date.now(), kidsLook: Date.now(), invitation: true })); made++; }
+          // an answer that could not be read is tried again on the next round, three times in all, before it is left set aside
+          else if (out.unread && (now.kidsTries || 0) + 1 < 3) saveAside(Object.assign({}, now, { status: 'aside', kidsTries: (now.kidsTries || 0) + 1 }));
           else saveAside(Object.assign({}, now, { status: 'aside', kidsLook: Date.now() }));
         } catch (e) { log('A set aside Kaymbu photo could not be looked at for children', e.message); }
       }

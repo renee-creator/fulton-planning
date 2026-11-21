@@ -5,7 +5,7 @@ test('garden tasks on educators\' calendars follow the director\'s choice, and t
     animals: [{ id: 'a-goats', name: 'Goats', kind: 'goat', care: [{ id: 'g1', text: 'Feed the goats hay', every: 'day', weekday: 1 }] }],
     plan: { months: { '11': { tasks: [{ id: 'w1', text: 'Water the beds', repeat: { weekday: 3 } }, { id: 'm1', text: 'Mulch the beds' }] } } }, tending: { home: {}, rotations: [] }, agreements: {} });
     put('staff/garden/log.json', { id: 'gardenlog' }); } });
-  t.after(() => fx.stop());
+  t.after(() => fx.stop()); await fx.ready();
   const dee = (await fx.login('Dee', 'director-pass-1')).token, ann = (await fx.login('Ann', '1357')).token;
   const evs = async tok => { const r = await fx.as(tok, '/api/view', { from: '2026-11-02', to: '2026-11-06' }); return ((r.body && r.body.events) || []).filter(e => e.cal === 'tgarden').map(e => e.title); };
   let a = await evs(ann); assert.ok(a.some(x => /Water/.test(x)) && a.some(x => /Mulch/.test(x)), 'weekly and monthly tasks show at first'); assert.ok(!a.some(x => /goats/.test(x)), 'the daily animal care stays off at first');

@@ -1736,7 +1736,7 @@ const infogByKey=k=>INFOG[k]?{key:k,src:"img/infographics/"+k.replace("|","--")+
 // the pictures as a PDF, each filling its own letter page, upright or on its side as it was designed
 async function infogPdf(list,name){const K=window.TREE_KIT;if(!K||!list.length)return;await K.loadScript(K.LIB.jspdf,"jspdf");let d=null;
   for(const g of list){try{const r=await fetch(g.src);if(!r.ok)continue;const b=await r.blob();const url=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b)});
-    const o=g.wide?"landscape":"portrait";if(!d)d=new window.jspdf.jsPDF({unit:"pt",format:"letter",orientation:o});else d.addPage("letter",o);
+    const o=g.wide?"landscape":"portrait";if(!d)d=K.pdf({unit:"pt",format:"letter",orientation:o});else d.addPage("letter",o);
     d.addImage(url,"JPEG",0,0,g.wide?792:612,g.wide?612:792)}catch(er){}}
   if(!d){toast("The infographic could not be opened.");return}d.save(String(name||"Infographic").replace(/[\\/:*?"<>|]+/g," ").trim()+".pdf")}
 document.addEventListener("click",async e=>{const t=e.target.closest("[data-infogpdf]");if(!t)return;e.preventDefault();
