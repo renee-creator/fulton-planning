@@ -148,8 +148,8 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       .filter((x, i, L) => x.status !== 'returned' || L.filter(y => y.status === 'returned').indexOf(x) < 20)
       .map(x => { const b = books.get(x.path); return { id: x.id, path: x.path, bookId: b.id, title: b.title, author: String(b.meta.author || ''), cover: String(b.meta.cover || ''), draft: b.draft,
         week: x.week, for: x.for || '', how: x.how || '', status: x.status, due: x.due || '', at: x.at || 0, mine: x.by === me }; });
-    const sync = (get(BAG) || {}).sync || null;
-    return Object.assign({ open, items }, dir && sync ? { sync } : {});
+    const sync = (get(BAG) || {}).sync || null, check = (get(BAG) || {}).check || null;
+    return Object.assign({ open, items }, dir && sync ? { sync } : {}, dir ? { checker: pull.configured() } : {}, dir && check ? { check: { at: check.at, ok: check.ok, error: check.error || '', placed: check.placed || [] } } : {});
   }
   /* The library check (November 15, 2026). A scheduled run in the director's signed-in Chrome places the holds for the
      books in the bag and reads her library account, then sends what it found here. Each book in the bag takes the step the
@@ -184,6 +184,20 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
     put(BAG, Object.assign({}, get(BAG) || {}, { items: all, sync: { at: now, others: others.slice(0, 40), missed, moved: moved.slice(0, 40) } }));
     log('Book bag, library check by', me, holds.length, 'holds', out.length, 'checked out');
   }
+  /* TREE's own library check (library-pull.js, November 21, 2026). It signs in with the card and PIN kept in Render,
+     places the holds for the books in the bag and reads the card, through the same steps as the check from the
+     director's Chrome. check keeps how the last one went, for the bag to show. */
+  const CHECKER = 'Library check';
+  const pull = require('./library-pull.js')({ log, bag: {
+    ready: () => !!S.ready, same: bagSame,
+    sync: b => bagSync(CHECKER, b),
+    toPlace: () => { const books = new Map(paths('books').map(item).filter(Boolean).map(x => [x.path, x]));
+      return bagAll().filter(y => y.status === 'bag' && books.has(y.path) && !books.get(y.path).removed).map(y => { const b = books.get(y.path); return { id: y.id, title: b.title, author: String(b.meta.author || '') }; }); },
+    mark: (ids, st) => { const set = new Set(ids); const all = bagAll(); for (const y of all) if (set.has(y.id)) { y.status = st; y[st + 'At'] = Date.now(); delete y.due; } bagSave(all); },
+    checked: c => { const d = get(BAG) || {}; put(BAG, Object.assign({}, d, { check: Object.assign({}, d.check || {}, { at: c.at, ok: !!c.ok, error: c.error || '', placed: (c.placed || []).slice(0, 40), why: c.why || '' }) })); },
+    lastCheck: () => (get(BAG) || {}).check || null,
+    slot: key => { const d = get(BAG) || {}; put(BAG, Object.assign({}, d, { check: Object.assign({}, d.check || {}, { slot: key }) })); } } });
+  pull.start();
   async function handle(P, body, me, req, res, { json, err, send }) {
     const dir = isDirector(me), kit = isKitchen(me);
     if (P === 'library') { json(req, res, 200, Object.assign(list(me), kit ? {} : { bag: bagOut(me) })); return; }
@@ -204,6 +218,9 @@ const NUTS = /\b(peanuts?|almonds?|cashews?|walnuts?|pecans?|hazelnuts?|pistachi
       const all = bagAll(); const y = all.find(z => z.id === String(body.id || '')); if (!y) { err(req, res, 404, 'That book is not in the bag.'); return; }
       const t = String(body.how || '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400); if (t) y.how = t; else delete y.how;
       bagSave(all); json(req, res, 200, { bag: bagOut(me) }); return; }
+    if (P === 'library/bag/check') { if (!dir) { err(req, res, 403, 'The director checks the library account.'); return; }
+      if (!pull.configured()) { err(req, res, 400, 'Add LIBRARY_CARD and LIBRARY_PIN on Render first.'); return; }
+      await pull.run('asked by ' + me); json(req, res, 200, { bag: bagOut(me) }); return; }
     if (P === 'library/bag/sync') { if (!dir) { err(req, res, 403, 'The director checks the library account.'); return; } bagSync(me, body || {}); json(req, res, 200, { bag: bagOut(me) }); return; }
     // the director moves one book, or several at once, to the next step, and a book picked up keeps its due date
     if (P === 'library/bag/status') { if (!dir) { err(req, res, 403, 'The director keeps track of the library books.'); return; }
