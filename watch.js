@@ -85,8 +85,8 @@ function planFor(f) {
       'Where it still can happen, make the message say exactly what to do next in plain words.'];
     case 'slow': return [
       `${where || f.text} took ${Math.round(f.avg / 100) / 10} seconds on average, ${f.count} times, the longest ${Math.round(f.max / 100) / 10} seconds.`,
-      'Check whether it happens just after the server wakes from sleep on Render. If so, a paid instance that stays awake removes the wait.',
-      'Otherwise look at what that request reads or writes, and keep what it builds for a while instead of building it each time, or send less.',
+      'The server stays awake, so see what the request waits on in the server log on Render, Google Drive, the records or the writing help.',
+      'Then look at what that request reads or writes, and keep what it builds for a while instead of building it each time, or send less.',
       'Watch the next report for the time to come down.'];
     case 'signin': return [
       `Sign-ins ended ${f.count} times for ${f.people} people.`,
@@ -200,10 +200,13 @@ module.exports = function watch(o) {
   }
   let loadFails = 0;
   const saveFails = new Map();
-  function refused(path, status, message, who) {
+  function refused(path, status, message, who, bg) {
     const p = pathOf(path);
     if (!/^\/(api|family|public|login)/.test(p)) return;
     if (status === 401) { note('signin', 'Sign-in ended', { who }); return; }
+    // work TREE does by itself, a reading or the readable copies, tries again by itself. One that could not be done is a
+    // background job that could not run, a finding once it happens three times, and no error anyone saw (November 21, 2026).
+    if (bg) { if (status >= 500) note('job', message || ('The server answered ' + status), { where: p }); return; }
     if (status >= 500) { note('error', message || ('The server answered ' + status), { where: p }); return; }
     note('user', message || ('The server answered ' + status), { where: p, who, status });
   }

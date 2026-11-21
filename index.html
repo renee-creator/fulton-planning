@@ -1181,7 +1181,7 @@ window.fpShelfMark=html=>{const L=(window.FP_STAFF&&window.FP_STAFF.shelf)||[];i
     for(const b of imgs) content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:await blobToJpegB64(b, opts.maxSide||1800)}});
     const text=typeof input==="string"? input : (input||[]).map(t=>t.content).join("\n\n");
     content.push({type:"text",text});
-    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex", purpose:opts.purpose||"", drdp:opts.drdp||undefined}, opts.signal);
+    const j=await api("/api/read",{content, careful:!!opts.careful||opts.modelTier==="complex", purpose:opts.purpose||"", drdp:opts.drdp||undefined, ...(window.TREE_BG>0?{bg:true}:{})}, opts.signal);
     return j;
   }
   const sample=Object.assign(async(input,opts)=>{ const j=await ask(input,opts); return {text:j.text, truncated:!!j.truncated, modelTierApplied:"default"}; }, {
@@ -2566,7 +2566,7 @@ async function fetchPhoto(u){
   if(/^(data|blob):/.test(u))return await fetch(u);
   const m0=u.match(/\/original\/([^?]+)/),id=m0?decodeURIComponent(m0[1]):"",kept=id&&/\.(jpe?g|png|webp)$/i.test(id)?await photoKept(id):null;
   if(kept)return new Response(kept,{headers:{"Content-Type":kept.type||"image/jpeg"}});
-  const go=x=>fetch(x+(x.includes("?")?"&":"?")+"use=print",{cache:"no-store",mode:"cors"});
+  const go=x=>fetch(x+(x.includes("?")?"&":"?")+"use=print"+(window.TREE_BG>0?"&bg=1":""),{cache:"no-store",mode:"cors"});
   // a link made with a key that has run out, or nearly, is made again with a fresh key first
   if(id&&window.FP_ORIGINAL_URL&&window.FP_FRESH_KEY){const t=(u.match(/[?&]t=([^&]+)/)||[])[1],e=t?parseInt(decodeURIComponent(t).split(".")[0],36):0;if(e&&e<Date.now()+5*60e3){await window.FP_FRESH_KEY();u=window.FP_ORIGINAL_URL(id)}}
   let r=await go(u);
@@ -2766,7 +2766,11 @@ async function drdpAnalyze(kind,id,mode,quiet){
 // photos is read once. Each is marked before it is read, so two devices do not read the same one.
 let drdpAutoBusy=false,drdpSwept=false;
 // the readings TREE runs by itself happen only on the director's computer, never on an educator's phone (November 12, 2026)
-const bgReader=()=>!REM_PHONE&&isDirector();
+// the director can pause them in Settings, under Readings TREE runs by itself. A reading an educator asks for is never paused (November 21, 2026)
+const bgPaused=()=>!!(PROGRAM_DOC&&PROGRAM_DOC.bgReadingsPaused);
+const bgReader=()=>!REM_PHONE&&isDirector()&&!bgPaused();
+// work TREE does by itself tells the server so, so it waits behind what people are doing and is not counted as slow for people
+const bgWork=async f=>{window.TREE_BG=(window.TREE_BG||0)+1;try{return await f()}finally{window.TREE_BG--}};
 async function drdpAutoKaymbu(){
   if(drdpAutoBusy||!db||!sample||VIEW_AS||!navigator.onLine||document.hidden||!bgReader())return;
   // once each time TREE opens on the director's computer, suggestions waiting for a level that already has its evidence are set aside
@@ -2783,7 +2787,7 @@ async function drdpAutoKaymbu(){
   if(!next)return;drdpAutoBusy=true;
   const tries=next.drdpTries||0;
   // a wait for the official wording does not count as a try, and the observation comes round again after the hour
-  try{patchNotice(next.id,{drdpAuto:Date.now(),drdpTries:tries+1});if(await drdpAnalyze("notices",next.id,"",true)==="wait")patchNotice(next.id,{drdpTries:tries})}finally{drdpAutoBusy=false}}
+  try{patchNotice(next.id,{drdpAuto:Date.now(),drdpTries:tries+1});if(await bgWork(()=>drdpAnalyze("notices",next.id,"",true))==="wait")patchNotice(next.id,{drdpTries:tries})}finally{drdpAutoBusy=false}}
 setInterval(()=>{drdpAutoKaymbu().catch(()=>{})},30000);
 /* What a photo shows, for an observation the DRDP reading does not describe, such as one with no children tagged. Read
    once, a few minutes after the observation is kept, from the educator's photo. It describes only what is visible and
@@ -2799,8 +2803,8 @@ async function photoNoteAuto(){
       if((n.children||[]).length&&!noteGroup(n).some(x=>x.drdp||(x.drdpTries||0)>=3))return false;return true})
     .sort((a,b)=>(b.at||0)-(a.at||0)).filter(n=>{const k=n.group||n.id;if(seen.has(k))return false;seen.add(k);return true})[0];
   if(!next)return;photoNoteBusy=true;
-  try{patchNotice(next.id,{photoNoteAt:Date.now()});const u=photoSrc(next);if(!u)return;const b=await (await fetchPhoto(u)).blob();if(!b||!b.size)return;
-    const out=await askRead(PHOTO_NOTE_PROMPT,{images:[b],purpose:"photo-note",maxSide:1400});
+  try{patchNotice(next.id,{photoNoteAt:Date.now()});const u=photoSrc(next);if(!u)return;const b=await bgWork(async()=>(await fetchPhoto(u)).blob());if(!b||!b.size)return;
+    const out=await bgWork(()=>askRead(PHOTO_NOTE_PROMPT,{images:[b],purpose:"photo-note",maxSide:1400}));
     const t=String((out&&out.photo)||"").replace(/\s*[—–]\s*/g,", ").replace(/:\s*/g,". ").trim();if(t)patchNotice(next.id,{photoNote:sentFit(t,600)})}
   catch(e){}finally{photoNoteBusy=false}}
 setInterval(()=>{photoNoteAuto().catch(()=>{})},40000);
@@ -3401,7 +3405,7 @@ async function drdpEarlyTick(){
       if(kids.length){const day=shortDate(pk.at),title=firstLine(pk.words,60)||("A photo from "+day);
         const S={text:`A photo an educator shared with families through Kaymbu on ${day}${pk.room?", "+pk.room+" class":""}, with these words. ${String(pk.words||"").trim()||"No words were written."}`,photos:[{id:"early-"+pk.m,photo:{id:pk.photo}}],kids,title};
         const groups={};for(const c of kids){const v=kidViewAt(c,pk.at);(groups[v]=groups[v]||[]).push(c)}
-        const items=[];for(const [v,cs] of Object.entries(groups)){const r=await drdpRead(v,cs,S,pk.m,{kind:"book",at:pk.at,early:true});
+        const items=[];for(const [v,cs] of Object.entries(groups)){const r=await bgWork(()=>drdpRead(v,cs,S,pk.m,{kind:"book",at:pk.at,early:true}));
           // the server has the official wording but has not read it yet, after a restart. The photo is kept for later and
           // not marked read, so it is never read for good without the wording (November 13, 2026).
           if(r.wait){drdpEarlyWait=Date.now()+300e3;return}
@@ -5329,7 +5333,7 @@ const secOf=v=>v==="kitchen"&&isKitchenUser()?"kitchen":SECTION_OF[v]||"plans";
 let lastSub=LS.get("tree.sub",{})||{};
 /* A phone or iPad left open keeps the TREE it opened with. Every half hour, and when TREE comes back to the screen, it looks
    at the page on the web, and when a newer TREE is up it offers to reload, so it never runs old parts against new ones. */
-const TREE_BUILD="15369fd1350e";let treeNewer=false,treeBuildAt=0;
+const TREE_BUILD="d67ca3376af9";let treeNewer=false,treeBuildAt=0;
 async function treeBuildCheck(){if(treeNewer||!/^[0-9a-f]{12}$/.test(TREE_BUILD)||Date.now()-treeBuildAt<25*60e3||!navigator.onLine)return;treeBuildAt=Date.now();
   try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)return;const m=(await r.text()).match(/const TREE_BUILD="([0-9a-f]{12})"/);
     if(m&&m[1]!==TREE_BUILD){treeNewer=true;const b=document.createElement("div");b.id="treenewer";b.setAttribute("role","status");
@@ -18998,6 +19002,18 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-keepsave],
   if(d.keepyes){const sel=document.querySelector(`[data-keepfor="${CSS.escape(d.keepyes)}"]`);const n=+(sel&&sel.value||1);keepCall("/api/keeping/keep",Object.assign(it(d.keepyes),{years:n}),`Kept ${n} more year${n>1?"s":""}. Today asks again then.`);return}
   if(d.keeprmyes){keepCall("/api/keeping/remove",Object.assign(it(d.keeprmyes),{sure:true}),"Removed. The removal is noted in Settings, Keeping records.");return}});
 // Video clips, the director's switch. Off to start. Clips that arrive while it is off wait, and are read when it turns on.
+/* Readings TREE runs by itself, on the director's computer only. Each uses the writing help once for each observation
+   or photo. Paused, they wait where they stopped and nothing is lost. A reading someone asks for, the week's reading and
+   the nightly passes are not part of this switch (November 21, 2026). */
+function bgReadingsHtml(){if(!isDirector())return"";const on=!bgPaused();
+  return `<section class="card" id="bgread-card"><div class="lbl">Readings TREE runs by itself</div>
+    <div class="hint">While TREE is open on your computer, it reads each observation once for DRDP evidence and notes what each photo shows.</div>
+    <div class="hint">The earlier years' photos are read the same way once started. Each reading uses the writing help once.</div>
+    <div class="hint">Paused, they wait where they stopped and carry on when turned back on. A reading an educator asks for always runs.</div>
+    <div class="prow"><div><b>Readings TREE runs by itself</b><div class="cnt">${on?"On. They run while TREE is open on your computer.":"Paused. Nothing is read until this is on again."}</div></div>
+      <div class="seg" role="group" aria-label="Readings TREE runs by itself"><button data-bgread="1" aria-pressed="${on}">On</button><button data-bgread="0" aria-pressed="${!on}">Paused</button></div></div></section>`}
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-bgread]");if(!t||!isDirector())return;e.preventDefault();if(VIEW_AS){toast("Nothing is saved while you see TREE as "+VIEW_AS.name+".");return}
+  const on=t.dataset.bgread==="1";PROGRAM_DOC=Object.assign({},PROGRAM_DOC,{bgReadingsPaused:!on,bgReadingsAt:Date.now()});saveProgram();renderSettings();toast(on?"TREE's own readings are on again.":"TREE's own readings are paused.")});
 function videoClipsHtml(){if(!isDirector())return"";const on=clipsOn(),st=(window.FP_CLIPS&&window.FP_CLIPS())||null;const all=[...clips.values()];
   const waiting=all.filter(x=>x.status==="waiting"||x.status==="reading").length,done=all.filter(x=>x.status==="done").length,failed=all.filter(x=>x.status==="failed").length;
   const recent=all.sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,5);
@@ -19212,7 +19228,7 @@ const rcSig=(...x)=>rcHash(RC_V+"|"+JSON.stringify(x));
 let rcActive=0;["pointerdown","keydown","input","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,()=>{rcActive=Date.now()},{passive:true,capture:true}));
 async function rcIdle(){await new Promise(r=>setTimeout(r,80));for(let i=0;i<400&&Date.now()-rcActive<5000;i++)await new Promise(r=>setTimeout(r,1500));await new Promise(r=>(window.requestIdleCallback?requestIdleCallback(r,{timeout:3000}):setTimeout(r,50)))}
 async function rcMake(manual){
-  if(rcNow)return;rcTried=Date.now();rcNow={done:0,total:0,bytes:0,failed:0,why:"",skipped:[],copied:0};rcShow();
+  if(rcNow)return;rcTried=Date.now();rcNow={done:0,total:0,bytes:0,failed:0,why:"",skipped:[],copied:0};rcShow();window.TREE_BG=(window.TREE_BG||0)+1;
   const keep=new Set(photoCache.keys()),clear=()=>{for(const k of [...photoCache.keys()])if(!keep.has(k))photoCache.delete(k)};let run="";
   try{
     if(window.FP_FRESH_KEY)await window.FP_FRESH_KEY().catch(()=>{});
@@ -19274,7 +19290,7 @@ async function rcMake(manual){
     // a set stopped for any reason, a refusal too, is noted, so the card says it did not finish
     if(run){await window.FP_API("/api/readable",{action:"fail",device:RC_DEVICE,run,done:rcNow.done,total:rcNow.total,why}).catch(()=>{});readableInfo=Object.assign({},readableInfo,{tried:{at:Date.now(),run,done:rcNow.done,total:rcNow.total,why}})}
     if(manual)toast(why)}
-  finally{clear();rcNow=null;rcShow();if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()}}
+  finally{window.TREE_BG--;clear();rcNow=null;rcShow();if(view==="settings"&&isDirector()&&!document.activeElement?.closest?.("#main"))renderMain()}}
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-rcnow]");if(!t||view!=="settings"||rcNow)return;
   if(!rcCan()){toast(rcBig()?"Readable copies need TREE's Google Drive to be set up.":"Open TREE on a computer or iPad to make the readable copies.");return}
   toast("Making readable copies. Keep TREE open until the time of the new set shows on this card.");rcMake(true)});
@@ -19354,7 +19370,7 @@ function setStatus(t,x){try{
   const n=x.querySelectorAll(".chip,.sgrow,.rchip").length;if(n)return plural(n,"item");
   const h=x.querySelector(".hint");return h?sentFit(h.textContent,70):"";
 }catch(e){return ""}}
-function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","2d41914fd4").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
+function renderSettings(...a){const m=$("#main");if(m&&!window.TreeLazy_settings)m.innerHTML='<div class="empty"><span class="spin"></span> Opening</div>';return lazyLoad("settings","ce2196a481").then(()=>renderSettings(...a),()=>{if(m)m.innerHTML='<div class="empty">This page could not open. Check the connection and try again.</div>'})}
 $("#me").addEventListener("change",()=>{renderDue();if(view!=="plans"||!currentId)setTimeout(renderMain,0)});
 /* A steady page. New records from another device redraw the page by themselves; that redraw waits until the person stops
    scrolling or pressing, keeps open sections open, and keeps the page where it was. Every redraw keeps the page's height

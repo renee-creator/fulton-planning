@@ -50,3 +50,29 @@ test('a read that fails frees its place for the next one', async () => {
     assert.strictEqual(after.length, 5);
   } finally { await d.close(); }
 });
+
+test('a photo someone is waiting for goes ahead of photos asked for by TREE\'s own work', async () => {
+  const d = await slowDrive(40);
+  try {
+    const p = photos(d.url);
+    const order = [];
+    // ten photos for background work are asked for first, then four that people are looking at
+    const low = Array.from({ length: 10 }, (_, i) => p.read({ drive: 'background-photo-' + String(i).padStart(3, '0') }, { low: true }).then(() => order.push('low')));
+    const high = Array.from({ length: 4 }, (_, i) => p.read({ drive: 'person-photo-' + String(i).padStart(5, '0') }).then(() => order.push('high')));
+    await Promise.all([...low, ...high]);
+    assert.strictEqual(d.gets(), 14, 'every photo comes back');
+    assert.ok(d.most() <= 4, 'still at most 4 at once, saw ' + d.most());
+    // the first two background photos were already on their way. Every photo a person asked for comes before the other eight.
+    assert.ok(order.lastIndexOf('high') <= 5, 'people\'s photos finished early, order was ' + order.join(' '));
+  } finally { await d.close(); }
+});
+
+test('background work alone holds at most 2 places, and all of it still finishes', async () => {
+  const d = await slowDrive(30);
+  try {
+    const p = photos(d.url);
+    const got = await Promise.all(Array.from({ length: 8 }, (_, i) => p.read({ drive: 'background-only-' + String(i).padStart(4, '0') }, { low: true })));
+    assert.strictEqual(got.length, 8); assert.strictEqual(d.gets(), 8);
+    assert.strictEqual(d.most(), 2, 'background reads go 2 at a time, saw ' + d.most());
+  } finally { await d.close(); }
+});

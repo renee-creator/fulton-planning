@@ -189,3 +189,22 @@ test('a fallback that works is not a failed job, and records that load on the re
   assert.strictEqual(jobs().length, 2, 'an ordinary failure is still counted');
   assert.ok(jobs().some(i => /Kitchen Digest could not be read/.test(i.text)));
 });
+
+test('work TREE does by itself is a background job when it fails, and never an error anyone saw', () => {
+  const c = clock();
+  const w = makeWatch({ now: c.now, statusLines: () => [], save: () => {}, scrub: t => t });
+  w.load(null);
+  // the readable copies could not reach Drive twice, a one-off pair, and a background reading was turned away as busy
+  w.refused('/api/readable', 502, 'The mailbox script did not answer. Drive did not answer in time', 'Ann', true);
+  w.refused('/api/readable', 502, 'The mailbox script did not answer. Drive did not answer in time', 'Ann', true);
+  w.refused('/api/read', 429, 'TREE\'s writing help is busy. Wait a minute and try again.', 'Ann', true);
+  assert.deepStrictEqual(w.findings(), [], 'nothing to correct from twice');
+  // the third time it becomes a background job that could not run
+  w.refused('/api/readable', 502, 'The mailbox script did not answer. Drive did not answer in time', 'Ann', true);
+  const f = w.findings();
+  assert.deepStrictEqual(f.map(x => x.kind), ['job']);
+  assert.strictEqual(f[0].title, 'A background job could not run');
+  // the same answer to a person is still an error on the server
+  w.refused('/api/write', 502, 'GitHub would not store the file.', 'Bea');
+  assert.ok(w.findings().some(x => x.kind === 'error'));
+});

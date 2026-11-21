@@ -2697,7 +2697,7 @@ function jsonText(req, res, status, body) {
 }
 function err(req, res, status, message) {
   // each refusal is counted by the program watch, so the same trouble for many people becomes a plan of correction
-  if (status !== 405 && typeof watch !== 'undefined') try { let name = ''; try { const s = readSession(req); name = s ? s.name : ''; } catch (e) {} watch.refused(req.url, status, message, name || who(req)); } catch (e) {}
+  if (status !== 405 && typeof watch !== 'undefined') try { let name = ''; try { const s = readSession(req); name = s ? s.name : ''; } catch (e) {} watch.refused(req.url, status, message, name || who(req), !!req.treeBg); } catch (e) {}
   json(req, res, status, { error: message });
 }
 // the nightly backup holds every record, so it has its own key, BACKUP_KEY on Render. Until that is set it uses the inbox key.
@@ -2743,7 +2743,7 @@ function readBody(req, limit) {
   });
 }
 let readTimes = []; let readsRunning = 0; let stopping = false;
-const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 60 * 1024 * 1024;
+const fileCache = new Map(); let fileCacheBytes = 0; const FILE_CACHE_MAX = 256 * 1024 * 1024;
 function cacheFile(id, buf) { if (buf.length > 8 * 1024 * 1024) return; fileCache.set(id, buf); fileCacheBytes += buf.length; for (const [k, v] of fileCache) { if (fileCacheBytes <= FILE_CACHE_MAX) break; fileCache.delete(k); fileCacheBytes -= v.length; } }
 /* A photo at a display size. The staff room screen and the lists ask for 1920 or 1200 pixels on the long side, so the
    original, often 4000 pixels across, is made smaller once with sharp, kept on disk under the sizes folder and sent with
@@ -3077,6 +3077,9 @@ async function handle(req, res) {
     // the key in the address is the permission, so any page of TREE may read the picture, and the answer never depends on who asked
     const open = { 'Access-Control-Allow-Origin': '*', 'Vary': 'Origin', 'Cross-Origin-Resource-Policy': 'cross-origin' };
     let id = ''; try { id = decodeURIComponent(path.slice(sized ? 7 : 10)); } catch (e) {}
+    // a photo asked for by work TREE does by itself, a reading or the readable copies, says so in its address. It waits
+    // behind photos people are looking at, and a slow one is not counted as slow for people (November 21, 2026).
+    if (url.searchParams.get('bg') === '1') req.treeBg = true;
     if (!checkPhotoKey(url.searchParams.get('t') || '', id)) { log('Photo refused, the key has expired or is for another photo'); send(req, res, 403, Object.assign({ 'Content-Type': 'text/plain' }, open), 'This link has expired. Open it again from TREE.'); return; }
     // an educator's certificates and forms open only through their records, for them and the director
     // original PD materials open only through the PD library, for the director and the module's presenters
@@ -3098,7 +3101,7 @@ async function handle(req, res) {
     // photos kept with moments are shown on every card, so recent ones are held here rather than fetched from GitHub each time
     let buf = fileCache.get(id);
     if (!buf && o.drive) {
-      try { buf = await photosDrive.read(o); cacheFile(id, buf); }
+      try { buf = await photosDrive.read(o, { low: !!req.treeBg }); cacheFile(id, buf); }
       catch (e) { log('Photo could not be read from Google Drive', id.slice(0, 60), e.message); send(req, res, 502, Object.assign({ 'Content-Type': 'text/plain' }, open), 'Could not load the photo from Google Drive.'); return; }
     }
     if (!buf) {
@@ -3933,6 +3936,7 @@ async function handle(req, res) {
   }
   // the director's TREE sends the week's readable copies, file by file, on to the mailbox script for Google Drive
   if (path === '/api/readable') {
+    req.treeBg = true;
     if (!isDirector(me.name)) { err(req, res, 403, 'Only the director\'s TREE makes the readable copies.'); return; }
     const r = await readable.handle(body || {}, me.name);
     if (r.error) { err(req, res, r.status || 400, r.error); return; }
@@ -3962,6 +3966,8 @@ async function handle(req, res) {
     } finally { if (cid) { originalsComing.delete(id); done(); } }
   }
   if (path === '/api/read') {
+    // a reading TREE runs by itself on the director's computer says so, and no one is waiting on it
+    if (body && body.bg === true) req.treeBg = true;
     const refuse = (status, message, why) => { log('Claude request refused for', me.name, why || message); err(req, res, status, message); };
     if (body.purpose === 'threads' && !isDirector(me.name)) { refuse(403, 'Only the director can run Find threads.', 'thread search by an educator'); return; }
     if ((body.purpose === 'newsletter' || body.purpose === 'newsletter-reading') && !isDirector(me.name)) { refuse(403, 'Only the director makes the family newsletter.', 'newsletter by an educator'); return; }
@@ -4256,7 +4262,7 @@ function parseIcs(text) {
     .filter(e => e.date).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 }
 
-const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('finish', () => { const ms = Date.now() - t0; if (ms > 3000) { log('Slow request', req.method, String(req.url).split('?')[0], ms + ' ms'); try { watch.slow(req.url, ms); } catch (e) {} } }); handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
+const server = http.createServer((req, res) => { const t0 = Date.now(); res.on('finish', () => { const ms = Date.now() - t0; if (ms > 3000) { log('Slow request', req.method, String(req.url).split('?')[0], ms + ' ms' + (req.treeBg ? ', in the background' : '')); /* work TREE does by itself keeps no one waiting, so it is written to the log and not counted as slow for people */ if (!req.treeBg) try { watch.slow(req.url, ms); } catch (e) {} } }); handle(req, res).catch(e => { log('Request error', e && e.stack); err(req, res, 500, 'Something went wrong on the server. Try again.'); }); });
 server.on('clientError', (e, socket) => { try { socket.destroy(); } catch (x) {} });
 process.on('uncaughtException', e => log('Unexpected error, server kept running', e && e.stack));
 process.on('unhandledRejection', e => log('Unexpected rejection, server kept running', e));

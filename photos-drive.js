@@ -84,20 +84,29 @@ module.exports = function ({ store, log, gh, repo, readPhoto, cacheFile }) {
 
   // At most 4 photo reads go to Drive at once. A burst of hundreds made each one take up to 100 seconds (issue 34).
   // The rest wait their turn in order. A read that fails frees its place too.
-  const READS = 4; let reading = 0; const waiting = [];
-  async function oneRead(body) {
-    if (reading >= READS) await new Promise(ok => waiting.push(ok)); else reading++;
+  // A photo someone is waiting to see goes ahead of a photo asked for by work TREE does by itself, a reading or the
+  // readable copies. That work holds at most 2 of the 4 places, so a person's photo never waits behind a row of it
+  // (November 21, 2026).
+  const READS = 4, LOW_READS = 2; let reading = 0, readingLow = 0; const waiting = [], waitingLow = [];
+  function nextRead() {
+    if (reading >= READS) return false;
+    if (waiting.length) { reading++; waiting.shift()(); return true; }
+    if (waitingLow.length && readingLow < LOW_READS) { reading++; readingLow++; waitingLow.shift()(); return true; }
+    return false;
+  }
+  async function oneRead(body, low) {
+    await new Promise(ok => { (low ? waitingLow : waiting).push(ok); while (nextRead()); });
     try { return await call(body); }
-    finally { const next = waiting.shift(); if (next) next(); else reading--; }
+    finally { reading--; if (low) readingLow--; while (nextRead()); }
   }
 
   // Google now and then answers a photo request as if it had no body, so a read that fails that way is tried twice more
-  async function read(o) {
+  async function read(o, opts) {
     let last;
     for (let k = 0; k < 3; k++) {
       if (k) await new Promise(ok => setTimeout(ok, 1200 * k));
       try {
-        const j = await oneRead({ op: 'get', id: o.drive });
+        const j = await oneRead({ op: 'get', id: o.drive }, !!(opts && opts.low));
         if (!j.data) throw new Error('Drive sent no photo');
         return Buffer.from(j.data, 'base64');
       } catch (e) { last = e; if (/^Drive said /.test(e.message)) break; }
