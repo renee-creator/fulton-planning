@@ -706,6 +706,8 @@ ONCE.push(['trainingLinks', () => staff.once.trainingLinks()]);
 ONCE.push(['kyr2026', () => staff.once.kyr2026()]);
 // the director's volunteer job cards, copied once from once/volunteer-jobs.json into the records, word for word
 ONCE.push(['volunteerJobs', () => staff.once.volunteerJobs()]);
+// November 23, 2026. Organize a Swap joins the job cards, and Sort the Lost and Found ends by leaving the front tidy
+ONCE.push(['s81VolunteerSwap', () => staff.once.swap()]);
 // the director's list of museums and cultural places, added once from once/museums.json
 ONCE.push(['museums', () => staff.once.edits('museums', recsEdit)]);
 // the parks near us from the director's field guide, added once from once/parks.json

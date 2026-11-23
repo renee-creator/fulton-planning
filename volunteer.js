@@ -84,6 +84,32 @@ module.exports = function volunteerModule(c) {
     log('Volunteer job cards loaded,', d.jobs.jobs.length, 'cards in', d.groups.groups.length, 'groups,', n, 'saying your point person');
   }
 
+  /* November 23, 2026, from the director. Sort the Lost and Found ends by leaving the front tidy, and Organize a Swap joins
+     the library beside it, one card for a clothing, book or materials swap. A card already holding these words is left. */
+  const TIDY = 'Leave the front lost and found tidy, with clothing folded and in view so families can find it.';
+  const SWAP = { title: 'Organize a Swap', where: 'The front entry, or the piazza on a Second Saturday', time: '1 to 2 hours', who: 'Adults',
+    supplies: ['Tables or a rack', 'Bins and size labels', 'A sign for each kind'],
+    directions: ['Choose the swap with your point person, clothing, books or materials.', 'Set out tables or a rack, with a bin and a sign for each kind.',
+      'Sort clothing by size, books by age and materials by kind.', 'Invite families to bring what they have outgrown and take what they can use.',
+      'Add unclaimed lost and found items after their last call.', 'Offer good children\'s sizes and books to the school\'s spare clothes bins and classes first.', 'Pack what is left for donation.'],
+    take_care: ['Only clean clothing in good repair.', 'Only books and materials that are safe for children.'],
+    done_when: 'the swap is packed away, the school\'s share is delivered and the rest is ready to donate.' };
+  function onceSwap() {
+    if (!S.ready || !S.files.has(JOBS)) return false;
+    const lf = jobs().find(j => j && /^sort the lost and found$/i.test(String(j.title || '').trim()));
+    if (lf && !(lf.directions || []).some(l => /front lost and found tidy/i.test(l))) {
+      const parts = SPECS[0].fields.map(([k]) => k === 'directions' ? { body: [...(lf.directions || []), TIDY].join('\n') } : {});
+      const r = saveRecord('TREE', JOBS, lf.id, { note: 'Leave the front tidy, as the director chose', keep: true, parts });
+      if (!r || !r.ok) { log('Sort the Lost and Found not changed,', r && r.error); return false; }
+    }
+    if (!jobs().some(j => j && /^organize a swap$/i.test(String(j.title || '').trim()))) {
+      const ids = new Set(jobs().map(j => j.id)); let id = slug(SWAP.title), n = 2; while (ids.has(id)) id = slug(SWAP.title) + '-' + n++;
+      const group = lf && lf.group && groups().some(g => g.id === lf.group) ? lf.group : (groups().find(g => g.id !== FUTURE) || {}).id || '';
+      saveJobs(d => { d.jobs.push(Object.assign({ id, group, status: 'active', type: 'scheduled' }, JSON.parse(JSON.stringify(SWAP)), { addedBy: 'TREE', addedAt: Date.now() })); });
+    }
+    log('Organize a Swap added, and Sort the Lost and Found leaves the front tidy');
+  }
+
   /* ---------- what the library page receives ---------- */
   // a playdough card names our recipe in TREE. Until the recipe library has one, the director sees a note on it.
   function hasPlaydough() {
@@ -167,5 +193,5 @@ module.exports = function volunteerModule(c) {
     }
     err(req, res, 404, 'That is not here.');
   }
-  return { SPECS, mayEdit, once, handle, fromFile, pointPerson, TYPES, forFamily, jobForFamily, slotCard, paths: { JOBS, GROUPS, INTRO } };
+  return { SPECS, mayEdit, once, onceSwap, handle, fromFile, pointPerson, TYPES, forFamily, jobForFamily, slotCard, paths: { JOBS, GROUPS, INTRO } };
 };
